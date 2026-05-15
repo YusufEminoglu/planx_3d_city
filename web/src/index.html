@@ -115,6 +115,10 @@
 
     <aside class="dock-panel hidden" id="style-dock">
         <div class="dock-head"><span>Style Dock</span><button class="dock-close" data-close="style-dock">x</button></div>
+        <label><input type="checkbox" data-setting="showTerrainTexture"> Plan texture</label>
+        <label>Texture opacity <input type="range" min="0.1" max="1" step="0.05" data-setting="terrainTextureOpacity"></label>
+        <label>Texture brightness <input type="range" min="0.5" max="1.5" step="0.05" data-setting="terrainTextureBrightness"></label>
+        <label>Texture contrast <input type="range" min="0.5" max="1.8" step="0.05" data-setting="terrainTextureContrast"></label>
         <label>Ada rengi <input type="color" data-setting="islandColor"></label>
         <label>Ada dokusu <select data-setting="islandTexture"></select></label>
         <label>Yol rengi <input type="color" data-setting="roadColor"></label>

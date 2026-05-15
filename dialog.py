@@ -28,7 +28,16 @@ from qgis.PyQt.QtWidgets import (
 from qgis.core import QgsMapLayerProxyModel, QgsProject, QgsWkbTypes
 from qgis.gui import QgsMapLayerComboBox
 
-from .exporter import LABELS, OPTIONAL_INPUTS, REQUIRED_INPUTS, validate_inputs
+from .exporter import (
+    LABELS,
+    MODE_RASTER_TEXTURE,
+    MODE_VECTOR,
+    OPTIONAL_INPUTS,
+    REQUIRED_INPUTS,
+    optional_inputs_for_mode,
+    required_inputs_for_mode,
+    validate_inputs,
+)
 from .style_tools import (
     BLOCK_STYLE_FIELDS,
     BUILDING_STYLE_FIELDS,
@@ -39,6 +48,7 @@ from .style_tools import (
 
 EXPECTED_GEOMETRIES = {
     "roi": "Polygon",
+    "plan_texture": "Raster",
     "roads": "Line",
     "buildings": "Polygon",
     "blocks": "Polygon",
@@ -55,6 +65,7 @@ RECOMMENDED_BUILDING_FIELDS = ("katadedi", "uipfonksiyon")
 
 AUTO_MATCH_ALIASES = {
     "dem": ("dem", "mydem", "elevation", "yukseklik", "yukseklik modeli"),
+    "plan_texture": ("plan", "siteplan", "yerlesim plani", "nazim", "uygulama", "texture", "pafta"),
     "roi": ("roi", "sinir", "calisma", "alan", "boundary"),
     "roads": ("roads", "road", "yol", "yollar", "aks", "myroads"),
     "buildings": ("buildings", "building", "bina", "binalar", "yapi", "yapilar", "mybuildings"),
@@ -87,7 +98,9 @@ class PlanX3DCityDialog(QDialog):
         self._refresh_report()
 
     def selected_layers(self) -> dict:
-        return {key: box.currentLayer() for key, box in self.layer_boxes.items()}
+        payload = {key: box.currentLayer() for key, box in self.layer_boxes.items()}
+        payload["mode"] = self._current_mode()
+        return payload
 
     def set_status(self, text: str, error: bool = False) -> None:
         self.status_label.setText(text)
@@ -221,8 +234,15 @@ class PlanX3DCityDialog(QDialog):
 
         required_group = QGroupBox("Zorunlu veri katmanlari")
         required_grid = QGridLayout(required_group)
-        for row, key in enumerate(REQUIRED_INPUTS):
-            self._add_layer_row(required_grid, row, key, required=True)
+        mode_label = QLabel("<b>Yayin modu</b><br><span style='color:#64748b'>Klasik vektor plan veya raster plan texture akisi</span>")
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItem("Vector Plan Mode", MODE_VECTOR)
+        self.mode_combo.addItem("Raster Plan Texture Mode", MODE_RASTER_TEXTURE)
+        required_grid.addWidget(mode_label, 0, 0)
+        required_grid.addWidget(self.mode_combo, 0, 1)
+        required_grid.addWidget(QLabel(""), 0, 2)
+        for row, key in enumerate(("dem", "plan_texture", "roi", "roads", "buildings", "blocks", "parcels"), start=1):
+            self._add_layer_row(required_grid, row, key, required=(key != "plan_texture"))
         root.addWidget(required_group)
 
         optional_group = QGroupBox("Opsiyonel zenginlestirme katmanlari")
@@ -245,6 +265,7 @@ class PlanX3DCityDialog(QDialog):
         self.auto_match_button.clicked.connect(self._auto_match_layers)
         self.check_button.clicked.connect(self._refresh_report)
         self.export_button.clicked.connect(lambda: self.exportRequested.emit(self.selected_layers()))
+        self.mode_combo.currentIndexChanged.connect(self._refresh_report)
         return page
 
     def _add_layer_row(self, grid: QGridLayout, row: int, key: str, required: bool) -> None:
@@ -252,8 +273,10 @@ class PlanX3DCityDialog(QDialog):
         label.setMinimumWidth(240)
         label.setWordWrap(True)
         box = QgsMapLayerComboBox()
-        box.setAllowEmptyLayer(not required)
+        box.setAllowEmptyLayer(True)
         box.setFilters(QgsMapLayerProxyModel.RasterLayer if key == "dem" else QgsMapLayerProxyModel.VectorLayer)
+        if key == "plan_texture":
+            box.setFilters(QgsMapLayerProxyModel.RasterLayer)
         badge = QLabel("Eksik" if required else "Opsiyonel")
         badge.setProperty("class", "badge")
         badge.setStyleSheet(self._badge_style("missing" if required else "optional"))
@@ -389,7 +412,7 @@ class PlanX3DCityDialog(QDialog):
         layers = list(QgsProject.instance().mapLayers().values())
         used_ids = set()
         matched = []
-        for key in REQUIRED_INPUTS + OPTIONAL_INPUTS:
+        for key in ("dem", "plan_texture", "roi", "roads", "buildings", "blocks", "parcels") + OPTIONAL_INPUTS:
             candidate = self._best_layer_match(key, layers, used_ids)
             if candidate is None:
                 continue
@@ -409,9 +432,9 @@ class PlanX3DCityDialog(QDialog):
         for layer in layers:
             if layer.id() in used_ids:
                 continue
-            if key == "dem" and hasattr(layer, "featureCount"):
+            if key in ("dem", "plan_texture") and hasattr(layer, "featureCount"):
                 continue
-            if key != "dem" and not hasattr(layer, "featureCount"):
+            if key not in ("dem", "plan_texture") and not hasattr(layer, "featureCount"):
                 continue
             name = self._normalize_name(layer.name())
             score = 0
@@ -435,15 +458,23 @@ class PlanX3DCityDialog(QDialog):
         rows = []
         warnings = []
         crs_values = []
+        mode = self._current_mode()
+        required_keys = required_inputs_for_mode(mode)
+        optional_keys = optional_inputs_for_mode(mode)
         missing = validate_inputs(layer_map)
         if missing:
             warnings.append("Eksik zorunlu veri: " + ", ".join(missing))
+        if mode == MODE_RASTER_TEXTURE:
+            warnings.append("Raster Plan Texture modunda plan GeoTIFF'in DEM/ROI ile ayni metrik CRS ve ayni kirpilmis alana sahip olmasi beklenir.")
 
-        for key in REQUIRED_INPUTS + OPTIONAL_INPUTS:
+        ordered_keys = ("dem", "plan_texture", "roi", "roads", "buildings", "blocks", "parcels") + OPTIONAL_INPUTS
+        for key in ordered_keys:
             layer = layer_map.get(key)
-            role = "Zorunlu" if key in REQUIRED_INPUTS else "Opsiyonel"
+            role = "Zorunlu" if key in required_keys else "Opsiyonel"
+            if key == "plan_texture" and mode != MODE_RASTER_TEXTURE:
+                role = "Kullanilmaz"
             if layer is None:
-                status = "Eksik" if key in REQUIRED_INPUTS else "Bos gecilecek"
+                status = "Eksik" if key in required_keys else "Bos gecilecek"
                 rows.append((LABELS[key], role, status, "-", "-", "-"))
                 continue
 
@@ -452,7 +483,7 @@ class PlanX3DCityDialog(QDialog):
             count = self._feature_count(layer)
             geom = self._geometry_name(layer)
             status = "Hazir"
-            if count == 0 and key in REQUIRED_INPUTS:
+            if count == 0 and key in required_keys:
                 status = "Bos katman"
                 warnings.append(f"{LABELS[key]} zorunlu ama bos gorunuyor.")
             expected = EXPECTED_GEOMETRIES.get(key)
@@ -489,11 +520,12 @@ class PlanX3DCityDialog(QDialog):
         return html, bool(warnings)
 
     def _update_badges(self, layer_map: dict) -> None:
+        required_keys = set(required_inputs_for_mode(self._current_mode()))
         for key, badge in self.badge_labels.items():
             layer = layer_map.get(key)
             if layer is None:
-                state = "missing" if key in REQUIRED_INPUTS else "optional"
-                text = "Eksik" if key in REQUIRED_INPUTS else "Opsiyonel"
+                state = "missing" if key in required_keys else "optional"
+                text = "Eksik" if key in required_keys else ("Kapali" if key == "plan_texture" else "Opsiyonel")
             else:
                 count = self._feature_count(layer)
                 state = "empty" if count == 0 else "ready"
@@ -573,6 +605,7 @@ class PlanX3DCityDialog(QDialog):
     def _input_label_html(self, key: str, required: bool) -> str:
         descriptions = {
             "dem": "GeoTIFF/raster yukseklik modeli",
+            "plan_texture": "DEM uzerine kaplanacak kirpilmis 2B yerlesim plani GeoTIFF",
             "roi": "Calisma alani siniri",
             "roads": "Yol akslari",
             "buildings": "Bina tabanlari, kat ve fonksiyon bilgisi",
@@ -587,6 +620,11 @@ class PlanX3DCityDialog(QDialog):
         }
         mark = " *" if required else ""
         return f"<b>{LABELS[key]}{mark}</b><br><span style='color:#64748b'>{descriptions[key]}</span>"
+
+    def _current_mode(self) -> str:
+        if not hasattr(self, "mode_combo"):
+            return MODE_VECTOR
+        return self.mode_combo.currentData() or MODE_VECTOR
 
     def _feature_count(self, layer) -> int:
         if hasattr(layer, "featureCount"):

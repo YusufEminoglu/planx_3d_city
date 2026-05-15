@@ -7,7 +7,7 @@ import webbrowser
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
 
-from .exporter import LABELS, OPTIONAL_INPUTS, existing_target_files, export_all, validate_inputs
+from .exporter import LABELS, OPTIONAL_INPUTS, existing_target_files, export_all, optional_inputs_for_mode, required_inputs_for_mode, validate_inputs
 from .server import PlanX3DServer
 
 
@@ -76,7 +76,9 @@ class PlanX3DCityPlugin:
                 return
 
         try:
-            empty_optionals = [LABELS[key] for key in OPTIONAL_INPUTS if layer_map.get(key) is None]
+            required = set(required_inputs_for_mode(layer_map.get("mode") or "vector"))
+            optional = optional_inputs_for_mode(layer_map.get("mode") or "vector")
+            empty_optionals = [LABELS[key] for key in optional if key not in required and layer_map.get(key) is None]
             written = export_all(layer_map, self.web_root)
             url = self.server.start()
             webbrowser.open(url)

@@ -17,7 +17,11 @@ from qgis.core import (
 )
 
 
-REQUIRED_INPUTS = ("dem", "roi", "roads", "buildings", "blocks", "parcels")
+MODE_VECTOR = "vector"
+MODE_RASTER_TEXTURE = "raster_texture"
+VECTOR_REQUIRED_INPUTS = ("dem", "roi", "roads", "buildings", "blocks", "parcels")
+RASTER_TEXTURE_REQUIRED_INPUTS = ("dem", "roi", "plan_texture", "roads", "buildings")
+REQUIRED_INPUTS = VECTOR_REQUIRED_INPUTS
 OPTIONAL_INPUTS = ("trees", "hardscape", "lights", "benches", "trashbins", "busstops")
 
 VECTOR_TARGETS = {
@@ -36,6 +40,7 @@ VECTOR_TARGETS = {
 
 LABELS = {
     "dem": "DEM",
+    "plan_texture": "Plan texture GeoTIFF",
     "roi": "ROI",
     "roads": "Roads",
     "buildings": "Buildings",
@@ -74,7 +79,9 @@ def web_data_paths(web_root: str) -> tuple[Path, Path]:
 
 def target_files(web_root: str) -> list[Path]:
     dem_dir, vector_dir = web_data_paths(web_root)
-    files = [dem_dir / "mydem.tif"]
+    texture_dir = Path(web_root) / "data" / "texture"
+    texture_dir.mkdir(parents=True, exist_ok=True)
+    files = [dem_dir / "mydem.tif", texture_dir / "siteplan.tif"]
     files.extend(vector_dir / filename for filename in VECTOR_TARGETS.values())
     files.append(Path(web_root) / "data" / "planx_manifest.json")
     return files
@@ -84,26 +91,58 @@ def existing_target_files(web_root: str) -> list[Path]:
     return [path for path in target_files(web_root) if path.exists()]
 
 
+def export_mode(layer_map: dict) -> str:
+    return layer_map.get("mode") or MODE_VECTOR
+
+
+def required_inputs_for_mode(mode: str) -> tuple[str, ...]:
+    return RASTER_TEXTURE_REQUIRED_INPUTS if mode == MODE_RASTER_TEXTURE else VECTOR_REQUIRED_INPUTS
+
+
+def optional_inputs_for_mode(mode: str) -> tuple[str, ...]:
+    if mode == MODE_RASTER_TEXTURE:
+        return ("blocks", "parcels") + OPTIONAL_INPUTS
+    return OPTIONAL_INPUTS
+
+
 def validate_inputs(layer_map: dict) -> list[str]:
+    required_inputs = required_inputs_for_mode(export_mode(layer_map))
     missing = []
-    for key in REQUIRED_INPUTS:
+    for key in required_inputs:
         if layer_map.get(key) is None:
             missing.append(LABELS[key])
     return missing
 
 
 def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
+    mode = export_mode(layer_map)
+    required_inputs = required_inputs_for_mode(mode)
+    optional_inputs = optional_inputs_for_mode(mode)
     missing = validate_inputs(layer_map)
     if missing:
         raise ExportError("Missing required inputs: " + ", ".join(missing))
 
     dem_dir, vector_dir = web_data_paths(web_root)
+    texture_dir = Path(web_root) / "data" / "texture"
+    texture_dir.mkdir(parents=True, exist_ok=True)
     written = []
     manifest_inputs = []
 
     _export_dem(layer_map["dem"], dem_dir / "mydem.tif")
     written.append(str(dem_dir / "mydem.tif"))
-    manifest_inputs.append(_layer_manifest("dem", layer_map["dem"], "dem/mydem.tif", False))
+    manifest_inputs.append(_layer_manifest("dem", layer_map["dem"], "dem/mydem.tif", False, required_inputs))
+
+    terrain_texture = None
+    if mode == MODE_RASTER_TEXTURE:
+        texture_path = texture_dir / "siteplan.tif"
+        _export_dem(layer_map["plan_texture"], texture_path)
+        terrain_texture = {
+            "key": "plan_texture",
+            "target": "texture/siteplan.tif",
+            "label": LABELS["plan_texture"],
+        }
+        written.append(str(texture_path))
+        manifest_inputs.append(_layer_manifest("plan_texture", layer_map["plan_texture"], "texture/siteplan.tif", False, required_inputs))
 
     for key, filename in VECTOR_TARGETS.items():
         out_path = vector_dir / filename
@@ -114,16 +153,23 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
         else:
             _export_vector(layer, out_path)
         written.append(str(out_path))
-        manifest_inputs.append(_layer_manifest(key, layer, f"yerlesim/{filename}", empty))
+        manifest_inputs.append(_layer_manifest(key, layer, f"yerlesim/{filename}", empty, required_inputs))
         if feedback:
             feedback(f"{LABELS[key]} -> {out_path.name}")
 
-    manifest_path = write_manifest(web_root, manifest_inputs)
+    manifest_path = write_manifest(web_root, manifest_inputs, mode, required_inputs, optional_inputs, terrain_texture)
     written.append(str(manifest_path))
     return written
 
 
-def write_manifest(web_root: str, inputs: list[dict]) -> Path:
+def write_manifest(
+    web_root: str,
+    inputs: list[dict],
+    mode: str,
+    required_inputs: tuple[str, ...],
+    optional_inputs: tuple[str, ...],
+    terrain_texture: Optional[dict],
+) -> Path:
     data_root = Path(web_root) / "data"
     data_root.mkdir(parents=True, exist_ok=True)
     project = QgsProject.instance()
@@ -131,14 +177,16 @@ def write_manifest(web_root: str, inputs: list[dict]) -> Path:
     manifest = {
         "schema": "planx-3d-city-manifest/v1",
         "plugin": "planx_3d_city",
-        "version": "0.4.2",
+        "version": "0.5.0",
+        "mode": mode,
         "exportedAt": datetime.now().astimezone().isoformat(timespec="seconds"),
         "project": {
             "title": project_title,
             "fileName": project.fileName() or "",
         },
-        "requiredInputs": list(REQUIRED_INPUTS),
-        "optionalInputs": list(OPTIONAL_INPUTS),
+        "requiredInputs": list(required_inputs),
+        "optionalInputs": list(optional_inputs),
+        "terrainTexture": terrain_texture,
         "inputs": inputs,
         "summary": {
             "emptyOptionalInputs": [item["key"] for item in inputs if item.get("optional") and item.get("empty")],
@@ -150,13 +198,13 @@ def write_manifest(web_root: str, inputs: list[dict]) -> Path:
     return manifest_path
 
 
-def _layer_manifest(key: str, layer, target: str, empty: bool) -> dict:
+def _layer_manifest(key: str, layer, target: str, empty: bool, required_inputs: tuple[str, ...]) -> dict:
     item = {
         "key": key,
         "label": LABELS[key],
         "target": target,
-        "required": key in REQUIRED_INPUTS,
-        "optional": key in OPTIONAL_INPUTS,
+        "required": key in required_inputs,
+        "optional": key not in required_inputs,
         "empty": bool(empty),
         "sourceLayer": None,
         "crs": None,

@@ -14,19 +14,22 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 
 1. Open the DEM and vector layers in one QGIS project.
 2. Start `PlanX 3D City` from the toolbar or plugin menu.
-3. In `1 Veri`, use `Katmanlari otomatik eslestir` if your layer names contain common hints such as `dem`, `roi`, `yol`, `bina`, `ada`, or `parsel`.
-4. Select all required layers: DEM, ROI, roads, buildings, blocks, parcels.
-5. Select optional layers if available: trees, hardscape, lights, benches, trash bins, bus stops.
-6. In `2 Kontrol`, generate and inspect the quality report.
-7. In `3 Stil`, optionally create PlanX style fields and apply styles to selected blocks/buildings.
-8. Click `Disari aktar ve 3D Viewer ac`.
-9. Use `4 Yayin` to copy the viewer URL, reopen the browser, open exported data, or stop the local server.
+3. In `1 Veri`, choose a publishing mode.
+4. Use `Katmanlari otomatik eslestir` if your layer names contain common hints such as `dem`, `roi`, `yol`, `bina`, `ada`, `parsel`, or `plan`.
+5. For `Vector Plan Mode`, select all required layers: DEM, ROI, roads, buildings, blocks, parcels.
+6. For `Raster Plan Texture Mode`, select DEM, ROI, plan texture GeoTIFF, roads, and buildings. Blocks and parcels are optional in this mode.
+7. Select optional layers if available: trees, hardscape, lights, benches, trash bins, bus stops.
+8. In `2 Kontrol`, generate and inspect the quality report.
+9. In `3 Stil`, optionally create PlanX style fields and apply styles to selected blocks/buildings.
+10. Click `Disari aktar ve 3D Viewer ac`.
+11. Use `4 Yayin` to copy the viewer URL, reopen the browser, open exported data, or stop the local server.
 
 ## Data Contract
 
 The plugin writes the viewer inputs to fixed paths:
 
 - `web/data/dem/mydem.tif`
+- optional raster texture mode file: `web/data/texture/siteplan.tif`
 - `web/data/yerlesim/roi.geojson`
 - `web/data/yerlesim/myroads.geojson`
 - `web/data/yerlesim/mybuildings.geojson`
@@ -38,6 +41,22 @@ The plugin writes the viewer inputs to fixed paths:
 Optional layers can be left empty. The plugin writes empty GeoJSON files so the viewer remains stable.
 
 The manifest records the export time, QGIS project title, source layer names, targets, CRS values, feature counts, and empty optional inputs. The viewer uses it to show project provenance and data health without requiring the user to remember how the export was produced.
+
+## Publishing Modes
+
+### Vector Plan Mode
+
+This is the original workflow. The 3D base is built from vector blocks, parcels, roads, buildings, DEM, ROI, and optional enrichment layers. Blocks and parcels are required.
+
+### Raster Plan Texture Mode
+
+Use this workflow when you already have a clipped 2D settlement plan as a GeoTIFF. The viewer drapes `siteplan.tif` directly over the DEM terrain as the main base texture. In this mode:
+
+- DEM, ROI, plan texture GeoTIFF, roads, and buildings are required.
+- Blocks and parcels are optional because the plan raster already contains the visual block/parcel/road form.
+- Roads are still required for 3D road overlays, traffic, sidewalks, crosswalks, and navigation effects.
+- The plan texture should be clipped to the study area and aligned to the DEM/ROI in the same metric CRS.
+- The Style Dock includes texture visibility, opacity, brightness, and contrast controls.
 
 ## Data Quality Expectations
 

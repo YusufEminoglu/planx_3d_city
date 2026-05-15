@@ -193,6 +193,7 @@ let demReady = false;
 let demLoadingStarted = false;
 let layerDataCache = null;
 let projectManifest = null;
+let terrainTexture = null;
 let roadCurves = [];
 let cars = [];
 let pedestrians = [];
@@ -470,6 +471,10 @@ const settings = {
   mapOpacity: 1.0,
   floorHeight: 3.2,
   pavementStyle: 'Asphalt',
+  showTerrainTexture: true,
+  terrainTextureOpacity: 1.0,
+  terrainTextureBrightness: 1.0,
+  terrainTextureContrast: 1.0,
   islandColor: '#e5e7eb',
   islandTexture: 'None',
   parcelBoundaryColor: '#71717a',
@@ -518,6 +523,7 @@ const settings = {
 
 const PERSISTED_SETTING_KEYS = [
   'islandColor', 'islandTexture', 'parcelBoundaryColor', 'parcelBoundaryOpacity',
+  'showTerrainTexture', 'terrainTextureOpacity', 'terrainTextureBrightness', 'terrainTextureContrast',
   'roofTexture', 'roofShape', 'roofHeight', 'roadColor', 'roadWidth',
   'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture',
   'showCars', 'showRoads', 'showSidewalks', 'showCrosswalks', 'showPedestrians',
@@ -850,6 +856,64 @@ async function loadTexture(path, repeatX = 1, repeatY = 1) {
   });
 }
 
+function viewerMode() {
+  return projectManifest?.mode || 'vector';
+}
+
+function isRasterTextureMode() {
+  return viewerMode() === 'raster_texture';
+}
+
+function applyTone(value) {
+  let v = value / 255;
+  v = (v - 0.5) * settings.terrainTextureContrast + 0.5;
+  v *= settings.terrainTextureBrightness;
+  return Math.max(0, Math.min(255, Math.round(v * 255)));
+}
+
+async function loadTerrainTextureFromGeoTiff() {
+  const target = projectManifest?.terrainTexture?.target;
+  if (!target || !settings.showTerrainTexture) return null;
+  const res = await fetch(`../data/${target}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Terrain texture not found: ${target}`);
+  const file = await res.arrayBuffer();
+  const tiff = await GeoTIFF.fromArrayBuffer(file);
+  const image = await tiff.getImage();
+  const w = image.getWidth();
+  const h = image.getHeight();
+  const maxSize = 2048;
+  const scale = Math.min(1, maxSize / Math.max(w, h));
+  const outW = Math.max(1, Math.round(w * scale));
+  const outH = Math.max(1, Math.round(h * scale));
+  const samples = image.getSamplesPerPixel ? image.getSamplesPerPixel() : 1;
+  const raster = await image.readRasters({ interleave: true, width: outW, height: outH });
+  const canvas = document.createElement('canvas');
+  canvas.width = outW;
+  canvas.height = outH;
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(outW, outH);
+  for (let i = 0; i < outW * outH; i++) {
+    const src = i * samples;
+    const dst = i * 4;
+    const gray = raster[src];
+    const r = samples >= 3 ? raster[src] : gray;
+    const g = samples >= 3 ? raster[src + 1] : gray;
+    const b = samples >= 3 ? raster[src + 2] : gray;
+    const a = samples >= 4 ? raster[src + 3] : 255;
+    img.data[dst] = applyTone(Number(r) || 0);
+    img.data[dst + 1] = applyTone(Number(g) || 0);
+    img.data[dst + 2] = applyTone(Number(b) || 0);
+    img.data[dst + 3] = Number.isFinite(a) ? Math.max(0, Math.min(255, a)) : 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.needsUpdate = true;
+  return tex;
+}
+
 function demHeightAtProjected(x, y, fallback = 0) {
   if (!demSampler) return fallback;
   let px = Math.floor((x - demSampler.originX) / demSampler.resX);
@@ -1015,20 +1079,26 @@ async function buildTerrain(adalar) {
   }
   geo.computeVertexNormals();
 
-  const groundTex = settings.pavementStyle === 'Asphalt'
-    ? createAsphaltTexture()
-    : await loadTexture(textureSets.pavement[settings.pavementStyle], width / 60, depth / 60);
+  const useRasterTexture = isRasterTextureMode() && settings.showTerrainTexture && terrainTexture;
+  const groundTex = useRasterTexture
+    ? terrainTexture
+    : (settings.pavementStyle === 'Asphalt'
+      ? createAsphaltTexture()
+      : await loadTexture(textureSets.pavement[settings.pavementStyle], width / 60, depth / 60));
   /* Ada poligonları içinde DEM texture %100 transparan,
    * kalan yerlerde (yollar, boş alanlar) normal asfalt görünür */
-  const islandMask = createIslandMaskTexture(adalar, width, depth);
-  const mat = new THREE.MeshStandardMaterial({
+  const materialOptions = {
     map: groundTex,
-    alphaMap: islandMask,
-    transparent: true,
-    alphaTest: 0.5,
-    roughness: 0.95,
+    transparent: useRasterTexture ? settings.terrainTextureOpacity < 1 : true,
+    opacity: useRasterTexture ? settings.terrainTextureOpacity : 1,
+    roughness: useRasterTexture ? 0.82 : 0.95,
     metalness: 0.02
-  });
+  };
+  if (!useRasterTexture) {
+    materialOptions.alphaMap = createIslandMaskTexture(adalar, width, depth);
+    materialOptions.alphaTest = 0.5;
+  }
+  const mat = new THREE.MeshStandardMaterial(materialOptions);
   terrainMesh = new THREE.Mesh(geo, mat);
   terrainMesh.rotation.x = -Math.PI / 2;
   terrainMesh.receiveShadow = true;
@@ -2100,7 +2170,8 @@ async function rebuildScene() {
   if (!layerDataCache) {
     loadingText.innerText = 'GeoJSON yukleniyor...';
     projectManifest = await loadManifest();
-    const adalar = await loadGeoJson('../data/yerlesim/myblocks.geojson', { required: true, label: 'Blocks' });
+    const rasterMode = isRasterTextureMode();
+    const adalar = await loadGeoJson('../data/yerlesim/myblocks.geojson', { required: !rasterMode, label: 'Blocks' });
     const yapilar = await loadGeoJson('../data/yerlesim/mybuildings.geojson', { required: true, label: 'Buildings' });
     const yollar = await loadGeoJson('../data/yerlesim/myroads.geojson', { required: true, label: 'Roads' });
     const agaclar = await loadGeoJson('../data/yerlesim/mytrees.geojson', { label: 'Trees' });
@@ -2116,7 +2187,7 @@ async function rebuildScene() {
     };
   }
   if (settings.showParcels && !layerDataCache.parseller) {
-    layerDataCache.parseller = await loadGeoJson('../data/yerlesim/myparcels.geojson', { required: true, label: 'Parcels' });
+    layerDataCache.parseller = await loadGeoJson('../data/yerlesim/myparcels.geojson', { required: !isRasterTextureMode(), label: 'Parcels' });
   }
   if (settings.showHardscape && !layerDataCache.hardscape) {
     layerDataCache.hardscape = await loadGeoJson('../data/yerlesim/myhardscape.geojson', { label: 'Hardscape' });
@@ -2181,13 +2252,23 @@ async function rebuildScene() {
     terrainMesh.material.dispose();
     terrainMesh = null;
   }
+  if (isRasterTextureMode() && settings.showTerrainTexture && !terrainTexture) {
+    try {
+      loadingText.innerText = 'Plan texture okunuyor...';
+      setSceneState('Plan texture');
+      terrainTexture = await loadTerrainTextureFromGeoTiff();
+    } catch (err) {
+      console.warn('Plan texture yuklenemedi, pavement ile devam ediliyor.', err);
+      setStatus('Plan texture yuklenemedi; varsayilan zeminle devam.');
+    }
+  }
   loadingText.innerText = 'Terrain kuruluyor...';
   setSceneState('Terrain');
   await buildTerrain(adalar);
 
   loadingText.innerText = t('processing');
   setSceneState('Katmanlar');
-  await buildIslandLayer(adalar);
+  if (!isRasterTextureMode() || adalar.features.length) await buildIslandLayer(adalar); else clearGroup(islandGroup);
   if (settings.showParcels && parseller) buildParcelLayer(parseller); else clearGroup(parcelGroup);
   if (settings.showHardscape && hardscape) await buildHardscapeLayer(hardscape); else clearGroup(hardscapeGroup);
   if (settings.showBuildings) await buildBuildingLayer(yapilar); else clearGroup(buildingGroup);
@@ -2243,8 +2324,8 @@ function updateDashboard(data) {
     if (el) el.textContent = value;
   };
   setMetric('metric-buildings', bldCount);
-  setMetric('metric-blocks', blockCount);
-  setMetric('metric-parcels', parcelCount || '-');
+  setMetric('metric-blocks', isRasterTextureMode() && !blockCount ? 'texture' : blockCount);
+  setMetric('metric-parcels', isRasterTextureMode() && !parcelCount ? 'texture' : (parcelCount || '-'));
   setMetric('metric-floors', avgFlr);
 
   const meta = document.getElementById('project-meta');
@@ -2253,7 +2334,8 @@ function updateDashboard(data) {
       const title = projectManifest.project?.title || 'PlanX 3D City Project';
       const exportedAt = projectManifest.exportedAt ? new Date(projectManifest.exportedAt).toLocaleString() : '-';
       const crs = projectManifest.summary?.crs?.length ? projectManifest.summary.crs.join(', ') : 'CRS bilgisi yok';
-      meta.innerHTML = `<strong>${title}</strong><br>Export: ${exportedAt}<br>CRS: ${crs}`;
+      const modeLabel = isRasterTextureMode() ? 'Raster Plan Texture' : 'Vector Plan';
+      meta.innerHTML = `<strong>${title}</strong><br>Mode: ${modeLabel}<br>Export: ${exportedAt}<br>CRS: ${crs}`;
     } else {
       meta.textContent = 'Manifest yok: veri klasoru eski bir export olabilir, viewer yine yuklenir.';
     }
@@ -2263,6 +2345,8 @@ function updateDashboard(data) {
   if (health) {
     const manifestEmpty = new Set(projectManifest?.summary?.emptyOptionalInputs || []);
     const optional = [
+      ['blocks', 'Blocks', adalar.features.length],
+      ['parcels', 'Parcels', parcelCount],
       ['roads', 'Roads', yollar.features.length],
       ['trees', 'Trees', agaclar.features.length],
       ['hardscape', 'Hardscape', hardscape?.features?.length || 0],
@@ -2306,6 +2390,10 @@ function addGui() {
   fx.add(settings, 'enableBloom').name(t('sBloom')).onChange(checkTimeChange);
 
   const terrain = globalGui.addFolder(t('terrain'));
+  terrain.add(settings, 'showTerrainTexture').name('Plan texture').onChange(rebuildScene);
+  terrain.add(settings, 'terrainTextureOpacity', 0.1, 1.0, 0.05).name('Texture opacity').onChange(rebuildScene);
+  terrain.add(settings, 'terrainTextureBrightness', 0.5, 1.5, 0.05).name('Texture brightness').onChange(() => { terrainTexture = null; rebuildScene(); });
+  terrain.add(settings, 'terrainTextureContrast', 0.5, 1.8, 0.05).name('Texture contrast').onChange(() => { terrainTexture = null; rebuildScene(); });
   terrain.add(settings, 'pavementStyle', Object.keys(textureSets.pavement)).name(t('pavement')).onChange(rebuildScene);
   terrain.add(settings, 'showHardscape').name(t('showHardscape')).onChange(rebuildScene);
   terrain.add(settings, 'hardscapeStyle', Object.keys(textureSets.hardscape)).name(t('hardTex')).onChange(rebuildScene);
@@ -3002,6 +3090,9 @@ function applyDockSetting(key, value, inputType) {
     settings[key] = parseFloat(value);
   } else {
     settings[key] = value;
+  }
+  if (key === 'terrainTextureBrightness' || key === 'terrainTextureContrast') {
+    terrainTexture = null;
   }
   savePersistedSettings();
   if (key === 'timeOfDay' || key === 'weather') {
