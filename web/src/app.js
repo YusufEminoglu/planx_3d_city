@@ -195,6 +195,7 @@ let layerDataCache = null;
 let projectManifest = null;
 let terrainTexture = null;
 let roadCurves = [];
+let vehicleRoadCurves = [];
 let cars = [];
 let pedestrians = [];
 let buildingFunctionMaterials = new Map();
@@ -864,6 +865,38 @@ function isRasterTextureMode() {
   return viewerMode() === 'raster_texture';
 }
 
+function normalizeAccessText(value) {
+  return String(value ?? '')
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ı/g, 'i')
+    .replace(/ş/g, 's')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c');
+}
+
+function keywordList(values) {
+  return (values || []).map(normalizeAccessText).filter(Boolean);
+}
+
+function roadAllowsCars(feature) {
+  const access = projectManifest?.roadAccess;
+  const field = access?.field;
+  if (!field) return true;
+  const props = feature?.properties || {};
+  const raw = props[field];
+  if (raw === undefined || raw === null || String(raw).trim() === '') return true;
+  const value = normalizeAccessText(raw);
+  const noCar = keywordList(access.noCarKeywords || ['yaya', 'pedestrian', 'foot', 'walk', 'path']);
+  const vehicle = keywordList(access.vehicleKeywords || ['tasit', 'vehicle', 'car', 'arac', 'motorlu']);
+  const hasNoCar = noCar.some((kw) => value.includes(kw));
+  const hasVehicle = vehicle.some((kw) => value.includes(kw));
+  return !hasNoCar || hasVehicle;
+}
+
 function applyTone(value) {
   let v = value / 255;
   v = (v - 0.5) * settings.terrainTextureContrast + 0.5;
@@ -907,6 +940,7 @@ async function loadTerrainTextureFromGeoTiff() {
   }
   ctx.putImageData(img, 0, 0);
   const tex = new THREE.CanvasTexture(canvas);
+  tex.flipY = false;
   tex.wrapS = THREE.ClampToEdgeWrapping;
   tex.wrapT = THREE.ClampToEdgeWrapping;
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -1875,6 +1909,7 @@ async function buildRoadsAndTraffic(yollar) {
   clearGroup(carGroup);
   clearGroup(pedestrianGroup);
   roadCurves = [];
+  vehicleRoadCurves = [];
   cars = [];
   pedestrians = [];
 
@@ -1914,6 +1949,7 @@ async function buildRoadsAndTraffic(yollar) {
     }
     const curve = new THREE.CatmullRomCurve3(terrainPts, false, 'centripetal');
     roadCurves.push(curve);
+    if (roadAllowsCars(f)) vehicleRoadCurves.push(curve);
     const segments = Math.max(24, terrainPts.length * 3);
     const centers = curve.getPoints(segments);
     const left = [];
@@ -1952,14 +1988,14 @@ async function buildRoadsAndTraffic(yollar) {
     roadGroup.add(mesh);
   }
 
-  if (!settings.showCars) return;
-  const carColors = [0xef4444, 0x1d4ed8, 0x94a3b8, 0x111827, 0x16a34a, 0xfab005];
-  const spawnCount = Math.min(300, roadCurves.length * Math.floor(10 * settings.carDensity));
-  for (let i = 0; i < spawnCount; i++) {
-    const curve = roadCurves[Math.floor(Math.random() * roadCurves.length)];
-    const car = new THREE.Group();
-    const cMat = new THREE.MeshStandardMaterial({ color: carColors[i % carColors.length], roughness: 0.25, metalness: 0.4 });
-    const glassMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1 });
+  if (settings.showCars && vehicleRoadCurves.length > 0) {
+    const carColors = [0xef4444, 0x1d4ed8, 0x94a3b8, 0x111827, 0x16a34a, 0xfab005];
+    const spawnCount = Math.min(300, vehicleRoadCurves.length * Math.floor(10 * settings.carDensity));
+    for (let i = 0; i < spawnCount; i++) {
+      const curve = vehicleRoadCurves[Math.floor(Math.random() * vehicleRoadCurves.length)];
+      const car = new THREE.Group();
+      const cMat = new THREE.MeshStandardMaterial({ color: carColors[i % carColors.length], roughness: 0.25, metalness: 0.4 });
+      const glassMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1 });
     
     // Base body
     const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.6, 4.2), cMat);
@@ -2003,10 +2039,11 @@ async function buildRoadsAndTraffic(yollar) {
     const blL = blR.clone();
     blL.position.set(-0.6, 0.5, 2.15);
 
-    car.add(body, cabin, winF, winB, hlR, hlL, blR, blL);
-    carGroup.add(car);
-    car.renderOrder = 40;
-    cars.push({ car, curve, t: Math.random(), speed: 0.0002 + Math.random() * 0.0006 });
+      car.add(body, cabin, winF, winB, hlR, hlL, blR, blL);
+      carGroup.add(car);
+      car.renderOrder = 40;
+      cars.push({ car, curve, t: Math.random(), speed: 0.0002 + Math.random() * 0.0006 });
+    }
   }
 
   if (!settings.showPedestrians || roadCurves.length === 0) return;
@@ -2032,9 +2069,52 @@ async function buildRoadsAndTraffic(yollar) {
   }
 }
 
-function buildSidewalkLayer(yollar) {
+function buildSidewalkPolygonLayer(sidewalks) {
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xd8d2c2,
+    roughness: 0.96,
+    metalness: 0.0,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2
+  });
+  for (const f of sidewalks.features || []) {
+    for (const poly of getPolygonRings(f.geometry)) {
+      const outer = poly[0];
+      if (!outer || outer.length < 3) continue;
+      const shape = new THREE.Shape();
+      outer.forEach((c, i) => {
+        const [x, z] = metersToLocal(c[0], c[1]);
+        if (i === 0) shape.moveTo(x, z); else shape.lineTo(x, z);
+      });
+      const g = new THREE.ExtrudeGeometry(shape, { depth: 0.18, bevelEnabled: false });
+      g.rotateX(Math.PI / 2);
+      const pos = g.attributes.position;
+      for (let vi = 0; vi < pos.count; vi++) {
+        const vx = pos.getX(vi);
+        const vz = pos.getZ(vi);
+        const isTop = pos.getY(vi) > -0.09;
+        const baseDem = terrainLocalYAt(vx, vz);
+        pos.setY(vi, baseDem + LAYER.road + (isTop ? 0.14 : 0.02));
+      }
+      pos.needsUpdate = true;
+      g.computeVertexNormals();
+      const mesh = new THREE.Mesh(g, mat);
+      mesh.receiveShadow = true;
+      mesh.renderOrder = 33;
+      sidewalkGroup.add(mesh);
+    }
+  }
+}
+
+function buildSidewalkLayer(yollar, sidewalks = EMPTY_GEOJSON) {
   clearGroup(sidewalkGroup);
   if (!settings.showSidewalks) return;
+  if (sidewalks?.features?.length) {
+    buildSidewalkPolygonLayer(sidewalks);
+    return;
+  }
 
   const swWidth = 1.3;
   const swMat = new THREE.MeshStandardMaterial({ color: 0xc9bfa2, roughness: 0.95, metalness: 0.0 });
@@ -2182,7 +2262,7 @@ async function rebuildScene() {
     
     const roi = await loadGeoJson('../data/yerlesim/roi.geojson', { required: true, label: 'ROI' });
     layerDataCache = {
-       adalar, yapilar, yollar, agaclar, parseller: null, hardscape: null,
+       adalar, yapilar, yollar, agaclar, parseller: null, hardscape: null, sidewalks: null,
        furniture: { lights, benches, bins, busstops }, roi
     };
   }
@@ -2192,10 +2272,14 @@ async function rebuildScene() {
   if (settings.showHardscape && !layerDataCache.hardscape) {
     layerDataCache.hardscape = await loadGeoJson('../data/yerlesim/myhardscape.geojson', { label: 'Hardscape' });
   }
+  if (settings.showSidewalks && !layerDataCache.sidewalks) {
+    layerDataCache.sidewalks = await loadGeoJson('../data/yerlesim/mysidewalks.geojson', { label: 'Sidewalks' });
+  }
   
   const { adalar, yapilar, yollar, agaclar } = layerDataCache;
   const parseller = layerDataCache.parseller;
   const hardscape = layerDataCache.hardscape;
+  const sidewalks = layerDataCache.sidewalks;
   updateDashboard(layerDataCache);
 
   // Calculate and update stats
@@ -2273,7 +2357,7 @@ async function rebuildScene() {
   if (settings.showHardscape && hardscape) await buildHardscapeLayer(hardscape); else clearGroup(hardscapeGroup);
   if (settings.showBuildings) await buildBuildingLayer(yapilar); else clearGroup(buildingGroup);
   await buildRoadsAndTraffic(yollar);
-  if (settings.showSidewalks) buildSidewalkLayer(yollar); else clearGroup(sidewalkGroup);
+  if (settings.showSidewalks) buildSidewalkLayer(yollar, sidewalks); else clearGroup(sidewalkGroup);
   if (settings.showCrosswalks) buildCrosswalkLayer(yollar); else clearGroup(crosswalkGroup);
   if (settings.showTrees) buildTreeLayer(agaclar); else clearGroup(treeGroup);
   if (settings.showFurniture) buildFurnitureLayer(); else clearGroup(furnitureGroup);
@@ -2305,6 +2389,7 @@ function updateDashboard(data) {
   const agaclar = data.agaclar || EMPTY_GEOJSON;
   const parseller = data.parseller || EMPTY_GEOJSON;
   const hardscape = data.hardscape || EMPTY_GEOJSON;
+  const sidewalks = data.sidewalks || EMPTY_GEOJSON;
   const furniture = data.furniture || {};
 
   const bldCount = yapilar.features.length;
@@ -2335,7 +2420,8 @@ function updateDashboard(data) {
       const exportedAt = projectManifest.exportedAt ? new Date(projectManifest.exportedAt).toLocaleString() : '-';
       const crs = projectManifest.summary?.crs?.length ? projectManifest.summary.crs.join(', ') : 'CRS bilgisi yok';
       const modeLabel = isRasterTextureMode() ? 'Raster Plan Texture' : 'Vector Plan';
-      meta.innerHTML = `<strong>${title}</strong><br>Mode: ${modeLabel}<br>Export: ${exportedAt}<br>CRS: ${crs}`;
+      const accessField = projectManifest.roadAccess?.field ? `<br>Traffic filter: ${projectManifest.roadAccess.field}` : '';
+      meta.innerHTML = `<strong>${title}</strong><br>Mode: ${modeLabel}<br>Export: ${exportedAt}<br>CRS: ${crs}${accessField}`;
     } else {
       meta.textContent = 'Manifest yok: veri klasoru eski bir export olabilir, viewer yine yuklenir.';
     }
@@ -2350,6 +2436,7 @@ function updateDashboard(data) {
       ['roads', 'Roads', yollar.features.length],
       ['trees', 'Trees', agaclar.features.length],
       ['hardscape', 'Hardscape', hardscape?.features?.length || 0],
+      ['sidewalks', 'Sidewalks', sidewalks?.features?.length || 0],
       ['lights', 'Lights', furniture.lights?.features?.length || 0],
       ['benches', 'Benches', furniture.benches?.features?.length || 0],
       ['busstops', 'Stops', furniture.busstops?.features?.length || 0],

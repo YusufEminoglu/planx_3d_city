@@ -21,6 +21,7 @@ from qgis.PyQt.QtWidgets import (
     QListWidgetItem,
     QMessageBox,
     QPushButton,
+    QLineEdit,
     QTextBrowser,
     QVBoxLayout,
     QWidget,
@@ -55,6 +56,7 @@ EXPECTED_GEOMETRIES = {
     "parcels": "Polygon",
     "trees": "Point",
     "hardscape": "Polygon",
+    "sidewalks": "Polygon",
     "lights": "Point",
     "benches": "Point",
     "trashbins": "Point",
@@ -73,6 +75,7 @@ AUTO_MATCH_ALIASES = {
     "parcels": ("parcels", "parcel", "parsel", "parseller", "myparcels"),
     "trees": ("trees", "tree", "agac", "agaclar", "mytrees"),
     "hardscape": ("hardscape", "sert", "zemin", "myhardscape"),
+    "sidewalks": ("sidewalk", "sidewalks", "kaldirim", "kaldirimlar", "kaldırım", "kaldırımlar", "yaya kaldirimi", "mysidewalks"),
     "lights": ("lights", "light", "aydinlatma", "lamba", "mylights"),
     "benches": ("benches", "bench", "bank", "mybenches"),
     "trashbins": ("trashbins", "trash", "bin", "cop", "mytrashbins"),
@@ -100,6 +103,12 @@ class PlanX3DCityDialog(QDialog):
     def selected_layers(self) -> dict:
         payload = {key: box.currentLayer() for key, box in self.layer_boxes.items()}
         payload["mode"] = self._current_mode()
+        if hasattr(self, "road_access_field_combo"):
+            payload["road_access_field"] = self.road_access_field_combo.currentData() or ""
+        if hasattr(self, "road_no_car_values"):
+            payload["road_no_car_values"] = self.road_no_car_values.text().strip()
+        if hasattr(self, "road_vehicle_values"):
+            payload["road_vehicle_values"] = self.road_vehicle_values.text().strip()
         return payload
 
     def set_status(self, text: str, error: bool = False) -> None:
@@ -243,6 +252,7 @@ class PlanX3DCityDialog(QDialog):
         required_grid.addWidget(QLabel(""), 0, 2)
         for row, key in enumerate(("dem", "plan_texture", "roi", "roads", "buildings", "blocks", "parcels"), start=1):
             self._add_layer_row(required_grid, row, key, required=(key != "plan_texture"))
+        self._add_road_access_row(required_grid, 8)
         root.addWidget(required_group)
 
         optional_group = QGroupBox("Opsiyonel zenginlestirme katmanlari")
@@ -267,6 +277,41 @@ class PlanX3DCityDialog(QDialog):
         self.export_button.clicked.connect(lambda: self.exportRequested.emit(self.selected_layers()))
         self.mode_combo.currentIndexChanged.connect(self._refresh_report)
         return page
+
+    def _add_road_access_row(self, grid: QGridLayout, row: int) -> None:
+        label = QLabel(
+            "<b>Road access field</b><br>"
+            "<span style='color:#64748b'>Opsiyonel: yaya/tasit bilgisini iceren yol sutunu. "
+            "Secilirse arabalar yaya yollarindan gecmez.</span>"
+        )
+        label.setWordWrap(True)
+        box = QComboBox()
+        box.addItem("No road access filter", "")
+        self.road_access_field_combo = box
+        grid.addWidget(label, row, 0)
+        grid.addWidget(box, row, 1)
+        grid.addWidget(QLabel("Opsiyonel"), row, 2)
+
+        values_label = QLabel(
+            "<b>No-car / vehicle keywords</b><br>"
+            "<span style='color:#64748b'>Virgulle ayirin. Deger yaya anahtarini icerirse arac uretilmez; tasit anahtari varsa izin verilir.</span>"
+        )
+        values_label.setWordWrap(True)
+        editors = QVBoxLayout()
+        self.road_no_car_values = QLineEdit("yaya,pedestrian,foot,walk,path")
+        self.road_vehicle_values = QLineEdit("tasit,taşıt,vehicle,car,arac,araç,motorlu")
+        self.road_no_car_values.setPlaceholderText("No-car keywords")
+        self.road_vehicle_values.setPlaceholderText("Vehicle keywords")
+        editors.addWidget(self.road_no_car_values)
+        editors.addWidget(self.road_vehicle_values)
+        holder = QWidget()
+        holder.setLayout(editors)
+        grid.addWidget(values_label, row + 1, 0)
+        grid.addWidget(holder, row + 1, 1)
+        grid.addWidget(QLabel("Opsiyonel"), row + 1, 2)
+
+        self.layer_boxes["roads"].layerChanged.connect(lambda _layer=None: self._sync_road_access_fields())
+        self.road_access_field_combo.currentIndexChanged.connect(self._refresh_report)
 
     def _add_layer_row(self, grid: QGridLayout, row: int, key: str, required: bool) -> None:
         label = QLabel(self._input_label_html(key, required))
@@ -401,6 +446,7 @@ class PlanX3DCityDialog(QDialog):
         return page
 
     def _refresh_report(self) -> None:
+        self._sync_road_access_fields()
         layer_map = self.selected_layers()
         html, has_error = self._build_quality_report(layer_map)
         if hasattr(self, "report_browser"):
@@ -466,6 +512,9 @@ class PlanX3DCityDialog(QDialog):
             warnings.append("Eksik zorunlu veri: " + ", ".join(missing))
         if mode == MODE_RASTER_TEXTURE:
             warnings.append("Raster Plan Texture modunda plan GeoTIFF'in DEM/ROI ile ayni metrik CRS ve ayni kirpilmis alana sahip olmasi beklenir.")
+        road_access_field = layer_map.get("road_access_field")
+        if road_access_field:
+            warnings.append(f"Road access filter aktif: arabalar '{road_access_field}' alanindaki yaya/no-car degerlerinden gecmeyecek.")
 
         ordered_keys = ("dem", "plan_texture", "roi", "roads", "buildings", "blocks", "parcels") + OPTIONAL_INPUTS
         for key in ordered_keys:
@@ -613,6 +662,7 @@ class PlanX3DCityDialog(QDialog):
             "parcels": "Parsel sinirlari",
             "trees": "Agac noktalari",
             "hardscape": "Sert zemin poligonlari",
+            "sidewalks": "Kaldirim poligonlari; secilirse otomatik kaldirim yerine bu geometri kullanilir",
             "lights": "Aydinlatma noktalari",
             "benches": "Bank noktalari",
             "trashbins": "Cop kutusu noktalari",
@@ -620,6 +670,22 @@ class PlanX3DCityDialog(QDialog):
         }
         mark = " *" if required else ""
         return f"<b>{LABELS[key]}{mark}</b><br><span style='color:#64748b'>{descriptions[key]}</span>"
+
+    def _sync_road_access_fields(self) -> None:
+        if not hasattr(self, "road_access_field_combo"):
+            return
+        layer = self.layer_boxes.get("roads").currentLayer() if self.layer_boxes.get("roads") else None
+        current = self.road_access_field_combo.currentData() or ""
+        self.road_access_field_combo.blockSignals(True)
+        self.road_access_field_combo.clear()
+        self.road_access_field_combo.addItem("No road access filter", "")
+        if layer is not None and hasattr(layer, "fields"):
+            for field in layer.fields():
+                name = field.name()
+                self.road_access_field_combo.addItem(name, name)
+        idx = self.road_access_field_combo.findData(current)
+        self.road_access_field_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self.road_access_field_combo.blockSignals(False)
 
     def _current_mode(self) -> str:
         if not hasattr(self, "mode_combo"):

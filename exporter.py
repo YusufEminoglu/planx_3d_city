@@ -22,7 +22,7 @@ MODE_RASTER_TEXTURE = "raster_texture"
 VECTOR_REQUIRED_INPUTS = ("dem", "roi", "roads", "buildings", "blocks", "parcels")
 RASTER_TEXTURE_REQUIRED_INPUTS = ("dem", "roi", "plan_texture", "roads", "buildings")
 REQUIRED_INPUTS = VECTOR_REQUIRED_INPUTS
-OPTIONAL_INPUTS = ("trees", "hardscape", "lights", "benches", "trashbins", "busstops")
+OPTIONAL_INPUTS = ("trees", "hardscape", "sidewalks", "lights", "benches", "trashbins", "busstops")
 
 VECTOR_TARGETS = {
     "roi": "roi.geojson",
@@ -32,6 +32,7 @@ VECTOR_TARGETS = {
     "parcels": "myparcels.geojson",
     "trees": "mytrees.geojson",
     "hardscape": "myhardscape.geojson",
+    "sidewalks": "mysidewalks.geojson",
     "lights": "mylights.geojson",
     "benches": "mybenches.geojson",
     "trashbins": "mytrashbins.geojson",
@@ -48,6 +49,7 @@ LABELS = {
     "parcels": "Parcels",
     "trees": "Trees",
     "hardscape": "Hardscape",
+    "sidewalks": "Sidewalks",
     "lights": "Lights",
     "benches": "Benches",
     "trashbins": "Trash bins",
@@ -157,7 +159,8 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
         if feedback:
             feedback(f"{LABELS[key]} -> {out_path.name}")
 
-    manifest_path = write_manifest(web_root, manifest_inputs, mode, required_inputs, optional_inputs, terrain_texture)
+    road_access = _road_access_manifest(layer_map)
+    manifest_path = write_manifest(web_root, manifest_inputs, mode, required_inputs, optional_inputs, terrain_texture, road_access)
     written.append(str(manifest_path))
     return written
 
@@ -169,6 +172,7 @@ def write_manifest(
     required_inputs: tuple[str, ...],
     optional_inputs: tuple[str, ...],
     terrain_texture: Optional[dict],
+    road_access: Optional[dict],
 ) -> Path:
     data_root = Path(web_root) / "data"
     data_root.mkdir(parents=True, exist_ok=True)
@@ -177,7 +181,7 @@ def write_manifest(
     manifest = {
         "schema": "planx-3d-city-manifest/v1",
         "plugin": "planx_3d_city",
-        "version": "0.5.0",
+        "version": "0.5.1",
         "mode": mode,
         "exportedAt": datetime.now().astimezone().isoformat(timespec="seconds"),
         "project": {
@@ -187,6 +191,7 @@ def write_manifest(
         "requiredInputs": list(required_inputs),
         "optionalInputs": list(optional_inputs),
         "terrainTexture": terrain_texture,
+        "roadAccess": road_access,
         "inputs": inputs,
         "summary": {
             "emptyOptionalInputs": [item["key"] for item in inputs if item.get("optional") and item.get("empty")],
@@ -196,6 +201,19 @@ def write_manifest(
     manifest_path = data_root / "planx_manifest.json"
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     return manifest_path
+
+
+def _road_access_manifest(layer_map: dict) -> Optional[dict]:
+    field = (layer_map.get("road_access_field") or "").strip()
+    if not field:
+        return None
+    no_car_values = layer_map.get("road_no_car_values") or "yaya,pedestrian,foot,walk,path"
+    vehicle_values = layer_map.get("road_vehicle_values") or "tasit,taşıt,vehicle,car,arac,araç,motorlu"
+    return {
+        "field": field,
+        "noCarKeywords": [v.strip() for v in no_car_values.split(",") if v.strip()],
+        "vehicleKeywords": [v.strip() for v in vehicle_values.split(",") if v.strip()],
+    }
 
 
 def _layer_manifest(key: str, layer, target: str, empty: bool, required_inputs: tuple[str, ...]) -> dict:

@@ -2,7 +2,7 @@
 name=PlanX 3D City Viewer
 qgisMinimumVersion=3.28
 description=Export QGIS layers and launch the interactive PlanX 3D City web viewer.
-version=0.5.0
+version=0.5.1
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 about=PlanX 3D City Viewer maps DEM, ROI, road, building, block, parcel, optional urban furniture layers, and optional raster plan texture workflows to the browser-based Three.js city viewer. Developed with feedback from educational workflows at Dokuz Eylul University, Department of City and Regional Planning.
@@ -19,6 +19,10 @@ hasProcessingProvider=no
 plugin_dependencies=
 license=MIT
 changelog=
+    PlanX 3D City Viewer 0.5.1 - Fixed raster plan texture orientation and added sidewalk/road access controls.
+        - Corrected CanvasTexture orientation so clipped site plan GeoTIFFs no longer appear mirrored on the DEM terrain.
+        - Added optional sidewalk polygon input exported as web/data/yerlesim/mysidewalks.geojson.
+        - Added optional road access field metadata so cars can be blocked from pedestrian-only roads while pedestrian/crosswalk logic remains available.
     PlanX 3D City Viewer 0.5.0 - Added Raster Plan Texture Mode for publishing a clipped 2D plan GeoTIFF as the DEM terrain texture.
         - Added Vector Plan and Raster Plan Texture publishing modes in the QGIS dialog.
         - Added plan texture GeoTIFF export to web/data/texture/siteplan.tif and manifest mode metadata.

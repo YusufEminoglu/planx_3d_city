@@ -18,11 +18,12 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 4. Use `Katmanlari otomatik eslestir` if your layer names contain common hints such as `dem`, `roi`, `yol`, `bina`, `ada`, `parsel`, or `plan`.
 5. For `Vector Plan Mode`, select all required layers: DEM, ROI, roads, buildings, blocks, parcels.
 6. For `Raster Plan Texture Mode`, select DEM, ROI, plan texture GeoTIFF, roads, and buildings. Blocks and parcels are optional in this mode.
-7. Select optional layers if available: trees, hardscape, lights, benches, trash bins, bus stops.
-8. In `2 Kontrol`, generate and inspect the quality report.
-9. In `3 Stil`, optionally create PlanX style fields and apply styles to selected blocks/buildings.
-10. Click `Disari aktar ve 3D Viewer ac`.
-11. Use `4 Yayin` to copy the viewer URL, reopen the browser, open exported data, or stop the local server.
+7. Select optional layers if available: trees, hardscape, sidewalks, lights, benches, trash bins, bus stops.
+8. If your roads layer has pedestrian/vehicle information, choose the road access field and keep or edit the no-car / vehicle keywords. Cars will not be spawned on pedestrian-only roads.
+9. In `2 Kontrol`, generate and inspect the quality report.
+10. In `3 Stil`, optionally create PlanX style fields and apply styles to selected blocks/buildings.
+11. Click `Disari aktar ve 3D Viewer ac`.
+12. Use `4 Yayin` to copy the viewer URL, reopen the browser, open exported data, or stop the local server.
 
 ## Data Contract
 
@@ -35,12 +36,14 @@ The plugin writes the viewer inputs to fixed paths:
 - `web/data/yerlesim/mybuildings.geojson`
 - `web/data/yerlesim/myblocks.geojson`
 - `web/data/yerlesim/myparcels.geojson`
-- optional `mytrees`, `myhardscape`, `mylights`, `mybenches`, `mytrashbins`, `mybusstops`
+- optional `mytrees`, `myhardscape`, `mysidewalks`, `mylights`, `mybenches`, `mytrashbins`, `mybusstops`
 - `web/data/planx_manifest.json`
 
 Optional layers can be left empty. The plugin writes empty GeoJSON files so the viewer remains stable.
 
 The manifest records the export time, QGIS project title, source layer names, targets, CRS values, feature counts, and empty optional inputs. The viewer uses it to show project provenance and data health without requiring the user to remember how the export was produced.
+
+If a road access field is selected, the manifest also records that field and keyword lists. The viewer keeps all road geometry visible, but vehicle traffic is generated only on roads whose access value does not match pedestrian-only/no-car keywords.
 
 ## Publishing Modes
 
@@ -57,14 +60,16 @@ Use this workflow when you already have a clipped 2D settlement plan as a GeoTIF
 - Roads are still required for 3D road overlays, traffic, sidewalks, crosswalks, and navigation effects.
 - The plan texture should be clipped to the study area and aligned to the DEM/ROI in the same metric CRS.
 - The Style Dock includes texture visibility, opacity, brightness, and contrast controls.
+- The viewer corrects the browser texture orientation for CanvasTexture so the GeoTIFF is draped without mirror flipping.
 
 ## Data Quality Expectations
 
 - All vector layers and the DEM should use the same metric CRS.
-- ROI, buildings, blocks, parcels, and hardscape should be polygon layers.
+- ROI, buildings, blocks, parcels, hardscape, and sidewalks should be polygon layers.
 - Roads should be line layers.
 - Trees, lights, benches, trash bins, and bus stops should be point layers.
 - Buildings should ideally include `katadedi` and `uipfonksiyon`.
+- Roads can optionally include a pedestrian/vehicle access field such as `yol_turu`, `tur`, `tip`, or `access`. Select that field in the QGIS dialog to prevent cars from using pedestrian-only roads.
 
 The plugin reports missing required data, empty required layers, CRS differences, geometry mismatches, and missing recommended fields.
 
