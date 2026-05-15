@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlanX 3D City - Realistic Visualization</title>
+    <meta name="description" content="PlanX 3D City: Gerçekçi kentsel görselleştirme aracı — DEM yükselti, bina, yol ve ağaç katmanları">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../assets/vendor/three/build/three.module.js",
+                "three/addons/": "../assets/vendor/three/examples/jsm/"
+            }
+        }
+    </script>
+    <!-- GeoTIFF (loaded as classic script for browser compatibility) -->
+    <script src="../assets/vendor/geotiff/dist-browser/geotiff.js"></script>
+</head>
+<body>
+    <div id="loading" class="loading-screen">
+        <div class="spinner"></div>
+        <h2 data-i18n="htmlTitle">🏛️ PlanX 3D City</h2>
+        <p id="loading-text" data-i18n="loadingData">Veri yükleniyor...</p>
+    </div>
+
+    <div id="map"></div>
+
+    <div id="ui-container">
+        <button id="panel-toggle" class="panel-btn" title="Toggle Panel">☰</button>
+        <button id="lang-toggle" class="panel-btn lang-btn" title="Toggle Language">TR</button>
+        <button id="walk-toggle" class="panel-btn walk-btn" title="Walk Mode">🚶‍♂️</button>
+        <button id="game-toggle" class="panel-btn game-btn" title="Sapan Modu">🏹</button>
+        <button id="layers-toggle" class="panel-btn layers-btn" title="Layer Dock">L</button>
+        <button id="style-toggle" class="panel-btn style-btn" title="Style Dock">S</button>
+        <div id="recording-container">
+            <button id="btn-toggle-rec" class="panel-btn" style="left:0;position:relative;" title="Kamera Paneli">🎥</button>
+            <div id="recording-panel" class="recording-panel hidden">
+
+                <!-- Row 1: Screenshot + Auto-orbit -->
+                <div class="cam-row">
+                    <button id="btn-screenshot" class="cam-action-btn" title="Ekran görüntüsü al">📷 Fotoğraf</button>
+                    <button id="btn-auto-orbit" class="cam-action-btn orbit-btn" title="Otomatik döndür">🔄 Orbit</button>
+                </div>
+
+                <!-- Row 2: FOV -->
+                <div class="cam-row cam-slider-row">
+                    <span class="cam-label">FOV</span>
+                    <input type="range" id="fov-slider" min="30" max="100" value="58" class="cam-range">
+                    <span id="fov-val" class="cam-val">58°</span>
+                </div>
+
+                <!-- Row 3: Walk Speed -->
+                <div class="cam-row cam-slider-row">
+                    <span class="cam-label">🚶 Hız</span>
+                    <input type="range" id="walk-speed-slider" min="0.2" max="5" step="0.1" value="1.0" class="cam-range">
+                    <span id="walk-speed-val" class="cam-val">1.0x</span>
+                </div>
+
+                <!-- Divider -->
+                <div class="cam-divider"></div>
+
+                <!-- Row 4: Video quality + Record -->
+                <div class="cam-row">
+                    <select id="rec-quality" class="rec-select">
+                        <option value="2500000">SD 2.5M</option>
+                        <option value="5000000" selected>HD 5M</option>
+                        <option value="10000000">4K 10M</option>
+                    </select>
+                    <button id="btn-record" class="record-btn">🔴 Kayıt</button>
+                    <button id="btn-stop" class="stop-btn" style="display:none;">⏹ Dur</button>
+                    <span id="recording-time" style="display:none;">00:00</span>
+                </div>
+
+            </div>
+        </div>
+        <div class="glass-panel" id="main-panel">
+            <div class="dashboard-head">
+                <div>
+                    <h1 data-i18n="title">PlanX 3D City</h1>
+                    <p class="dashboard-sub" data-i18n="desc">DEM, yol, ada, parsel ve bina verilerinden uretken 3D kent kokpiti.</p>
+                </div>
+                <span id="scene-state" class="scene-pill">Hazirlaniyor</span>
+            </div>
+            <div class="metric-grid" id="scene-metrics">
+                <div><span id="metric-buildings">-</span><small>Bina</small></div>
+                <div><span id="metric-blocks">-</span><small>Ada</small></div>
+                <div><span id="metric-parcels">-</span><small>Parsel</small></div>
+                <div><span id="metric-floors">-</span><small>Ort. kat</small></div>
+            </div>
+            <div class="project-meta" id="project-meta">Proje bilgisi bekleniyor</div>
+            <div class="data-health" id="data-health"></div>
+            <div class="controls" id="stats-panel">
+                <h3 data-i18n="statsTitle">Alan Istatistikleri</h3>
+                <div id="stats-content">Yükleniyor...</div>
+            </div>
+        </div>
+    </div>
+
+    <aside class="dock-panel hidden" id="layer-dock">
+        <div class="dock-head"><span>Layer Dock</span><button class="dock-close" data-close="layer-dock">x</button></div>
+        <label><input type="checkbox" data-setting="showRoads"> Yollar</label>
+        <label><input type="checkbox" data-setting="showParcels"> Parseller</label>
+        <label><input type="checkbox" data-setting="showHardscape"> Sert zemin</label>
+        <label><input type="checkbox" data-setting="showBuildings"> Binalar</label>
+        <label><input type="checkbox" data-setting="showTrees"> Agaclar</label>
+        <label><input type="checkbox" data-setting="showFurniture"> Kent mobilyalari</label>
+        <label><input type="checkbox" data-setting="showCars"> Araclar</label>
+        <label><input type="checkbox" data-setting="showPedestrians"> Yayalar</label>
+    </aside>
+
+    <aside class="dock-panel hidden" id="style-dock">
+        <div class="dock-head"><span>Style Dock</span><button class="dock-close" data-close="style-dock">x</button></div>
+        <label>Ada rengi <input type="color" data-setting="islandColor"></label>
+        <label>Ada dokusu <select data-setting="islandTexture"></select></label>
+        <label>Yol rengi <input type="color" data-setting="roadColor"></label>
+        <label>Yol genisligi <input type="range" min="2.8" max="8" step="0.1" data-setting="roadWidth"></label>
+        <label>Cati tipi <select data-setting="roofShape"></select></label>
+        <label>Cati dokusu <select data-setting="roofTexture"></select></label>
+        <label>Zaman <input type="range" min="0" max="24" step="0.1" data-setting="timeOfDay"></label>
+        <label>Hava <select data-setting="weather"></select></label>
+    </aside>
+    
+    <!-- Sapan Modu HUD -->
+    <div id="game-hud" class="game-hud hidden">
+        <div class="game-crosshair"></div>
+        <div class="game-score-display">🏹 <span id="game-score">0</span></div>
+        <div id="game-feedback" class="game-feedback"></div>
+        <div class="game-hint">Sol tık: Taş at</div>
+    </div>
+
+    <!-- Hover tooltip (follows cursor) -->
+    <div id="bldg-hover-tip" class="bldg-hover-tip"></div>
+
+    <!-- Click detail panel (fixed bottom-left) -->
+    <div id="bldg-detail-tip" class="bldg-detail-tip floating-tooltip" style="display:none;"></div>
+
+    <!-- Minimap -->
+    <div id="minimap-wrap">
+        <div id="minimap-header">🗺️ <span data-i18n="minimap">Mini Harita</span></div>
+        <canvas id="minimap-canvas" width="160" height="160"></canvas>
+    </div>
+
+    <!-- Scale bar -->
+    <div id="scale-bar">
+        <div id="scale-line"></div>
+        <span id="scale-label">100m</span>
+    </div>
+
+    <!-- Compass -->
+    <div id="compass-wrap">
+        <canvas id="compass-canvas" width="48" height="48"></canvas>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>

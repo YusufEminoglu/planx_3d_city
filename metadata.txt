@@ -1,0 +1,25 @@
+[general]
+name=PlanX 3D City Viewer
+qgisMinimumVersion=3.28
+description=Export QGIS layers and launch the interactive PlanX 3D City web viewer.
+version=0.4.0
+author=Yusuf Eminoglu
+email=yusuf.eminoglu@deu.edu.tr
+about=PlanX 3D City Viewer maps DEM, ROI, road, building, block, parcel, and optional urban furniture layers to the browser-based Three.js city viewer.
+tracker=https://github.com/YusufEminoglu/PlanX/issues
+repository=https://github.com/YusufEminoglu/PlanX
+category=Web
+homepage=https://github.com/YusufEminoglu/PlanX
+tags=planx,3d city,urban planning,three.js,geojson,dem,QGIS
+icon=icons/icon_main.svg
+qgisMaximumVersion=3.99
+experimental=True
+deprecated=False
+hasProcessingProvider=no
+plugin_dependencies=
+license=MIT
+changelog=
+    0.4.0 - Add auto layer matching, export manifest, viewer project metadata panel, and persisted cockpit settings.
+    0.3.0 - Productized QGIS publisher workflow, quality report, style assistant, viewer dashboard, and layer/style docks.
+    0.2.0 - Add guided QGIS interface and per-feature styling fields for blocks/buildings.
+    0.1.0 - Initial QGIS launcher/exporter for PlanX 3D City.

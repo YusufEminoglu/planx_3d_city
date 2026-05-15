@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+*.pyo
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+web/data/planx_manifest.json
