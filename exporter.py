@@ -131,7 +131,7 @@ def write_manifest(web_root: str, inputs: list[dict]) -> Path:
     manifest = {
         "schema": "planx-3d-city-manifest/v1",
         "plugin": "planx_3d_city",
-        "version": "0.4.0",
+        "version": "0.4.1",
         "exportedAt": datetime.now().astimezone().isoformat(timespec="seconds"),
         "project": {
             "title": project_title,
