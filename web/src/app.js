@@ -159,6 +159,7 @@ let furnitureGroup = new THREE.Group();
 let pedestrianGroup = new THREE.Group();
 let sidewalkGroup = new THREE.Group();
 let crosswalkGroup = new THREE.Group();
+let terrainSideGroup = new THREE.Group();
 let windPlumeGroup = new THREE.Group();
 let roiBoundaryGroup = new THREE.Group();
 world.add(islandGroup);
@@ -167,6 +168,7 @@ world.add(hardscapeGroup);
 world.add(buildingGroup);
 world.add(sidewalkGroup);
 world.add(crosswalkGroup);
+world.add(terrainSideGroup);
 world.add(windPlumeGroup);
 world.add(roadGroup);
 world.add(treeGroup);
@@ -490,6 +492,10 @@ const settings = {
   terrainTextureOpacity: 1.0,
   terrainTextureBrightness: 1.0,
   terrainTextureContrast: 1.0,
+  showTerrainSides: true,
+  terrainSideDrop: 5.0,
+  terrainSideColor: '#d9fbf5',
+  terrainSideOpacity: 0.46,
   islandColor: '#e5e7eb',
   islandTexture: 'None',
   parcelBoundaryColor: '#71717a',
@@ -544,6 +550,7 @@ const settings = {
 const PERSISTED_SETTING_KEYS = [
   'islandColor', 'islandTexture', 'parcelBoundaryColor', 'parcelBoundaryOpacity',
   'showTerrainTexture', 'terrainTextureOpacity', 'terrainTextureBrightness', 'terrainTextureContrast',
+  'showTerrainSides', 'terrainSideDrop', 'terrainSideColor', 'terrainSideOpacity',
   'roofTexture', 'roofShape', 'roofHeight', 'roadColor', 'roadColorMode', 'roadWidth',
   'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture',
   'showCars', 'showRoads', 'showSidewalks', 'showCrosswalks', 'showPedestrians',
@@ -1156,6 +1163,79 @@ function createIslandMaskTexture(adalar, width, depth) {
   return tex;
 }
 
+function edgeHeightAt(localX, localZ, fallback) {
+  const wx = localX + centerX;
+  const wy = localZ + centerY;
+  const z = demHeightAtProjected(wx, wy, null);
+  return z === null ? fallback : z;
+}
+
+function buildTerrainSideSkirt(width, depth, demMin, fallbackHeight) {
+  clearGroup(terrainSideGroup);
+  if (!settings.showTerrainSides) return;
+  const baseY = demMin - Math.max(0, Number(settings.terrainSideDrop) || 0);
+  const samples = Math.max(16, Math.floor(settings.fastTerrainSegments / 2));
+  const positions = [];
+  const colors = [];
+  const indices = [];
+  const baseColor = new THREE.Color(settings.terrainSideColor || '#d9fbf5');
+  const lowerColor = baseColor.clone().lerp(new THREE.Color(0xffffff), 0.55);
+
+  const addVertex = (x, y, z, color) => {
+    positions.push(x, y, z);
+    colors.push(color.r, color.g, color.b);
+    return positions.length / 3 - 1;
+  };
+  const addStrip = (points) => {
+    let prevTop = null;
+    let prevBottom = null;
+    for (const [x, z] of points) {
+      const topY = edgeHeightAt(x, z, fallbackHeight);
+      const top = addVertex(x, topY, z, baseColor);
+      const bottom = addVertex(x, baseY, z, lowerColor);
+      if (prevTop !== null) {
+        indices.push(prevTop, top, prevBottom, top, bottom, prevBottom);
+      }
+      prevTop = top;
+      prevBottom = bottom;
+    }
+  };
+
+  const halfW = width * 0.5;
+  const halfD = depth * 0.5;
+  const north = [];
+  const east = [];
+  const south = [];
+  const west = [];
+  for (let i = 0; i <= samples; i++) {
+    const t = i / samples;
+    north.push([-halfW + width * t, -halfD]);
+    east.push([halfW, -halfD + depth * t]);
+    south.push([halfW - width * t, halfD]);
+    west.push([-halfW, halfD - depth * t]);
+  }
+  [north, east, south, west].forEach(addStrip);
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    transparent: settings.terrainSideOpacity < 1,
+    opacity: settings.terrainSideOpacity,
+    roughness: 0.88,
+    metalness: 0.0,
+    side: THREE.DoubleSide,
+    depthWrite: settings.terrainSideOpacity >= 0.92
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.receiveShadow = true;
+  mesh.renderOrder = -40;
+  terrainSideGroup.add(mesh);
+}
+
 async function buildTerrain(adalar) {
   const width = bounds.maxX - bounds.minX;
   const depth = bounds.maxY - bounds.minY;
@@ -1220,6 +1300,7 @@ async function buildTerrain(adalar) {
   terrainMesh.receiveShadow = true;
   terrainMesh.renderOrder = -30;
   world.add(terrainMesh);
+  buildTerrainSideSkirt(width, depth, zMin, avgZ);
   _lastTerrainY = avgZ;   // fallback için ortalama DEM yüksekliğini başlat
   setStatus(`DEM yüklendi (mydem.tif). Z: ${zMin.toFixed(1)} - ${zMax.toFixed(1)} m`);
 }
@@ -2504,6 +2585,7 @@ async function rebuildScene() {
     terrainMesh.material.dispose();
     terrainMesh = null;
   }
+  clearGroup(terrainSideGroup);
   if (isRasterTextureMode() && settings.showTerrainTexture && !terrainTexture) {
     try {
       loadingText.innerText = 'Plan texture okunuyor...';
@@ -2650,6 +2732,10 @@ function addGui() {
   terrain.add(settings, 'terrainTextureOpacity', 0.1, 1.0, 0.05).name('Texture opacity').onChange(rebuildScene);
   terrain.add(settings, 'terrainTextureBrightness', 0.5, 1.5, 0.05).name('Texture brightness').onChange(() => { terrainTexture = null; rebuildScene(); });
   terrain.add(settings, 'terrainTextureContrast', 0.5, 1.8, 0.05).name('Texture contrast').onChange(() => { terrainTexture = null; rebuildScene(); });
+  terrain.add(settings, 'showTerrainSides').name('Build sides').onChange(rebuildScene);
+  terrain.add(settings, 'terrainSideDrop', 0, 40, 0.5).name('Side drop from DEM min').onChange(rebuildScene);
+  terrain.addColor(settings, 'terrainSideColor').name('Side color').onChange(rebuildScene);
+  terrain.add(settings, 'terrainSideOpacity', 0.05, 1.0, 0.01).name('Side softness').onChange(rebuildScene);
   terrain.add(settings, 'pavementStyle', Object.keys(textureSets.pavement)).name(t('pavement')).onChange(rebuildScene);
   terrain.add(settings, 'showHardscape').name(t('showHardscape')).onChange(rebuildScene);
   terrain.add(settings, 'hardscapeStyle', Object.keys(textureSets.hardscape)).name(t('hardTex')).onChange(rebuildScene);
