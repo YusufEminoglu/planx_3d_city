@@ -1169,11 +1169,63 @@ function edgeHeightAt(localX, localZ, fallback) {
   return z === null ? fallback : z;
 }
 
+function ringToLocalPolyline(ring, maxStep = 8) {
+  const points = [];
+  if (!ring || ring.length < 2) return points;
+  for (let i = 0; i < ring.length - 1; i++) {
+    const a = ring[i];
+    const b = ring[i + 1];
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const steps = Math.max(1, Math.ceil(dist / maxStep));
+    for (let s = 0; s < steps; s++) {
+      const t = s / steps;
+      const [x, z] = metersToLocal(a[0] + dx * t, a[1] + dy * t);
+      points.push([x, z]);
+    }
+  }
+  const last = ring[ring.length - 1];
+  const [x, z] = metersToLocal(last[0], last[1]);
+  points.push([x, z]);
+  return points;
+}
+
+function roiSidePolylines() {
+  const roi = layerDataCache?.roi;
+  const lines = [];
+  for (const feature of roi?.features || []) {
+    for (const poly of getPolygonRings(feature.geometry)) {
+      const outer = poly[0];
+      if (!outer || outer.length < 3) continue;
+      lines.push(ringToLocalPolyline(outer));
+    }
+  }
+  return lines.filter((line) => line.length > 1);
+}
+
+function demExtentSidePolylines(width, depth) {
+  const samples = Math.max(16, Math.floor(settings.fastTerrainSegments / 2));
+  const halfW = width * 0.5;
+  const halfD = depth * 0.5;
+  const north = [];
+  const east = [];
+  const south = [];
+  const west = [];
+  for (let i = 0; i <= samples; i++) {
+    const t = i / samples;
+    north.push([-halfW + width * t, -halfD]);
+    east.push([halfW, -halfD + depth * t]);
+    south.push([halfW - width * t, halfD]);
+    west.push([-halfW, halfD - depth * t]);
+  }
+  return [north, east, south, west];
+}
+
 function buildTerrainSideSkirt(width, depth, demMin, fallbackHeight) {
   clearGroup(terrainSideGroup);
   if (!settings.showTerrainSides) return;
   const baseY = demMin - Math.max(0, Number(settings.terrainSideDrop) || 0);
-  const samples = Math.max(16, Math.floor(settings.fastTerrainSegments / 2));
   const positions = [];
   const colors = [];
   const indices = [];
@@ -1200,20 +1252,9 @@ function buildTerrainSideSkirt(width, depth, demMin, fallbackHeight) {
     }
   };
 
-  const halfW = width * 0.5;
-  const halfD = depth * 0.5;
-  const north = [];
-  const east = [];
-  const south = [];
-  const west = [];
-  for (let i = 0; i <= samples; i++) {
-    const t = i / samples;
-    north.push([-halfW + width * t, -halfD]);
-    east.push([halfW, -halfD + depth * t]);
-    south.push([halfW - width * t, halfD]);
-    west.push([-halfW, halfD - depth * t]);
-  }
-  [north, east, south, west].forEach(addStrip);
+  const roiLines = roiSidePolylines();
+  const sideLines = roiLines.length ? roiLines : demExtentSidePolylines(width, depth);
+  sideLines.forEach(addStrip);
 
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));

@@ -2,7 +2,7 @@
 name=PlanX 3D City Viewer
 qgisMinimumVersion=3.28
 description=Export QGIS layers and launch the interactive PlanX 3D City web viewer.
-version=0.5.4
+version=0.5.5
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 about=PlanX 3D City Viewer maps user-exported DEM, ROI, road, building, block, parcel, optional urban furniture layers, and optional raster plan texture workflows to the browser-based Three.js city viewer, with lightweight planning analysis overlays for mobility, wind impact, and building statistics. Developed with feedback from educational workflows at Dokuz Eylul University, Department of City and Regional Planning.
@@ -19,6 +19,9 @@ hasProcessingProvider=no
 plugin_dependencies=
 license=MIT
 changelog=
+    PlanX 3D City Viewer 0.5.5 - Corrected terrain build-sides to follow ROI geometry instead of the rectangular scene extent.
+        - Build-sides now use the exported ROI polygon boundary as the primary side-wall footprint.
+        - Falls back to the DEM/terrain extent only when ROI geometry is unavailable.
     PlanX 3D City Viewer 0.5.4 - Made terrain build-sides fully opaque.
         - Removed side transparency/softness control and renders build-sides as solid light teal model-base walls.
     PlanX 3D City Viewer 0.5.3 - Added soft terrain build-sides around the DEM surface.

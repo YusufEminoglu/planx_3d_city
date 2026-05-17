@@ -181,7 +181,7 @@ def write_manifest(
     manifest = {
         "schema": "planx-3d-city-manifest/v1",
         "plugin": "planx_3d_city",
-        "version": "0.5.4",
+        "version": "0.5.5",
         "mode": mode,
         "exportedAt": datetime.now().astimezone().isoformat(timespec="seconds"),
         "project": {
