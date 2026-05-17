@@ -495,7 +495,6 @@ const settings = {
   showTerrainSides: true,
   terrainSideDrop: 5.0,
   terrainSideColor: '#d9fbf5',
-  terrainSideOpacity: 0.46,
   islandColor: '#e5e7eb',
   islandTexture: 'None',
   parcelBoundaryColor: '#71717a',
@@ -550,7 +549,7 @@ const settings = {
 const PERSISTED_SETTING_KEYS = [
   'islandColor', 'islandTexture', 'parcelBoundaryColor', 'parcelBoundaryOpacity',
   'showTerrainTexture', 'terrainTextureOpacity', 'terrainTextureBrightness', 'terrainTextureContrast',
-  'showTerrainSides', 'terrainSideDrop', 'terrainSideColor', 'terrainSideOpacity',
+  'showTerrainSides', 'terrainSideDrop', 'terrainSideColor',
   'roofTexture', 'roofShape', 'roofHeight', 'roadColor', 'roadColorMode', 'roadWidth',
   'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture',
   'showCars', 'showRoads', 'showSidewalks', 'showCrosswalks', 'showPedestrians',
@@ -1223,12 +1222,12 @@ function buildTerrainSideSkirt(width, depth, demMin, fallbackHeight) {
   geo.computeVertexNormals();
   const mat = new THREE.MeshStandardMaterial({
     vertexColors: true,
-    transparent: settings.terrainSideOpacity < 1,
-    opacity: settings.terrainSideOpacity,
+    transparent: false,
+    opacity: 1,
     roughness: 0.88,
     metalness: 0.0,
     side: THREE.DoubleSide,
-    depthWrite: settings.terrainSideOpacity >= 0.92
+    depthWrite: true
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true;
@@ -2735,7 +2734,6 @@ function addGui() {
   terrain.add(settings, 'showTerrainSides').name('Build sides').onChange(rebuildScene);
   terrain.add(settings, 'terrainSideDrop', 0, 40, 0.5).name('Side drop from DEM min').onChange(rebuildScene);
   terrain.addColor(settings, 'terrainSideColor').name('Side color').onChange(rebuildScene);
-  terrain.add(settings, 'terrainSideOpacity', 0.05, 1.0, 0.01).name('Side softness').onChange(rebuildScene);
   terrain.add(settings, 'pavementStyle', Object.keys(textureSets.pavement)).name(t('pavement')).onChange(rebuildScene);
   terrain.add(settings, 'showHardscape').name(t('showHardscape')).onChange(rebuildScene);
   terrain.add(settings, 'hardscapeStyle', Object.keys(textureSets.hardscape)).name(t('hardTex')).onChange(rebuildScene);

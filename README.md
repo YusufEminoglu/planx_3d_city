@@ -105,7 +105,7 @@ The browser viewer includes:
 - Data health chips for optional layers
 - Layer Dock for visibility toggles
 - Style Dock for global city styling
-- Build-sides for a soft model-base edge around the terrain. The default side base is calculated as the minimum valid DEM pixel value minus 5 meters.
+- Build-sides for a solid model-base edge around the terrain. The default side base is calculated as the minimum valid DEM pixel value minus 5 meters.
 - Project metadata panel fed by `planx_manifest.json`
 - Persisted cockpit settings through browser local storage
 - Camera panel for screenshots, video, orbit, FOV, and walk speed
