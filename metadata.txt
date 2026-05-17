@@ -2,15 +2,15 @@
 name=PlanX 3D City Viewer
 qgisMinimumVersion=3.28
 description=Export QGIS layers and launch the interactive PlanX 3D City web viewer.
-version=0.5.1
+version=0.5.2
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
-about=PlanX 3D City Viewer maps DEM, ROI, road, building, block, parcel, optional urban furniture layers, and optional raster plan texture workflows to the browser-based Three.js city viewer. Developed with feedback from educational workflows at Dokuz Eylul University, Department of City and Regional Planning.
+about=PlanX 3D City Viewer maps user-exported DEM, ROI, road, building, block, parcel, optional urban furniture layers, and optional raster plan texture workflows to the browser-based Three.js city viewer, with lightweight planning analysis overlays for mobility, wind impact, and building statistics. Developed with feedback from educational workflows at Dokuz Eylul University, Department of City and Regional Planning.
 tracker=https://github.com/YusufEminoglu/planx_3d_city/issues
 repository=https://github.com/YusufEminoglu/planx_3d_city
 category=Web
 homepage=https://github.com/YusufEminoglu/planx_3d_city
-tags=planx,3d city,urban planning,three.js,geojson,geotiff,dem,raster texture,QGIS
+tags=planx,3d city,urban planning,three.js,geojson,geotiff,dem,raster texture,mobility,wind,QGIS
 icon=icons/icon_main.svg
 qgisMaximumVersion=3.99
 experimental=False
@@ -19,6 +19,11 @@ hasProcessingProvider=no
 plugin_dependencies=
 license=MIT
 changelog=
+    PlanX 3D City Viewer 0.5.2 - Removed embedded sample/export data from the plugin package and added first planning analysis overlays.
+        - Excluded generated web/data DEM and settlement exports from the source package to reduce Plugin Hub zip size.
+        - Added road analysis coloring modes for amenity-distance and access/traffic reading.
+        - Added wind plume screening overlay for industrial/waste-like source functions and prevailing wind direction.
+        - Enriched building click details with estimated floor area, dwellings, population, and vehicles where source fields are missing.
     PlanX 3D City Viewer 0.5.1 - Fixed raster plan texture orientation and added sidewalk/road access controls.
         - Corrected CanvasTexture orientation so clipped site plan GeoTIFFs no longer appear mirrored on the DEM terrain.
         - Added optional sidewalk polygon input exported as web/data/yerlesim/mysidewalks.geojson.

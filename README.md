@@ -9,6 +9,7 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 - No Node.js requirement
 - No external Python packages
 - Bundled browser libraries under `web/assets/vendor`
+- The package does not ship generated DEM/settlement data. Export from QGIS creates `web/data` at runtime.
 
 ## Quick Start
 
@@ -40,6 +41,8 @@ The plugin writes the viewer inputs to fixed paths:
 - `web/data/planx_manifest.json`
 
 Optional layers can be left empty. The plugin writes empty GeoJSON files so the viewer remains stable.
+
+The repository intentionally excludes generated `web/data/dem`, `web/data/texture`, and `web/data/yerlesim` files. This keeps the QGIS Plugin Hub zip smaller and prevents one user's project data from becoming part of the distributed plugin.
 
 The manifest records the export time, QGIS project title, source layer names, targets, CRS values, feature counts, and empty optional inputs. The viewer uses it to show project provenance and data health without requiring the user to remember how the export was produced.
 
@@ -106,7 +109,21 @@ The browser viewer includes:
 - Persisted cockpit settings through browser local storage
 - Camera panel for screenshots, video, orbit, FOV, and walk speed
 - Building hover and click detail panels
+- Road analysis coloring: default style, amenity-distance fade, or access/traffic class colors
+- Wind plume screening for industrial/waste-like functions using a configurable prevailing wind direction
+- Estimated building statistics in the click panel when population, dwelling, vehicle, or gross floor area fields are missing
 - Minimap, compass, and scale bar
+
+## Planning Analysis Notes
+
+The analysis overlays are intentionally lightweight decision-support tools:
+
+- `Road analysis color = Amenity distance` colors road segments greener near detected amenities such as parks, schools, commerce, health, bus stops, lights, or trees, and greyer as distance increases.
+- `Road analysis color = Access / traffic` colors pedestrian-only roads blue, major/arterial roads red, collector/secondary roads orange, and local roads grey when recognizable road-type fields exist.
+- `Wind plume risk` scans building and hardscape attributes for industrial, waste, storage, transfer, sewage, or logistics-like functions and projects a translucent downwind impact zone.
+- Building detail estimates use source fields first. If they are missing, the viewer estimates gross floor area from footprint x floors, dwellings from gross area, population from dwellings, and vehicles from dwellings.
+
+These overlays are for plan review and classroom discussion, not engineering-grade air quality, microclimate, or traffic modelling.
 
 ## Troubleshooting
 

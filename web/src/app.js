@@ -159,6 +159,7 @@ let furnitureGroup = new THREE.Group();
 let pedestrianGroup = new THREE.Group();
 let sidewalkGroup = new THREE.Group();
 let crosswalkGroup = new THREE.Group();
+let windPlumeGroup = new THREE.Group();
 let roiBoundaryGroup = new THREE.Group();
 world.add(islandGroup);
 world.add(parcelGroup);
@@ -166,6 +167,7 @@ world.add(hardscapeGroup);
 world.add(buildingGroup);
 world.add(sidewalkGroup);
 world.add(crosswalkGroup);
+world.add(windPlumeGroup);
 world.add(roadGroup);
 world.add(treeGroup);
 world.add(carGroup);
@@ -465,6 +467,18 @@ function roofShapeValue(value, fallback) {
   return allowed.find((key) => key.toLowerCase() === raw.toLowerCase()) || fallback;
 }
 
+function parseNumberProp(props, names, fallback = null) {
+  const raw = propFirst(props || {}, names);
+  if (raw === null || raw === undefined || raw === '') return fallback;
+  const value = Number(String(raw).replace(',', '.'));
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function featureLabelText(props, names, fallback = '') {
+  const value = propFirst(props || {}, names);
+  return value === null || value === undefined ? fallback : String(value);
+}
+
 const settings = {
   sunElevation: 30,
   sunAzimuth: 30,
@@ -487,8 +501,13 @@ const settings = {
   roofHeight: 2.0,
   roadStyle: 'Asphalt',
   roadColor: '#2f3438',
+  roadColorMode: 'Default',
   roadWidth: 7.5,
   trafficSpeed: 1.0,
+  showWindPlumes: false,
+  windDirectionDeg: 315,
+  windPlumeDistance: 180,
+  showUrbanComfort: false,
   carDensity: 0.2,
   showParcels: true,
   showHardscape: false,
@@ -525,9 +544,10 @@ const settings = {
 const PERSISTED_SETTING_KEYS = [
   'islandColor', 'islandTexture', 'parcelBoundaryColor', 'parcelBoundaryOpacity',
   'showTerrainTexture', 'terrainTextureOpacity', 'terrainTextureBrightness', 'terrainTextureContrast',
-  'roofTexture', 'roofShape', 'roofHeight', 'roadColor', 'roadWidth',
+  'roofTexture', 'roofShape', 'roofHeight', 'roadColor', 'roadColorMode', 'roadWidth',
   'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture',
   'showCars', 'showRoads', 'showSidewalks', 'showCrosswalks', 'showPedestrians',
+  'showWindPlumes', 'windDirectionDeg', 'windPlumeDistance', 'showUrbanComfort',
   'timeOfDay', 'weather', 'fov', 'walkSpeed'
 ];
 
@@ -895,6 +915,68 @@ function roadAllowsCars(feature) {
   const hasNoCar = noCar.some((kw) => value.includes(kw));
   const hasVehicle = vehicle.some((kw) => value.includes(kw));
   return !hasNoCar || hasVehicle;
+}
+
+function roadModeText(feature) {
+  const access = projectManifest?.roadAccess;
+  const field = access?.field;
+  const props = feature?.properties || {};
+  return field ? featureLabelText(props, [field], '') : featureLabelText(props, ['yol_turu', 'yoltipi', 'tur', 'tip', 'access', 'mode'], '');
+}
+
+function estimateAmenityPoints() {
+  const points = [];
+  const data = layerDataCache || {};
+  const furniture = data.furniture || {};
+  for (const collection of [furniture.busstops, furniture.lights, data.agaclar]) {
+    for (const f of collection?.features || []) {
+      if (f.geometry?.type === 'Point') points.push(f.geometry.coordinates);
+    }
+  }
+  for (const f of data.yapilar?.features || []) {
+    const fn = normalizeAccessText(f.properties?.uipfonksiyon || '');
+    if (!/(egitim|okul|park|saglik|ticaret|sosyal|kultur|spor|yesil|donati)/.test(fn)) continue;
+    const rings = getPolygonRings(f.geometry);
+    const outer = rings?.[0]?.[0];
+    if (!outer?.length) continue;
+    const c = outer.reduce((acc, p) => [acc[0] + p[0], acc[1] + p[1]], [0, 0]);
+    points.push([c[0] / outer.length, c[1] / outer.length]);
+  }
+  return points;
+}
+
+function featureMidpoint(feature) {
+  const coords = feature?.geometry?.coordinates || [];
+  if (!coords.length) return null;
+  const mid = coords[Math.floor(coords.length / 2)];
+  return Array.isArray(mid) ? mid : null;
+}
+
+function minDistanceToPoints(point, points) {
+  if (!point || !points.length) return Infinity;
+  let min = Infinity;
+  for (const p of points) {
+    const dx = point[0] - p[0];
+    const dy = point[1] - p[1];
+    min = Math.min(min, Math.sqrt(dx * dx + dy * dy));
+  }
+  return min;
+}
+
+function roadVisualColor(feature, amenityPoints = []) {
+  if (settings.roadColorMode === 'Amenity distance') {
+    const d = minDistanceToPoints(featureMidpoint(feature), amenityPoints);
+    const t = Math.max(0, Math.min(1, d / 450));
+    return new THREE.Color(0x16a34a).lerp(new THREE.Color(0x9ca3af), t);
+  }
+  if (settings.roadColorMode === 'Access / traffic') {
+    if (!roadAllowsCars(feature)) return new THREE.Color(0x0ea5e9);
+    const mode = normalizeAccessText(roadModeText(feature));
+    if (/(ana|arter|bulvar|otoyol|primary|trunk)/.test(mode)) return new THREE.Color(0xef4444);
+    if (/(cadde|collector|secondary)/.test(mode)) return new THREE.Color(0xf59e0b);
+    return new THREE.Color(0x64748b);
+  }
+  return new THREE.Color(settings.roadColor);
 }
 
 function applyTone(value) {
@@ -1312,6 +1394,73 @@ async function buildHardscapeLayer(hardscape) {
       m.renderOrder = 5;
       hardscapeGroup.add(m);
     }
+  }
+}
+
+function polygonCentroidGeo(ring) {
+  if (!ring?.length) return null;
+  const sum = ring.reduce((acc, p) => [acc[0] + p[0], acc[1] + p[1]], [0, 0]);
+  return [sum[0] / ring.length, sum[1] / ring.length];
+}
+
+function polygonAreaGeo(ring) {
+  if (!ring?.length) return 0;
+  let sum = 0;
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i];
+    const b = ring[(i + 1) % ring.length];
+    sum += a[0] * b[1] - b[0] * a[1];
+  }
+  return Math.abs(sum) * 0.5;
+}
+
+function isOdorOrEmissionSource(feature) {
+  const props = feature?.properties || {};
+  const text = normalizeAccessText([
+    props.uipfonksiyon, props.fonksiyon, props.kullanim, props.landuse,
+    props.tesis, props.adi, props.name, props.tip, props.tur
+  ].filter(Boolean).join(' '));
+  return /(sanayi|industry|atik|waste|cop|solid|depolama|transfer|arıtma|aritma|sewage|lojistik|logistics)/.test(text);
+}
+
+function buildWindPlumeLayer() {
+  clearGroup(windPlumeGroup);
+  if (!settings.showWindPlumes) return;
+  const sources = [
+    ...(layerDataCache?.yapilar?.features || []),
+    ...(layerDataCache?.hardscape?.features || [])
+  ].filter(isOdorOrEmissionSource);
+  if (!sources.length) return;
+
+  const dir = THREE.MathUtils.degToRad(settings.windDirectionDeg);
+  const dx = Math.sin(dir);
+  const dz = Math.cos(dir);
+  const length = settings.windPlumeDistance;
+  const width = Math.max(28, length * 0.28);
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0xef4444,
+    transparent: true,
+    opacity: 0.18,
+    depthWrite: false,
+    side: THREE.DoubleSide
+  });
+
+  for (const f of sources) {
+    const rings = getPolygonRings(f.geometry);
+    const outer = rings?.[0]?.[0];
+    const c = polygonCentroidGeo(outer);
+    if (!c) continue;
+    const [lx, lz] = metersToLocal(c[0], c[1]);
+    const cx = lx + dx * length * 0.5;
+    const cz = lz + dz * length * 0.5;
+    const y = terrainLocalYAt(lx, lz) + 2.0;
+    const geo = new THREE.PlaneGeometry(width, length, 1, 1);
+    geo.rotateX(-Math.PI / 2);
+    const mesh = new THREE.Mesh(geo, mat.clone());
+    mesh.position.set(cx, y, cz);
+    mesh.rotation.y = Math.atan2(dx, dz);
+    mesh.renderOrder = 44;
+    windPlumeGroup.add(mesh);
   }
 }
 
@@ -1851,6 +2000,11 @@ async function buildBuildingLayer(yapilar) {
       const gy = sy / outer.length;
       const [lx, lz] = metersToLocal(gx, gy);
       const baseY = terrainLocalYAt(lx, lz) + LAYER.content;
+      const footprintArea = parseNumberProp(props, ['taban_alani', 'footprint_area', 'aream2'], polygonAreaGeo(outer));
+      const floorArea = parseNumberProp(props, ['toplam_insaat', 'insaat_alani', 'floor_area', 'gross_area'], footprintArea * levels);
+      const dwellings = parseNumberProp(props, ['daire', 'daire_sayisi', 'dwelling', 'dwellings'], Math.max(1, Math.round(floorArea / 115)));
+      const population = parseNumberProp(props, ['nufus', 'nüfus', 'population', 'pop'], Math.round(dwellings * 3.1));
+      const vehicles = parseNumberProp(props, ['arac', 'araç', 'vehicle', 'cars'], Math.round(dwellings * 0.7));
 
       const extrude = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false });
       extrude.rotateX(Math.PI / 2);
@@ -1892,13 +2046,21 @@ async function buildBuildingLayer(yapilar) {
       b.position.y = baseY;
       b.castShadow = true;
       b.receiveShadow = true;
-      b.userData = f.properties || {};
+      b.userData = {
+        ...(f.properties || {}),
+        planx_calc_footprint_area: footprintArea,
+        planx_calc_floor_area: floorArea,
+        planx_calc_dwellings: dwellings,
+        planx_calc_population: population,
+        planx_calc_vehicles: vehicles
+      };
       buildingGroup.add(b);
 
       const roof = roofMeshFor(shape, footprint, baseY, height, featureRoofShape);
       roof.material.map = featureRoofTex;
       roof.material.color = new THREE.Color(featureRoofColor);
       roof.material.needsUpdate = true;
+      roof.userData = b.userData;
       buildingGroup.add(roof);
     }
   }
@@ -1927,6 +2089,7 @@ async function buildRoadsAndTraffic(yollar) {
     transparent: !settings.showRoads,
     opacity: settings.showRoads ? 1.0 : 0.0
   });
+  const amenityPoints = settings.roadColorMode === 'Amenity distance' ? estimateAmenityPoints() : [];
 
   for (const f of yollar.features) {
     if (!f.geometry || f.geometry.type !== 'LineString') continue;
@@ -1982,7 +2145,9 @@ async function buildRoadsAndTraffic(yollar) {
     roadGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     roadGeo.setIndex(indices);
     roadGeo.computeVertexNormals();
-    const mesh = new THREE.Mesh(roadGeo, roadMat);
+    const featureRoadMat = roadMat.clone();
+    featureRoadMat.color = roadVisualColor(f, amenityPoints);
+    const mesh = new THREE.Mesh(roadGeo, featureRoadMat);
     mesh.receiveShadow = true;
     mesh.renderOrder = 30;
     roadGroup.add(mesh);
@@ -2272,6 +2437,9 @@ async function rebuildScene() {
   if (settings.showHardscape && !layerDataCache.hardscape) {
     layerDataCache.hardscape = await loadGeoJson('../data/yerlesim/myhardscape.geojson', { label: 'Hardscape' });
   }
+  if (settings.showWindPlumes && !layerDataCache.hardscape) {
+    layerDataCache.hardscape = await loadGeoJson('../data/yerlesim/myhardscape.geojson', { label: 'Hardscape' });
+  }
   if (settings.showSidewalks && !layerDataCache.sidewalks) {
     layerDataCache.sidewalks = await loadGeoJson('../data/yerlesim/mysidewalks.geojson', { label: 'Sidewalks' });
   }
@@ -2355,6 +2523,7 @@ async function rebuildScene() {
   if (!isRasterTextureMode() || adalar.features.length) await buildIslandLayer(adalar); else clearGroup(islandGroup);
   if (settings.showParcels && parseller) buildParcelLayer(parseller); else clearGroup(parcelGroup);
   if (settings.showHardscape && hardscape) await buildHardscapeLayer(hardscape); else clearGroup(hardscapeGroup);
+  buildWindPlumeLayer();
   if (settings.showBuildings) await buildBuildingLayer(yapilar); else clearGroup(buildingGroup);
   await buildRoadsAndTraffic(yollar);
   if (settings.showSidewalks) buildSidewalkLayer(yollar, sidewalks); else clearGroup(sidewalkGroup);
@@ -2504,6 +2673,7 @@ function addGui() {
   roads.add(settings, 'showCars').name(t('showCars')).onChange(rebuildScene);
   roads.add(settings, 'carDensity', 0.0, 1.0, 0.1).name(t('carDensity')).onChange(rebuildScene);
   roads.add(settings, 'showRoads').name(t('showRoads')).onChange(rebuildScene);
+  roads.add(settings, 'roadColorMode', ['Default', 'Amenity distance', 'Access / traffic']).name('Road analysis').onChange(rebuildScene);
   roads.addColor(settings, 'roadColor').name(t('roadCol')).onChange(rebuildScene);
   roads.add(settings, 'roadWidth', 2.8, 8.0, 0.1).name(t('roadW')).onChange(rebuildScene);
   roads.add(settings, 'trafficSpeed', 0, 5, 0.1).name(t('trafficSpd'));
@@ -2511,6 +2681,11 @@ function addGui() {
   roads.add(settings, 'showCrosswalks').name(t('showCrosswalks')).onChange(rebuildScene);
   roads.add(settings, 'showPedestrians').onChange(rebuildScene);
   roads.add(settings, 'pedestrianDensity', 0.0, 1.0, 0.1).name(t('pedDensity')).onChange(rebuildScene);
+
+  const analysis = globalGui.addFolder('Plan Analysis');
+  analysis.add(settings, 'showWindPlumes').name('Wind plume risk').onChange(rebuildScene);
+  analysis.add(settings, 'windDirectionDeg', 0, 359, 1).name('Wind direction').onChange(rebuildScene);
+  analysis.add(settings, 'windPlumeDistance', 40, 600, 10).name('Plume distance').onChange(rebuildScene);
   
   const sfGroup = globalGui.addFolder(t('sfFolder'));
   sfGroup.add(settings, 'showLights').name(t('sfLights')).onChange(rebuildScene);
@@ -2615,6 +2790,11 @@ window.addEventListener('click', (e) => {
   const p = hits[0].object.userData || {};
   const icon = getFunctionIcon(p.uipfonksiyon || '');
   const areaStr = p.aream2 ? `${parseFloat(p.aream2).toFixed(0)} m²` : '-';
+  const calcFootprintArea = parseNumberProp(p, ['planx_calc_footprint_area', 'taban_alani', 'footprint_area'], null);
+  const calcFloorArea = parseNumberProp(p, ['planx_calc_floor_area', 'toplam_insaat', 'insaat_alani'], null);
+  const calcPopulation = parseNumberProp(p, ['planx_calc_population', 'nufus', 'nüfus', 'population'], null);
+  const calcDwellings = parseNumberProp(p, ['planx_calc_dwellings', 'daire', 'daire_sayisi', 'dwellings'], null);
+  const calcVehicles = parseNumberProp(p, ['planx_calc_vehicles', 'arac', 'araç', 'vehicle', 'cars'], null);
   const styleRows = [
     ['Renk', p.planx_color || p.renk],
     ['Cephe', p.planx_facade],
@@ -2629,7 +2809,12 @@ window.addEventListener('click', (e) => {
       <div class="tooltip-row"><span>${t('biNiz')}</span><span>${p.nizam || '-'}</span></div>
       ${p.taks != null ? `<div class="tooltip-row"><span>TAKS</span><span>${p.taks}</span></div>` : ''}
       ${p.kaks != null ? `<div class="tooltip-row"><span>KAKS</span><span>${p.kaks}</span></div>` : ''}
-      <div class="tooltip-row"><span>${t('biAlan')}</span><span>${areaStr}</span></div>
+      <div class="tooltip-row"><span>Taban alanı</span><span>${areaStr}</span></div>
+      ${calcFootprintArea ? `<div class="tooltip-row"><span>Hesaplanan taban</span><span>${calcFootprintArea.toFixed(0)} m²</span></div>` : ''}
+      ${calcFloorArea ? `<div class="tooltip-row"><span>Toplam inşaat</span><span>${calcFloorArea.toFixed(0)} m²</span></div>` : ''}
+      ${calcPopulation !== null ? `<div class="tooltip-row"><span>Tahmini nüfus</span><span>${calcPopulation.toFixed(0)}</span></div>` : ''}
+      ${calcDwellings !== null ? `<div class="tooltip-row"><span>Tahmini daire</span><span>${calcDwellings.toFixed(0)}</span></div>` : ''}
+      ${calcVehicles !== null ? `<div class="tooltip-row"><span>Tahmini araç</span><span>${calcVehicles.toFixed(0)}</span></div>` : ''}
       ${styleRows.map(([label, value]) => `<div class="tooltip-row"><span>${label}</span><span>${value}</span></div>`).join('')}
     `;
     detailTip.style.display = 'block';
@@ -3151,6 +3336,7 @@ function populateDockSelects() {
     islandTexture: Object.keys(textureSets.island),
     roofShape: ['Flat', 'Pyramid', 'Gable', 'Cone', 'Prism'],
     roofTexture: Object.keys(textureSets.roof),
+    roadColorMode: ['Default', 'Amenity distance', 'Access / traffic'],
     weather: ['Clear', 'Rain', 'Snow']
   };
   document.querySelectorAll('.dock-panel select[data-setting]').forEach((select) => {
