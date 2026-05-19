@@ -65,6 +65,20 @@ EXPECTED_GEOMETRIES = {
 
 RECOMMENDED_BUILDING_FIELDS = ("katadedi", "uipfonksiyon")
 
+FIELD_MAPPING_DEFS = (
+    ("road_hierarchy_field", "roads", "Road hierarchy/type field", "Ana arter, cadde, sokak, yaya yolu gibi yol sinif bilgisini tasiyan alan."),
+    ("building_population_field", "buildings", "Building population field", "Varsa bina nufusu; yoksa viewer daire ve alan uzerinden tahmin eder."),
+    ("building_dwelling_field", "buildings", "Building dwelling field", "Daire/konut birimi sayisi."),
+    ("building_vehicle_field", "buildings", "Building vehicle field", "Tahmini veya hesapli arac sayisi."),
+    ("building_floor_area_field", "buildings", "Building gross floor area field", "Toplam insaat alani veya emsal alani."),
+    ("landuse_function_field", "buildings", "Land-use/function field", "Bina/kullanim fonksiyonu; uipfonksiyon yoksa viewer bunu kullanir."),
+    ("odor_source_field", "buildings", "Odor/noise source field", "Sanayi, atik, depolama, aritma gibi kaynaklari yakalamak icin kullanilacak alan."),
+    ("light_angle_field", "lights", "Light direction field", "Derece cinsinden yon/aci; bos kalirsa en yakin yol aksina gore hizalanir."),
+    ("bench_angle_field", "benches", "Bench direction field", "Derece cinsinden yon/aci; bos kalirsa en yakin yol aksina paralel hizalanir."),
+    ("trashbin_angle_field", "trashbins", "Trash bin direction field", "Derece cinsinden yon/aci; bos kalirsa en yakin yol aksina paralel hizalanir."),
+    ("busstop_angle_field", "busstops", "Bus stop direction field", "Derece cinsinden yon/aci; bos kalirsa en yakin yol aksina paralel hizalanir."),
+)
+
 AUTO_MATCH_ALIASES = {
     "dem": ("dem", "mydem", "elevation", "yukseklik", "yukseklik modeli"),
     "plan_texture": ("plan", "siteplan", "yerlesim plani", "nazim", "uygulama", "texture", "pafta"),
@@ -94,6 +108,7 @@ class PlanX3DCityDialog(QDialog):
         self.web_root = web_root
         self.layer_boxes = {}
         self.badge_labels = {}
+        self.field_mapping_combos = {}
         self.last_url = ""
         self.setWindowTitle("PlanX 3D City Publisher")
         self.resize(980, 720)
@@ -109,6 +124,8 @@ class PlanX3DCityDialog(QDialog):
             payload["road_no_car_values"] = self.road_no_car_values.text().strip()
         if hasattr(self, "road_vehicle_values"):
             payload["road_vehicle_values"] = self.road_vehicle_values.text().strip()
+        for key, combo in getattr(self, "field_mapping_combos", {}).items():
+            payload[key] = combo.currentData() or ""
         return payload
 
     def set_status(self, text: str, error: bool = False) -> None:
@@ -255,6 +272,12 @@ class PlanX3DCityDialog(QDialog):
         self._add_road_access_row(required_grid, 8)
         root.addWidget(required_group)
 
+        mapping_group = QGroupBox("Field mapping / analiz alanlari")
+        mapping_grid = QGridLayout(mapping_group)
+        for row, (key, layer_key, label, help_text) in enumerate(FIELD_MAPPING_DEFS):
+            self._add_field_mapping_row(mapping_grid, row, key, layer_key, label, help_text)
+        root.addWidget(mapping_group)
+
         optional_group = QGroupBox("Opsiyonel zenginlestirme katmanlari")
         optional_grid = QGridLayout(optional_group)
         for row, key in enumerate(OPTIONAL_INPUTS):
@@ -277,6 +300,19 @@ class PlanX3DCityDialog(QDialog):
         self.export_button.clicked.connect(lambda: self.exportRequested.emit(self.selected_layers()))
         self.mode_combo.currentIndexChanged.connect(self._refresh_report)
         return page
+
+    def _add_field_mapping_row(self, grid: QGridLayout, row: int, key: str, layer_key: str, label_text: str, help_text: str) -> None:
+        label = QLabel(f"<b>{label_text}</b><br><span style='color:#64748b'>{help_text}</span>")
+        label.setWordWrap(True)
+        combo = QComboBox()
+        combo.addItem("Auto / fallback", "")
+        combo.currentIndexChanged.connect(self._refresh_report)
+        self.field_mapping_combos[key] = combo
+        grid.addWidget(label, row, 0)
+        grid.addWidget(combo, row, 1)
+        grid.addWidget(QLabel(layer_key), row, 2)
+        if layer_key in self.layer_boxes:
+            self.layer_boxes[layer_key].layerChanged.connect(lambda _layer=None: self._sync_field_mapping_fields())
 
     def _add_road_access_row(self, grid: QGridLayout, row: int) -> None:
         label = QLabel(
@@ -447,6 +483,7 @@ class PlanX3DCityDialog(QDialog):
 
     def _refresh_report(self) -> None:
         self._sync_road_access_fields()
+        self._sync_field_mapping_fields()
         layer_map = self.selected_layers()
         html, has_error = self._build_quality_report(layer_map)
         if hasattr(self, "report_browser"):
@@ -515,6 +552,9 @@ class PlanX3DCityDialog(QDialog):
         road_access_field = layer_map.get("road_access_field")
         if road_access_field:
             warnings.append(f"Road access filter aktif: arabalar '{road_access_field}' alanindaki yaya/no-car degerlerinden gecmeyecek.")
+        mapped = [label for key, _layer_key, label, _help in FIELD_MAPPING_DEFS if layer_map.get(key)]
+        if mapped:
+            warnings.append("Viewer field mapping aktif: " + ", ".join(mapped))
 
         ordered_keys = ("dem", "plan_texture", "roi", "roads", "buildings", "blocks", "parcels") + OPTIONAL_INPUTS
         for key in ordered_keys:
@@ -686,6 +726,27 @@ class PlanX3DCityDialog(QDialog):
         idx = self.road_access_field_combo.findData(current)
         self.road_access_field_combo.setCurrentIndex(idx if idx >= 0 else 0)
         self.road_access_field_combo.blockSignals(False)
+
+    def _sync_field_mapping_fields(self) -> None:
+        if not getattr(self, "field_mapping_combos", None):
+            return
+        for key, layer_key, _label, _help in FIELD_MAPPING_DEFS:
+            combo = self.field_mapping_combos.get(key)
+            if combo is None:
+                continue
+            layer_box = self.layer_boxes.get(layer_key)
+            layer = layer_box.currentLayer() if layer_box else None
+            current = combo.currentData() or ""
+            combo.blockSignals(True)
+            combo.clear()
+            combo.addItem("Auto / fallback", "")
+            if layer is not None and hasattr(layer, "fields"):
+                for field in layer.fields():
+                    name = field.name()
+                    combo.addItem(name, name)
+            idx = combo.findData(current)
+            combo.setCurrentIndex(idx if idx >= 0 else 0)
+            combo.blockSignals(False)
 
     def _current_mode(self) -> str:
         if not hasattr(self, "mode_combo"):

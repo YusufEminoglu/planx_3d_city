@@ -203,6 +203,7 @@ let vehicleRoadCurves = [];
 let cars = [];
 let pedestrians = [];
 let buildingFunctionMaterials = new Map();
+let manifestDefaultsApplied = false;
 
 // --- Performance ---
 const rc = new THREE.Raycaster();
@@ -470,7 +471,17 @@ function roofShapeValue(value, fallback) {
 }
 
 function parseNumberProp(props, names, fallback = null) {
-  const raw = propFirst(props || {}, names);
+  let lookupNames = names;
+  if (names.includes('population') || names.includes('pop')) {
+    lookupNames = namesWithMapping('building_population_field', names);
+  } else if (names.includes('vehicle') || names.includes('cars')) {
+    lookupNames = namesWithMapping('building_vehicle_field', names);
+  } else if (names.includes('gross_area') || names.includes('floor_area')) {
+    lookupNames = namesWithMapping('building_floor_area_field', names);
+  } else if (names.includes('dwellings') || names.includes('dwelling')) {
+    lookupNames = namesWithMapping('building_dwelling_field', names);
+  }
+  const raw = propFirst(props || {}, lookupNames);
   if (raw === null || raw === undefined || raw === '') return fallback;
   const value = Number(String(raw).replace(',', '.'));
   return Number.isFinite(value) ? value : fallback;
@@ -479,6 +490,19 @@ function parseNumberProp(props, names, fallback = null) {
 function featureLabelText(props, names, fallback = '') {
   const value = propFirst(props || {}, names);
   return value === null || value === undefined ? fallback : String(value);
+}
+
+function mappedField(key) {
+  return projectManifest?.fieldMappings?.[key] || null;
+}
+
+function namesWithMapping(mappingKey, fallbackNames) {
+  const mapped = mappedField(mappingKey);
+  return mapped ? [mapped, ...fallbackNames] : fallbackNames;
+}
+
+function buildingFunctionValue(props) {
+  return propFirst(props || {}, namesWithMapping('landuse_function_field', ['uipfonksiyon', 'fonksiyon', 'kullanim', 'landuse', 'arazi_kull'])) || 'BELIRSIZ';
 }
 
 const settings = {
@@ -532,6 +556,7 @@ const settings = {
   showBusStops: true,
   stopStyle: 'Glass Shelter',
   fastTerrainSegments: 120,
+  demMeshQuality: 160,
   timeOfDay: 14,
   enableSSAO: true,
   enableBloom: true,
@@ -554,7 +579,7 @@ const PERSISTED_SETTING_KEYS = [
   'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture',
   'showCars', 'showRoads', 'showSidewalks', 'showCrosswalks', 'showPedestrians',
   'showWindPlumes', 'windDirectionDeg', 'windPlumeDistance', 'showUrbanComfort',
-  'timeOfDay', 'weather', 'fov', 'walkSpeed'
+  'demMeshQuality', 'timeOfDay', 'weather', 'fov', 'walkSpeed'
 ];
 
 function loadPersistedSettings() {
@@ -584,6 +609,43 @@ function savePersistedSettings() {
 }
 
 loadPersistedSettings();
+
+const tourState = {
+  keyframes: [],
+  duration: 18,
+  loop: false,
+  playing: false,
+  currentTime: 0,
+  startedAt: 0,
+  startTime: 0
+};
+
+function loadTourState() {
+  try {
+    const raw = localStorage.getItem('planx_3d_city_tour');
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    tourState.keyframes = Array.isArray(saved.keyframes) ? saved.keyframes : [];
+    tourState.duration = Number(saved.duration) || 18;
+    tourState.loop = !!saved.loop;
+  } catch (err) {
+    console.warn('Could not restore PlanX tour', err);
+  }
+}
+
+function saveTourState() {
+  try {
+    localStorage.setItem('planx_3d_city_tour', JSON.stringify({
+      keyframes: tourState.keyframes,
+      duration: tourState.duration,
+      loop: tourState.loop
+    }));
+  } catch (err) {
+    console.warn('Could not save PlanX tour', err);
+  }
+}
+
+loadTourState();
 
 function createAsphaltTexture() {
   const c = document.createElement('canvas');
@@ -870,6 +932,16 @@ async function loadManifest() {
   }
 }
 
+function applyManifestDefaults() {
+  if (manifestDefaultsApplied || !projectManifest) return;
+  manifestDefaultsApplied = true;
+  if (localStorage.getItem('planx_3d_city_settings')) return;
+  const defaults = { ...(projectManifest.viewerDefaults || {}), ...(projectManifest.analysisDefaults || {}) };
+  for (const [key, value] of Object.entries(defaults)) {
+    if (key in settings && value !== null && value !== undefined) settings[key] = value;
+  }
+}
+
 async function loadTexture(path, repeatX = 1, repeatY = 1) {
   if (!path) return null;
   return new Promise((resolve, reject) => {
@@ -927,6 +999,8 @@ function roadModeText(feature) {
   const access = projectManifest?.roadAccess;
   const field = access?.field;
   const props = feature?.properties || {};
+  const hierarchy = mappedField('road_hierarchy_field');
+  if (hierarchy) return featureLabelText(props, [hierarchy], '');
   return field ? featureLabelText(props, [field], '') : featureLabelText(props, ['yol_turu', 'yoltipi', 'tur', 'tip', 'access', 'mode'], '');
 }
 
@@ -940,7 +1014,7 @@ function estimateAmenityPoints() {
     }
   }
   for (const f of data.yapilar?.features || []) {
-    const fn = normalizeAccessText(f.properties?.uipfonksiyon || '');
+    const fn = normalizeAccessText(buildingFunctionValue(f.properties || {}));
     if (!/(egitim|okul|park|saglik|ticaret|sosyal|kultur|spor|yesil|donati)/.test(fn)) continue;
     const rings = getPolygonRings(f.geometry);
     const outer = rings?.[0]?.[0];
@@ -1169,7 +1243,7 @@ function edgeHeightAt(localX, localZ, fallback) {
   return z === null ? fallback : z;
 }
 
-function ringToLocalPolyline(ring, maxStep = 8) {
+function ringToLocalPolyline(ring, maxStep = 5) {
   const points = [];
   if (!ring || ring.length < 2) return points;
   for (let i = 0; i < ring.length - 1; i++) {
@@ -1205,7 +1279,7 @@ function roiSidePolylines() {
 }
 
 function demExtentSidePolylines(width, depth) {
-  const samples = Math.max(16, Math.floor(settings.fastTerrainSegments / 2));
+  const samples = Math.max(16, Math.floor(currentTerrainSegments() / 2));
   const halfW = width * 0.5;
   const halfD = depth * 0.5;
   const north = [];
@@ -1276,10 +1350,16 @@ function buildTerrainSideSkirt(width, depth, demMin, fallbackHeight) {
   terrainSideGroup.add(mesh);
 }
 
+function currentTerrainSegments() {
+  const v = Number(settings.demMeshQuality || settings.fastTerrainSegments || 120);
+  return Math.max(32, Math.min(420, Math.round(v)));
+}
+
 async function buildTerrain(adalar) {
   const width = bounds.maxX - bounds.minX;
   const depth = bounds.maxY - bounds.minY;
-  const geo = new THREE.PlaneGeometry(width, depth, settings.fastTerrainSegments, settings.fastTerrainSegments);
+  const segments = currentTerrainSegments();
+  const geo = new THREE.PlaneGeometry(width, depth, segments, segments);
   const pos = geo.attributes.position;
   let zMin = Infinity;
   let zMax = -Infinity;
@@ -1535,10 +1615,51 @@ function polygonAreaGeo(ring) {
   return Math.abs(sum) * 0.5;
 }
 
+function estimateBuildingFeatureMetrics(feature) {
+  const props = feature?.properties || {};
+  const levels = parseLevel(props.katadedi);
+  let footprint = parseNumberProp(props, ['taban_alani', 'footprint_area', 'aream2'], null);
+  if (!footprint) {
+    const outer = getPolygonRings(feature.geometry)?.[0]?.[0];
+    footprint = polygonAreaGeo(outer);
+  }
+  const floorArea = parseNumberProp(props, namesWithMapping('building_floor_area_field', ['toplam_insaat', 'insaat_alani', 'floor_area', 'gross_area']), footprint * levels);
+  const dwellings = parseNumberProp(props, namesWithMapping('building_dwelling_field', ['daire', 'daire_sayisi', 'dwelling', 'dwellings']), Math.max(1, Math.round(floorArea / 115)));
+  const population = parseNumberProp(props, namesWithMapping('building_population_field', ['nufus', 'nÃ¼fus', 'population', 'pop']), Math.round(dwellings * 3.1));
+  const vehicles = parseNumberProp(props, namesWithMapping('building_vehicle_field', ['arac', 'araÃ§', 'vehicle', 'cars']), Math.round(dwellings * 0.7));
+  return { footprint, floorArea, dwellings, population, vehicles };
+}
+
+function buildingBaseYForOuterRing(outer) {
+  const samples = [];
+  let sx = 0;
+  let sy = 0;
+  let n = 0;
+  for (const coord of outer || []) {
+    if (!coord || coord.length < 2) continue;
+    sx += coord[0];
+    sy += coord[1];
+    n++;
+    const [x, z] = metersToLocal(coord[0], coord[1]);
+    samples.push(terrainLocalYAt(x, z));
+  }
+  if (n > 0) {
+    const [cx, cz] = metersToLocal(sx / n, sy / n);
+    samples.push(terrainLocalYAt(cx, cz));
+  }
+  const valid = samples.filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
+  if (!valid.length) return terrainLocalYAt(0, 0) + LAYER.content;
+  return valid[0] + LAYER.content;
+}
+
 function isOdorOrEmissionSource(feature) {
   const props = feature?.properties || {};
+  const odorField = mappedField('odor_source_field');
+  if (odorField && props[odorField] !== undefined) {
+    return /(1|true|evet|yes|source|risk|sanayi|industry|atik|waste|cop|depolama|storage|aritma|sewage)/.test(normalizeAccessText(props[odorField]));
+  }
   const text = normalizeAccessText([
-    props.uipfonksiyon, props.fonksiyon, props.kullanim, props.landuse,
+    props[mappedField('landuse_function_field')], props.uipfonksiyon, props.fonksiyon, props.kullanim, props.landuse,
     props.tesis, props.adi, props.name, props.tip, props.tur
   ].filter(Boolean).join(' '));
   return /(sanayi|industry|atik|waste|cop|solid|depolama|transfer|arıtma|aritma|sewage|lojistik|logistics)/.test(text);
@@ -1871,6 +1992,45 @@ function buildTreeLayer(agaclar) {
   });
 }
 
+function numericPropFirst(props, names) {
+  for (const name of names) {
+    if (!name || props?.[name] === undefined || props?.[name] === null || props?.[name] === '') continue;
+    const value = Number(String(props[name]).replace(',', '.'));
+    if (Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function nearestRoadRotationY(x, z) {
+  let bestDist = Infinity;
+  let bestAngle = 0;
+  for (const curve of roadCurves || []) {
+    const samples = 28;
+    for (let i = 0; i <= samples; i++) {
+      const t = i / samples;
+      const p = curve.getPointAt(t);
+      const d = (p.x - x) * (p.x - x) + (p.z - z) * (p.z - z);
+      if (d < bestDist) {
+        const tangent = curve.getTangentAt(t);
+        bestDist = d;
+        bestAngle = Math.atan2(tangent.x, tangent.z);
+      }
+    }
+  }
+  return bestAngle;
+}
+
+function furnitureRotationY(feature, x, z, mappedKey) {
+  const props = feature?.properties || {};
+  const fieldNames = namesWithMapping(mappedKey, [
+    'planx_angle', 'planx_rotation', 'angle', 'rotation', 'rot',
+    'heading', 'bearing', 'azimuth', 'direction', 'yon', 'yÃ¶n'
+  ]);
+  const deg = numericPropFirst(props, fieldNames);
+  if (deg !== null) return -THREE.MathUtils.degToRad(deg);
+  return nearestRoadRotationY(x, z);
+}
+
 function buildFurnitureLayer() {
   clearGroup(furnitureGroup);
   const db = layerDataCache.furniture || {};
@@ -2003,24 +2163,29 @@ function buildFurnitureLayer() {
   const benchGeo = getBenchGeo();
   const binMesh = getBinGeo();
   const stopGeo = getStopGeo();
+  const angleFieldKeyByKind = {
+    lights: 'light_angle_field',
+    benches: 'bench_angle_field',
+    bins: 'trashbin_angle_field',
+    busstops: 'busstop_angle_field'
+  };
 
-  const placeItem = (feats, modelTemplate) => {
+  const placeItem = (feats, modelTemplate, kind) => {
     if (!feats || !feats.features) return;
     feats.features.forEach(f => {
+      if (!f.geometry || f.geometry.type !== 'Point') return;
       const [x, z] = metersToLocal(f.geometry.coordinates[0], f.geometry.coordinates[1]);
       const y = terrainLocalYAt(x, z) + LAYER.content;
       const m = modelTemplate.clone();
       m.position.set(x, y, z);
-      if (f.properties.angle !== undefined) {
-         m.rotation.y = -f.properties.angle * (Math.PI / 180);
-      }
+      m.rotation.y = furnitureRotationY(f, x, z, angleFieldKeyByKind[kind]);
       furnitureGroup.add(m);
     });
   };
 
   const isNight = settings.timeOfDay < 6.5 || settings.timeOfDay > 17.5;
   if (settings.showLights) {
-    placeItem(lights, lightGeo);
+    placeItem(lights, lightGeo, 'lights');
     if (isNight && lights && lights.features) {
       lights.features.forEach((f) => {
         if (!f.geometry || f.geometry.type !== 'Point') return;
@@ -2032,9 +2197,9 @@ function buildFurnitureLayer() {
       });
     }
   }
-  if (settings.showBenches) placeItem(benches, benchGeo);
-  if (settings.showBins) placeItem(bins, binMesh);
-  if (settings.showBusStops) placeItem(busstops, stopGeo);
+  if (settings.showBenches) placeItem(benches, benchGeo, 'benches');
+  if (settings.showBins) placeItem(bins, binMesh, 'bins');
+  if (settings.showBusStops) placeItem(busstops, stopGeo, 'busstops');
 }
 
 function getSemanticColor(fn) {
@@ -2070,7 +2235,7 @@ async function buildBuildingLayer(yapilar) {
 
   const defaultFuncColors = ['#f1f5f9', '#dbeafe', '#fee2e2', '#dcfce7', '#fef3c7', '#ede9fe'];
   const facadeOptions = Object.keys(textureSets.facade);
-  const functions = [...new Set(yapilar.features.map((f) => (f.properties?.uipfonksiyon || 'BELIRSIZ').toString()))];
+  const functions = [...new Set(yapilar.features.map((f) => String(buildingFunctionValue(f.properties || {}))))];
 
   for (let i = 0; i < functions.length; i++) {
     const fn = functions[i];
@@ -2093,7 +2258,7 @@ async function buildBuildingLayer(yapilar) {
 
   for (const f of yapilar.features) {
     const props = f.properties || {};
-    const fn = (f.properties?.uipfonksiyon || 'BELIRSIZ').toString();
+    const fn = String(buildingFunctionValue(props));
     const levels = parseLevel(f.properties?.katadedi);
     const height = levels * settings.floorHeight;
     const featureColor = normalizeHexColor(propFirst(props, ['planx_color', 'planx_renk', 'color', 'renk']), functionColorState[fn]);
@@ -2117,13 +2282,10 @@ async function buildBuildingLayer(yapilar) {
         if (i === 0) shape.moveTo(x, z); else shape.lineTo(x, z);
       }
 
-      const gx = sx / outer.length;
-      const gy = sy / outer.length;
-      const [lx, lz] = metersToLocal(gx, gy);
-      const baseY = terrainLocalYAt(lx, lz) + LAYER.content;
+      const baseY = buildingBaseYForOuterRing(outer);
       const footprintArea = parseNumberProp(props, ['taban_alani', 'footprint_area', 'aream2'], polygonAreaGeo(outer));
-      const floorArea = parseNumberProp(props, ['toplam_insaat', 'insaat_alani', 'floor_area', 'gross_area'], footprintArea * levels);
-      const dwellings = parseNumberProp(props, ['daire', 'daire_sayisi', 'dwelling', 'dwellings'], Math.max(1, Math.round(floorArea / 115)));
+      const floorArea = parseNumberProp(props, namesWithMapping('building_floor_area_field', ['toplam_insaat', 'insaat_alani', 'floor_area', 'gross_area']), footprintArea * levels);
+      const dwellings = parseNumberProp(props, namesWithMapping('building_dwelling_field', ['daire', 'daire_sayisi', 'dwelling', 'dwellings']), Math.max(1, Math.round(floorArea / 115)));
       const population = parseNumberProp(props, ['nufus', 'nüfus', 'population', 'pop'], Math.round(dwellings * 3.1));
       const vehicles = parseNumberProp(props, ['arac', 'araç', 'vehicle', 'cars'], Math.round(dwellings * 0.7));
 
@@ -2536,6 +2698,7 @@ async function rebuildScene() {
   if (!layerDataCache) {
     loadingText.innerText = 'GeoJSON yukleniyor...';
     projectManifest = await loadManifest();
+    applyManifestDefaults();
     const rasterMode = isRasterTextureMode();
     const adalar = await loadGeoJson('../data/yerlesim/myblocks.geojson', { required: !rasterMode, label: 'Blocks' });
     const yapilar = await loadGeoJson('../data/yerlesim/mybuildings.geojson', { required: true, label: 'Buildings' });
@@ -2580,7 +2743,7 @@ async function rebuildScene() {
     let totalFloors = 0;
     const funcMap = {};
     yapilar.features.forEach(f => {
-       const fn = f.properties?.uipfonksiyon || 'BELIRSIZ';
+       const fn = buildingFunctionValue(f.properties || {});
        funcMap[fn] = (funcMap[fn] || 0) + 1;
        totalFloors += parseLevel(f.properties?.katadedi);
     });
@@ -2687,11 +2850,18 @@ function updateDashboard(data) {
   const blockCount = adalar.features.length;
   const parcelCount = parseller?.features?.length || 0;
   let totalFloors = 0;
+  let totalPopulation = 0;
+  let totalDwellings = 0;
+  let totalVehicles = 0;
   const funcMap = {};
   yapilar.features.forEach((f) => {
-    const fn = f.properties?.uipfonksiyon || 'BELIRSIZ';
+    const fn = buildingFunctionValue(f.properties || {});
     funcMap[fn] = (funcMap[fn] || 0) + 1;
     totalFloors += parseLevel(f.properties?.katadedi);
+    const metrics = estimateBuildingFeatureMetrics(f);
+    totalPopulation += metrics.population || 0;
+    totalDwellings += metrics.dwellings || 0;
+    totalVehicles += metrics.vehicles || 0;
   });
   const avgFlr = bldCount > 0 ? (totalFloors / bldCount).toFixed(1) : '-';
 
@@ -2703,6 +2873,9 @@ function updateDashboard(data) {
   setMetric('metric-blocks', isRasterTextureMode() && !blockCount ? 'texture' : blockCount);
   setMetric('metric-parcels', isRasterTextureMode() && !parcelCount ? 'texture' : (parcelCount || '-'));
   setMetric('metric-floors', avgFlr);
+  setMetric('metric-population', Math.round(totalPopulation));
+  setMetric('metric-dwellings', Math.round(totalDwellings));
+  setMetric('metric-vehicles', Math.round(totalVehicles));
 
   const meta = document.getElementById('project-meta');
   if (meta) {
@@ -2775,6 +2948,7 @@ function addGui() {
   terrain.add(settings, 'showTerrainSides').name('Build sides').onChange(rebuildScene);
   terrain.add(settings, 'terrainSideDrop', 0, 40, 0.5).name('Side drop from DEM min').onChange(rebuildScene);
   terrain.addColor(settings, 'terrainSideColor').name('Side color').onChange(rebuildScene);
+  terrain.add(settings, 'demMeshQuality', 48, 360, 8).name('DEM mesh quality').onChange(rebuildScene);
   terrain.add(settings, 'pavementStyle', Object.keys(textureSets.pavement)).name(t('pavement')).onChange(rebuildScene);
   terrain.add(settings, 'showHardscape').name(t('showHardscape')).onChange(rebuildScene);
   terrain.add(settings, 'hardscapeStyle', Object.keys(textureSets.hardscape)).name(t('hardTex')).onChange(rebuildScene);
@@ -2837,6 +3011,7 @@ function addGui() {
   functionGuiRefs = { refreshFunctionGui };
   if (Object.keys(functionColorState).length > 0) refreshFunctionGui();
   globalGui.close();
+  if (globalGui.domElement) globalGui.domElement.style.display = 'none';
 }
 
 addGui();
@@ -3207,6 +3382,8 @@ function animate() {
     if (_flyControlsTarget) controls.target.lerp(_flyControlsTarget, ease * 0.12);
   }
 
+  applyTourPlayback();
+
   // SSAO settle: run full SSAO only when camera has been still 300ms
   // → smooth orbit at 60fps, quality rendering when static
   const _now = performance.now();
@@ -3309,7 +3486,7 @@ if (btnToggleRec && recordingPanel) {
 }
 
 // Elements hidden during recording (everything except recording-container)
-const _recHideEls = ['panel-toggle','lang-toggle','walk-toggle','game-toggle','main-panel'];
+const _recHideEls = ['panel-toggle','lang-toggle','scene-toggle','layers-toggle','analysis-toggle','narrative-toggle','advanced-toggle','walk-toggle','game-toggle','main-panel','layer-dock','scene-dock','analysis-dock','narrative-dock'];
 
 function _recHideUi() {
   _recHideEls.forEach(id => {
@@ -3456,6 +3633,194 @@ if (autoOrbitBtn) {
   });
 }
 
+let selectedTourIndex = -1;
+
+const TOUR_SETTING_KEYS = [
+  'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture',
+  'showCars', 'showRoads', 'showSidewalks', 'showCrosswalks', 'showPedestrians',
+  'roadColorMode', 'showWindPlumes', 'windDirectionDeg', 'windPlumeDistance',
+  'showTerrainTexture', 'showTerrainSides'
+];
+
+function vectorToPlain(v) {
+  return { x: v.x, y: v.y, z: v.z };
+}
+
+function plainToVector(v) {
+  return new THREE.Vector3(Number(v?.x) || 0, Number(v?.y) || 0, Number(v?.z) || 0);
+}
+
+function captureTourFrame() {
+  const sceneSettings = {};
+  TOUR_SETTING_KEYS.forEach((key) => { sceneSettings[key] = settings[key]; });
+  return {
+    camera: vectorToPlain(camera.position),
+    target: vectorToPlain(controls.target),
+    timeOfDay: settings.timeOfDay,
+    settings: sceneSettings,
+    caption: document.getElementById('tour-caption')?.value?.trim() || `Keyframe ${tourState.keyframes.length + 1}`
+  };
+}
+
+function applyTourFrame(frame, rebuild = true) {
+  if (!frame) return;
+  if (frame.settings) Object.assign(settings, frame.settings);
+  if (Number.isFinite(frame.timeOfDay)) settings.timeOfDay = frame.timeOfDay;
+  camera.position.copy(plainToVector(frame.camera));
+  controls.target.copy(plainToVector(frame.target));
+  camera.lookAt(controls.target);
+  checkTimeChange();
+  updateDockControls();
+  if (rebuild) rebuildScene();
+}
+
+function renderTourList() {
+  const list = document.getElementById('tour-list');
+  if (!list) return;
+  list.innerHTML = tourState.keyframes.map((frame, index) => (
+    `<div class="tour-item ${index === selectedTourIndex ? 'active' : ''}" data-tour-index="${index}">
+      <strong>${index + 1}. ${frame.caption || 'Keyframe'}</strong><br>
+      <span>${Number(frame.timeOfDay || 0).toFixed(1)}h - ${frame.settings?.roadColorMode || 'Default'}</span>
+    </div>`
+  )).join('') || '<div class="tour-item">No keyframes yet.</div>';
+  list.querySelectorAll('[data-tour-index]').forEach((item) => {
+    item.addEventListener('click', () => {
+      selectedTourIndex = Number(item.dataset.tourIndex);
+      const frame = tourState.keyframes[selectedTourIndex];
+      const input = document.getElementById('tour-caption');
+      if (input) input.value = frame.caption || '';
+      applyTourFrame(frame, true);
+      renderTourList();
+    });
+  });
+}
+
+function updateTourControls() {
+  document.querySelectorAll('[data-tour-setting]').forEach((el) => {
+    const key = el.dataset.tourSetting;
+    if (!(key in tourState)) return;
+    if (el.type === 'checkbox') el.checked = !!tourState[key];
+    else el.value = tourState[key];
+  });
+}
+
+function addTourKeyframe() {
+  tourState.keyframes.push(captureTourFrame());
+  selectedTourIndex = tourState.keyframes.length - 1;
+  saveTourState();
+  renderTourList();
+}
+
+function updateTourKeyframe() {
+  if (selectedTourIndex < 0 || selectedTourIndex >= tourState.keyframes.length) return;
+  tourState.keyframes[selectedTourIndex] = captureTourFrame();
+  saveTourState();
+  renderTourList();
+}
+
+function deleteTourKeyframe() {
+  if (selectedTourIndex < 0 || selectedTourIndex >= tourState.keyframes.length) return;
+  tourState.keyframes.splice(selectedTourIndex, 1);
+  selectedTourIndex = Math.min(selectedTourIndex, tourState.keyframes.length - 1);
+  saveTourState();
+  renderTourList();
+}
+
+function playTour() {
+  if (tourState.keyframes.length < 2) return;
+  settings.autoOrbit = false;
+  tourState.playing = true;
+  tourState.startTime = performance.now() - tourState.currentTime * 1000;
+  controls.enabled = false;
+}
+
+function pauseTour() {
+  tourState.playing = false;
+  controls.enabled = !isWalkMode;
+  document.getElementById('tour-caption-overlay')?.classList.add('hidden');
+}
+
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function applyTourPlayback() {
+  if (!tourState.playing || tourState.keyframes.length < 2) return;
+  const duration = Math.max(1, Number(tourState.duration) || 18);
+  tourState.currentTime = (performance.now() - tourState.startTime) / 1000;
+  if (tourState.currentTime > duration) {
+    if (tourState.loop) {
+      tourState.startTime = performance.now();
+      tourState.currentTime = 0;
+    } else {
+      pauseTour();
+      tourState.currentTime = duration;
+    }
+  }
+  const frames = tourState.keyframes;
+  const totalSegments = frames.length - 1;
+  const progress = Math.min(1, Math.max(0, tourState.currentTime / duration));
+  const segmentFloat = progress * totalSegments;
+  const idx = Math.min(totalSegments - 1, Math.floor(segmentFloat));
+  const localT = easeInOutCubic(segmentFloat - idx);
+  const a = frames[idx];
+  const b = frames[idx + 1];
+  camera.position.lerpVectors(plainToVector(a.camera), plainToVector(b.camera), localT);
+  controls.target.lerpVectors(plainToVector(a.target), plainToVector(b.target), localT);
+  camera.lookAt(controls.target);
+  settings.timeOfDay = (Number(a.timeOfDay) || 0) + ((Number(b.timeOfDay) || 0) - (Number(a.timeOfDay) || 0)) * localT;
+  const active = localT < 0.5 ? a : b;
+  if (active.settings) Object.assign(settings, active.settings);
+  checkTimeChange();
+  const caption = document.getElementById('tour-caption-overlay');
+  if (caption) {
+    caption.textContent = active.caption || '';
+    caption.classList.toggle('hidden', !active.caption);
+  }
+}
+
+function exportTourJson() {
+  const blob = new Blob([JSON.stringify({ version: 'planx-tour/v1', ...tourState }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'planx_tour.json';
+  document.body.appendChild(a);
+  a.click();
+  URL.revokeObjectURL(a.href);
+  a.remove();
+}
+
+function initTourUi() {
+  updateTourControls();
+  renderTourList();
+  document.getElementById('tour-add')?.addEventListener('click', addTourKeyframe);
+  document.getElementById('tour-update')?.addEventListener('click', updateTourKeyframe);
+  document.getElementById('tour-delete')?.addEventListener('click', deleteTourKeyframe);
+  document.getElementById('tour-play')?.addEventListener('click', playTour);
+  document.getElementById('tour-pause')?.addEventListener('click', pauseTour);
+  document.getElementById('tour-export')?.addEventListener('click', exportTourJson);
+  document.getElementById('tour-import')?.addEventListener('change', async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const data = JSON.parse(await file.text());
+    tourState.keyframes = Array.isArray(data.keyframes) ? data.keyframes : [];
+    tourState.duration = Number(data.duration) || tourState.duration;
+    tourState.loop = !!data.loop;
+    selectedTourIndex = tourState.keyframes.length ? 0 : -1;
+    saveTourState();
+    updateTourControls();
+    renderTourList();
+  });
+  document.querySelectorAll('[data-tour-setting]').forEach((el) => {
+    const handler = () => {
+      const key = el.dataset.tourSetting;
+      tourState[key] = el.type === 'checkbox' ? el.checked : Number(el.value);
+      saveTourState();
+    };
+    el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', handler);
+  });
+}
+
 function populateDockSelects() {
   const selectOptions = {
     islandTexture: Object.keys(textureSets.island),
@@ -3504,11 +3869,19 @@ function applyDockSetting(key, value, inputType) {
 function initDockUi() {
   populateDockSelects();
   updateDockControls();
-  document.getElementById('layers-toggle')?.addEventListener('click', () => {
-    document.getElementById('layer-dock')?.classList.toggle('hidden');
+  document.querySelectorAll('[data-dock-target]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = document.getElementById(btn.dataset.dockTarget);
+      if (!target) return;
+      document.querySelectorAll('.dock-panel').forEach((dock) => {
+        if (dock !== target) dock.classList.add('hidden');
+      });
+      target.classList.toggle('hidden');
+    });
   });
-  document.getElementById('style-toggle')?.addEventListener('click', () => {
-    document.getElementById('style-dock')?.classList.toggle('hidden');
+  document.getElementById('advanced-toggle')?.addEventListener('click', () => {
+    if (!globalGui?.domElement) return;
+    globalGui.domElement.style.display = globalGui.domElement.style.display === 'none' ? '' : 'none';
   });
   document.querySelectorAll('.dock-close').forEach((btn) => {
     btn.addEventListener('click', () => document.getElementById(btn.dataset.close)?.classList.add('hidden'));
@@ -3520,3 +3893,4 @@ function initDockUi() {
 }
 
 initDockUi();
+initTourUi();

@@ -103,39 +103,61 @@ ul {
     font-family: 'Montserrat', sans-serif;
 }
 
-.walk-btn {
+.scene-btn {
     left: 90px;
+    font-size: 1rem;
+}
+
+.layers-btn {
+    left: 140px;
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.analysis-btn {
+    left: 190px;
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.narrative-btn {
+    left: 240px;
+    font-size: 0.95rem;
+    font-weight: 800;
+}
+
+.advanced-btn {
+    left: 290px;
+    font-size: 1rem;
+}
+
+.walk-btn {
+    left: 340px;
     font-size: 1.1rem;
     padding-bottom: 2px;
 }
+
+.game-btn {
+    left: 390px;
+    font-size: 1.1rem;
+}
+
 .walk-btn.active {
     background: #0f766e;
     color: white;
 }
 
-.game-btn {
-    left: 140px;
-    font-size: 1.1rem;
-}
 .game-btn.active {
     background: #7c3aed;
     box-shadow: 0 0 12px rgba(124, 58, 237, 0.6);
 }
 
+.advanced-game {
+    opacity: 0.72;
+}
+
 #main-panel {
     margin-top: 50px;
-}
-
-.layers-btn {
-    left: 190px;
-    font-size: 0.9rem;
-    font-weight: 800;
-}
-
-.style-btn {
-    left: 240px;
-    font-size: 0.9rem;
-    font-weight: 800;
 }
 
 .dashboard-head {
@@ -163,7 +185,7 @@ ul {
 
 .metric-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 8px;
     margin: 14px 0;
 }
@@ -299,6 +321,90 @@ ul {
     padding: 7px 0;
     font-size: 0.78rem;
     border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.dock-note {
+    color: #cbd5e1;
+    font-size: 0.72rem;
+    line-height: 1.45;
+    margin: 0 0 10px;
+}
+
+.dock-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.dock-actions button {
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 7px;
+    background: rgba(255,255,255,0.1);
+    color: white;
+    min-height: 30px;
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.dock-actions button:hover {
+    background: rgba(20,184,166,0.32);
+}
+
+.dock-text,
+.dock-file {
+    width: 100%;
+    margin-top: 8px;
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 7px;
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 7px 8px;
+}
+
+.tour-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 210px;
+    overflow: auto;
+    margin-top: 10px;
+}
+
+.tour-item {
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 7px;
+    padding: 8px;
+    background: rgba(255,255,255,0.07);
+    cursor: pointer;
+    font-size: 0.72rem;
+}
+
+.tour-item.active {
+    border-color: #5eead4;
+    background: rgba(20,184,166,0.22);
+}
+
+.tour-caption-overlay {
+    position: fixed;
+    left: 50%;
+    bottom: 32px;
+    transform: translateX(-50%);
+    max-width: min(680px, 82vw);
+    z-index: 35;
+    background: rgba(15,23,42,0.84);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 9px;
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.tour-caption-overlay.hidden {
+    display: none;
 }
 
 .dock-panel input[type="checkbox"] {

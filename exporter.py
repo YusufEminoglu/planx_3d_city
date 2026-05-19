@@ -160,7 +160,21 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
             feedback(f"{LABELS[key]} -> {out_path.name}")
 
     road_access = _road_access_manifest(layer_map)
-    manifest_path = write_manifest(web_root, manifest_inputs, mode, required_inputs, optional_inputs, terrain_texture, road_access)
+    field_mappings = _field_mappings_manifest(layer_map)
+    analysis_defaults = _analysis_defaults_manifest(layer_map)
+    viewer_defaults = _viewer_defaults_manifest(layer_map)
+    manifest_path = write_manifest(
+        web_root,
+        manifest_inputs,
+        mode,
+        required_inputs,
+        optional_inputs,
+        terrain_texture,
+        road_access,
+        field_mappings,
+        analysis_defaults,
+        viewer_defaults,
+    )
     written.append(str(manifest_path))
     return written
 
@@ -173,6 +187,9 @@ def write_manifest(
     optional_inputs: tuple[str, ...],
     terrain_texture: Optional[dict],
     road_access: Optional[dict],
+    field_mappings: dict,
+    analysis_defaults: dict,
+    viewer_defaults: dict,
 ) -> Path:
     data_root = Path(web_root) / "data"
     data_root.mkdir(parents=True, exist_ok=True)
@@ -181,7 +198,7 @@ def write_manifest(
     manifest = {
         "schema": "planx-3d-city-manifest/v1",
         "plugin": "planx_3d_city",
-        "version": "0.5.5",
+        "version": "0.6.0",
         "mode": mode,
         "exportedAt": datetime.now().astimezone().isoformat(timespec="seconds"),
         "project": {
@@ -192,6 +209,9 @@ def write_manifest(
         "optionalInputs": list(optional_inputs),
         "terrainTexture": terrain_texture,
         "roadAccess": road_access,
+        "fieldMappings": field_mappings,
+        "analysisDefaults": analysis_defaults,
+        "viewerDefaults": viewer_defaults,
         "inputs": inputs,
         "summary": {
             "emptyOptionalInputs": [item["key"] for item in inputs if item.get("optional") and item.get("empty")],
@@ -213,6 +233,41 @@ def _road_access_manifest(layer_map: dict) -> Optional[dict]:
         "field": field,
         "noCarKeywords": [v.strip() for v in no_car_values.split(",") if v.strip()],
         "vehicleKeywords": [v.strip() for v in vehicle_values.split(",") if v.strip()],
+    }
+
+
+def _field_mappings_manifest(layer_map: dict) -> dict:
+    keys = (
+        "road_hierarchy_field",
+        "building_population_field",
+        "building_dwelling_field",
+        "building_vehicle_field",
+        "building_floor_area_field",
+        "landuse_function_field",
+        "odor_source_field",
+        "light_angle_field",
+        "bench_angle_field",
+        "trashbin_angle_field",
+        "busstop_angle_field",
+    )
+    return {key: (layer_map.get(key) or "").strip() or None for key in keys}
+
+
+def _analysis_defaults_manifest(layer_map: dict) -> dict:
+    return {
+        "roadColorMode": "Default",
+        "windDirectionDeg": 315,
+        "windPlumeDistance": 180,
+        "screeningLabel": "Planning screening / design review",
+    }
+
+
+def _viewer_defaults_manifest(layer_map: dict) -> dict:
+    return {
+        "showTerrainSides": True,
+        "terrainSideDrop": 5.0,
+        "terrainSideColor": "#d9fbf5",
+        "demMeshQuality": 160,
     }
 
 

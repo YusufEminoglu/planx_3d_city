@@ -33,10 +33,13 @@
     <div id="ui-container">
         <button id="panel-toggle" class="panel-btn" title="Toggle Panel">☰</button>
         <button id="lang-toggle" class="panel-btn lang-btn" title="Toggle Language">TR</button>
+        <button id="scene-toggle" class="panel-btn scene-btn" data-dock-target="scene-dock" title="Scene Dock">◐</button>
+        <button id="layers-toggle" class="panel-btn layers-btn" data-dock-target="layer-dock" title="Layer Dock">☷</button>
+        <button id="analysis-toggle" class="panel-btn analysis-btn" data-dock-target="analysis-dock" title="Analysis Dock">⌁</button>
+        <button id="narrative-toggle" class="panel-btn narrative-btn" data-dock-target="narrative-dock" title="Narrative Studio">▶</button>
+        <button id="advanced-toggle" class="panel-btn advanced-btn" title="Advanced Controls">⚙</button>
         <button id="walk-toggle" class="panel-btn walk-btn" title="Walk Mode">🚶‍♂️</button>
-        <button id="game-toggle" class="panel-btn game-btn" title="Sapan Modu">🏹</button>
-        <button id="layers-toggle" class="panel-btn layers-btn" title="Layer Dock">L</button>
-        <button id="style-toggle" class="panel-btn style-btn" title="Style Dock">S</button>
+        <button id="game-toggle" class="panel-btn game-btn advanced-game" title="Sapan Modu">🏹</button>
         <div id="recording-container">
             <button id="btn-toggle-rec" class="panel-btn" style="left:0;position:relative;" title="Kamera Paneli">🎥</button>
             <div id="recording-panel" class="recording-panel hidden">
@@ -91,6 +94,9 @@
                 <div><span id="metric-blocks">-</span><small>Ada</small></div>
                 <div><span id="metric-parcels">-</span><small>Parsel</small></div>
                 <div><span id="metric-floors">-</span><small>Ort. kat</small></div>
+                <div><span id="metric-population">-</span><small>Nufus</small></div>
+                <div><span id="metric-dwellings">-</span><small>Daire</small></div>
+                <div><span id="metric-vehicles">-</span><small>Arac</small></div>
             </div>
             <div class="project-meta" id="project-meta">Proje bilgisi bekleniyor</div>
             <div class="data-health" id="data-health"></div>
@@ -114,8 +120,8 @@
         <label><input type="checkbox" data-setting="showPedestrians"> Yayalar</label>
     </aside>
 
-    <aside class="dock-panel hidden" id="style-dock">
-        <div class="dock-head"><span>Style Dock</span><button class="dock-close" data-close="style-dock">x</button></div>
+    <aside class="dock-panel hidden" id="scene-dock">
+        <div class="dock-head"><span>Scene Dock</span><button class="dock-close" data-close="scene-dock">x</button></div>
         <label><input type="checkbox" data-setting="showTerrainTexture"> Plan texture</label>
         <label>Texture opacity <input type="range" min="0.1" max="1" step="0.05" data-setting="terrainTextureOpacity"></label>
         <label>Texture brightness <input type="range" min="0.5" max="1.5" step="0.05" data-setting="terrainTextureBrightness"></label>
@@ -123,19 +129,48 @@
         <label><input type="checkbox" data-setting="showTerrainSides"> Build sides</label>
         <label>Side drop <input type="range" min="0" max="40" step="0.5" data-setting="terrainSideDrop"></label>
         <label>Side color <input type="color" data-setting="terrainSideColor"></label>
+        <label>DEM mesh quality <input type="range" min="48" max="360" step="8" data-setting="demMeshQuality"></label>
         <label>Ada rengi <input type="color" data-setting="islandColor"></label>
         <label>Ada dokusu <select data-setting="islandTexture"></select></label>
-        <label>Yol analiz rengi <select data-setting="roadColorMode"></select></label>
         <label>Yol rengi <input type="color" data-setting="roadColor"></label>
         <label>Yol genisligi <input type="range" min="2.8" max="8" step="0.1" data-setting="roadWidth"></label>
-        <label><input type="checkbox" data-setting="showWindPlumes"> Ruzgar etki zonu</label>
-        <label>Ruzgar yonu <input type="range" min="0" max="359" step="1" data-setting="windDirectionDeg"></label>
-        <label>Etki mesafesi <input type="range" min="40" max="600" step="10" data-setting="windPlumeDistance"></label>
         <label>Cati tipi <select data-setting="roofShape"></select></label>
         <label>Cati dokusu <select data-setting="roofTexture"></select></label>
         <label>Zaman <input type="range" min="0" max="24" step="0.1" data-setting="timeOfDay"></label>
         <label>Hava <select data-setting="weather"></select></label>
     </aside>
+
+    <aside class="dock-panel hidden" id="analysis-dock">
+        <div class="dock-head"><span>Analysis Dock</span><button class="dock-close" data-close="analysis-dock">x</button></div>
+        <p class="dock-note">Planning screening / design review. These overlays are decision-support, not engineering simulation.</p>
+        <label>Road analysis <select data-setting="roadColorMode"></select></label>
+        <label><input type="checkbox" data-setting="showWindPlumes"> Ruzgar etki zonu</label>
+        <label>Ruzgar yonu <input type="range" min="0" max="359" step="1" data-setting="windDirectionDeg"></label>
+        <label>Etki mesafesi <input type="range" min="40" max="600" step="10" data-setting="windPlumeDistance"></label>
+        <label>Solar review <input type="range" min="0" max="24" step="0.1" data-setting="timeOfDay"></label>
+        <label><input type="checkbox" data-setting="enableSSAO"> Shadow quality</label>
+    </aside>
+
+    <aside class="dock-panel hidden narrative-panel" id="narrative-dock">
+        <div class="dock-head"><span>Narrative Studio</span><button class="dock-close" data-close="narrative-dock">x</button></div>
+        <p class="dock-note">Save camera, layer, sun and analysis states as keyframes, then record the tour from the camera panel.</p>
+        <label>Tour duration <input type="range" min="6" max="90" step="1" data-tour-setting="duration"></label>
+        <label><input type="checkbox" data-tour-setting="loop"> Loop tour</label>
+        <input id="tour-caption" class="dock-text" type="text" placeholder="Caption / scene note">
+        <div class="dock-actions">
+            <button id="tour-add">Add keyframe</button>
+            <button id="tour-update">Update</button>
+            <button id="tour-delete">Delete</button>
+        </div>
+        <div class="dock-actions">
+            <button id="tour-play">Play</button>
+            <button id="tour-pause">Pause</button>
+            <button id="tour-export">Export JSON</button>
+        </div>
+        <input id="tour-import" type="file" accept="application/json" class="dock-file">
+        <div id="tour-list" class="tour-list"></div>
+    </aside>
+    <div id="tour-caption-overlay" class="tour-caption-overlay hidden"></div>
     
     <!-- Sapan Modu HUD -->
     <div id="game-hud" class="game-hud hidden">

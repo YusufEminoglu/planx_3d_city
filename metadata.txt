@@ -2,15 +2,15 @@
 name=PlanX 3D City Viewer
 qgisMinimumVersion=3.28
 description=Export QGIS layers and launch the interactive PlanX 3D City web viewer.
-version=0.5.5
+version=0.6.0
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
-about=PlanX 3D City Viewer maps user-exported DEM, ROI, road, building, block, parcel, optional urban furniture layers, and optional raster plan texture workflows to the browser-based Three.js city viewer, with lightweight planning analysis overlays for mobility, wind impact, and building statistics. Developed with feedback from educational workflows at Dokuz Eylul University, Department of City and Regional Planning.
+about=PlanX 3D City Viewer maps user-exported DEM, ROI, road, building, block, parcel, optional urban furniture layers, and optional raster plan texture workflows to a browser-based Three.js city cockpit with narrative keyframes, terrain quality controls, mobility, wind impact, and building statistics overlays. Developed with feedback from educational workflows at Dokuz Eylul University, Department of City and Regional Planning.
 tracker=https://github.com/YusufEminoglu/planx_3d_city/issues
 repository=https://github.com/YusufEminoglu/planx_3d_city
 category=Web
 homepage=https://github.com/YusufEminoglu/planx_3d_city
-tags=planx,3d city,urban planning,three.js,geojson,geotiff,dem,raster texture,mobility,wind,QGIS
+tags=planx,3d city,urban planning,three.js,geojson,geotiff,dem,raster texture,mobility,wind,narrative,keyframe,QGIS
 icon=icons/icon_main.svg
 qgisMaximumVersion=3.99
 experimental=False
@@ -19,6 +19,14 @@ hasProcessingProvider=no
 plugin_dependencies=
 license=MIT
 changelog=
+    PlanX 3D City Viewer 0.6.0 - Professional cockpit, Narrative Studio, terrain, and orientation release.
+        - Reorganized the viewer into Scene, Layers, Analysis, and Narrative docks while keeping advanced controls secondary.
+        - Added Narrative Studio keyframes for camera, target, layer states, analysis states, sun time, captions, local storage, and JSON import/export.
+        - Added manifest field mappings for building statistics, land-use, odor/noise sources, and furniture orientation fields.
+        - Improved ROI-based terrain build-sides as a solid negative extrusion from the valid DEM minimum minus the configured side drop.
+        - Added DEM mesh quality control inspired by terrain resampling workflows for smoother terrain surfaces.
+        - Improved building base placement on sloped DEM by using footprint terrain samples so buildings do not hover above the terrain.
+        - Added automatic furniture alignment to the nearest road direction when no explicit angle field is provided.
     PlanX 3D City Viewer 0.5.5 - Corrected terrain build-sides to follow ROI geometry instead of the rectangular scene extent.
         - Build-sides now use the exported ROI polygon boundary as the primary side-wall footprint.
         - Falls back to the DEM/terrain extent only when ROI geometry is unavailable.
