@@ -82,7 +82,7 @@ ul {
     border-radius: 50%;
     font-size: 1.2rem;
     cursor: pointer;
-    z-index: 20;
+    z-index: 80;
     pointer-events: auto;
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     transition: background 0.2s, transform 0.2s;
@@ -115,30 +115,48 @@ ul {
 }
 
 .analysis-btn {
+    left: 290px;
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.style-btn {
     left: 190px;
     font-size: 1rem;
     font-weight: 800;
 }
 
-.narrative-btn {
+.mobility-btn {
     left: 240px;
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.furniture-btn {
+    left: 340px;
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.narrative-btn {
+    left: 390px;
     font-size: 0.95rem;
     font-weight: 800;
 }
 
 .advanced-btn {
-    left: 290px;
+    left: 440px;
     font-size: 1rem;
 }
 
 .walk-btn {
-    left: 340px;
+    left: 490px;
     font-size: 1.1rem;
     padding-bottom: 2px;
 }
 
 .game-btn {
-    left: 390px;
+    left: 540px;
     font-size: 1.1rem;
 }
 
@@ -277,7 +295,7 @@ ul {
     position: fixed;
     top: 86px;
     right: 24px;
-    z-index: 25;
+    z-index: 75;
     width: 280px;
     background: rgba(15, 23, 42, 0.88);
     color: #e2e8f0;
@@ -328,6 +346,35 @@ ul {
     font-size: 0.72rem;
     line-height: 1.45;
     margin: 0 0 10px;
+}
+
+.dock-subtitle {
+    color: rgba(226, 232, 240, 0.92);
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin: 10px 0 4px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,0.10);
+}
+
+.function-style-controls {
+    display: grid;
+    gap: 7px;
+}
+
+.function-style-row {
+    display: grid;
+    grid-template-columns: minmax(72px, 1fr) 36px minmax(86px, 1fr);
+    gap: 6px;
+    align-items: center;
+}
+
+.function-style-row span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: rgba(241,245,249,0.88);
+    font-size: 0.74rem;
 }
 
 .dock-actions {
@@ -404,6 +451,27 @@ ul {
 }
 
 .tour-caption-overlay.hidden {
+    display: none;
+}
+
+.walk-hud {
+    position: fixed;
+    left: 50%;
+    bottom: 26px;
+    transform: translateX(-50%);
+    z-index: 55;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.78);
+    color: #e2e8f0;
+    border: 1px solid rgba(255,255,255,0.16);
+    backdrop-filter: blur(12px);
+    font-size: 0.78rem;
+    font-weight: 700;
+    pointer-events: none;
+}
+
+.walk-hud.hidden {
     display: none;
 }
 

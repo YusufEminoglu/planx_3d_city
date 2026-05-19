@@ -22,6 +22,7 @@ from qgis.PyQt.QtWidgets import (
     QMessageBox,
     QPushButton,
     QLineEdit,
+    QScrollArea,
     QTextBrowser,
     QVBoxLayout,
     QWidget,
@@ -50,6 +51,7 @@ from .style_tools import (
 EXPECTED_GEOMETRIES = {
     "roi": "Polygon",
     "plan_texture": "Raster",
+    "basemap": "Raster",
     "roads": "Line",
     "buildings": "Polygon",
     "blocks": "Polygon",
@@ -73,15 +75,38 @@ FIELD_MAPPING_DEFS = (
     ("building_floor_area_field", "buildings", "Building gross floor area field", "Toplam insaat alani veya emsal alani."),
     ("landuse_function_field", "buildings", "Land-use/function field", "Bina/kullanim fonksiyonu; uipfonksiyon yoksa viewer bunu kullanir."),
     ("odor_source_field", "buildings", "Odor/noise source field", "Sanayi, atik, depolama, aritma gibi kaynaklari yakalamak icin kullanilacak alan."),
+    ("tree_height_field", "trees", "Tree height field", "Agac boyunu metre cinsinden tasiyan alan. Bos kalirsa height/boy/yukseklik fallbackleri denenir."),
     ("light_angle_field", "lights", "Light direction field", "Derece cinsinden yon/aci; bos kalirsa en yakin yol aksina gore hizalanir."),
     ("bench_angle_field", "benches", "Bench direction field", "Derece cinsinden yon/aci; bos kalirsa en yakin yol aksina paralel hizalanir."),
     ("trashbin_angle_field", "trashbins", "Trash bin direction field", "Derece cinsinden yon/aci; bos kalirsa en yakin yol aksina paralel hizalanir."),
     ("busstop_angle_field", "busstops", "Bus stop direction field", "Derece cinsinden yon/aci; bos kalirsa en yakin yol aksina paralel hizalanir."),
 )
 
+ASSET_THEME_OPTIONS = (
+    "Modern Urban",
+    "Mediterranean",
+    "Campus",
+    "Eco",
+    "Dense Urban",
+)
+
+ASSET_POOL_CATEGORIES = (
+    ("pedestrians", "Pedestrians"),
+    ("cars", "Cars"),
+    ("trees", "Trees"),
+    ("lights", "Lights"),
+    ("benches", "Benches"),
+    ("bins", "Trash bins"),
+    ("busstops", "Bus stops"),
+    ("facades", "Facades"),
+    ("roofs", "Roofs"),
+    ("paving", "Paving"),
+)
+
 AUTO_MATCH_ALIASES = {
     "dem": ("dem", "mydem", "elevation", "yukseklik", "yukseklik modeli"),
     "plan_texture": ("plan", "siteplan", "yerlesim plani", "nazim", "uygulama", "texture", "pafta"),
+    "basemap": ("basemap", "base map", "xyz", "tile", "tiles", "google", "osm", "openstreetmap", "uydu", "satellite", "altlik", "altlık"),
     "roi": ("roi", "sinir", "calisma", "alan", "boundary"),
     "roads": ("roads", "road", "yol", "yollar", "aks", "myroads"),
     "buildings": ("buildings", "building", "bina", "binalar", "yapi", "yapilar", "mybuildings"),
@@ -118,6 +143,8 @@ class PlanX3DCityDialog(QDialog):
     def selected_layers(self) -> dict:
         payload = {key: box.currentLayer() for key, box in self.layer_boxes.items()}
         payload["mode"] = self._current_mode()
+        if hasattr(self, "basemap_size_combo"):
+            payload["basemap_export_size"] = int(self.basemap_size_combo.currentData() or 4096)
         if hasattr(self, "road_access_field_combo"):
             payload["road_access_field"] = self.road_access_field_combo.currentData() or ""
         if hasattr(self, "road_no_car_values"):
@@ -126,6 +153,13 @@ class PlanX3DCityDialog(QDialog):
             payload["road_vehicle_values"] = self.road_vehicle_values.text().strip()
         for key, combo in getattr(self, "field_mapping_combos", {}).items():
             payload[key] = combo.currentData() or ""
+        if hasattr(self, "asset_theme_combo"):
+            payload["asset_theme"] = self.asset_theme_combo.currentData() or "Modern Urban"
+        asset_pool_counts = {}
+        for key, combo in getattr(self, "asset_pool_count_combos", {}).items():
+            asset_pool_counts[key] = int(combo.currentData() or 4)
+        if asset_pool_counts:
+            payload["asset_pool_counts"] = asset_pool_counts
         return payload
 
     def set_status(self, text: str, error: bool = False) -> None:
@@ -233,12 +267,13 @@ class PlanX3DCityDialog(QDialog):
         hero.addWidget(subtitle)
         content.addLayout(hero)
 
-        self.pages = [
+        raw_pages = [
             self._make_data_page(),
             self._make_check_page(),
             self._make_style_page(),
             self._make_publish_page(),
         ]
+        self.pages = [self._scrollable_page(page) for page in raw_pages]
         for i, page in enumerate(self.pages):
             page.setVisible(i == 0)
             content.addWidget(page)
@@ -253,6 +288,15 @@ class PlanX3DCityDialog(QDialog):
         content.addWidget(buttons)
         shell.addLayout(content, 1)
         self.nav.currentRowChanged.connect(self._switch_page)
+
+    def _scrollable_page(self, page: QWidget) -> QScrollArea:
+        scroll = QScrollArea()
+        scroll.setWidget(page)
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.NoFrame)
+        scroll.setMinimumHeight(420)
+        scroll.setHorizontalScrollBarPolicy(1)
+        return scroll
 
     def _make_data_page(self) -> QWidget:
         page = QWidget()
@@ -277,6 +321,20 @@ class PlanX3DCityDialog(QDialog):
         for row, (key, layer_key, label, help_text) in enumerate(FIELD_MAPPING_DEFS):
             self._add_field_mapping_row(mapping_grid, row, key, layer_key, label, help_text)
         root.addWidget(mapping_group)
+
+        basemap_group = QGroupBox("Opsiyonel QGIS basemap / XYZ altlik")
+        basemap_grid = QGridLayout(basemap_group)
+        self._add_layer_row(basemap_grid, 0, "basemap", required=False)
+        basemap_size_label = QLabel("<b>Basemap export size</b><br><span style='color:#64748b'>Yuksek deger daha net ama daha yavas ve buyuk PNG uretir.</span>")
+        basemap_size_label.setWordWrap(True)
+        self.basemap_size_combo = QComboBox()
+        for size in (1024, 2048, 4096, 8192):
+            self.basemap_size_combo.addItem(f"{size} x {size}", size)
+        self.basemap_size_combo.setCurrentIndex(2)
+        basemap_grid.addWidget(basemap_size_label, 1, 0)
+        basemap_grid.addWidget(self.basemap_size_combo, 1, 1)
+        basemap_grid.addWidget(QLabel("Opsiyonel"), 1, 2)
+        root.addWidget(basemap_group)
 
         optional_group = QGroupBox("Opsiyonel zenginlestirme katmanlari")
         optional_grid = QGridLayout(optional_group)
@@ -356,7 +414,7 @@ class PlanX3DCityDialog(QDialog):
         box = QgsMapLayerComboBox()
         box.setAllowEmptyLayer(True)
         box.setFilters(QgsMapLayerProxyModel.RasterLayer if key == "dem" else QgsMapLayerProxyModel.VectorLayer)
-        if key == "plan_texture":
+        if key in ("plan_texture", "basemap"):
             box.setFilters(QgsMapLayerProxyModel.RasterLayer)
         badge = QLabel("Eksik" if required else "Opsiyonel")
         badge.setProperty("class", "badge")
@@ -400,6 +458,36 @@ class PlanX3DCityDialog(QDialog):
         prep_row.addWidget(self.prepare_building_fields_btn)
         root.addWidget(prep)
 
+        asset_group = QGroupBox("Asset Theme / Material Pool")
+        asset_root = QVBoxLayout(asset_group)
+        asset_intro = QLabel(
+            "Tema secimi yalniz web viewer'daki gorsel varyant havuzunu belirler; GIS geometrilerini veya "
+            "attribute verisini degistirmez. Viewer yalniz secilen tema ve aktif varyant sayilarini kullanir."
+        )
+        asset_intro.setWordWrap(True)
+        asset_root.addWidget(asset_intro)
+        theme_row = QHBoxLayout()
+        self.asset_theme_combo = QComboBox()
+        for theme in ASSET_THEME_OPTIONS:
+            self.asset_theme_combo.addItem(theme, theme)
+        self.asset_theme_reset_btn = QPushButton("Reset theme defaults")
+        theme_row.addWidget(QLabel("Theme"))
+        theme_row.addWidget(self.asset_theme_combo, 1)
+        theme_row.addWidget(self.asset_theme_reset_btn)
+        asset_root.addLayout(theme_row)
+        pool_grid = QGridLayout()
+        self.asset_pool_count_combos = {}
+        for row, (key, label) in enumerate(ASSET_POOL_CATEGORIES):
+            combo = QComboBox()
+            for count in (3, 4, 5):
+                combo.addItem(str(count), count)
+            combo.setCurrentIndex(1)
+            self.asset_pool_count_combos[key] = combo
+            pool_grid.addWidget(QLabel(label), row // 2, (row % 2) * 2)
+            pool_grid.addWidget(combo, row // 2, (row % 2) * 2 + 1)
+        asset_root.addLayout(pool_grid)
+        root.addWidget(asset_group)
+
         quick = QGroupBox("Secili feature hizli stil uygula")
         form = QFormLayout(quick)
         self.block_texture_combo = QComboBox()
@@ -438,6 +526,7 @@ class PlanX3DCityDialog(QDialog):
 
         self.prepare_block_fields_btn.clicked.connect(self._prepare_block_fields)
         self.prepare_building_fields_btn.clicked.connect(self._prepare_building_fields)
+        self.asset_theme_reset_btn.clicked.connect(self._reset_asset_theme_defaults)
         self.apply_blocks_btn.clicked.connect(self._apply_block_style)
         self.apply_buildings_btn.clicked.connect(self._apply_building_style)
         self.color_btn.clicked.connect(lambda: self._pick_color("color"))
@@ -495,7 +584,7 @@ class PlanX3DCityDialog(QDialog):
         layers = list(QgsProject.instance().mapLayers().values())
         used_ids = set()
         matched = []
-        for key in ("dem", "plan_texture", "roi", "roads", "buildings", "blocks", "parcels") + OPTIONAL_INPUTS:
+        for key in ("dem", "plan_texture", "basemap", "roi", "roads", "buildings", "blocks", "parcels") + OPTIONAL_INPUTS:
             candidate = self._best_layer_match(key, layers, used_ids)
             if candidate is None:
                 continue
@@ -515,9 +604,9 @@ class PlanX3DCityDialog(QDialog):
         for layer in layers:
             if layer.id() in used_ids:
                 continue
-            if key in ("dem", "plan_texture") and hasattr(layer, "featureCount"):
+            if key in ("dem", "plan_texture", "basemap") and hasattr(layer, "featureCount"):
                 continue
-            if key not in ("dem", "plan_texture") and not hasattr(layer, "featureCount"):
+            if key not in ("dem", "plan_texture", "basemap") and not hasattr(layer, "featureCount"):
                 continue
             name = self._normalize_name(layer.name())
             score = 0
@@ -556,7 +645,7 @@ class PlanX3DCityDialog(QDialog):
         if mapped:
             warnings.append("Viewer field mapping aktif: " + ", ".join(mapped))
 
-        ordered_keys = ("dem", "plan_texture", "roi", "roads", "buildings", "blocks", "parcels") + OPTIONAL_INPUTS
+        ordered_keys = ("dem", "plan_texture", "basemap", "roi", "roads", "buildings", "blocks", "parcels") + OPTIONAL_INPUTS
         for key in ordered_keys:
             layer = layer_map.get(key)
             role = "Zorunlu" if key in required_keys else "Opsiyonel"
@@ -630,6 +719,16 @@ class PlanX3DCityDialog(QDialog):
         added = ensure_fields(self.selected_layers().get("blocks"), BLOCK_STYLE_FIELDS)
         self._style_message("Blocks", added)
 
+    def _reset_asset_theme_defaults(self) -> None:
+        if hasattr(self, "asset_theme_combo"):
+            idx = self.asset_theme_combo.findData("Modern Urban")
+            self.asset_theme_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        for combo in getattr(self, "asset_pool_count_combos", {}).values():
+            idx = combo.findData(4)
+            combo.setCurrentIndex(idx if idx >= 0 else 0)
+        if hasattr(self, "style_report"):
+            self.style_report.setHtml("<p><b>Asset Theme</b>: Modern Urban varsayilanlari geri yuklendi.</p>")
+
     def _prepare_building_fields(self) -> None:
         added = ensure_fields(self.selected_layers().get("buildings"), BUILDING_STYLE_FIELDS)
         self._style_message("Buildings", added)
@@ -695,6 +794,7 @@ class PlanX3DCityDialog(QDialog):
         descriptions = {
             "dem": "GeoTIFF/raster yukseklik modeli",
             "plan_texture": "DEM uzerine kaplanacak kirpilmis 2B yerlesim plani GeoTIFF",
+            "basemap": "QGIS'te acik XYZ/raster altlik; export sirasinda PNG texture olarak render edilir",
             "roi": "Calisma alani siniri",
             "roads": "Yol akslari",
             "buildings": "Bina tabanlari, kat ve fonksiyon bilgisi",

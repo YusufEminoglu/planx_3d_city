@@ -8,8 +8,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from qgis.PyQt.QtCore import QSize
+from qgis.PyQt.QtGui import QColor
 from qgis.core import (
     QgsCoordinateTransformContext,
+    QgsMapRendererParallelJob,
+    QgsMapSettings,
     QgsProject,
     QgsRasterFileWriter,
     QgsRasterPipe,
@@ -23,6 +27,70 @@ VECTOR_REQUIRED_INPUTS = ("dem", "roi", "roads", "buildings", "blocks", "parcels
 RASTER_TEXTURE_REQUIRED_INPUTS = ("dem", "roi", "plan_texture", "roads", "buildings")
 REQUIRED_INPUTS = VECTOR_REQUIRED_INPUTS
 OPTIONAL_INPUTS = ("trees", "hardscape", "sidewalks", "lights", "benches", "trashbins", "busstops")
+ASSET_THEME_DEFAULT = "Modern Urban"
+ASSET_CATEGORIES = ("pedestrians", "cars", "trees", "lights", "benches", "bins", "busstops", "facades", "roofs", "paving")
+ASSET_THEME_PRESETS = {
+    "Modern Urban": {
+        "pedestrians": ["Commuter", "Urban Casual", "Office", "Student", "Evening"],
+        "cars": ["Graphite", "Slate", "Teal", "White", "Navy"],
+        "trees": ["Street Linden", "Plane", "Compact Maple", "Columnar"],
+        "lights": ["Modern Arc", "Dual Head", "Slim Post", "Classic Post"],
+        "benches": ["Wood Plank", "Concrete Slab", "Curved Metal", "Slim Urban"],
+        "bins": ["Square Box", "Dual Recycle", "Cylinder", "Compact"],
+        "busstops": ["Glass Shelter", "Minimal Canopy", "Steel Canopy", "Wood Cabin"],
+        "facades": ["UrbanA", "UrbanB", "UrbanC", "UrbanD"],
+        "roofs": ["RoofA", "RoofB", "GermanTile", "USShingle"],
+        "paving": ["Asphalt", "StoneA", "Cobble", "Concrete"],
+    },
+    "Mediterranean": {
+        "pedestrians": ["Casual Linen", "Warm Neutral", "Student", "Visitor"],
+        "cars": ["Ivory", "Terracotta", "Olive", "Slate"],
+        "trees": ["Olive", "Cypress", "Plane", "Palm"],
+        "lights": ["Classic Post", "Modern Arc", "Slim Post"],
+        "benches": ["Wood Plank", "Curved Metal", "Stone Seat"],
+        "bins": ["Cylinder", "Square Box", "Dual Recycle"],
+        "busstops": ["Minimal Canopy", "Wood Cabin", "Glass Shelter"],
+        "facades": ["UrbanB", "UrbanD", "UrbanA"],
+        "roofs": ["TurkishTile", "GermanTile", "RoofA"],
+        "paving": ["StoneA", "Cobble", "Concrete"],
+    },
+    "Campus": {
+        "pedestrians": ["Student", "Academic", "Sport", "Visitor"],
+        "cars": ["Slate", "Navy", "White", "Graphite"],
+        "trees": ["Plane", "Pine", "Compact Maple", "Street Linden"],
+        "lights": ["Slim Post", "Modern Arc", "Dual Head"],
+        "benches": ["Wood Plank", "Concrete Slab", "Slim Urban"],
+        "bins": ["Dual Recycle", "Square Box", "Compact"],
+        "busstops": ["Glass Shelter", "Minimal Canopy"],
+        "facades": ["UrbanC", "UrbanA", "UrbanB"],
+        "roofs": ["RoofA", "RoofC", "USShingle"],
+        "paving": ["Concrete", "StoneA", "Asphalt"],
+    },
+    "Eco": {
+        "pedestrians": ["Outdoor", "Casual Green", "Student", "Visitor"],
+        "cars": ["Teal", "Olive", "White", "Slate"],
+        "trees": ["Broadleaf", "Pine", "Street Linden", "Compact Maple"],
+        "lights": ["Slim Post", "Modern Arc", "Classic Post"],
+        "benches": ["Wood Plank", "Stone Seat", "Concrete Slab"],
+        "bins": ["Dual Recycle", "Compact", "Cylinder"],
+        "busstops": ["Wood Cabin", "Minimal Canopy", "Glass Shelter"],
+        "facades": ["UrbanD", "UrbanB", "UrbanA"],
+        "roofs": ["RoofA", "TurkishTile", "RoofC"],
+        "paving": ["Cobble", "StoneA", "Concrete"],
+    },
+    "Dense Urban": {
+        "pedestrians": ["Commuter", "Office", "Evening", "Urban Casual", "Visitor"],
+        "cars": ["Graphite", "Black", "Navy", "White", "Slate"],
+        "trees": ["Columnar", "Compact Maple", "Street Linden"],
+        "lights": ["Dual Head", "Modern Arc", "Slim Post"],
+        "benches": ["Concrete Slab", "Curved Metal", "Slim Urban"],
+        "bins": ["Square Box", "Compact", "Dual Recycle"],
+        "busstops": ["Glass Shelter", "Steel Canopy", "Minimal Canopy"],
+        "facades": ["UrbanA", "UrbanC", "UrbanD", "UrbanB"],
+        "roofs": ["RoofA", "RoofB", "USShingle"],
+        "paving": ["Asphalt", "Concrete", "Grid"],
+    },
+}
 
 VECTOR_TARGETS = {
     "roi": "roi.geojson",
@@ -42,6 +110,7 @@ VECTOR_TARGETS = {
 LABELS = {
     "dem": "DEM",
     "plan_texture": "Plan texture GeoTIFF",
+    "basemap": "QGIS basemap texture",
     "roi": "ROI",
     "roads": "Roads",
     "buildings": "Buildings",
@@ -84,6 +153,7 @@ def target_files(web_root: str) -> list[Path]:
     texture_dir = Path(web_root) / "data" / "texture"
     texture_dir.mkdir(parents=True, exist_ok=True)
     files = [dem_dir / "mydem.tif", texture_dir / "siteplan.tif"]
+    files.append(texture_dir / "basemap.png")
     files.extend(vector_dir / filename for filename in VECTOR_TARGETS.values())
     files.append(Path(web_root) / "data" / "planx_manifest.json")
     return files
@@ -135,6 +205,7 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
     manifest_inputs.append(_layer_manifest("dem", layer_map["dem"], "dem/mydem.tif", False, required_inputs))
 
     terrain_texture = None
+    base_map_texture = None
     if mode == MODE_RASTER_TEXTURE:
         texture_path = texture_dir / "siteplan.tif"
         _export_dem(layer_map["plan_texture"], texture_path)
@@ -145,6 +216,19 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
         }
         written.append(str(texture_path))
         manifest_inputs.append(_layer_manifest("plan_texture", layer_map["plan_texture"], "texture/siteplan.tif", False, required_inputs))
+
+    if layer_map.get("basemap") is not None:
+        basemap_path = texture_dir / "basemap.png"
+        _export_basemap(layer_map, basemap_path)
+        base_map_texture = {
+            "key": "basemap",
+            "target": "texture/basemap.png",
+            "label": LABELS["basemap"],
+            "sourceLayer": layer_map["basemap"].name(),
+            "size": int(layer_map.get("basemap_export_size") or 4096),
+        }
+        written.append(str(basemap_path))
+        manifest_inputs.append(_layer_manifest("basemap", layer_map["basemap"], "texture/basemap.png", False, required_inputs))
 
     for key, filename in VECTOR_TARGETS.items():
         out_path = vector_dir / filename
@@ -163,6 +247,7 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
     field_mappings = _field_mappings_manifest(layer_map)
     analysis_defaults = _analysis_defaults_manifest(layer_map)
     viewer_defaults = _viewer_defaults_manifest(layer_map)
+    asset_theme, asset_pools, pedestrian_style = _asset_theme_manifest(layer_map)
     manifest_path = write_manifest(
         web_root,
         manifest_inputs,
@@ -170,10 +255,14 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
         required_inputs,
         optional_inputs,
         terrain_texture,
+        base_map_texture,
         road_access,
         field_mappings,
         analysis_defaults,
         viewer_defaults,
+        asset_theme,
+        asset_pools,
+        pedestrian_style,
     )
     written.append(str(manifest_path))
     return written
@@ -186,10 +275,14 @@ def write_manifest(
     required_inputs: tuple[str, ...],
     optional_inputs: tuple[str, ...],
     terrain_texture: Optional[dict],
+    base_map_texture: Optional[dict],
     road_access: Optional[dict],
     field_mappings: dict,
     analysis_defaults: dict,
     viewer_defaults: dict,
+    asset_theme: str,
+    asset_pools: dict,
+    pedestrian_style: dict,
 ) -> Path:
     data_root = Path(web_root) / "data"
     data_root.mkdir(parents=True, exist_ok=True)
@@ -198,7 +291,7 @@ def write_manifest(
     manifest = {
         "schema": "planx-3d-city-manifest/v1",
         "plugin": "planx_3d_city",
-        "version": "0.6.0",
+        "version": "0.6.9",
         "mode": mode,
         "exportedAt": datetime.now().astimezone().isoformat(timespec="seconds"),
         "project": {
@@ -208,10 +301,14 @@ def write_manifest(
         "requiredInputs": list(required_inputs),
         "optionalInputs": list(optional_inputs),
         "terrainTexture": terrain_texture,
+        "baseMapTexture": base_map_texture,
         "roadAccess": road_access,
         "fieldMappings": field_mappings,
         "analysisDefaults": analysis_defaults,
         "viewerDefaults": viewer_defaults,
+        "assetTheme": asset_theme,
+        "assetPools": asset_pools,
+        "pedestrianStyle": pedestrian_style,
         "inputs": inputs,
         "summary": {
             "emptyOptionalInputs": [item["key"] for item in inputs if item.get("optional") and item.get("empty")],
@@ -245,6 +342,7 @@ def _field_mappings_manifest(layer_map: dict) -> dict:
         "building_floor_area_field",
         "landuse_function_field",
         "odor_source_field",
+        "tree_height_field",
         "light_angle_field",
         "bench_angle_field",
         "trashbin_angle_field",
@@ -268,7 +366,36 @@ def _viewer_defaults_manifest(layer_map: dict) -> dict:
         "terrainSideDrop": 5.0,
         "terrainSideColor": "#d9fbf5",
         "demMeshQuality": 160,
+        "showXyzTiles": bool(layer_map.get("basemap")),
+        "assetTheme": (layer_map.get("asset_theme") or ASSET_THEME_DEFAULT),
     }
+
+
+def _asset_theme_manifest(layer_map: dict) -> tuple[str, dict, dict]:
+    theme = (layer_map.get("asset_theme") or ASSET_THEME_DEFAULT).strip() or ASSET_THEME_DEFAULT
+    if theme not in ASSET_THEME_PRESETS:
+        theme = ASSET_THEME_DEFAULT
+    counts = layer_map.get("asset_pool_counts") or {}
+    preset = ASSET_THEME_PRESETS[theme]
+    pools = {}
+    for category in ASSET_CATEGORIES:
+        try:
+            count = int(counts.get(category, 4))
+        except (TypeError, ValueError):
+            count = 4
+        count = max(3, min(5, count))
+        variants = list(preset.get(category) or ASSET_THEME_PRESETS[ASSET_THEME_DEFAULT].get(category) or [])
+        pools[category] = {
+            "count": count,
+            "variants": variants[:count],
+        }
+    pedestrian_style = {
+        "model": "procedural-low-poly",
+        "limbs": True,
+        "walkCycle": True,
+        "palette": pools["pedestrians"]["variants"],
+    }
+    return theme, pools, pedestrian_style
 
 
 def _layer_manifest(key: str, layer, target: str, empty: bool, required_inputs: tuple[str, ...]) -> dict:
@@ -343,6 +470,39 @@ def _export_dem(layer, out_path: Path) -> None:
     )
     if result != QgsRasterFileWriter.NoError:
         raise ExportError(f"Could not export DEM {layer.name()} to {out_path}")
+
+
+def _export_basemap(layer_map: dict, out_path: Path) -> None:
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    if out_path.exists():
+        out_path.unlink()
+
+    basemap = layer_map.get("basemap")
+    if basemap is None:
+        return
+    size = int(layer_map.get("basemap_export_size") or 4096)
+    size = max(1024, min(8192, size))
+
+    extent_layer = layer_map.get("roi") or layer_map.get("dem") or basemap
+    extent = extent_layer.extent()
+    destination_crs = extent_layer.crs() if hasattr(extent_layer, "crs") and extent_layer.crs().isValid() else basemap.crs()
+
+    settings = QgsMapSettings()
+    settings.setLayers([basemap])
+    settings.setExtent(extent)
+    settings.setDestinationCrs(destination_crs)
+    settings.setTransformContext(QgsProject.instance().transformContext())
+    settings.setOutputSize(QSize(size, size))
+    settings.setBackgroundColor(QColor(255, 255, 255, 0))
+
+    job = QgsMapRendererParallelJob(settings)
+    job.start()
+    job.waitForFinished()
+    rendered = job.renderedImage()
+    if rendered.isNull():
+        raise ExportError(f"Could not render basemap layer {basemap.name()}")
+    if not rendered.save(str(out_path), "PNG"):
+        raise ExportError(f"Could not save rendered basemap to {out_path}")
 
 
 def _local_raster_source(layer) -> Optional[str]:

@@ -35,6 +35,9 @@
         <button id="lang-toggle" class="panel-btn lang-btn" title="Toggle Language">TR</button>
         <button id="scene-toggle" class="panel-btn scene-btn" data-dock-target="scene-dock" title="Scene Dock">◐</button>
         <button id="layers-toggle" class="panel-btn layers-btn" data-dock-target="layer-dock" title="Layer Dock">☷</button>
+        <button id="style-toggle" class="panel-btn style-btn" data-dock-target="style-dock" title="Style Dock">◩</button>
+        <button id="mobility-toggle" class="panel-btn mobility-btn" data-dock-target="mobility-dock" title="Mobility Dock">⇄</button>
+        <button id="furniture-toggle" class="panel-btn furniture-btn" data-dock-target="furniture-dock" title="Street Furniture">⌂</button>
         <button id="analysis-toggle" class="panel-btn analysis-btn" data-dock-target="analysis-dock" title="Analysis Dock">⌁</button>
         <button id="narrative-toggle" class="panel-btn narrative-btn" data-dock-target="narrative-dock" title="Narrative Studio">▶</button>
         <button id="advanced-toggle" class="panel-btn advanced-btn" title="Advanced Controls">⚙</button>
@@ -108,52 +111,96 @@
     </div>
 
     <aside class="dock-panel hidden" id="layer-dock">
-        <div class="dock-head"><span>Layer Dock</span><button class="dock-close" data-close="layer-dock">x</button></div>
-        <label><input type="checkbox" data-setting="showRoads"> Yollar</label>
-        <label><input type="checkbox" data-setting="showSidewalks"> Kaldirimlar</label>
-        <label><input type="checkbox" data-setting="showParcels"> Parseller</label>
-        <label><input type="checkbox" data-setting="showHardscape"> Sert zemin</label>
-        <label><input type="checkbox" data-setting="showBuildings"> Binalar</label>
-        <label><input type="checkbox" data-setting="showTrees"> Agaclar</label>
-        <label><input type="checkbox" data-setting="showFurniture"> Kent mobilyalari</label>
-        <label><input type="checkbox" data-setting="showCars"> Araclar</label>
-        <label><input type="checkbox" data-setting="showPedestrians"> Yayalar</label>
+        <div class="dock-head"><span data-i18n="dockLayers">Katmanlar</span><button class="dock-close" data-close="layer-dock">x</button></div>
+        <label><input type="checkbox" data-setting="showRoads"> <span data-i18n="lblRoads">Yollar</span></label>
+        <label><input type="checkbox" data-setting="showSidewalks"> <span data-i18n="lblSidewalks">Kaldirimlar</span></label>
+        <label><input type="checkbox" data-setting="showCrosswalks"> <span data-i18n="lblCrosswalks">Yaya gecitleri</span></label>
+        <label><input type="checkbox" data-setting="showParcels"> <span data-i18n="lblParcels">Parseller</span></label>
+        <label><input type="checkbox" data-setting="showHardscape"> <span data-i18n="lblHardscape">Sert zemin</span></label>
+        <label><input type="checkbox" data-setting="showBuildings"> <span data-i18n="lblBuildings">Binalar</span></label>
+        <label><input type="checkbox" data-setting="showTrees"> <span data-i18n="lblTrees">Agaclar</span></label>
+        <label><input type="checkbox" data-setting="showFurniture"> <span data-i18n="lblFurniture">Kent mobilyalari</span></label>
+        <label><input type="checkbox" data-setting="showCars"> <span data-i18n="lblCars">Araclar</span></label>
+        <label><input type="checkbox" data-setting="showPedestrians"> <span data-i18n="lblPedestrians">Yayalar</span></label>
     </aside>
 
     <aside class="dock-panel hidden" id="scene-dock">
-        <div class="dock-head"><span>Scene Dock</span><button class="dock-close" data-close="scene-dock">x</button></div>
-        <label><input type="checkbox" data-setting="showTerrainTexture"> Plan texture</label>
-        <label>Texture opacity <input type="range" min="0.1" max="1" step="0.05" data-setting="terrainTextureOpacity"></label>
-        <label>Texture brightness <input type="range" min="0.5" max="1.5" step="0.05" data-setting="terrainTextureBrightness"></label>
-        <label>Texture contrast <input type="range" min="0.5" max="1.8" step="0.05" data-setting="terrainTextureContrast"></label>
-        <label><input type="checkbox" data-setting="showTerrainSides"> Build sides</label>
-        <label>Side drop <input type="range" min="0" max="40" step="0.5" data-setting="terrainSideDrop"></label>
-        <label>Side color <input type="color" data-setting="terrainSideColor"></label>
-        <label>DEM mesh quality <input type="range" min="48" max="360" step="8" data-setting="demMeshQuality"></label>
-        <label>Ada rengi <input type="color" data-setting="islandColor"></label>
-        <label>Ada dokusu <select data-setting="islandTexture"></select></label>
-        <label>Yol rengi <input type="color" data-setting="roadColor"></label>
-        <label>Yol genisligi <input type="range" min="2.8" max="8" step="0.1" data-setting="roadWidth"></label>
-        <label>Cati tipi <select data-setting="roofShape"></select></label>
-        <label>Cati dokusu <select data-setting="roofTexture"></select></label>
-        <label>Zaman <input type="range" min="0" max="24" step="0.1" data-setting="timeOfDay"></label>
-        <label>Hava <select data-setting="weather"></select></label>
+        <div class="dock-head"><span data-i18n="dockScene">Sahne</span><button class="dock-close" data-close="scene-dock">x</button></div>
+        <label><input type="checkbox" data-setting="showTerrainTexture"> <span data-i18n="lblPlanTexture">Plan texture</span></label>
+        <label><span data-i18n="lblTextureOpacity">Texture opakligi</span> <input type="range" min="0.1" max="1" step="0.05" data-setting="terrainTextureOpacity"></label>
+        <label><span data-i18n="lblTextureBrightness">Texture parlakligi</span> <input type="range" min="0.5" max="1.5" step="0.05" data-setting="terrainTextureBrightness"></label>
+        <label><span data-i18n="lblTextureContrast">Texture kontrasti</span> <input type="range" min="0.5" max="1.8" step="0.05" data-setting="terrainTextureContrast"></label>
+        <label><input type="checkbox" data-setting="showTerrainSides"> <span data-i18n="lblModelBase">ROI model altligi</span></label>
+        <label><span data-i18n="lblSideDrop">Altlik dususu</span> <input type="range" min="0" max="40" step="0.5" data-setting="terrainSideDrop"></label>
+        <label><span data-i18n="lblSideColor">Altlik rengi</span> <input type="color" data-setting="terrainSideColor"></label>
+        <label><span data-i18n="lblDemQuality">DEM mesh kalitesi</span> <input type="range" min="48" max="360" step="8" data-setting="demMeshQuality"></label>
+        <label><span data-i18n="lblFog">Sis</span> <input type="range" min="0.0001" max="0.002" step="0.0001" data-setting="fogDensity"></label>
+        <label><span data-i18n="lblTime">Zaman</span> <input type="range" min="0" max="24" step="0.1" data-setting="timeOfDay"></label>
+        <label><input type="checkbox" data-setting="autoTime"> <span data-i18n="lblAutoTime">Gunes animasyonu</span></label>
+        <label><span data-i18n="lblAutoTimeSpeed">Animasyon hizi</span> <input type="range" min="0.5" max="8" step="0.5" data-setting="autoTimeSpeed"></label>
+        <label><span data-i18n="lblWeather">Hava</span> <select data-setting="weather"></select></label>
+        <label><input type="checkbox" data-setting="enableSSAO"> <span data-i18n="lblSSAO">Golge kalitesi</span></label>
+        <label><input type="checkbox" data-setting="enableBloom"> <span data-i18n="lblBloom">Bloom/parlama</span></label>
+    </aside>
+
+    <aside class="dock-panel hidden" id="style-dock">
+        <div class="dock-head"><span data-i18n="dockStyle">Stil</span><button class="dock-close" data-close="style-dock">x</button></div>
+        <label><span data-i18n="lblIslandColor">Ada rengi</span> <input type="color" data-setting="islandColor"></label>
+        <label><span data-i18n="lblIslandTexture">Ada dokusu</span> <select data-setting="islandTexture"></select></label>
+        <label><span data-i18n="lblParcelColor">Parsel sinir rengi</span> <input type="color" data-setting="parcelBoundaryColor"></label>
+        <label><span data-i18n="lblParcelOpacity">Parsel sinir opakligi</span> <input type="range" min="0.05" max="1" step="0.01" data-setting="parcelBoundaryOpacity"></label>
+        <label><span data-i18n="lblRoadColor">Yol rengi</span> <input type="color" data-setting="roadColor"></label>
+        <label><span data-i18n="lblRoadStyle">Yol dokusu</span> <select data-setting="roadStyle"></select></label>
+        <label><span data-i18n="lblPavementStyle">Zemin dokusu</span> <select data-setting="pavementStyle"></select></label>
+        <label><span data-i18n="lblTerrainAnalysis">Topoğrafya görünümü</span> <select data-setting="terrainAnalysisMode"></select></label>
+        <label><input type="checkbox" data-setting="showXyzTiles"> <span data-i18n="lblXyzTiles">QGIS basemap altligi</span></label>
+        <label><span data-i18n="lblHardscapeStyle">Sert zemin dokusu</span> <select data-setting="hardscapeStyle"></select></label>
+        <label><span data-i18n="lblHardscapeHeight">Sert zemin yuksekligi</span> <input type="range" min="0" max="2" step="0.05" data-setting="hardscapeHeight"></label>
+        <label><span data-i18n="lblAssetTheme">Asset theme</span> <select data-setting="assetTheme"></select></label>
+        <label><span data-i18n="lblBuildingMode">Bina modu</span> <select data-setting="buildingMode"></select></label>
+        <label><span data-i18n="lblFloorHeight">Kat yuksekligi</span> <input type="range" min="2.8" max="3.6" step="0.05" data-setting="floorHeight"></label>
+        <label><span data-i18n="lblRoofShape">Cati tipi</span> <select data-setting="roofShape"></select></label>
+        <label><span data-i18n="lblRoofHeight">Cati yuksekligi</span> <input type="range" min="0.5" max="6" step="0.1" data-setting="roofHeight"></label>
+        <label><span data-i18n="lblRoofTexture">Cati dokusu</span> <select data-setting="roofTexture"></select></label>
+        <div class="dock-subtitle" data-i18n="lblFunctionStyles">Kullanim renkleri ve cepheleri</div>
+        <div id="function-style-controls" class="function-style-controls"></div>
+    </aside>
+
+    <aside class="dock-panel hidden" id="mobility-dock">
+        <div class="dock-head"><span data-i18n="dockMobility">Hareketlilik</span><button class="dock-close" data-close="mobility-dock">x</button></div>
+        <label><span data-i18n="lblRoadAnalysis">Yol analizi</span> <select data-setting="roadColorMode"></select></label>
+        <label><span data-i18n="lblRoadWidth">Yol genisligi</span> <input type="range" min="2.8" max="8" step="0.1" data-setting="roadWidth"></label>
+        <label><span data-i18n="lblTrafficSpeed">Trafik hizi</span> <input type="range" min="0" max="5" step="0.1" data-setting="trafficSpeed"></label>
+        <label><span data-i18n="lblCarDensity">Arac yogunlugu</span> <input type="range" min="0" max="1" step="0.1" data-setting="carDensity"></label>
+        <label><span data-i18n="lblPedDensity">Yaya yogunlugu</span> <input type="range" min="0" max="1" step="0.1" data-setting="pedestrianDensity"></label>
+    </aside>
+
+    <aside class="dock-panel hidden" id="furniture-dock">
+        <div class="dock-head"><span data-i18n="dockFurniture">Kent Mobilyalari</span><button class="dock-close" data-close="furniture-dock">x</button></div>
+        <label><input type="checkbox" data-setting="showLights"> <span data-i18n="lblLights">Aydinlatmalar</span></label>
+        <label><span data-i18n="lblLightStyle">Aydinlatma tipi</span> <select data-setting="lightStyle"></select></label>
+        <label><input type="checkbox" data-setting="showBenches"> <span data-i18n="lblBenches">Banklar</span></label>
+        <label><span data-i18n="lblBenchStyle">Bank tipi</span> <select data-setting="benchStyle"></select></label>
+        <label><input type="checkbox" data-setting="showBins"> <span data-i18n="lblBins">Cop kutulari</span></label>
+        <label><span data-i18n="lblBinStyle">Cop kutusu tipi</span> <select data-setting="binStyle"></select></label>
+        <label><input type="checkbox" data-setting="showBusStops"> <span data-i18n="lblStops">Duraklar</span></label>
+        <label><span data-i18n="lblStopStyle">Durak tipi</span> <select data-setting="stopStyle"></select></label>
     </aside>
 
     <aside class="dock-panel hidden" id="analysis-dock">
-        <div class="dock-head"><span>Analysis Dock</span><button class="dock-close" data-close="analysis-dock">x</button></div>
-        <p class="dock-note">Planning screening / design review. These overlays are decision-support, not engineering simulation.</p>
-        <label>Road analysis <select data-setting="roadColorMode"></select></label>
-        <label><input type="checkbox" data-setting="showWindPlumes"> Ruzgar etki zonu</label>
-        <label>Ruzgar yonu <input type="range" min="0" max="359" step="1" data-setting="windDirectionDeg"></label>
-        <label>Etki mesafesi <input type="range" min="40" max="600" step="10" data-setting="windPlumeDistance"></label>
-        <label>Solar review <input type="range" min="0" max="24" step="0.1" data-setting="timeOfDay"></label>
-        <label><input type="checkbox" data-setting="enableSSAO"> Shadow quality</label>
+        <div class="dock-head"><span data-i18n="dockAnalysis">Analiz</span><button class="dock-close" data-close="analysis-dock">x</button></div>
+        <p class="dock-note" data-i18n="analysisNote">Planlama taramasi / tasarim kontrolu. Bu katmanlar muhendislik simulasyonu degildir.</p>
+        <label><input type="checkbox" data-setting="showWindPlumes"> <span data-i18n="lblWindPlumes">Ruzgar etki zonu</span></label>
+        <label><span data-i18n="lblWindDirection">Ruzgar yonu</span> <input type="range" min="0" max="359" step="1" data-setting="windDirectionDeg"></label>
+        <label><span data-i18n="lblPlumeDistance">Etki mesafesi</span> <input type="range" min="40" max="600" step="10" data-setting="windPlumeDistance"></label>
+        <label><span data-i18n="lblSolarReview">Solar inceleme</span> <input type="range" min="0" max="24" step="0.1" data-setting="timeOfDay"></label>
+        <label><input type="checkbox" data-setting="showUrbanComfort"> <span data-i18n="lblUrbanComfort">Kentsel konfor taramasi</span></label>
     </aside>
 
     <aside class="dock-panel hidden narrative-panel" id="narrative-dock">
         <div class="dock-head"><span>Narrative Studio</span><button class="dock-close" data-close="narrative-dock">x</button></div>
         <p class="dock-note">Save camera, layer, sun and analysis states as keyframes, then record the tour from the camera panel.</p>
+        <p class="dock-note">Tour JSON stores the route and states only. It does not embed imagery, DEM, GeoJSON, or the full viewer package.</p>
         <label>Tour duration <input type="range" min="6" max="90" step="1" data-tour-setting="duration"></label>
         <label><input type="checkbox" data-tour-setting="loop"> Loop tour</label>
         <input id="tour-caption" class="dock-text" type="text" placeholder="Caption / scene note">
@@ -171,6 +218,7 @@
         <div id="tour-list" class="tour-list"></div>
     </aside>
     <div id="tour-caption-overlay" class="tour-caption-overlay hidden"></div>
+    <div id="walk-hud" class="walk-hud hidden">WASD hareket · Shift hizli · C alcak · Esc cikis</div>
     
     <!-- Sapan Modu HUD -->
     <div id="game-hud" class="game-hud hidden">
