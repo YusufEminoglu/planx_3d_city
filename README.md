@@ -13,6 +13,34 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 
 ## Latest Release Notes
 
+### 0.7.3
+
+- Makes English the primary default language in the QGIS publisher and browser cockpit.
+- Keeps Turkish as the secondary UI language through the browser language toggle and bilingual QGIS guidance text.
+- Extends browser translation coverage to dashboard metrics, dock tooltips, camera controls, Narrative Studio, Walk HUD, minimap, status pills, placeholders, and empty-state text.
+- Updates QGIS publish reports, overwrite confirmations, portable export messages, and the style assistant to use consistent English-first product language.
+
+### 0.7.2
+
+- Hardens DEM sampling at raster and ROI boundaries so edge pixels are no longer repeated into artificial upward triangle spikes.
+- Adds a terrain boundary spike limiter around DEM edges and ROI clip edges, reducing isolated edge outliers while preserving the general terrain shape.
+- Adds `Portable ZIP olustur` on the QGIS Publish page for complete viewer handoff as one zip file.
+- Supports optional `planx_tour.json` inside the portable ZIP; the browser auto-loads `data/planx_tour.json` so Narrative Studio keyframes can travel to another computer.
+
+### 0.7.1
+
+- Expands the procedural material library with `Civic Heritage` and `Coastal Light` themes.
+- Adds more street-furniture variants with actual procedural geometry: heritage lanterns, bollards, campus lights, stone seats, eco benches, compact stops, steel canopies, and solar bins.
+- Adds offline procedural textures for facade, roof, paving, hardscape, and road materials; the viewer no longer relies on external texture URLs.
+- Improves theme switching so roof, paving, street furniture, and function facade defaults follow the selected asset theme.
+
+### 0.7.0
+
+- Adds `Portable viewer klasoru` on the QGIS Publish page for classroom, review, and presentation handoff.
+- Copies `web/src`, `web/assets/vendor`, and the current exported `web/data` into one timestamped portable folder.
+- Writes launch scripts and a small guide into the portable folder so the scene can be opened by double-clicking `Start-PlanX-Viewer.bat` on Windows, or manually with `py -3 -m http.server 8080` and `http://127.0.0.1:8080/src/`.
+- Clarifies that Narrative Studio JSON stores only tour/viewer state and must travel with the exported data for a complete scene handoff.
+
 ### 0.6.9
 
 - Adds a curated `Asset Theme / Material Pool` selector in the QGIS publisher.
@@ -91,8 +119,8 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 
 1. Open the DEM and vector layers in one QGIS project.
 2. Start `PlanX 3D City` from the toolbar or plugin menu.
-3. In `1 Veri`, choose a publishing mode.
-4. Use `Katmanlari otomatik eslestir` if your layer names contain common hints such as `dem`, `roi`, `yol`, `bina`, `ada`, `parsel`, or `plan`.
+3. In `1 Data`, choose a publishing mode.
+4. Use `Auto-match layers` if your layer names contain common hints such as `dem`, `roi`, `yol`, `bina`, `ada`, `parsel`, or `plan`.
 5. For `Vector Plan Mode`, select all required layers: DEM, ROI, roads, buildings, blocks, parcels.
 6. For `Raster Plan Texture Mode`, select DEM, ROI, plan texture GeoTIFF, roads, and buildings. Blocks and parcels are optional in this mode.
 7. Select optional layers if available: trees, hardscape, sidewalks, lights, benches, trash bins, bus stops.
@@ -101,7 +129,7 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 10. In `2 Kontrol`, generate and inspect the quality report.
 11. In `3 Stil`, optionally create PlanX style fields and apply styles to selected blocks/buildings.
 12. Click `Disari aktar ve 3D Viewer ac`.
-13. Use `4 Yayin` to copy the viewer URL, reopen the browser, open exported data, or stop the local server.
+13. Use `4 Yayin` to copy the viewer URL, reopen the browser, open exported data, create a portable viewer folder, create a portable ZIP, or stop the local server.
 
 ## Data Contract
 
@@ -160,7 +188,7 @@ The plugin reports missing required data, empty required layers, CRS differences
 
 Use the `3 Stil` page to add style fields and apply values to selected features.
 
-The same page also includes `Asset Theme / Material Pool`. Themes such as `Modern Urban`, `Mediterranean`, `Campus`, `Eco`, and `Dense Urban` define lightweight visual pools for pedestrians, cars, trees, street furniture, facades, roofs, and paving. This selection changes only the browser visualization; it does not alter GIS geometry or attributes. Pedestrians are procedural low-poly models rather than bundled glTF assets, so the plugin remains small and Plugin Hub friendly.
+The same page also includes `Asset Theme / Material Pool`. Themes such as `Modern Urban`, `Mediterranean`, `Campus`, `Eco`, `Dense Urban`, `Civic Heritage`, and `Coastal Light` define lightweight visual pools for pedestrians, cars, trees, street furniture, facades, roofs, and paving. This selection changes only the browser visualization; it does not alter GIS geometry or attributes. Pedestrians and most material variants are procedural, so the plugin remains small and Plugin Hub friendly without relying on external texture URLs.
 
 Common:
 
@@ -212,11 +240,15 @@ The plugin works without strict field names, but mapped fields improve the viewe
 
 The Narrative Dock stores camera position, camera target, time of day, layer visibility, active analysis state, and an optional caption for each keyframe. Tours are saved in browser local storage and can be exported/imported as `planx_tour.json`. The JSON file stores the route and viewer states only; it does not contain screenshots, DEM, GeoJSON, tile imagery, or the full viewer application. You can play the tour and use the camera recording panel to capture a video.
 
-For a full scene handoff, the preferred future workflow is a QGIS-side `Export portable viewer folder` command that copies `web/src`, `web/assets/vendor`, `web/data`, and an optional `planx_tour.json` into one folder. That is intentionally kept out of this lightweight release to avoid a heavy export/package workflow.
+For a full scene handoff, use the QGIS Publish page command `Portable viewer klasoru` or `Portable ZIP olustur`. The folder command copies the embedded browser app, bundled vendor libraries, and current exported project data into one timestamped folder. The ZIP command packages the same portable viewer into one file for moving to another computer. On Windows, extract the ZIP and double-click `Start-PlanX-Viewer.bat`; alternatively open a terminal in the extracted folder, run `py -3 -m http.server 8080`, and visit `http://127.0.0.1:8080/src/`.
+
+Narrative Studio still exports keyframes as `planx_tour.json`. When creating a portable ZIP, QGIS can optionally add that tour JSON to `data/planx_tour.json`. If it is present, the browser auto-loads the tour on another computer; otherwise the user can still import the JSON manually from the Narrative Dock.
 
 ## DEM Quality
 
 `DEM mesh quality` controls the terrain mesh segmentation used by the viewer. Higher values make the DEM surface smoother and closer to a resampled high-detail terrain, similar in spirit to terrain/image width controls in Qgis2threejs. Higher values also cost more browser performance, so use moderate values for large study areas.
+
+At the DEM and ROI boundary, the viewer avoids repeating the last raster pixel outward and applies a narrow spike limiter. This prevents isolated edge cells or NoData-adjacent pixels from pulling visible terrain triangles upward at the study-area boundary.
 
 The viewer also includes basic topography review modes: normal texture, elevation tint, and slope tint. These are visual review aids, not analytical replacements for QGIS raster tools.
 

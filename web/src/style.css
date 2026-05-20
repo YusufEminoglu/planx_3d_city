@@ -683,6 +683,12 @@ ul {
     color: #38bdf8;
 }
 
+#btn-toggle-rec {
+    font-size: 0.64rem;
+    font-weight: 800;
+    letter-spacing: 0;
+}
+
 .cam-divider {
     height: 1px;
     background: rgba(255,255,255,0.08);

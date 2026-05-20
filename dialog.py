@@ -68,18 +68,18 @@ EXPECTED_GEOMETRIES = {
 RECOMMENDED_BUILDING_FIELDS = ("katadedi", "uipfonksiyon")
 
 FIELD_MAPPING_DEFS = (
-    ("road_hierarchy_field", "roads", "Road hierarchy/type field", "Ana arter, cadde, sokak, yaya yolu gibi yol sinif bilgisini tasiyan alan."),
-    ("building_population_field", "buildings", "Building population field", "Varsa bina nufusu; yoksa viewer daire ve alan uzerinden tahmin eder."),
-    ("building_dwelling_field", "buildings", "Building dwelling field", "Daire/konut birimi sayisi."),
-    ("building_vehicle_field", "buildings", "Building vehicle field", "Tahmini veya hesapli arac sayisi."),
-    ("building_floor_area_field", "buildings", "Building gross floor area field", "Toplam insaat alani veya emsal alani."),
-    ("landuse_function_field", "buildings", "Land-use/function field", "Bina/kullanim fonksiyonu; uipfonksiyon yoksa viewer bunu kullanir."),
-    ("odor_source_field", "buildings", "Odor/noise source field", "Sanayi, atik, depolama, aritma gibi kaynaklari yakalamak icin kullanilacak alan."),
-    ("tree_height_field", "trees", "Tree height field", "Agac boyunu metre cinsinden tasiyan alan. Bos kalirsa height/boy/yukseklik fallbackleri denenir."),
-    ("light_angle_field", "lights", "Light direction field", "Derece cinsinden yon/aci; bos kalirsa en yakin yol aksina gore hizalanir."),
-    ("bench_angle_field", "benches", "Bench direction field", "Derece cinsinden yon/aci; bos kalirsa en yakin yol aksina paralel hizalanir."),
-    ("trashbin_angle_field", "trashbins", "Trash bin direction field", "Derece cinsinden yon/aci; bos kalirsa en yakin yol aksina paralel hizalanir."),
-    ("busstop_angle_field", "busstops", "Bus stop direction field", "Derece cinsinden yon/aci; bos kalirsa en yakin yol aksina paralel hizalanir."),
+    ("road_hierarchy_field", "roads", "Road hierarchy/type field", "Road class such as arterial, street, service road, pedestrian way. / Yol sinif bilgisi."),
+    ("building_population_field", "buildings", "Building population field", "Optional population value; otherwise the viewer estimates from dwellings and area. / Bina nufusu."),
+    ("building_dwelling_field", "buildings", "Building dwelling field", "Dwelling or housing-unit count. / Daire veya konut birimi sayisi."),
+    ("building_vehicle_field", "buildings", "Building vehicle field", "Estimated or calculated vehicle count. / Tahmini ya da hesapli arac sayisi."),
+    ("building_floor_area_field", "buildings", "Building gross floor area field", "Gross floor area or FAR-derived area. / Toplam insaat ya da emsal alani."),
+    ("landuse_function_field", "buildings", "Land-use/function field", "Building use/function; used when uipfonksiyon is not available. / Kullanim fonksiyonu."),
+    ("odor_source_field", "buildings", "Odor/noise source field", "Helps detect industry, waste, storage or treatment sources for wind/noise screening. / Koku-gurultu kaynak ipucu."),
+    ("tree_height_field", "trees", "Tree height field", "Tree height in meters; fallback names include height, boy and yukseklik. / Agac boyu."),
+    ("light_angle_field", "lights", "Light direction field", "Direction angle in degrees; otherwise aligned to the nearest road axis. / Yon acisi."),
+    ("bench_angle_field", "benches", "Bench direction field", "Direction angle in degrees; otherwise aligned beside the nearest road axis. / Bank yonu."),
+    ("trashbin_angle_field", "trashbins", "Trash bin direction field", "Direction angle in degrees; otherwise aligned to the nearest road axis. / Cop kutusu yonu."),
+    ("busstop_angle_field", "busstops", "Bus stop direction field", "Direction angle in degrees; otherwise aligned beside the nearest road axis. / Durak yonu."),
 )
 
 ASSET_THEME_OPTIONS = (
@@ -88,6 +88,8 @@ ASSET_THEME_OPTIONS = (
     "Campus",
     "Eco",
     "Dense Urban",
+    "Civic Heritage",
+    "Coastal Light",
 )
 
 ASSET_POOL_CATEGORIES = (
@@ -126,6 +128,8 @@ class PlanX3DCityDialog(QDialog):
     exportRequested = pyqtSignal(dict)
     stopServerRequested = pyqtSignal()
     reopenViewerRequested = pyqtSignal()
+    portableExportRequested = pyqtSignal()
+    portableZipRequested = pyqtSignal()
 
     def __init__(self, iface, web_root: str, parent=None):
         super().__init__(parent)
@@ -174,13 +178,34 @@ class PlanX3DCityDialog(QDialog):
         self.url_label.setTextInteractionFlags(self.url_label.textInteractionFlags() | 1)
         self.publish_time_label.setText(QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm:ss"))
         self.files_label.setText(str(len(written)))
-        self.empty_label.setText(", ".join(empty_optionals) if empty_optionals else "Yok")
+        self.empty_label.setText(", ".join(empty_optionals) if empty_optionals else "None")
         self.publish_report.setHtml(
-            "<h3>Son yayin ozeti</h3>"
+            "<h3>Last publish summary</h3>"
             f"<p><b>Viewer:</b> {url}</p>"
-            f"<p><b>Yazilan dosya:</b> {len(written)}</p>"
-            f"<p><b>Opsiyonel bos katman:</b> {', '.join(empty_optionals) if empty_optionals else 'Yok'}</p>"
+            f"<p><b>Written files:</b> {len(written)}</p>"
+            f"<p><b>Empty optional layers:</b> {', '.join(empty_optionals) if empty_optionals else 'None'}</p>"
         )
+
+    def set_portable_summary(self, output_dir: str, file_count: int) -> None:
+        self.publish_report.setHtml(
+            "<h3>Portable viewer folder is ready</h3>"
+            f"<p><b>Folder:</b> {output_dir}</p>"
+            f"<p><b>Copied files:</b> {file_count}</p>"
+            "<p>This folder contains the viewer app, vendor libraries and the latest exported data for presentation or handoff.</p>"
+            "<p><b>Open command:</b> <code>py -3 -m http.server 8080</code>, then browse to "
+            "<code>http://127.0.0.1:8080/src/</code></p>"
+        )
+        self.set_status(f"Portable viewer folder created: {output_dir}")
+
+    def set_portable_zip_summary(self, zip_path: str, file_count: int) -> None:
+        self.publish_report.setHtml(
+            "<h3>Portable viewer ZIP is ready</h3>"
+            f"<p><b>ZIP:</b> {zip_path}</p>"
+            f"<p><b>Packaged files:</b> {file_count}</p>"
+            "<p>This ZIP can be opened on another computer and launched with <code>Start-PlanX-Viewer.bat</code>. "
+            "If a tour JSON was included, it will be ready in Narrative Studio when the viewer opens.</p>"
+        )
+        self.set_status(f"Portable viewer ZIP created: {zip_path}")
 
     def _build_ui(self) -> None:
         self.setStyleSheet("""
@@ -251,7 +276,7 @@ class PlanX3DCityDialog(QDialog):
         shell = QHBoxLayout(self)
         self.nav = QListWidget()
         self.nav.setFixedWidth(170)
-        for label in ("1 Veri", "2 Kontrol", "3 Stil", "4 Yayin"):
+        for label in ("1 Data", "2 Check", "3 Style", "4 Publish"):
             QListWidgetItem(label, self.nav)
         self.nav.setCurrentRow(0)
         shell.addWidget(self.nav)
@@ -260,7 +285,10 @@ class PlanX3DCityDialog(QDialog):
         hero = QVBoxLayout()
         title = QLabel("PlanX 3D City Publisher")
         title.setObjectName("heroTitle")
-        subtitle = QLabel("QGIS katmanlarini dogrula, stillendir, yayinla ve 3D viewer'i tek akistan ac.")
+        subtitle = QLabel(
+            "Validate QGIS layers, map attributes, style selected features and publish the 3D viewer in one workflow. "
+            "Turkish guidance is included as secondary text where it helps data preparation."
+        )
         subtitle.setObjectName("heroSub")
         subtitle.setWordWrap(True)
         hero.addWidget(title)
@@ -278,7 +306,7 @@ class PlanX3DCityDialog(QDialog):
             page.setVisible(i == 0)
             content.addWidget(page)
 
-        self.status_label = QLabel("Hazir. Once veri secimini tamamlayin, sonra kalite kontrol raporunu uretin.")
+        self.status_label = QLabel("Ready. Complete the data selection, then generate the quality report before publishing.")
         self.status_label.setObjectName("statusLabel")
         self.status_label.setWordWrap(True)
         content.addWidget(self.status_label)
@@ -302,9 +330,12 @@ class PlanX3DCityDialog(QDialog):
         page = QWidget()
         root = QVBoxLayout(page)
 
-        required_group = QGroupBox("Zorunlu veri katmanlari")
+        required_group = QGroupBox("Required data layers / Zorunlu veri katmanlari")
         required_grid = QGridLayout(required_group)
-        mode_label = QLabel("<b>Yayin modu</b><br><span style='color:#64748b'>Klasik vektor plan veya raster plan texture akisi</span>")
+        mode_label = QLabel(
+            "<b>Publish mode</b><br><span style='color:#64748b'>Vector plan workflow or raster plan texture workflow. / "
+            "Vektor plan veya raster plan texture akisi.</span>"
+        )
         self.mode_combo = QComboBox()
         self.mode_combo.addItem("Vector Plan Mode", MODE_VECTOR)
         self.mode_combo.addItem("Raster Plan Texture Mode", MODE_RASTER_TEXTURE)
@@ -316,16 +347,19 @@ class PlanX3DCityDialog(QDialog):
         self._add_road_access_row(required_grid, 8)
         root.addWidget(required_group)
 
-        mapping_group = QGroupBox("Field mapping / analiz alanlari")
+        mapping_group = QGroupBox("Field mapping / Analysis attributes")
         mapping_grid = QGridLayout(mapping_group)
         for row, (key, layer_key, label, help_text) in enumerate(FIELD_MAPPING_DEFS):
             self._add_field_mapping_row(mapping_grid, row, key, layer_key, label, help_text)
         root.addWidget(mapping_group)
 
-        basemap_group = QGroupBox("Opsiyonel QGIS basemap / XYZ altlik")
+        basemap_group = QGroupBox("Optional QGIS basemap / XYZ background")
         basemap_grid = QGridLayout(basemap_group)
         self._add_layer_row(basemap_grid, 0, "basemap", required=False)
-        basemap_size_label = QLabel("<b>Basemap export size</b><br><span style='color:#64748b'>Yuksek deger daha net ama daha yavas ve buyuk PNG uretir.</span>")
+        basemap_size_label = QLabel(
+            "<b>Basemap export size</b><br><span style='color:#64748b'>Higher values are sharper but slower and produce larger PNG textures. / "
+            "Yuksek deger daha net ama daha yavas ve buyuk PNG uretir.</span>"
+        )
         basemap_size_label.setWordWrap(True)
         self.basemap_size_combo = QComboBox()
         for size in (1024, 2048, 4096, 8192):
@@ -333,19 +367,19 @@ class PlanX3DCityDialog(QDialog):
         self.basemap_size_combo.setCurrentIndex(2)
         basemap_grid.addWidget(basemap_size_label, 1, 0)
         basemap_grid.addWidget(self.basemap_size_combo, 1, 1)
-        basemap_grid.addWidget(QLabel("Opsiyonel"), 1, 2)
+        basemap_grid.addWidget(QLabel("Optional"), 1, 2)
         root.addWidget(basemap_group)
 
-        optional_group = QGroupBox("Opsiyonel zenginlestirme katmanlari")
+        optional_group = QGroupBox("Optional enrichment layers / Opsiyonel zenginlestirme")
         optional_grid = QGridLayout(optional_group)
         for row, key in enumerate(OPTIONAL_INPUTS):
             self._add_layer_row(optional_grid, row, key, required=False)
         root.addWidget(optional_group)
 
         actions = QHBoxLayout()
-        self.auto_match_button = QPushButton("Katmanlari otomatik eslestir")
-        self.check_button = QPushButton("Kalite raporu uret")
-        self.export_button = QPushButton("Disari aktar ve 3D Viewer ac")
+        self.auto_match_button = QPushButton("Auto-match layers")
+        self.check_button = QPushButton("Generate quality report")
+        self.export_button = QPushButton("Export and open 3D Viewer")
         self.export_button.setObjectName("primaryButton")
         actions.addWidget(self.auto_match_button)
         actions.addWidget(self.check_button)
@@ -375,8 +409,8 @@ class PlanX3DCityDialog(QDialog):
     def _add_road_access_row(self, grid: QGridLayout, row: int) -> None:
         label = QLabel(
             "<b>Road access field</b><br>"
-            "<span style='color:#64748b'>Opsiyonel: yaya/tasit bilgisini iceren yol sutunu. "
-            "Secilirse arabalar yaya yollarindan gecmez.</span>"
+            "<span style='color:#64748b'>Optional field with pedestrian/vehicle access values. If selected, cars avoid no-car pedestrian roads. / "
+            "Yaya-tasit bilgisini iceren sutun; secilirse arabalar yaya yollarindan gecmez.</span>"
         )
         label.setWordWrap(True)
         box = QComboBox()
@@ -384,11 +418,12 @@ class PlanX3DCityDialog(QDialog):
         self.road_access_field_combo = box
         grid.addWidget(label, row, 0)
         grid.addWidget(box, row, 1)
-        grid.addWidget(QLabel("Opsiyonel"), row, 2)
+        grid.addWidget(QLabel("Optional"), row, 2)
 
         values_label = QLabel(
             "<b>No-car / vehicle keywords</b><br>"
-            "<span style='color:#64748b'>Virgulle ayirin. Deger yaya anahtarini icerirse arac uretilmez; tasit anahtari varsa izin verilir.</span>"
+            "<span style='color:#64748b'>Separate with commas. No-car keywords block vehicles unless a vehicle keyword is present. / "
+            "Virgulle ayirin; yaya anahtari arac uretimini engeller.</span>"
         )
         values_label.setWordWrap(True)
         editors = QVBoxLayout()
@@ -402,7 +437,7 @@ class PlanX3DCityDialog(QDialog):
         holder.setLayout(editors)
         grid.addWidget(values_label, row + 1, 0)
         grid.addWidget(holder, row + 1, 1)
-        grid.addWidget(QLabel("Opsiyonel"), row + 1, 2)
+        grid.addWidget(QLabel("Optional"), row + 1, 2)
 
         self.layer_boxes["roads"].layerChanged.connect(lambda _layer=None: self._sync_road_access_fields())
         self.road_access_field_combo.currentIndexChanged.connect(self._refresh_report)
@@ -416,7 +451,7 @@ class PlanX3DCityDialog(QDialog):
         box.setFilters(QgsMapLayerProxyModel.RasterLayer if key == "dem" else QgsMapLayerProxyModel.VectorLayer)
         if key in ("plan_texture", "basemap"):
             box.setFilters(QgsMapLayerProxyModel.RasterLayer)
-        badge = QLabel("Eksik" if required else "Opsiyonel")
+        badge = QLabel("Missing" if required else "Optional")
         badge.setProperty("class", "badge")
         badge.setStyleSheet(self._badge_style("missing" if required else "optional"))
         box.layerChanged.connect(lambda _layer=None: self._refresh_report())
@@ -430,7 +465,7 @@ class PlanX3DCityDialog(QDialog):
         page = QWidget()
         root = QVBoxLayout(page)
         row = QHBoxLayout()
-        refresh = QPushButton("Raporu yenile")
+        refresh = QPushButton("Refresh report")
         refresh.clicked.connect(self._refresh_report)
         row.addWidget(refresh)
         row.addStretch(1)
@@ -444,16 +479,16 @@ class PlanX3DCityDialog(QDialog):
         root = QVBoxLayout(page)
 
         intro = QLabel(
-            "Secili ada veya binalara PlanX stil alanlari yazilir. Islem yalniz secili feature'lari etkiler; "
-            "sonucu viewer'da gormek icin yeniden export gerekir."
+            "Write PlanX style fields to selected blocks or buildings only. Re-export the viewer to see the result. "
+            "Bu islem yalniz secili feature'lari etkiler."
         )
         intro.setWordWrap(True)
         root.addWidget(intro)
 
-        prep = QGroupBox("Alan hazirligi")
+        prep = QGroupBox("Style field preparation")
         prep_row = QHBoxLayout(prep)
-        self.prepare_block_fields_btn = QPushButton("Blocks stil alanlarini olustur")
-        self.prepare_building_fields_btn = QPushButton("Buildings stil alanlarini olustur")
+        self.prepare_block_fields_btn = QPushButton("Create block style fields")
+        self.prepare_building_fields_btn = QPushButton("Create building style fields")
         prep_row.addWidget(self.prepare_block_fields_btn)
         prep_row.addWidget(self.prepare_building_fields_btn)
         root.addWidget(prep)
@@ -461,8 +496,9 @@ class PlanX3DCityDialog(QDialog):
         asset_group = QGroupBox("Asset Theme / Material Pool")
         asset_root = QVBoxLayout(asset_group)
         asset_intro = QLabel(
-            "Tema secimi yalniz web viewer'daki gorsel varyant havuzunu belirler; GIS geometrilerini veya "
-            "attribute verisini degistirmez. Viewer yalniz secilen tema ve aktif varyant sayilarini kullanir."
+            "Theme selection controls only the visual variant pool in the web viewer; it never edits GIS geometry "
+            "or attribute data. Viewer uses only the selected theme and active variant counts. / "
+            "Tema yalniz gorsel havuzu belirler."
         )
         asset_intro.setWordWrap(True)
         asset_root.addWidget(asset_intro)
@@ -488,7 +524,7 @@ class PlanX3DCityDialog(QDialog):
         asset_root.addLayout(pool_grid)
         root.addWidget(asset_group)
 
-        quick = QGroupBox("Secili feature hizli stil uygula")
+        quick = QGroupBox("Quick style for selected features")
         form = QFormLayout(quick)
         self.block_texture_combo = QComboBox()
         self.block_texture_combo.addItems(["", "None", "SoftNoise", "FineGrid"])
@@ -498,21 +534,21 @@ class PlanX3DCityDialog(QDialog):
         self.roof_shape_combo.addItems(["", "Flat", "Pyramid", "Gable", "Cone", "Prism"])
         self.roof_texture_combo = QComboBox()
         self.roof_texture_combo.addItems(["", "RoofA", "GermanTile", "TurkishTile", "USShingle"])
-        self.color_btn = QPushButton("Renk sec")
-        self.roof_color_btn = QPushButton("Cati rengi sec")
+        self.color_btn = QPushButton("Pick color")
+        self.roof_color_btn = QPushButton("Pick roof color")
         self.color_value = ""
         self.roof_color_value = ""
-        form.addRow("Ada/bina rengi", self.color_btn)
-        form.addRow("Ada dokusu", self.block_texture_combo)
-        form.addRow("Bina cephesi", self.facade_combo)
-        form.addRow("Cati tipi", self.roof_shape_combo)
-        form.addRow("Cati dokusu", self.roof_texture_combo)
-        form.addRow("Cati rengi", self.roof_color_btn)
+        form.addRow("Block/building color", self.color_btn)
+        form.addRow("Block texture", self.block_texture_combo)
+        form.addRow("Building facade", self.facade_combo)
+        form.addRow("Roof shape", self.roof_shape_combo)
+        form.addRow("Roof texture", self.roof_texture_combo)
+        form.addRow("Roof color", self.roof_color_btn)
         root.addWidget(quick)
 
         apply_row = QHBoxLayout()
-        self.apply_blocks_btn = QPushButton("Secili adalara uygula")
-        self.apply_buildings_btn = QPushButton("Secili binalara uygula")
+        self.apply_blocks_btn = QPushButton("Apply to selected blocks")
+        self.apply_buildings_btn = QPushButton("Apply to selected buildings")
         self.apply_buildings_btn.setObjectName("primaryButton")
         apply_row.addWidget(self.apply_blocks_btn)
         apply_row.addWidget(self.apply_buildings_btn)
@@ -520,7 +556,7 @@ class PlanX3DCityDialog(QDialog):
 
         self.style_report = QTextBrowser()
         self.style_report.setMaximumHeight(150)
-        self.style_report.setHtml("<p>Stil islemleri burada raporlanacak.</p>")
+        self.style_report.setHtml("<p>Style operations will be reported here.</p>")
         root.addWidget(self.style_report)
         root.addStretch(1)
 
@@ -536,37 +572,43 @@ class PlanX3DCityDialog(QDialog):
     def _make_publish_page(self) -> QWidget:
         page = QWidget()
         root = QVBoxLayout(page)
-        summary = QGroupBox("Son yayin")
+        summary = QGroupBox("Last publish")
         form = QFormLayout(summary)
         self.url_label = QLabel("-")
         self.publish_time_label = QLabel("-")
         self.files_label = QLabel("0")
         self.empty_label = QLabel("-")
         form.addRow("Viewer URL", self.url_label)
-        form.addRow("Yayin zamani", self.publish_time_label)
-        form.addRow("Yazilan dosya", self.files_label)
-        form.addRow("Bos opsiyoneller", self.empty_label)
+        form.addRow("Published at", self.publish_time_label)
+        form.addRow("Written files", self.files_label)
+        form.addRow("Empty optionals", self.empty_label)
         root.addWidget(summary)
 
         actions = QHBoxLayout()
-        self.copy_url_btn = QPushButton("Viewer URL kopyala")
-        self.reopen_btn = QPushButton("Tarayicida tekrar ac")
-        self.open_folder_button = QPushButton("Data klasorunu ac")
-        self.stop_button = QPushButton("Sunucuyu durdur")
+        self.copy_url_btn = QPushButton("Copy viewer URL")
+        self.reopen_btn = QPushButton("Open in browser")
+        self.open_folder_button = QPushButton("Open data folder")
+        self.portable_button = QPushButton("Portable viewer folder")
+        self.portable_zip_button = QPushButton("Portable ZIP")
+        self.stop_button = QPushButton("Stop server")
         actions.addWidget(self.copy_url_btn)
         actions.addWidget(self.reopen_btn)
         actions.addWidget(self.open_folder_button)
+        actions.addWidget(self.portable_button)
+        actions.addWidget(self.portable_zip_button)
         actions.addWidget(self.stop_button)
         root.addLayout(actions)
 
         self.publish_report = QTextBrowser()
-        self.publish_report.setHtml("<p>Henuz yayin yapilmadi.</p>")
+        self.publish_report.setHtml("<p>No publish has been created yet.</p>")
         root.addWidget(self.publish_report)
         root.addStretch(1)
 
         self.copy_url_btn.clicked.connect(self._copy_url)
         self.reopen_btn.clicked.connect(self.reopenViewerRequested.emit)
         self.open_folder_button.clicked.connect(self._open_output_folder)
+        self.portable_button.clicked.connect(self.portableExportRequested.emit)
+        self.portable_zip_button.clicked.connect(self.portableZipRequested.emit)
         self.stop_button.clicked.connect(self.stopServerRequested.emit)
         return page
 
@@ -578,7 +620,10 @@ class PlanX3DCityDialog(QDialog):
         if hasattr(self, "report_browser"):
             self.report_browser.setHtml(html)
         self._update_badges(layer_map)
-        self.set_status("Kalite raporu guncellendi." if not has_error else "Rapor uyarilar iceriyor; ayrintilar Kontrol sekmesinde.", has_error)
+        self.set_status(
+            "Quality report updated." if not has_error else "Report contains warnings; review the Check page before publishing.",
+            has_error,
+        )
 
     def _auto_match_layers(self) -> None:
         layers = list(QgsProject.instance().mapLayers().values())
@@ -593,9 +638,9 @@ class PlanX3DCityDialog(QDialog):
             matched.append(f"{LABELS[key]} = {candidate.name()}")
         self._refresh_report()
         if matched:
-            self.set_status("Otomatik eslestirme tamamlandi: " + "; ".join(matched[:6]) + (" ..." if len(matched) > 6 else ""))
+            self.set_status("Auto-match completed: " + "; ".join(matched[:6]) + (" ..." if len(matched) > 6 else ""))
         else:
-            self.set_status("Otomatik eslestirme icin isimlerden uygun katman bulunamadi.", error=True)
+            self.set_status("No suitable layer names were found for auto-match.", error=True)
 
     def _best_layer_match(self, key: str, layers: list, used_ids: set):
         aliases = AUTO_MATCH_ALIASES.get(key, ())
@@ -635,65 +680,68 @@ class PlanX3DCityDialog(QDialog):
         optional_keys = optional_inputs_for_mode(mode)
         missing = validate_inputs(layer_map)
         if missing:
-            warnings.append("Eksik zorunlu veri: " + ", ".join(missing))
+            warnings.append("Missing required inputs: " + ", ".join(missing))
         if mode == MODE_RASTER_TEXTURE:
-            warnings.append("Raster Plan Texture modunda plan GeoTIFF'in DEM/ROI ile ayni metrik CRS ve ayni kirpilmis alana sahip olmasi beklenir.")
+            warnings.append("Raster Plan Texture mode expects the plan GeoTIFF, DEM and ROI to use the same metric CRS and clipped study area.")
         road_access_field = layer_map.get("road_access_field")
         if road_access_field:
-            warnings.append(f"Road access filter aktif: arabalar '{road_access_field}' alanindaki yaya/no-car degerlerinden gecmeyecek.")
+            warnings.append(f"Road access filter active: cars will avoid no-car/pedestrian values in '{road_access_field}'.")
         mapped = [label for key, _layer_key, label, _help in FIELD_MAPPING_DEFS if layer_map.get(key)]
         if mapped:
-            warnings.append("Viewer field mapping aktif: " + ", ".join(mapped))
+            warnings.append("Viewer field mapping active: " + ", ".join(mapped))
 
         ordered_keys = ("dem", "plan_texture", "basemap", "roi", "roads", "buildings", "blocks", "parcels") + OPTIONAL_INPUTS
         for key in ordered_keys:
             layer = layer_map.get(key)
-            role = "Zorunlu" if key in required_keys else "Opsiyonel"
+            role = "Required" if key in required_keys else "Optional"
             if key == "plan_texture" and mode != MODE_RASTER_TEXTURE:
-                role = "Kullanilmaz"
+                role = "Not used"
             if layer is None:
-                status = "Eksik" if key in required_keys else "Bos gecilecek"
+                status = "Missing" if key in required_keys else "Empty export"
                 rows.append((LABELS[key], role, status, "-", "-", "-"))
                 continue
 
-            crs = layer.crs().authid() if hasattr(layer, "crs") and layer.crs().isValid() else "CRS yok"
+            crs = layer.crs().authid() if hasattr(layer, "crs") and layer.crs().isValid() else "No CRS"
             crs_values.append(crs)
             count = self._feature_count(layer)
             geom = self._geometry_name(layer)
-            status = "Hazir"
+            status = "Ready"
             if count == 0 and key in required_keys:
-                status = "Bos katman"
-                warnings.append(f"{LABELS[key]} zorunlu ama bos gorunuyor.")
+                status = "Empty required layer"
+                warnings.append(f"{LABELS[key]} is required but appears empty.")
             expected = EXPECTED_GEOMETRIES.get(key)
             if expected and geom != "-" and expected not in geom:
-                status = "Geometri uyarisi"
-                warnings.append(f"{LABELS[key]} beklenen geometri {expected}, secilen katman {geom}.")
+                status = "Geometry warning"
+                warnings.append(f"{LABELS[key]} expected geometry is {expected}; selected layer is {geom}.")
             rows.append((LABELS[key], role, status, str(count), geom, crs))
 
             if key == "buildings":
                 names = {field.name().lower() for field in layer.fields()}
                 for field in RECOMMENDED_BUILDING_FIELDS:
                     if field.lower() not in names:
-                        warnings.append(f"Buildings katmaninda onerilen alan eksik: {field}.")
+                        warnings.append(f"Recommended building field is missing: {field}.")
 
-        unique_crs = sorted({c for c in crs_values if c and c != "CRS yok"})
+        unique_crs = sorted({c for c in crs_values if c and c != "No CRS"})
         if len(unique_crs) > 1:
-            warnings.append("CRS uyusmazligi olabilir: " + ", ".join(unique_crs))
+            warnings.append("Possible CRS mismatch: " + ", ".join(unique_crs))
 
         table = "".join(
             f"<tr><td>{a}</td><td>{b}</td><td>{c}</td><td>{d}</td><td>{e}</td><td>{f}</td></tr>"
             for a, b, c, d, e, f in rows
         )
-        warn_html = "".join(f"<li>{w}</li>" for w in warnings) or "<li>Kritik uyarı yok.</li>"
+        warn_html = "".join(f"<li>{w}</li>" for w in warnings) or "<li>No critical warning.</li>"
+        if not warnings:
+            warn_html = "<li>No critical warning.</li>"
         html = f"""
-        <h2>PlanX 3D City kalite raporu</h2>
+        <h2>PlanX 3D City quality report</h2>
+        <p><b>Language note:</b> English is the primary interface language; Turkish hints are secondary where they help local data preparation.</p>
         <table border="0" cellspacing="0" cellpadding="6">
-          <tr><th>Veri</th><th>Rol</th><th>Durum</th><th>Feature</th><th>Geometri</th><th>CRS</th></tr>
+          <tr><th>Input</th><th>Role</th><th>Status</th><th>Features</th><th>Geometry</th><th>CRS</th></tr>
           {table}
         </table>
-        <h3>Uyarilar</h3>
+        <h3>Warnings</h3>
         <ul>{warn_html}</ul>
-        <p><b>Not:</b> Export, eksik zorunlu veri varsa engellenir. Diger uyarilar kalite kontrol amaclidir.</p>
+        <p><b>Note:</b> Export is blocked only when required data is missing. Other warnings are quality-control guidance.</p>
         """
         return html, bool(warnings)
 
@@ -703,11 +751,11 @@ class PlanX3DCityDialog(QDialog):
             layer = layer_map.get(key)
             if layer is None:
                 state = "missing" if key in required_keys else "optional"
-                text = "Eksik" if key in required_keys else ("Kapali" if key == "plan_texture" else "Opsiyonel")
+                text = "Missing" if key in required_keys else ("Off" if key == "plan_texture" else "Optional")
             else:
                 count = self._feature_count(layer)
                 state = "empty" if count == 0 else "ready"
-                text = "Bos" if count == 0 else "Hazir"
+                text = "Empty" if count == 0 else "Ready"
             badge.setText(text)
             badge.setStyleSheet(self._badge_style(state))
 
@@ -727,7 +775,7 @@ class PlanX3DCityDialog(QDialog):
             idx = combo.findData(4)
             combo.setCurrentIndex(idx if idx >= 0 else 0)
         if hasattr(self, "style_report"):
-            self.style_report.setHtml("<p><b>Asset Theme</b>: Modern Urban varsayilanlari geri yuklendi.</p>")
+            self.style_report.setHtml("<p><b>Asset Theme</b>: Modern Urban defaults restored.</p>")
 
     def _prepare_building_fields(self) -> None:
         added = ensure_fields(self.selected_layers().get("buildings"), BUILDING_STYLE_FIELDS)
@@ -757,7 +805,7 @@ class PlanX3DCityDialog(QDialog):
         self._selection_message("Buildings", count)
 
     def _pick_color(self, target: str) -> None:
-        color = QColorDialog.getColor(QColor("#0f766e"), self, "Renk sec")
+        color = QColorDialog.getColor(QColor("#0f766e"), self, "Pick color")
         if not color.isValid():
             return
         value = color.name()
@@ -770,43 +818,43 @@ class PlanX3DCityDialog(QDialog):
 
     def _style_message(self, label: str, added: list[str]) -> None:
         if added:
-            self.style_report.setHtml(f"<p><b>{label}</b> icin alanlar eklendi: {', '.join(added)}</p>")
+            self.style_report.setHtml(f"<p><b>{label}</b> fields added: {', '.join(added)}</p>")
         else:
-            self.style_report.setHtml(f"<p><b>{label}</b> stil alanlari zaten hazir veya katman secili degil.</p>")
+            self.style_report.setHtml(f"<p><b>{label}</b> style fields already exist or the layer is not selected.</p>")
 
     def _selection_message(self, label: str, count: int) -> None:
         if count:
-            self.style_report.setHtml(f"<p><b>{label}</b>: {count} secili feature guncellendi. Katmani kaydetmeyi unutmayin.</p>")
+            self.style_report.setHtml(f"<p><b>{label}</b>: {count} selected feature(s) updated. Remember to save the layer.</p>")
         else:
-            QMessageBox.warning(self, "Secim yok", f"{label} katmaninda secili feature yok veya katman secilmedi.")
+            QMessageBox.warning(self, "No selection", f"No selected feature was found in {label}, or the layer is not selected.")
 
     def _copy_url(self) -> None:
         if not self.last_url:
-            self.set_status("Kopyalanacak viewer URL yok.", error=True)
+            self.set_status("There is no viewer URL to copy.", error=True)
             return
         QApplication.clipboard().setText(self.last_url)
-        self.set_status("Viewer URL panoya kopyalandi.")
+        self.set_status("Viewer URL copied to the clipboard.")
 
     def _open_output_folder(self) -> None:
         QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.join(self.web_root, "data")))
 
     def _input_label_html(self, key: str, required: bool) -> str:
         descriptions = {
-            "dem": "GeoTIFF/raster yukseklik modeli",
-            "plan_texture": "DEM uzerine kaplanacak kirpilmis 2B yerlesim plani GeoTIFF",
-            "basemap": "QGIS'te acik XYZ/raster altlik; export sirasinda PNG texture olarak render edilir",
-            "roi": "Calisma alani siniri",
-            "roads": "Yol akslari",
-            "buildings": "Bina tabanlari, kat ve fonksiyon bilgisi",
-            "blocks": "Ada poligonlari ve ada stilleri",
-            "parcels": "Parsel sinirlari",
-            "trees": "Agac noktalari",
-            "hardscape": "Sert zemin poligonlari",
-            "sidewalks": "Kaldirim poligonlari; secilirse otomatik kaldirim yerine bu geometri kullanilir",
-            "lights": "Aydinlatma noktalari",
-            "benches": "Bank noktalari",
-            "trashbins": "Cop kutusu noktalari",
-            "busstops": "Otobus duragi noktalari",
+            "dem": "GeoTIFF/raster elevation model. / Yukseklik modeli.",
+            "plan_texture": "Clipped 2D site-plan GeoTIFF draped over the DEM. / DEM uzerine kaplanacak plan texture.",
+            "basemap": "Open QGIS XYZ/raster basemap rendered as PNG texture during export. / QGIS altligi.",
+            "roi": "Study-area boundary polygon. / Calisma alani siniri.",
+            "roads": "Road centerlines and mobility attributes. / Yol akslari.",
+            "buildings": "Building footprints, floors and function attributes. / Bina tabanlari.",
+            "blocks": "Block polygons and block style fields. / Ada poligonlari.",
+            "parcels": "Parcel boundaries. / Parsel sinirlari.",
+            "trees": "Tree points; height field can be mapped above. / Agac noktalari.",
+            "hardscape": "Hardscape polygons. / Sert zemin poligonlari.",
+            "sidewalks": "Sidewalk polygons; used instead of auto-sidewalks when selected. / Kaldirim poligonlari.",
+            "lights": "Light fixture points. / Aydinlatma noktalari.",
+            "benches": "Bench points. / Bank noktalari.",
+            "trashbins": "Trash-bin points. / Cop kutusu noktalari.",
+            "busstops": "Bus-stop points. / Otobus duragi noktalari.",
         }
         mark = " *" if required else ""
         return f"<b>{LABELS[key]}{mark}</b><br><span style='color:#64748b'>{descriptions[key]}</span>"

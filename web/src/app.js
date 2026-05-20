@@ -9,7 +9,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { SSAOPass } from 'three/addons/postprocessing/SSAOPass.js';
 
-let currentLang = 'TR';
+let currentLang = 'EN';
 const i18n = {
   TR: {
     guiTitle: 'Kentsel Kontroller',
@@ -72,7 +72,7 @@ const i18n = {
     minimap: 'Minimap'
   }
 };
-function t(key) { return i18n[currentLang][key]; }
+function t(key) { return i18n[currentLang]?.[key] ?? i18n.EN?.[key] ?? key; }
 
 Object.assign(i18n.TR, {
   dockLayers: 'Katmanlar', dockScene: 'Sahne', dockStyle: 'Stil', dockMobility: 'Hareketlilik',
@@ -132,6 +132,144 @@ Object.assign(i18n.EN, {
   lblWindDirection: 'Wind direction', lblPlumeDistance: 'Impact distance',
   lblSolarReview: 'Solar review', lblUrbanComfort: 'Urban comfort screening',
   analysisNote: 'Planning screening / design review. These overlays are not engineering simulation.'
+});
+
+Object.assign(i18n.EN, {
+  title: 'PlanX 3D City',
+  desc: 'A production-ready 3D urban cockpit for DEM, plan, road, block, parcel, building and street-life data.',
+  htmlTitle: 'PlanX 3D City',
+  loadingData: 'Loading project data...',
+  processing: 'Processing city layers...',
+  scenePreparing: 'Preparing',
+  sceneLoading: 'Loading data',
+  sceneGeojson: 'Loading GeoJSON',
+  sceneDem: 'Reading DEM',
+  scenePlanTexture: 'Plan texture',
+  sceneBasemap: 'Basemap',
+  sceneTerrain: 'Terrain',
+  sceneLayers: 'Layers',
+  sceneReady: 'Ready',
+  metricBuildings: 'Buildings',
+  metricBlocks: 'Blocks',
+  metricParcels: 'Parcels',
+  metricFloors: 'Avg. floors',
+  metricPopulation: 'Population',
+  metricDwellings: 'Dwellings',
+  metricVehicles: 'Vehicles',
+  projectWaiting: 'Waiting for project metadata',
+  manifestMissing: 'No manifest found: this may be an older export, but the viewer will still try to load it.',
+  crsUnknown: 'CRS not listed',
+  emptyExport: 'empty export',
+  notAvailable: 'not available',
+  statsLoading: 'Loading...',
+  cameraPanel: 'Camera panel',
+  screenshot: 'Screenshot',
+  orbit: 'Orbit',
+  walkSpeedShort: 'Walk speed',
+  record: 'Record',
+  stop: 'Stop',
+  togglePanel: 'Toggle dashboard',
+  toggleLanguage: 'Switch to Turkish',
+  dockTitleScene: 'Scene dock',
+  dockTitleLayers: 'Layer dock',
+  dockTitleStyle: 'Style dock',
+  dockTitleMobility: 'Mobility dock',
+  dockTitleFurniture: 'Street furniture dock',
+  dockTitleAnalysis: 'Analysis dock',
+  dockTitleNarrative: 'Narrative Studio',
+  dockTitleAdvanced: 'Advanced controls',
+  dockTitleWalk: 'Walk mode',
+  dockTitleGame: 'Slingshot mode',
+  narrativeNote1: 'Save camera, layer, sun and analysis states as keyframes, then record the tour from the camera panel.',
+  narrativeNote2: 'Tour JSON stores the route and states only. It does not embed imagery, DEM, GeoJSON, or the full viewer package.',
+  tourDuration: 'Tour duration',
+  loopTour: 'Loop tour',
+  tourCaptionPlaceholder: 'Caption / scene note',
+  addKeyframe: 'Add keyframe',
+  updateKeyframe: 'Update',
+  deleteKeyframe: 'Delete',
+  playTour: 'Play',
+  pauseTour: 'Pause',
+  exportJson: 'Export JSON',
+  tourEmpty: 'No keyframes yet.',
+  tourLoaded: 'Narrative tour loaded from portable package.',
+  walkHud: 'WASD move · Shift sprint · C crouch · Esc exit',
+  gameHint: 'Left click: throw stone',
+  demLoading: 'Loading DEM...',
+  demLoaded: 'DEM loaded',
+  planTextureFail: 'Plan texture could not be loaded; using the default ground material.',
+  basemapFail: 'QGIS basemap texture could not be loaded; using the default ground material.',
+  funcStylesPending: 'Function styles appear after data is loaded.',
+  minimap: 'Minimap'
+});
+
+Object.assign(i18n.TR, {
+  title: 'PlanX 3D City',
+  desc: 'DEM, plan, yol, ada, parsel, bina ve sokak yasami verileri icin uretim hazir 3B kent kokpiti.',
+  htmlTitle: 'PlanX 3D City',
+  loadingData: 'Proje verisi yukleniyor...',
+  processing: 'Kent katmanlari isleniyor...',
+  scenePreparing: 'Hazirlaniyor',
+  sceneLoading: 'Veri yukleniyor',
+  sceneGeojson: 'GeoJSON yukleniyor',
+  sceneDem: 'DEM okunuyor',
+  scenePlanTexture: 'Plan texture',
+  sceneBasemap: 'Basemap',
+  sceneTerrain: 'Terrain',
+  sceneLayers: 'Katmanlar',
+  sceneReady: 'Hazir',
+  metricBuildings: 'Bina',
+  metricBlocks: 'Ada',
+  metricParcels: 'Parsel',
+  metricFloors: 'Ort. kat',
+  metricPopulation: 'Nufus',
+  metricDwellings: 'Daire',
+  metricVehicles: 'Arac',
+  projectWaiting: 'Proje bilgisi bekleniyor',
+  manifestMissing: 'Manifest yok: bu eski bir export olabilir, viewer yine de yuklemeyi dener.',
+  crsUnknown: 'CRS bilgisi yok',
+  emptyExport: 'bos export',
+  notAvailable: 'yok',
+  statsLoading: 'Yukleniyor...',
+  cameraPanel: 'Kamera paneli',
+  screenshot: 'Fotograf',
+  orbit: 'Orbit',
+  walkSpeedShort: 'Yurume hizi',
+  record: 'Kayit',
+  stop: 'Dur',
+  togglePanel: 'Dashboard panelini ac/kapat',
+  toggleLanguage: 'Ingilizceye gec',
+  dockTitleScene: 'Sahne paneli',
+  dockTitleLayers: 'Katman paneli',
+  dockTitleStyle: 'Stil paneli',
+  dockTitleMobility: 'Hareketlilik paneli',
+  dockTitleFurniture: 'Kent mobilyalari paneli',
+  dockTitleAnalysis: 'Analiz paneli',
+  dockTitleNarrative: 'Narrative Studio',
+  dockTitleAdvanced: 'Gelistirilmis kontroller',
+  dockTitleWalk: 'Walk mode',
+  dockTitleGame: 'Sapan modu',
+  narrativeNote1: 'Kamera, katman, gunes ve analiz durumlarini keyframe olarak kaydedin; turu kamera panelinden kaydedin.',
+  narrativeNote2: 'Tour JSON yalniz rota ve durumlari saklar. Goruntu, DEM, GeoJSON veya tam viewer paketini icine gommez.',
+  tourDuration: 'Tur suresi',
+  loopTour: 'Turu donguye al',
+  tourCaptionPlaceholder: 'Baslik / sahne notu',
+  addKeyframe: 'Keyframe ekle',
+  updateKeyframe: 'Guncelle',
+  deleteKeyframe: 'Sil',
+  playTour: 'Oynat',
+  pauseTour: 'Duraklat',
+  exportJson: 'JSON export',
+  tourEmpty: 'Henuz keyframe yok.',
+  tourLoaded: 'Narrative tur portable paketten yuklendi.',
+  walkHud: 'WASD hareket · Shift hizli · C alcak · Esc cikis',
+  gameHint: 'Sol tik: tas at',
+  demLoading: 'DEM yukleniyor...',
+  demLoaded: 'DEM yuklendi',
+  planTextureFail: 'Plan texture yuklenemedi; varsayilan zeminle devam ediliyor.',
+  basemapFail: 'QGIS basemap texture yuklenemedi; varsayilan zeminle devam ediliyor.',
+  funcStylesPending: 'Fonksiyon stilleri veri yuklendikten sonra gorunur.',
+  minimap: 'Mini Harita'
 });
 
 
@@ -465,13 +603,19 @@ const textureSets = {
   pavement: {
     Asphalt: null,
     StoneA: 'assets/pavement.png',
-    StoneB: 'https://threejs.org/examples/textures/terrain/grasslight-big.jpg',
-    Grid: 'https://threejs.org/examples/textures/uv_grid_opengl.jpg'
+    StoneB: 'StoneB',
+    Concrete: 'Concrete',
+    Cobble: 'Cobble',
+    WarmStone: 'WarmStone',
+    CampusPaver: 'CampusPaver',
+    Permeable: 'Permeable',
+    Grid: 'Grid'
   },
   road: {
     Plain: null,
     Asphalt: 'Asphalt',
-    Cobblestone: 'assets/pavement.png'
+    Cobblestone: 'assets/pavement.png',
+    SharedStreet: 'SharedStreet'
   },
   island: {
     None: null,
@@ -480,97 +624,138 @@ const textureSets = {
   },
   hardscape: {
     Cobble: 'assets/pavement.png',
-    Concrete: 'https://threejs.org/examples/textures/brick_bump.jpg',
-    Tile: 'https://threejs.org/examples/textures/floors/FloorsCheckerboard_S_Diffuse.jpg'
+    Concrete: 'Concrete',
+    Tile: 'Tile',
+    WarmStone: 'WarmStone',
+    CampusPaver: 'CampusPaver',
+    Permeable: 'Permeable',
+    PlazaGranite: 'PlazaGranite'
   },
   facade: {
     UrbanA: 'assets/facade.png',
     UrbanB: 'assets/facade2.png',
     UrbanC: 'assets/facade3.png',
-    UrbanD: 'assets/facade4.png'
+    UrbanD: 'assets/facade4.png',
+    UrbanE: 'UrbanE',
+    CampusGlass: 'CampusGlass',
+    EcoTimber: 'EcoTimber',
+    CivicStone: 'CivicStone',
+    DenseBrick: 'DenseBrick',
+    CoastalWhite: 'CoastalWhite',
+    MediterraneanStucco: 'MediterraneanStucco'
   },
   roof: {
     RoofA: 'assets/roof.png',
-    RoofB: 'https://threejs.org/examples/textures/brick_diffuse.jpg',
-    RoofC: 'https://threejs.org/examples/textures/floors/FloorsCheckerboard_S_Diffuse.jpg',
-    RoofD: 'https://threejs.org/examples/textures/planets/moon_1024.jpg',
+    RoofB: 'RoofB',
+    RoofC: 'RoofC',
+    RoofD: 'RoofD',
     GermanTile: 'GermanTile',
     TurkishTile: 'TurkishTile',
-    USShingle: 'USShingle'
+    USShingle: 'USShingle',
+    StandingSeam: 'StandingSeam',
+    GreenRoof: 'GreenRoof',
+    SolarRoof: 'SolarRoof',
+    CeramicLight: 'CeramicLight'
   }
 };
 
 const assetThemePresets = {
   'Modern Urban': {
     pedestrians: ['Commuter', 'Urban Casual', 'Office', 'Student', 'Evening'],
-    cars: ['Graphite', 'Slate', 'Teal', 'White', 'Navy'],
+    cars: ['Graphite', 'Slate', 'Teal', 'White', 'Navy', 'Silver'],
     trees: ['Street Linden', 'Plane', 'Compact Maple', 'Columnar'],
-    lights: ['Modern Arc', 'Dual Head', 'Slim Post', 'Classic Post'],
-    benches: ['Wood Plank', 'Concrete Slab', 'Curved Metal', 'Slim Urban'],
-    bins: ['Square Box', 'Dual Recycle', 'Cylinder', 'Compact'],
-    busstops: ['Glass Shelter', 'Minimal Canopy', 'Steel Canopy', 'Wood Cabin'],
-    facades: ['UrbanA', 'UrbanB', 'UrbanC', 'UrbanD'],
-    roofs: ['RoofA', 'RoofB', 'GermanTile', 'USShingle'],
-    paving: ['Asphalt', 'StoneA', 'Cobble', 'Concrete']
+    lights: ['Modern Arc', 'Dual Head', 'Slim Post', 'Bollard Path', 'Classic Post'],
+    benches: ['Wood Plank', 'Concrete Slab', 'Curved Metal', 'Slim Urban', 'Stone Seat'],
+    bins: ['Square Box', 'Dual Recycle', 'Cylinder', 'Compact', 'Solar Compactor'],
+    busstops: ['Glass Shelter', 'Minimal Canopy', 'Steel Canopy', 'Wood Cabin', 'Compact Marker'],
+    facades: ['UrbanA', 'UrbanB', 'UrbanC', 'UrbanD', 'UrbanE'],
+    roofs: ['RoofA', 'RoofB', 'GermanTile', 'USShingle', 'StandingSeam'],
+    paving: ['Asphalt', 'StoneA', 'Cobble', 'Concrete', 'PlazaGranite']
   },
   Mediterranean: {
     pedestrians: ['Casual Linen', 'Warm Neutral', 'Student', 'Visitor'],
-    cars: ['Ivory', 'Terracotta', 'Olive', 'Slate'],
-    trees: ['Olive', 'Cypress', 'Plane', 'Palm'],
-    lights: ['Classic Post', 'Modern Arc', 'Slim Post'],
-    benches: ['Wood Plank', 'Curved Metal', 'Stone Seat'],
-    bins: ['Cylinder', 'Square Box', 'Dual Recycle'],
-    busstops: ['Minimal Canopy', 'Wood Cabin', 'Glass Shelter'],
-    facades: ['UrbanB', 'UrbanD', 'UrbanA'],
-    roofs: ['TurkishTile', 'GermanTile', 'RoofA'],
-    paving: ['StoneA', 'Cobble', 'Concrete']
+    cars: ['Ivory', 'Terracotta', 'Olive', 'Slate', 'Sand'],
+    trees: ['Olive', 'Cypress', 'Plane', 'Palm', 'Jacaranda'],
+    lights: ['Classic Post', 'Slim Post', 'Heritage Lantern', 'Modern Arc'],
+    benches: ['Wood Plank', 'Curved Metal', 'Stone Seat', 'Classic Iron'],
+    bins: ['Cylinder', 'Square Box', 'Dual Recycle', 'Compact'],
+    busstops: ['Minimal Canopy', 'Wood Cabin', 'Glass Shelter', 'Compact Marker'],
+    facades: ['MediterraneanStucco', 'UrbanB', 'UrbanD', 'CoastalWhite'],
+    roofs: ['TurkishTile', 'CeramicLight', 'GermanTile', 'RoofA'],
+    paving: ['StoneA', 'WarmStone', 'Cobble', 'Concrete']
   },
   Campus: {
     pedestrians: ['Student', 'Academic', 'Sport', 'Visitor'],
-    cars: ['Slate', 'Navy', 'White', 'Graphite'],
-    trees: ['Plane', 'Pine', 'Compact Maple', 'Street Linden'],
-    lights: ['Slim Post', 'Modern Arc', 'Dual Head'],
-    benches: ['Wood Plank', 'Concrete Slab', 'Slim Urban'],
-    bins: ['Dual Recycle', 'Square Box', 'Compact'],
-    busstops: ['Glass Shelter', 'Minimal Canopy'],
-    facades: ['UrbanC', 'UrbanA', 'UrbanB'],
-    roofs: ['RoofA', 'RoofC', 'USShingle'],
-    paving: ['Concrete', 'StoneA', 'Asphalt']
+    cars: ['Slate', 'Navy', 'White', 'Graphite', 'Silver'],
+    trees: ['Plane', 'Pine', 'Compact Maple', 'Street Linden', 'Broadleaf'],
+    lights: ['Slim Post', 'Campus Twin', 'Modern Arc', 'Dual Head'],
+    benches: ['Wood Plank', 'Concrete Slab', 'Slim Urban', 'Eco Timber'],
+    bins: ['Dual Recycle', 'Square Box', 'Compact', 'Solar Compactor'],
+    busstops: ['Glass Shelter', 'Minimal Canopy', 'Steel Canopy'],
+    facades: ['CampusGlass', 'UrbanC', 'UrbanA', 'UrbanB'],
+    roofs: ['RoofA', 'RoofC', 'USShingle', 'SolarRoof'],
+    paving: ['Concrete', 'CampusPaver', 'StoneA', 'Asphalt']
   },
   Eco: {
     pedestrians: ['Outdoor', 'Casual Green', 'Student', 'Visitor'],
-    cars: ['Teal', 'Olive', 'White', 'Slate'],
-    trees: ['Broadleaf', 'Pine', 'Street Linden', 'Compact Maple'],
-    lights: ['Slim Post', 'Modern Arc', 'Classic Post'],
-    benches: ['Wood Plank', 'Stone Seat', 'Concrete Slab'],
-    bins: ['Dual Recycle', 'Compact', 'Cylinder'],
+    cars: ['Teal', 'Olive', 'White', 'Slate', 'Moss'],
+    trees: ['Broadleaf', 'Pine', 'Street Linden', 'Compact Maple', 'Olive'],
+    lights: ['Slim Post', 'Bollard Path', 'Modern Arc', 'Classic Post'],
+    benches: ['Eco Timber', 'Wood Plank', 'Stone Seat', 'Concrete Slab'],
+    bins: ['Dual Recycle', 'Compact', 'Cylinder', 'Solar Compactor'],
     busstops: ['Wood Cabin', 'Minimal Canopy', 'Glass Shelter'],
-    facades: ['UrbanD', 'UrbanB', 'UrbanA'],
-    roofs: ['RoofA', 'TurkishTile', 'RoofC'],
-    paving: ['Cobble', 'StoneA', 'Concrete']
+    facades: ['EcoTimber', 'UrbanD', 'UrbanB', 'UrbanA'],
+    roofs: ['GreenRoof', 'SolarRoof', 'RoofA', 'TurkishTile'],
+    paving: ['Permeable', 'Cobble', 'StoneA', 'Concrete']
   },
   'Dense Urban': {
     pedestrians: ['Commuter', 'Office', 'Evening', 'Urban Casual', 'Visitor'],
-    cars: ['Graphite', 'Black', 'Navy', 'White', 'Slate'],
+    cars: ['Graphite', 'Black', 'Navy', 'White', 'Slate', 'Burgundy'],
     trees: ['Columnar', 'Compact Maple', 'Street Linden'],
-    lights: ['Dual Head', 'Modern Arc', 'Slim Post'],
-    benches: ['Concrete Slab', 'Curved Metal', 'Slim Urban'],
-    bins: ['Square Box', 'Compact', 'Dual Recycle'],
-    busstops: ['Glass Shelter', 'Steel Canopy', 'Minimal Canopy'],
-    facades: ['UrbanA', 'UrbanC', 'UrbanD', 'UrbanB'],
-    roofs: ['RoofA', 'RoofB', 'USShingle'],
-    paving: ['Asphalt', 'Concrete', 'Grid']
+    lights: ['Dual Head', 'Modern Arc', 'Slim Post', 'Bollard Path'],
+    benches: ['Concrete Slab', 'Curved Metal', 'Slim Urban', 'Stone Seat'],
+    bins: ['Square Box', 'Compact', 'Dual Recycle', 'Solar Compactor'],
+    busstops: ['Glass Shelter', 'Steel Canopy', 'Minimal Canopy', 'Compact Marker'],
+    facades: ['DenseBrick', 'UrbanA', 'UrbanC', 'UrbanD'],
+    roofs: ['StandingSeam', 'RoofA', 'RoofB', 'USShingle'],
+    paving: ['Asphalt', 'Concrete', 'Grid', 'PlazaGranite']
+  },
+  'Civic Heritage': {
+    pedestrians: ['Visitor', 'Academic', 'Warm Neutral', 'Commuter'],
+    cars: ['Graphite', 'Ivory', 'Slate', 'Burgundy', 'Black'],
+    trees: ['Plane', 'Cypress', 'Street Linden', 'Columnar'],
+    lights: ['Heritage Lantern', 'Classic Post', 'Slim Post', 'Bollard Path'],
+    benches: ['Classic Iron', 'Stone Seat', 'Wood Plank', 'Concrete Slab'],
+    bins: ['Cylinder', 'Square Box', 'Dual Recycle', 'Compact'],
+    busstops: ['Steel Canopy', 'Glass Shelter', 'Minimal Canopy'],
+    facades: ['CivicStone', 'MediterraneanStucco', 'UrbanB', 'UrbanC'],
+    roofs: ['GermanTile', 'CeramicLight', 'TurkishTile', 'StandingSeam'],
+    paving: ['WarmStone', 'StoneA', 'Cobble', 'PlazaGranite']
+  },
+  'Coastal Light': {
+    pedestrians: ['Casual Linen', 'Visitor', 'Student', 'Outdoor'],
+    cars: ['White', 'Ivory', 'Teal', 'Sand', 'Slate'],
+    trees: ['Palm', 'Plane', 'Olive', 'Broadleaf'],
+    lights: ['Slim Post', 'Modern Arc', 'Bollard Path', 'Classic Post'],
+    benches: ['Wood Plank', 'Eco Timber', 'Stone Seat', 'Slim Urban'],
+    bins: ['Cylinder', 'Dual Recycle', 'Compact', 'Square Box'],
+    busstops: ['Minimal Canopy', 'Glass Shelter', 'Wood Cabin'],
+    facades: ['CoastalWhite', 'MediterraneanStucco', 'UrbanD', 'CampusGlass'],
+    roofs: ['CeramicLight', 'RoofA', 'SolarRoof', 'TurkishTile'],
+    paving: ['WarmStone', 'Permeable', 'StoneA', 'Concrete']
   }
 };
 
 const namedAssetColors = {
   Graphite: 0x1f2937, Slate: 0x475569, Teal: 0x0f766e, White: 0xe5e7eb, Navy: 0x1d4ed8,
   Ivory: 0xf8f1df, Terracotta: 0x9f5b3f, Olive: 0x556b2f, Black: 0x111827,
+  Silver: 0xcbd5e1, Sand: 0xd8c3a5, Moss: 0x3f6212, Burgundy: 0x7f1d1d,
   Commuter: 0x334155, 'Urban Casual': 0x475569, Office: 0x1f2937, Student: 0x0f766e,
   Evening: 0x374151, 'Casual Linen': 0xd8c3a5, 'Warm Neutral': 0x8b6f47, Visitor: 0x64748b,
   Academic: 0x243044, Sport: 0x2563eb, Outdoor: 0x365314, 'Casual Green': 0x15803d,
   Broadleaf: 0x2f7d32, Pine: 0x1f5f3a, 'Street Linden': 0x3f8f3b, Plane: 0x4b9c45,
-  'Compact Maple': 0x5a8f35, Columnar: 0x2c6e3f, Cypress: 0x174d32, Palm: 0x3d8b44
+  'Compact Maple': 0x5a8f35, Columnar: 0x2c6e3f, Cypress: 0x174d32, Palm: 0x3d8b44,
+  Olive: 0x667a2d, Jacaranda: 0x6d5aa8
 };
 
 function activeAssetTheme() {
@@ -584,8 +769,145 @@ function assetPoolVariants(category) {
   return assetThemePresets[activeAssetTheme()]?.[category] || assetThemePresets['Modern Urban'][category] || [];
 }
 
+function firstAssetVariant(category, fallback) {
+  const variants = assetPoolVariants(category);
+  return variants.length ? variants[0] : fallback;
+}
+
+function applyThemeDefaultsToSettings(resetFunctionFacades = true) {
+  settings.lightStyle = firstAssetVariant('lights', settings.lightStyle);
+  settings.benchStyle = firstAssetVariant('benches', settings.benchStyle);
+  settings.binStyle = firstAssetVariant('bins', settings.binStyle);
+  settings.stopStyle = firstAssetVariant('busstops', settings.stopStyle);
+  const roof = firstAssetVariant('roofs', settings.roofTexture);
+  if (Object.prototype.hasOwnProperty.call(textureSets.roof, roof)) settings.roofTexture = roof;
+  const paving = firstAssetVariant('paving', settings.pavementStyle);
+  if (Object.prototype.hasOwnProperty.call(textureSets.pavement, paving)) settings.pavementStyle = paving;
+  if (resetFunctionFacades) {
+    const facades = assetPoolVariants('facades').filter((value) => Object.prototype.hasOwnProperty.call(textureSets.facade, value));
+    Object.keys(functionFacadeState).forEach((key, index) => {
+      functionFacadeState[key] = facades[index % Math.max(1, facades.length)] || functionFacadeState[key];
+    });
+  }
+}
+
 function assetColor(name, fallback = 0x64748b) {
   return namedAssetColors[name] ?? fallback;
+}
+
+function uniqueAssetVariants(category, fallback = []) {
+  const values = [];
+  const add = (items) => {
+    for (const item of items || []) {
+      if (item && !values.includes(item)) values.push(item);
+    }
+  };
+  add(fallback);
+  Object.values(assetThemePresets).forEach((preset) => add(preset[category]));
+  return values;
+}
+
+function proceduralTextureCanvas(name, size = 256) {
+  const c = document.createElement('canvas');
+  c.width = size;
+  c.height = size;
+  const ctx = c.getContext('2d');
+  const palette = {
+    StoneB: ['#d7d0c2', '#b8ad9c', '#efe8d8'],
+    Concrete: ['#bfc4c9', '#9da5ad', '#d8dde1'],
+    Cobble: ['#a99f90', '#7f7468', '#c8bdad'],
+    WarmStone: ['#d8c7a6', '#b99d72', '#f2e4c8'],
+    CampusPaver: ['#c6cbd0', '#8e98a3', '#e5e7eb'],
+    Permeable: ['#9db489', '#657b57', '#cbd9bf'],
+    PlazaGranite: ['#c8cdd2', '#8d949c', '#eef1f3'],
+    Tile: ['#d7d3c9', '#8f8a80', '#f4f0e7'],
+    Grid: ['#dbeafe', '#64748b', '#f8fafc'],
+    SharedStreet: ['#3a3f44', '#6b7280', '#eef2f7'],
+    UrbanE: ['#d8dee7', '#536171', '#f3f6f9'],
+    CampusGlass: ['#a9d6e8', '#2f5f73', '#e8f6fb'],
+    EcoTimber: ['#9a6b3a', '#4f3824', '#d5b07c'],
+    CivicStone: ['#c8c2b6', '#7c7468', '#eee8dd'],
+    DenseBrick: ['#8f3f2d', '#55261d', '#c2694f'],
+    CoastalWhite: ['#f5f1e8', '#92a7b4', '#ffffff'],
+    MediterraneanStucco: ['#ead8bd', '#b78b64', '#fff4df']
+  }[name] || ['#cbd5e1', '#94a3b8', '#f8fafc'];
+
+  ctx.fillStyle = palette[0];
+  ctx.fillRect(0, 0, size, size);
+
+  if (['StoneB', 'Cobble', 'WarmStone', 'PlazaGranite'].includes(name)) {
+    const cell = name === 'Cobble' ? 26 : 34;
+    for (let y = -cell; y < size + cell; y += cell) {
+      const offset = ((y / cell) % 2) * (cell * 0.45);
+      for (let x = -cell; x < size + cell; x += cell) {
+        const w = cell * (0.75 + ((x + y) % 5) * 0.04);
+        const h = cell * (0.58 + ((x - y) % 4) * 0.05);
+        ctx.fillStyle = ((x + y) / cell) % 3 === 0 ? palette[2] : palette[0];
+        ctx.fillRect(x + offset + 1, y + 1, w, h);
+        ctx.strokeStyle = `${palette[1]}99`;
+        ctx.strokeRect(x + offset + 1, y + 1, w, h);
+      }
+    }
+  } else if (['Concrete', 'CampusPaver', 'Tile', 'Grid', 'SharedStreet'].includes(name)) {
+    ctx.strokeStyle = `${palette[1]}88`;
+    ctx.lineWidth = 1;
+    const step = name === 'Grid' ? 16 : name === 'Tile' ? 32 : 42;
+    for (let i = 0; i <= size; i += step) {
+      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, size); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(size, i); ctx.stroke();
+    }
+    for (let i = 0; i < 700; i++) {
+      const v = 130 + Math.floor(Math.random() * 80);
+      ctx.fillStyle = `rgba(${v},${v},${v},0.08)`;
+      ctx.fillRect(Math.random() * size, Math.random() * size, 1.5, 1.5);
+    }
+  } else if (name === 'Permeable') {
+    for (let y = 0; y < size; y += 20) {
+      for (let x = 0; x < size; x += 20) {
+        ctx.fillStyle = palette[(x + y) % 40 === 0 ? 2 : 0];
+        ctx.fillRect(x + 1, y + 1, 18, 18);
+        ctx.fillStyle = 'rgba(54,83,20,0.28)';
+        ctx.fillRect(x + 7, y + 7, 6, 6);
+      }
+    }
+  } else {
+    const isFacade = Object.prototype.hasOwnProperty.call(textureSets.facade, name);
+    const cols = isFacade ? 6 : 10;
+    const rows = isFacade ? 11 : 10;
+    for (let r = 0; r < rows; r++) {
+      for (let col = 0; col < cols; col++) {
+        const x = (col / cols) * size;
+        const y = (r / rows) * size;
+        const w = size / cols;
+        const h = size / rows;
+        ctx.fillStyle = (r + col) % 3 === 0 ? palette[2] : palette[0];
+        ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+        ctx.strokeStyle = `${palette[1]}77`;
+        ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+        if (isFacade && r % 2 === 0 && col % 2 === 0) {
+          ctx.fillStyle = 'rgba(50,80,100,0.18)';
+          ctx.fillRect(x + w * 0.22, y + h * 0.28, w * 0.42, h * 0.32);
+        }
+      }
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+async function textureFromSet(setName, key, repeatX = 1, repeatY = 1) {
+  const token = textureSets[setName]?.[key];
+  if (!token) return null;
+  if (typeof token === 'string' && (token.startsWith('assets/') || token.startsWith('http'))) {
+    return loadTexture(token, repeatX, repeatY);
+  }
+  const tex = proceduralTextureCanvas(token || key);
+  tex.repeat.set(repeatX, repeatY);
+  tex.needsUpdate = true;
+  return tex;
 }
 
 function propFirst(props, names) {
@@ -782,17 +1104,40 @@ const tourState = {
   startedAt: 0,
   startTime: 0
 };
+let selectedTourIndex = -1;
 
 function loadTourState() {
   try {
     const raw = localStorage.getItem('planx_3d_city_tour');
     if (!raw) return;
-    const saved = JSON.parse(raw);
-    tourState.keyframes = Array.isArray(saved.keyframes) ? saved.keyframes : [];
-    tourState.duration = Number(saved.duration) || 18;
-    tourState.loop = !!saved.loop;
+    applyTourData(JSON.parse(raw), false);
   } catch (err) {
     console.warn('Could not restore PlanX tour', err);
+  }
+}
+
+function applyTourData(data, persist = true) {
+  tourState.keyframes = Array.isArray(data?.keyframes) ? data.keyframes : [];
+  tourState.duration = Number(data?.duration) || tourState.duration || 18;
+  tourState.loop = !!data?.loop;
+  selectedTourIndex = tourState.keyframes.length ? 0 : -1;
+  if (persist) saveTourState();
+  updateTourControls();
+  renderTourList();
+}
+
+async function loadBundledTourStateIfAvailable() {
+  if (tourState.keyframes.length) return false;
+  try {
+    const r = await fetch('../data/planx_tour.json', { cache: 'no-store' });
+    if (!r.ok) return false;
+    const data = await r.json();
+    applyTourData(data, true);
+    setStatus(t('tourLoaded'));
+    return true;
+  } catch (err) {
+    console.warn('Bundled PlanX tour could not be loaded', err);
+    return false;
   }
 }
 
@@ -1077,7 +1422,7 @@ async function loadGeoJson(path, options = {}) {
     return data;
   } catch (err) {
     if (required) {
-      throw new Error(`${label} yuklenemedi: ${path}`);
+      throw new Error(`${label} could not be loaded: ${path}`);
     }
     console.warn(`Optional layer skipped: ${path}`, err);
     return { ...EMPTY_GEOJSON, name: label };
@@ -1106,6 +1451,7 @@ function applyManifestDefaults() {
     } catch (_err) {
       if (projectManifest.assetTheme) settings.assetTheme = projectManifest.assetTheme;
     }
+    applyThemeDefaultsToSettings(false);
     return;
   }
   const defaults = { ...(projectManifest.viewerDefaults || {}), ...(projectManifest.analysisDefaults || {}) };
@@ -1113,6 +1459,7 @@ function applyManifestDefaults() {
   for (const [key, value] of Object.entries(defaults)) {
     if (key in settings && value !== null && value !== undefined) settings[key] = value;
   }
+  applyThemeDefaultsToSettings(false);
 }
 
 async function loadTexture(path, repeatX = 1, repeatY = 1) {
@@ -1299,10 +1646,9 @@ async function loadBaseMapTexture() {
 
 function demHeightAtProjected(x, y, fallback = 0) {
   if (!demSampler) return fallback;
-  let px = Math.floor((x - demSampler.originX) / demSampler.resX);
-  let py = Math.floor((y - demSampler.originY) / demSampler.resY);
-  px = Math.max(0, Math.min(px, demSampler.width - 1));
-  py = Math.max(0, Math.min(py, demSampler.height - 1));
+  const px = Math.floor((x - demSampler.originX) / demSampler.resX);
+  const py = Math.floor((y - demSampler.originY) / demSampler.resY);
+  if (px < 0 || px >= demSampler.width || py < 0 || py >= demSampler.height) return fallback;
   const idx = py * demSampler.width + px;
   const v = demSampler.raster[idx];
   if (!Number.isFinite(v)) return fallback;
@@ -1312,13 +1658,14 @@ function demHeightAtProjected(x, y, fallback = 0) {
 
 function demHeightMedianAtProjected(x, y, fallback = null, radius = 1) {
   if (!demSampler) return fallback;
-  let px = Math.floor((x - demSampler.originX) / demSampler.resX);
-  let py = Math.floor((y - demSampler.originY) / demSampler.resY);
+  const px = Math.floor((x - demSampler.originX) / demSampler.resX);
+  const py = Math.floor((y - demSampler.originY) / demSampler.resY);
   const values = [];
   for (let dy = -radius; dy <= radius; dy++) {
     for (let dx = -radius; dx <= radius; dx++) {
-      const sx = Math.max(0, Math.min(demSampler.width - 1, px + dx));
-      const sy = Math.max(0, Math.min(demSampler.height - 1, py + dy));
+      const sx = px + dx;
+      const sy = py + dy;
+      if (sx < 0 || sx >= demSampler.width || sy < 0 || sy >= demSampler.height) continue;
       const v = demSampler.raster[sy * demSampler.width + sx];
       if (!Number.isFinite(v)) continue;
       if (demSampler.noData !== null && String(v) === String(demSampler.noData)) continue;
@@ -1331,7 +1678,7 @@ function demHeightMedianAtProjected(x, y, fallback = null, radius = 1) {
 }
 
 async function loadProjectDem() {
-  setStatus('DEM yükleniyor...');
+  setStatus(t('demLoading'));
   const res = await fetch('../data/dem/mydem.tif');
   if (!res.ok) throw new Error('DEM not found');
   const file = await res.arrayBuffer();
@@ -1377,7 +1724,7 @@ async function loadProjectDem() {
     noData: image.getGDALNoData()
   };
   demReady = true;
-  setStatus('DEM yüklendi (Bergama_Elevation_Cropped.tif).');
+  setStatus(`${t('demLoaded')} (Bergama_Elevation_Cropped.tif).`);
 }
 
 function clearGroup(g) {
@@ -1684,6 +2031,108 @@ function terrainVertexBoundaryBlend(localX, localY, width, depth) {
   return 1 - Math.max(0, edgeDistance) / band;
 }
 
+function pointInRingLocal(x, z, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], zi = ring[i][1];
+    const xj = ring[j][0], zj = ring[j][1];
+    const crosses = (zi > z) !== (zj > z);
+    if (crosses) {
+      const xAtZ = ((xj - xi) * (z - zi)) / ((zj - zi) || 1e-9) + xi;
+      if (x < xAtZ) inside = !inside;
+    }
+  }
+  return inside;
+}
+
+function roiLocalPolygons() {
+  const polygons = [];
+  for (const feature of layerDataCache?.roi?.features || []) {
+    for (const poly of getPolygonRings(feature.geometry)) {
+      if (!poly?.[0]?.length) continue;
+      polygons.push(poly.map((ring) => ring.map((coord) => metersToLocal(coord[0], coord[1]))));
+    }
+  }
+  return polygons;
+}
+
+function pointInRoiLocal(x, z, polygons) {
+  if (!polygons.length) return true;
+  for (const poly of polygons) {
+    if (!pointInRingLocal(x, z, poly[0])) continue;
+    let inHole = false;
+    for (let i = 1; i < poly.length; i++) {
+      if (pointInRingLocal(x, z, poly[i])) {
+        inHole = true;
+        break;
+      }
+    }
+    if (!inHole) return true;
+  }
+  return false;
+}
+
+function limitTerrainBoundarySpikes(pos, segments, width, depth, fallback) {
+  const cols = segments + 1;
+  const rows = segments + 1;
+  const count = cols * rows;
+  const original = new Float32Array(count);
+  const inside = new Uint8Array(count);
+  const polygons = roiLocalPolygons();
+  const hasRoi = polygons.length > 0;
+  for (let i = 0; i < count; i++) {
+    original[i] = pos.getZ(i);
+    inside[i] = pointInRoiLocal(pos.getX(i), -pos.getY(i), polygons) ? 1 : 0;
+  }
+  const range = Math.max(1, (terrainHeightStats.p98 || fallback) - (terrainHeightStats.p02 || fallback));
+  const riseLimit = Math.max(1.2, Math.min(7.5, range * 0.055));
+  const dropLimit = Math.max(1.8, Math.min(10.0, range * 0.080));
+  const bboxBand = Math.max(2, Math.ceil(cols * 0.025));
+  const radius = 2;
+
+  const medianAround = (row, col) => {
+    const values = [];
+    for (let dy = -radius; dy <= radius; dy++) {
+      const rr = row + dy;
+      if (rr < 0 || rr >= rows) continue;
+      for (let dx = -radius; dx <= radius; dx++) {
+        const cc = col + dx;
+        if (cc < 0 || cc >= cols) continue;
+        const v = original[rr * cols + cc];
+        if (Number.isFinite(v)) values.push(v);
+      }
+    }
+    if (!values.length) return fallback;
+    values.sort((a, b) => a - b);
+    return values[Math.floor(values.length / 2)];
+  };
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const idx = row * cols + col;
+      let boundary = row < bboxBand || col < bboxBand || row >= rows - bboxBand || col >= cols - bboxBand;
+      if (hasRoi && !boundary) {
+        const here = inside[idx];
+        boundary =
+          inside[Math.max(0, row - 1) * cols + col] !== here ||
+          inside[Math.min(rows - 1, row + 1) * cols + col] !== here ||
+          inside[row * cols + Math.max(0, col - 1)] !== here ||
+          inside[row * cols + Math.min(cols - 1, col + 1)] !== here;
+      }
+      if (!boundary) continue;
+      const z = original[idx];
+      const med = medianAround(row, col);
+      if (!Number.isFinite(z) || !Number.isFinite(med)) continue;
+      if (z > med + riseLimit) {
+        pos.setZ(idx, med + riseLimit * 0.18);
+      } else if (z < med - dropLimit) {
+        pos.setZ(idx, med - dropLimit * 0.30);
+      }
+    }
+  }
+  pos.needsUpdate = true;
+}
+
 async function buildTerrain(adalar) {
   const width = bounds.maxX - bounds.minX;
   const depth = bounds.maxY - bounds.minY;
@@ -1738,6 +2187,7 @@ async function buildTerrain(adalar) {
     }
     pos.setZ(i, z);
   }
+  limitTerrainBoundarySpikes(pos, segments, width, depth, avgZ);
   geo.computeVertexNormals();
   const useTopoTint = settings.terrainAnalysisMode && settings.terrainAnalysisMode !== 'Texture';
   if (useTopoTint) {
@@ -1766,7 +2216,7 @@ async function buildTerrain(adalar) {
       ? baseMapTexture
     : (settings.pavementStyle === 'Asphalt'
       ? createAsphaltTexture()
-      : await loadTexture(textureSets.pavement[settings.pavementStyle], width / 60, depth / 60)));
+      : await textureFromSet('pavement', settings.pavementStyle, width / 60, depth / 60)));
   /* Ada poligonları içinde DEM texture %100 transparan,
    * kalan yerlerde (yollar, boş alanlar) normal asfalt görünür */
   const terrainOpacity = useRasterTexture ? settings.terrainTextureOpacity : 1;
@@ -1792,7 +2242,7 @@ async function buildTerrain(adalar) {
   world.add(terrainMesh);
   buildTerrainSideSkirt(width, depth, zMin, avgZ);
   _lastTerrainY = avgZ;   // fallback için ortalama DEM yüksekliğini başlat
-  setStatus(`DEM yüklendi (mydem.tif). Z: ${zMin.toFixed(1)} - ${zMax.toFixed(1)} m`);
+  setStatus(`${t('demLoaded')} (mydem.tif). Z: ${zMin.toFixed(1)} - ${zMax.toFixed(1)} m`);
 }
 
 /* terrainLocalYAt: DEM yüzeyinden Y değerini raycaster ile okur.
@@ -1806,7 +2256,7 @@ function terrainLocalYAt(localX, localZ) {
    * Ters dönüşüm: mx = localX + centerX, my = localZ + centerY */
   const wx = localX + centerX;
   const wy = localZ + centerY;
-  const z = demHeightAtProjected(wx, wy, null);
+  const z = robustTerrainHeightAtProjected(wx, wy, null);
   if (z !== null) {
     _lastTerrainY = z;
     return z;
@@ -1929,7 +2379,7 @@ function buildParcelLayer(parseller) {
 
 async function buildHardscapeLayer(hardscape) {
   clearGroup(hardscapeGroup);
-  const t = await loadTexture(textureSets.hardscape[settings.hardscapeStyle], 8, 8);
+  const t = await textureFromSet('hardscape', settings.hardscapeStyle, 8, 8);
   const mat = new THREE.MeshStandardMaterial({
     map: t, roughness: 0.94, metalness: 0.02,
     side: THREE.DoubleSide,
@@ -2091,7 +2541,8 @@ function createRoofPresetTexture(name) {
   const ctx = c.getContext('2d');
   const bg = {
     RoofA: '#9a7b61', RoofB: '#6f7885', RoofC: '#8e5a49', RoofD: '#5e6368',
-    GermanTile: '#3d4a5c', TurkishTile: '#b94a1a', USShingle: '#2d3340'
+    GermanTile: '#3d4a5c', TurkishTile: '#b94a1a', USShingle: '#2d3340',
+    StandingSeam: '#506070', GreenRoof: '#587642', SolarRoof: '#26364c', CeramicLight: '#d1a16d'
   }[name] || '#9a7b61';
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, 256, 256);
@@ -2194,6 +2645,63 @@ function createRoofPresetTexture(name) {
           ctx.fillStyle = `rgba(${v + 20},${v + 24},${v + 30},0.4)`;
           ctx.fillRect(dx, dy, 2, 2);
         }
+      }
+    }
+  } else if (name === 'StandingSeam') {
+    ctx.fillStyle = '#506070';
+    ctx.fillRect(0, 0, 256, 256);
+    for (let x = 0; x < 256; x += 22) {
+      const grad = ctx.createLinearGradient(x, 0, x + 18, 0);
+      grad.addColorStop(0, 'rgba(25,34,45,0.42)');
+      grad.addColorStop(0.5, 'rgba(120,135,150,0.18)');
+      grad.addColorStop(1, 'rgba(20,28,38,0.36)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, 0, 18, 256);
+      ctx.strokeStyle = 'rgba(210,220,230,0.35)';
+      ctx.beginPath(); ctx.moveTo(x + 18, 0); ctx.lineTo(x + 18, 256); ctx.stroke();
+    }
+  } else if (name === 'GreenRoof') {
+    ctx.fillStyle = '#587642';
+    ctx.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 1800; i++) {
+      const x = Math.random() * 256;
+      const y = Math.random() * 256;
+      const g = 80 + Math.floor(Math.random() * 80);
+      ctx.fillStyle = `rgba(${Math.floor(g * 0.55)},${g},${Math.floor(g * 0.38)},0.35)`;
+      ctx.fillRect(x, y, 2, 2);
+    }
+    ctx.strokeStyle = 'rgba(235,245,220,0.16)';
+    for (let x = 0; x < 256; x += 48) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 40, 256); ctx.stroke();
+    }
+  } else if (name === 'SolarRoof') {
+    ctx.fillStyle = '#26364c';
+    ctx.fillRect(0, 0, 256, 256);
+    const pw = 42, ph = 26;
+    for (let y = 8; y < 256; y += ph + 5) {
+      for (let x = 8; x < 256; x += pw + 5) {
+        const grad = ctx.createLinearGradient(x, y, x + pw, y + ph);
+        grad.addColorStop(0, '#172033');
+        grad.addColorStop(0.55, '#2c4f75');
+        grad.addColorStop(1, '#111827');
+        ctx.fillStyle = grad;
+        ctx.fillRect(x, y, pw, ph);
+        ctx.strokeStyle = 'rgba(180,210,240,0.35)';
+        ctx.strokeRect(x, y, pw, ph);
+      }
+    }
+  } else if (name === 'CeramicLight') {
+    ctx.fillStyle = '#d1a16d';
+    ctx.fillRect(0, 0, 256, 256);
+    for (let y = 0; y < 280; y += 22) {
+      for (let x = -14; x < 270; x += 28) {
+        const shade = 185 + ((x + y) % 38);
+        ctx.fillStyle = `rgb(${shade},${Math.floor(shade * 0.62)},${Math.floor(shade * 0.34)})`;
+        ctx.beginPath();
+        ctx.ellipse(x + ((y / 22) % 2) * 14, y + 11, 15, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(105,65,30,0.38)';
+        ctx.stroke();
       }
     }
   } else {
@@ -2450,6 +2958,33 @@ function buildFurnitureLayer() {
       const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), lampMat);
       lamp.position.set(0, 4.2, 0);
       g.add(pole, lamp);
+    } else if (activeLightStyle === 'Heritage Lantern') {
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.18, 6), metalMat);
+      cap.position.y = 4.35;
+      const lantern = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.42, 0.36), lampMat);
+      lantern.position.y = 4.08;
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.018, 6, 16), metalMat);
+      ring.position.y = 4.34;
+      g.add(pole, cap, lantern, ring);
+    } else if (activeLightStyle === 'Slim Post') {
+      pole.scale.set(0.62, 0.88, 0.62);
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.08, 0.55), lampMat);
+      head.position.set(0.18, 3.55, 0);
+      g.add(pole, head);
+    } else if (activeLightStyle === 'Bollard Path') {
+      pole.scale.set(1.05, 0.32, 1.05);
+      pole.position.y = 0.65;
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.16, 12), lampMat);
+      cap.position.y = 1.32;
+      g.add(pole, cap);
+    } else if (activeLightStyle === 'Campus Twin') {
+      const cross = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.08, 0.08), metalMat);
+      cross.position.y = 3.7;
+      const l1 = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.12, 0.18, 8), lampMat);
+      l1.position.set(0.42, 3.65, 0);
+      const l2 = l1.clone();
+      l2.position.set(-0.42, 3.65, 0);
+      g.add(pole, cross, l1, l2);
     } else if (activeLightStyle === 'Dual Head') {
       const cross = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 0.08), metalMat);
       cross.position.y = 4;
@@ -2474,6 +3009,12 @@ function buildFurnitureLayer() {
       const b = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.5, 0.6), new THREE.MeshStandardMaterial({color: 0x999999, roughness: 0.9}));
       b.position.y = 0.25;
       g.add(b);
+    } else if (activeBenchStyle === 'Stone Seat') {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.42, 0.58), new THREE.MeshStandardMaterial({ color: 0xb9b0a2, roughness: 0.96 }));
+      b.position.y = 0.24;
+      const groove = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.04, 0.08), new THREE.MeshStandardMaterial({ color: 0x8e8578, roughness: 0.98 }));
+      groove.position.set(0, 0.47, -0.18);
+      g.add(b, groove);
     } else if (activeBenchStyle === 'Curved Metal') {
       const mMat = new THREE.MeshStandardMaterial({color: 0x555555, metalness: 0.6, roughness: 0.4});
       const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.6, 12, 1, false, 0, Math.PI), mMat);
@@ -2484,6 +3025,40 @@ function buildFurnitureLayer() {
       const l2 = l1.clone();
       l2.position.set(-0.7, 0.2, 0);
       g.add(seat, l1, l2);
+    } else if (activeBenchStyle === 'Slim Urban') {
+      const mMat = new THREE.MeshStandardMaterial({ color: 0x3f464d, metalness: 0.55, roughness: 0.34 });
+      for (let i = 0; i < 4; i++) {
+        const slat = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.055, 0.08), mMat);
+        slat.position.set(0, 0.42 + i * 0.1, -0.18 + i * 0.08);
+        g.add(slat);
+      }
+      const leg1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.42, 0.36), mMat);
+      leg1.position.set(0.62, 0.21, 0.02);
+      const leg2 = leg1.clone();
+      leg2.position.x = -0.62;
+      g.add(leg1, leg2);
+    } else if (activeBenchStyle === 'Eco Timber') {
+      const ecoMat = new THREE.MeshStandardMaterial({ color: 0x8a6138, roughness: 0.94 });
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.12, 0.55), ecoMat);
+      seat.position.y = 0.42;
+      const back = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.58, 0.10), ecoMat);
+      back.position.set(0, 0.76, -0.26);
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.22, 0.18), ecoMat);
+      leg.position.set(0, 0.16, 0.06);
+      g.add(seat, back, leg);
+    } else if (activeBenchStyle === 'Classic Iron') {
+      const ironMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, metalness: 0.72, roughness: 0.28 });
+      for (let i = 0; i < 3; i++) {
+        const slat = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.07, 0.12), woodMat);
+        slat.position.set(0, 0.42 + i * 0.18, -0.16 + i * 0.1);
+        g.add(slat);
+      }
+      const side1 = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.025, 8, 18, Math.PI), ironMat);
+      side1.rotation.z = Math.PI / 2;
+      side1.position.set(0.78, 0.3, 0.02);
+      const side2 = side1.clone();
+      side2.position.x = -0.78;
+      g.add(side1, side2);
     } else { // Wood Plank
       const seat = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, 0.5), woodMat);
       seat.position.y = 0.4;
@@ -2503,6 +3078,23 @@ function buildFurnitureLayer() {
       const b = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 0.5), new THREE.MeshStandardMaterial({color: 0x222222}));
       b.position.y = 0.4;
       return b;
+    } else if (activeBinStyle === 'Compact') {
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.62, 0.42), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.78 }));
+      body.position.y = 0.31;
+      const lid = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.08, 0.52), new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.72 }));
+      lid.position.y = 0.66;
+      g.add(body, lid);
+      return g;
+    } else if (activeBinStyle === 'Solar Compactor') {
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.92, 0.48), new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.7 }));
+      body.position.y = 0.46;
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.04, 0.36), new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.4, roughness: 0.22 }));
+      panel.position.set(0, 0.96, -0.02);
+      panel.rotation.x = -0.22;
+      g.add(body, panel);
+      return g;
     } else if (activeBinStyle === 'Dual Recycle') {
       const g = new THREE.Group();
       const b1 = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.7, 0.4), new THREE.MeshStandardMaterial({color: 0x225588}));
@@ -2520,7 +3112,15 @@ function buildFurnitureLayer() {
 
   function getStopGeo() {
     const g = new THREE.Group();
-    if (activeStopStyle === 'Minimal Canopy') {
+    if (activeStopStyle === 'Compact Marker') {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.2), metalMat);
+      pole.position.y = 1.1;
+      const sign = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.52, 0.06), new THREE.MeshStandardMaterial({ color: 0x0f766e, roughness: 0.58 }));
+      sign.position.y = 2.0;
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.08, 10), metalMat);
+      base.position.y = 0.04;
+      g.add(pole, sign, base);
+    } else if (activeStopStyle === 'Minimal Canopy') {
       const pole1 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.8), metalMat);
       pole1.position.set(-1.5, 1.4, -0.5);
       const pole2 = pole1.clone();
@@ -2539,6 +3139,18 @@ function buildFurnitureLayer() {
       const s2 = s1.clone();
       s2.position.set(1.75, 1.2, 0);
       g.add(wBase, wBack, wRoof, s1, s2);
+    } else if (activeStopStyle === 'Steel Canopy') {
+      const base = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.1, 1.55), metalMat);
+      const pole1 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.5), metalMat);
+      pole1.position.set(-1.65, 1.25, -0.52);
+      const pole2 = pole1.clone();
+      pole2.position.x = 1.65;
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(4.35, 0.12, 1.95), new THREE.MeshStandardMaterial({ color: 0x6b7280, metalness: 0.45, roughness: 0.38 }));
+      roof.position.y = 2.55;
+      roof.rotation.x = -0.08;
+      const bench = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, 0.42), woodMat);
+      bench.position.set(0, 0.48, 0.18);
+      g.add(base, pole1, pole2, roof, bench);
     } else { // Glass Shelter
       const base = new THREE.Mesh(new THREE.BoxGeometry(4, 0.1, 1.5), metalMat);
       const wall1 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.5, 1.5), glassMat);
@@ -2629,7 +3241,8 @@ async function buildBuildingLayer(yapilar) {
   buildingFunctionMaterials.clear();
 
   const defaultFuncColors = ['#f1f5f9', '#dbeafe', '#fee2e2', '#dcfce7', '#fef3c7', '#ede9fe'];
-  const facadeOptions = Object.keys(textureSets.facade);
+  const facadeOptions = uniqueAssetVariants('facades', Object.keys(textureSets.facade))
+    .filter((name) => Object.prototype.hasOwnProperty.call(textureSets.facade, name));
   const functions = [...new Set(yapilar.features.map((f) => String(buildingFunctionValue(f.properties || {}))))];
 
   for (let i = 0; i < functions.length; i++) {
@@ -2644,8 +3257,7 @@ async function buildBuildingLayer(yapilar) {
   for (const fn of functions) {
     const key = functionFacadeState[fn];
     if (!facadeCache[key]) {
-      const src = textureSets.facade[key];
-      if (src) facadeCache[key] = await loadTexture(src, 0.22, 0.22);
+      facadeCache[key] = await textureFromSet('facade', key, 0.22, 0.22);
     }
   }
   // Per-building texture scale cache keyed by (facade_type + floor_count)
@@ -2709,8 +3321,7 @@ async function buildBuildingLayer(yapilar) {
 
       // Clone texture per (facade_type, floor_count) so Y-repeat matches floor count
       if (!facadeCache[featureFacade]) {
-        const src = textureSets.facade[featureFacade];
-        if (src) facadeCache[featureFacade] = await loadTexture(src, 0.22, 0.22);
+        facadeCache[featureFacade] = await textureFromSet('facade', featureFacade, 0.22, 0.22);
       }
       const texKey = `${featureFacade}_${levels}`;
       if (!facadeScaleCache[texKey]) {
@@ -2824,7 +3435,9 @@ async function buildRoadsAndTraffic(yollar) {
   if (settings.roadStyle === 'Asphalt') {
     roadTex = createAsphaltTexture();
   } else if (settings.roadStyle === 'Cobblestone') {
-    roadTex = await loadTexture(textureSets.road.Cobblestone, 2, 20);
+    roadTex = await textureFromSet('road', 'Cobblestone', 2, 20);
+  } else if (settings.roadStyle === 'SharedStreet') {
+    roadTex = await textureFromSet('road', 'SharedStreet', 2, 16);
   }
 
   const roadMat = new THREE.MeshStandardMaterial({
@@ -3155,10 +3768,10 @@ function buildRoiBoundary(roi) {
 async function rebuildScene() {
   const loadingText = document.getElementById('loading-text');
   loadingText.innerText = t('loadingData');
-  setSceneState('Veri yukleniyor');
+  setSceneState('sceneLoading');
 
   if (!layerDataCache) {
-    loadingText.innerText = 'GeoJSON yukleniyor...';
+    loadingText.innerText = t('sceneGeojson') + '...';
     projectManifest = await loadManifest();
     applyManifestDefaults();
     const rasterMode = isRasterTextureMode();
@@ -3235,8 +3848,8 @@ async function rebuildScene() {
 
   if (!demReady && !demLoadingStarted) {
     demLoadingStarted = true;
-    loadingText.innerText = 'DEM okunuyor...';
-    setSceneState('DEM okunuyor');
+    loadingText.innerText = t('sceneDem') + '...';
+    setSceneState('sceneDem');
     loadProjectDem()
       .then(() => rebuildScene())
       .catch((err) => {
@@ -3253,30 +3866,30 @@ async function rebuildScene() {
   clearGroup(terrainSideGroup);
   if (isRasterTextureMode() && settings.showTerrainTexture && !terrainTexture) {
     try {
-      loadingText.innerText = 'Plan texture okunuyor...';
-      setSceneState('Plan texture');
+      loadingText.innerText = t('scenePlanTexture') + '...';
+      setSceneState('scenePlanTexture');
       terrainTexture = await loadTerrainTextureFromGeoTiff();
     } catch (err) {
       console.warn('Plan texture yuklenemedi, pavement ile devam ediliyor.', err);
-      setStatus('Plan texture yuklenemedi; varsayilan zeminle devam.');
+      setStatus(t('planTextureFail'));
     }
   }
   if (settings.showXyzTiles && projectManifest?.baseMapTexture && !baseMapTexture) {
     try {
-      loadingText.innerText = 'QGIS basemap texture okunuyor...';
-      setSceneState('Basemap');
+      loadingText.innerText = t('sceneBasemap') + '...';
+      setSceneState('sceneBasemap');
       baseMapTexture = await loadBaseMapTexture();
     } catch (err) {
       console.warn('QGIS basemap texture yuklenemedi, zemin dokusu ile devam ediliyor.', err);
-      setStatus('QGIS basemap texture yuklenemedi; varsayilan zeminle devam.');
+      setStatus(t('basemapFail'));
     }
   }
-  loadingText.innerText = 'Terrain kuruluyor...';
-  setSceneState('Terrain');
+  loadingText.innerText = t('sceneTerrain') + '...';
+  setSceneState('sceneTerrain');
   await buildTerrain(adalar);
 
   loadingText.innerText = t('processing');
-  setSceneState('Katmanlar');
+  setSceneState('sceneLayers');
   if (!isRasterTextureMode() || adalar.features.length) await buildIslandLayer(adalar); else clearGroup(islandGroup);
   if (settings.showParcels && parseller) buildParcelLayer(parseller); else clearGroup(parcelGroup);
   if (settings.showHardscape && hardscape) await buildHardscapeLayer(hardscape); else clearGroup(hardscapeGroup);
@@ -3291,7 +3904,7 @@ async function rebuildScene() {
   updateDockControls();
   renderFunctionStyleDock();
   updateDashboard(layerDataCache);
-  setSceneState('Hazir');
+  setSceneState('sceneReady');
 
   document.getElementById('loading').style.opacity = 0;
   setTimeout(() => (document.getElementById('loading').style.display = 'none'), 450);
@@ -3300,9 +3913,13 @@ async function rebuildScene() {
 let globalGui = null;
 let functionGuiRefs = null;
 
-function setSceneState(text, kind = 'ok') {
+function setSceneState(textOrKey, kind = 'ok') {
   const pill = document.getElementById('scene-state');
   if (!pill) return;
+  const translated = t(textOrKey);
+  if (translated !== textOrKey) pill.dataset.sceneI18n = textOrKey;
+  else delete pill.dataset.sceneI18n;
+  const text = translated !== textOrKey ? translated : textOrKey;
   pill.textContent = text;
   pill.style.background = kind === 'warn' ? '#fef3c7' : '#dff7ef';
   pill.style.color = kind === 'warn' ? '#92400e' : '#0f766e';
@@ -3355,13 +3972,13 @@ function updateDashboard(data) {
     if (projectManifest) {
       const title = projectManifest.project?.title || 'PlanX 3D City Project';
       const exportedAt = projectManifest.exportedAt ? new Date(projectManifest.exportedAt).toLocaleString() : '-';
-      const crs = projectManifest.summary?.crs?.length ? projectManifest.summary.crs.join(', ') : 'CRS bilgisi yok';
+      const crs = projectManifest.summary?.crs?.length ? projectManifest.summary.crs.join(', ') : t('crsUnknown');
       const modeLabel = isRasterTextureMode() ? 'Raster Plan Texture' : 'Vector Plan';
       const accessField = projectManifest.roadAccess?.field ? `<br>Traffic filter: ${projectManifest.roadAccess.field}` : '';
       const themeLabel = projectManifest.assetTheme || settings.assetTheme || 'Modern Urban';
       meta.innerHTML = `<strong>${title}</strong><br>Mode: ${modeLabel}<br>Asset theme: ${themeLabel}<br>Export: ${exportedAt}<br>CRS: ${crs}${accessField}`;
     } else {
-      meta.textContent = 'Manifest yok: veri klasoru eski bir export olabilir, viewer yine yuklenir.';
+      meta.textContent = t('manifestMissing');
     }
   }
 
@@ -3380,7 +3997,7 @@ function updateDashboard(data) {
       ['busstops', 'Stops', furniture.busstops?.features?.length || 0],
     ];
     health.innerHTML = optional.map(([key, name, count]) =>
-      `<span class="health-chip ${count ? 'ok' : 'empty'}">${name}: ${count || (manifestEmpty.has(key) ? 'bos export' : 'yok')}</span>`
+      `<span class="health-chip ${count ? 'ok' : 'empty'}">${name}: ${count || (manifestEmpty.has(key) ? t('emptyExport') : t('notAvailable'))}</span>`
     ).join('');
   }
 
@@ -3464,13 +4081,13 @@ function addGui() {
   
   const sfGroup = globalGui.addFolder(t('sfFolder'));
   sfGroup.add(settings, 'showLights').name(t('sfLights')).onChange(rebuildScene);
-  sfGroup.add(settings, 'lightStyle', ['Modern Arc', 'Classic Post', 'Dual Head']).onChange(rebuildScene);
+  sfGroup.add(settings, 'lightStyle', uniqueAssetVariants('lights', ['Modern Arc', 'Classic Post', 'Dual Head', 'Slim Post'])).onChange(rebuildScene);
   sfGroup.add(settings, 'showBenches').name(t('sfBenches')).onChange(rebuildScene);
-  sfGroup.add(settings, 'benchStyle', ['Wood Plank', 'Concrete Slab', 'Curved Metal']).onChange(rebuildScene);
+  sfGroup.add(settings, 'benchStyle', uniqueAssetVariants('benches', ['Wood Plank', 'Concrete Slab', 'Curved Metal'])).onChange(rebuildScene);
   sfGroup.add(settings, 'showBins').name(t('sfBins')).onChange(rebuildScene);
-  sfGroup.add(settings, 'binStyle', ['Square Box', 'Cylinder', 'Dual Recycle']).onChange(rebuildScene);
+  sfGroup.add(settings, 'binStyle', uniqueAssetVariants('bins', ['Square Box', 'Cylinder', 'Dual Recycle'])).onChange(rebuildScene);
   sfGroup.add(settings, 'showBusStops').name(t('sfStops')).onChange(rebuildScene);
-  sfGroup.add(settings, 'stopStyle', ['Glass Shelter', 'Minimal Canopy', 'Wood Cabin']).onChange(rebuildScene);
+  sfGroup.add(settings, 'stopStyle', uniqueAssetVariants('busstops', ['Glass Shelter', 'Minimal Canopy', 'Wood Cabin'])).onChange(rebuildScene);
 
   const style = globalGui.addFolder(t('funcCol'));
   const facade = globalGui.addFolder(t('funcFac'));
@@ -3480,7 +4097,7 @@ function addGui() {
     const keys = Object.keys(functionColorState);
     keys.forEach((k) => {
       style.addColor(functionColorState, k).name(k.slice(0, 16)).onFinishChange(rebuildScene);
-      facade.add(functionFacadeState, k, Object.keys(textureSets.facade)).name(k.slice(0, 16)).onFinishChange(rebuildScene);
+      facade.add(functionFacadeState, k, uniqueAssetVariants('facades', Object.keys(textureSets.facade)).filter((value) => Object.prototype.hasOwnProperty.call(textureSets.facade, value))).name(k.slice(0, 16)).onFinishChange(rebuildScene);
     });
   };
 
@@ -3934,13 +4551,31 @@ function animate() {
 }
 
 function updateHtmlLang() {
+  document.documentElement.lang = currentLang === 'TR' ? 'tr' : 'en';
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
-    if (i18n[currentLang][key]) el.innerText = i18n[currentLang][key];
+    const value = t(key);
+    if (value !== key) el.innerText = value;
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = el.getAttribute('data-i18n-title');
+    const value = t(key);
+    if (value !== key) el.setAttribute('title', value);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    const value = t(key);
+    if (value !== key) el.setAttribute('placeholder', value);
   });
   const langBtn = document.getElementById('lang-toggle');
-  if (langBtn) langBtn.innerText = currentLang === 'TR' ? 'EN' : 'TR';
+  if (langBtn) {
+    langBtn.innerText = currentLang === 'TR' ? 'EN' : 'TR';
+    langBtn.setAttribute('aria-label', t('toggleLanguage'));
+  }
+  const scenePill = document.getElementById('scene-state');
+  if (scenePill?.dataset.sceneI18n) scenePill.textContent = t(scenePill.dataset.sceneI18n);
   renderFunctionStyleDock();
+  renderTourList();
 }
 
 const panelToggleBtn = document.getElementById('panel-toggle');
@@ -4142,8 +4777,6 @@ if (autoOrbitBtn) {
   });
 }
 
-let selectedTourIndex = -1;
-
 const TOUR_SETTING_KEYS = [
   'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture',
   'showCars', 'showRoads', 'showSidewalks', 'showCrosswalks', 'showPedestrians',
@@ -4191,7 +4824,7 @@ function renderTourList() {
       <strong>${index + 1}. ${frame.caption || 'Keyframe'}</strong><br>
       <span>${Number(frame.timeOfDay || 0).toFixed(1)}h - ${frame.settings?.roadColorMode || 'Default'}</span>
     </div>`
-  )).join('') || '<div class="tour-item">No keyframes yet.</div>';
+  )).join('') || `<div class="tour-item">${t('tourEmpty')}</div>`;
   list.querySelectorAll('[data-tour-index]').forEach((item) => {
     item.addEventListener('click', () => {
       selectedTourIndex = Number(item.dataset.tourIndex);
@@ -4289,7 +4922,15 @@ function applyTourPlayback() {
 }
 
 function exportTourJson() {
-  const blob = new Blob([JSON.stringify({ version: 'planx-tour/v1', ...tourState }, null, 2)], { type: 'application/json' });
+  const payload = {
+    version: 'planx-tour/v2',
+    exportedAt: new Date().toISOString(),
+    project: projectManifest?.project || null,
+    manifestVersion: projectManifest?.version || null,
+    mode: projectManifest?.mode || viewerMode(),
+    ...tourState
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'planx_tour.json';
@@ -4302,6 +4943,12 @@ function exportTourJson() {
 function initTourUi() {
   updateTourControls();
   renderTourList();
+  loadBundledTourStateIfAvailable().then((loaded) => {
+    if (loaded) {
+      updateTourControls();
+      renderTourList();
+    }
+  });
   document.getElementById('tour-add')?.addEventListener('click', addTourKeyframe);
   document.getElementById('tour-update')?.addEventListener('click', updateTourKeyframe);
   document.getElementById('tour-delete')?.addEventListener('click', deleteTourKeyframe);
@@ -4312,13 +4959,7 @@ function initTourUi() {
     const file = event.target.files?.[0];
     if (!file) return;
     const data = JSON.parse(await file.text());
-    tourState.keyframes = Array.isArray(data.keyframes) ? data.keyframes : [];
-    tourState.duration = Number(data.duration) || tourState.duration;
-    tourState.loop = !!data.loop;
-    selectedTourIndex = tourState.keyframes.length ? 0 : -1;
-    saveTourState();
-    updateTourControls();
-    renderTourList();
+    applyTourData(data, true);
   });
   document.querySelectorAll('[data-tour-setting]').forEach((el) => {
     const handler = () => {
@@ -4342,10 +4983,10 @@ function populateDockSelects() {
     roadStyle: Object.keys(textureSets.road),
     roadColorMode: ['Default', 'Amenity distance', 'Access / traffic'],
     assetTheme: Object.keys(assetThemePresets),
-    lightStyle: ['Modern Arc', 'Classic Post', 'Dual Head'],
-    benchStyle: ['Wood Plank', 'Concrete Slab', 'Curved Metal'],
-    binStyle: ['Square Box', 'Cylinder', 'Dual Recycle'],
-    stopStyle: ['Glass Shelter', 'Minimal Canopy', 'Wood Cabin'],
+    lightStyle: uniqueAssetVariants('lights', ['Modern Arc', 'Classic Post', 'Dual Head', 'Slim Post']),
+    benchStyle: uniqueAssetVariants('benches', ['Wood Plank', 'Concrete Slab', 'Curved Metal']),
+    binStyle: uniqueAssetVariants('bins', ['Square Box', 'Cylinder', 'Dual Recycle']),
+    stopStyle: uniqueAssetVariants('busstops', ['Glass Shelter', 'Minimal Canopy', 'Wood Cabin']),
     weather: ['Clear', 'Rain', 'Snow']
   };
   document.querySelectorAll('.dock-panel select[data-setting]').forEach((select) => {
@@ -4369,7 +5010,7 @@ function renderFunctionStyleDock() {
   if (!host) return;
   const keys = Object.keys(functionColorState).sort();
   if (!keys.length) {
-    host.innerHTML = `<p class="dock-note">${currentLang === 'TR' ? 'Fonksiyon stilleri veri yuklendikten sonra gorunur.' : 'Function styles appear after data is loaded.'}</p>`;
+    host.innerHTML = `<p class="dock-note">${t('funcStylesPending')}</p>`;
     return;
   }
   host.innerHTML = '';
@@ -4387,7 +5028,9 @@ function renderFunctionStyleDock() {
       rebuildScene();
     });
     const facade = document.createElement('select');
-    Object.keys(textureSets.facade).forEach((value) => {
+    uniqueAssetVariants('facades', Object.keys(textureSets.facade))
+      .filter((value) => Object.prototype.hasOwnProperty.call(textureSets.facade, value))
+      .forEach((value) => {
       const opt = document.createElement('option');
       opt.value = value;
       opt.textContent = value;
@@ -4411,6 +5054,12 @@ function applyDockSetting(key, value, inputType) {
     settings[key] = parseFloat(value);
   } else {
     settings[key] = value;
+  }
+  if (key === 'assetTheme') {
+    applyThemeDefaultsToSettings(true);
+    terrainTexture = null;
+    baseMapTexture = null;
+    updateDockControls();
   }
   if (key === 'terrainTextureBrightness' || key === 'terrainTextureContrast' || key === 'terrainAnalysisMode') {
     terrainTexture = null;

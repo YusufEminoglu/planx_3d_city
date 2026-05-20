@@ -4,6 +4,8 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import tempfile
+import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -32,63 +34,87 @@ ASSET_CATEGORIES = ("pedestrians", "cars", "trees", "lights", "benches", "bins",
 ASSET_THEME_PRESETS = {
     "Modern Urban": {
         "pedestrians": ["Commuter", "Urban Casual", "Office", "Student", "Evening"],
-        "cars": ["Graphite", "Slate", "Teal", "White", "Navy"],
+        "cars": ["Graphite", "Slate", "Teal", "White", "Navy", "Silver"],
         "trees": ["Street Linden", "Plane", "Compact Maple", "Columnar"],
-        "lights": ["Modern Arc", "Dual Head", "Slim Post", "Classic Post"],
-        "benches": ["Wood Plank", "Concrete Slab", "Curved Metal", "Slim Urban"],
-        "bins": ["Square Box", "Dual Recycle", "Cylinder", "Compact"],
-        "busstops": ["Glass Shelter", "Minimal Canopy", "Steel Canopy", "Wood Cabin"],
-        "facades": ["UrbanA", "UrbanB", "UrbanC", "UrbanD"],
-        "roofs": ["RoofA", "RoofB", "GermanTile", "USShingle"],
-        "paving": ["Asphalt", "StoneA", "Cobble", "Concrete"],
+        "lights": ["Modern Arc", "Dual Head", "Slim Post", "Bollard Path", "Classic Post"],
+        "benches": ["Wood Plank", "Concrete Slab", "Curved Metal", "Slim Urban", "Stone Seat"],
+        "bins": ["Square Box", "Dual Recycle", "Cylinder", "Compact", "Solar Compactor"],
+        "busstops": ["Glass Shelter", "Minimal Canopy", "Steel Canopy", "Wood Cabin", "Compact Marker"],
+        "facades": ["UrbanA", "UrbanB", "UrbanC", "UrbanD", "UrbanE"],
+        "roofs": ["RoofA", "RoofB", "GermanTile", "USShingle", "StandingSeam"],
+        "paving": ["Asphalt", "StoneA", "Cobble", "Concrete", "PlazaGranite"],
     },
     "Mediterranean": {
         "pedestrians": ["Casual Linen", "Warm Neutral", "Student", "Visitor"],
-        "cars": ["Ivory", "Terracotta", "Olive", "Slate"],
-        "trees": ["Olive", "Cypress", "Plane", "Palm"],
-        "lights": ["Classic Post", "Modern Arc", "Slim Post"],
-        "benches": ["Wood Plank", "Curved Metal", "Stone Seat"],
-        "bins": ["Cylinder", "Square Box", "Dual Recycle"],
-        "busstops": ["Minimal Canopy", "Wood Cabin", "Glass Shelter"],
-        "facades": ["UrbanB", "UrbanD", "UrbanA"],
-        "roofs": ["TurkishTile", "GermanTile", "RoofA"],
-        "paving": ["StoneA", "Cobble", "Concrete"],
+        "cars": ["Ivory", "Terracotta", "Olive", "Slate", "Sand"],
+        "trees": ["Olive", "Cypress", "Plane", "Palm", "Jacaranda"],
+        "lights": ["Classic Post", "Slim Post", "Heritage Lantern", "Modern Arc"],
+        "benches": ["Wood Plank", "Curved Metal", "Stone Seat", "Classic Iron"],
+        "bins": ["Cylinder", "Square Box", "Dual Recycle", "Compact"],
+        "busstops": ["Minimal Canopy", "Wood Cabin", "Glass Shelter", "Compact Marker"],
+        "facades": ["MediterraneanStucco", "UrbanB", "UrbanD", "CoastalWhite"],
+        "roofs": ["TurkishTile", "CeramicLight", "GermanTile", "RoofA"],
+        "paving": ["StoneA", "WarmStone", "Cobble", "Concrete"],
     },
     "Campus": {
         "pedestrians": ["Student", "Academic", "Sport", "Visitor"],
-        "cars": ["Slate", "Navy", "White", "Graphite"],
-        "trees": ["Plane", "Pine", "Compact Maple", "Street Linden"],
-        "lights": ["Slim Post", "Modern Arc", "Dual Head"],
-        "benches": ["Wood Plank", "Concrete Slab", "Slim Urban"],
-        "bins": ["Dual Recycle", "Square Box", "Compact"],
-        "busstops": ["Glass Shelter", "Minimal Canopy"],
-        "facades": ["UrbanC", "UrbanA", "UrbanB"],
-        "roofs": ["RoofA", "RoofC", "USShingle"],
-        "paving": ["Concrete", "StoneA", "Asphalt"],
+        "cars": ["Slate", "Navy", "White", "Graphite", "Silver"],
+        "trees": ["Plane", "Pine", "Compact Maple", "Street Linden", "Broadleaf"],
+        "lights": ["Slim Post", "Campus Twin", "Modern Arc", "Dual Head"],
+        "benches": ["Wood Plank", "Concrete Slab", "Slim Urban", "Eco Timber"],
+        "bins": ["Dual Recycle", "Square Box", "Compact", "Solar Compactor"],
+        "busstops": ["Glass Shelter", "Minimal Canopy", "Steel Canopy"],
+        "facades": ["CampusGlass", "UrbanC", "UrbanA", "UrbanB"],
+        "roofs": ["RoofA", "RoofC", "USShingle", "SolarRoof"],
+        "paving": ["Concrete", "CampusPaver", "StoneA", "Asphalt"],
     },
     "Eco": {
         "pedestrians": ["Outdoor", "Casual Green", "Student", "Visitor"],
-        "cars": ["Teal", "Olive", "White", "Slate"],
-        "trees": ["Broadleaf", "Pine", "Street Linden", "Compact Maple"],
-        "lights": ["Slim Post", "Modern Arc", "Classic Post"],
-        "benches": ["Wood Plank", "Stone Seat", "Concrete Slab"],
-        "bins": ["Dual Recycle", "Compact", "Cylinder"],
+        "cars": ["Teal", "Olive", "White", "Slate", "Moss"],
+        "trees": ["Broadleaf", "Pine", "Street Linden", "Compact Maple", "Olive"],
+        "lights": ["Slim Post", "Bollard Path", "Modern Arc", "Classic Post"],
+        "benches": ["Eco Timber", "Wood Plank", "Stone Seat", "Concrete Slab"],
+        "bins": ["Dual Recycle", "Compact", "Cylinder", "Solar Compactor"],
         "busstops": ["Wood Cabin", "Minimal Canopy", "Glass Shelter"],
-        "facades": ["UrbanD", "UrbanB", "UrbanA"],
-        "roofs": ["RoofA", "TurkishTile", "RoofC"],
-        "paving": ["Cobble", "StoneA", "Concrete"],
+        "facades": ["EcoTimber", "UrbanD", "UrbanB", "UrbanA"],
+        "roofs": ["GreenRoof", "SolarRoof", "RoofA", "TurkishTile"],
+        "paving": ["Permeable", "Cobble", "StoneA", "Concrete"],
     },
     "Dense Urban": {
         "pedestrians": ["Commuter", "Office", "Evening", "Urban Casual", "Visitor"],
-        "cars": ["Graphite", "Black", "Navy", "White", "Slate"],
+        "cars": ["Graphite", "Black", "Navy", "White", "Slate", "Burgundy"],
         "trees": ["Columnar", "Compact Maple", "Street Linden"],
-        "lights": ["Dual Head", "Modern Arc", "Slim Post"],
-        "benches": ["Concrete Slab", "Curved Metal", "Slim Urban"],
-        "bins": ["Square Box", "Compact", "Dual Recycle"],
-        "busstops": ["Glass Shelter", "Steel Canopy", "Minimal Canopy"],
-        "facades": ["UrbanA", "UrbanC", "UrbanD", "UrbanB"],
-        "roofs": ["RoofA", "RoofB", "USShingle"],
-        "paving": ["Asphalt", "Concrete", "Grid"],
+        "lights": ["Dual Head", "Modern Arc", "Slim Post", "Bollard Path"],
+        "benches": ["Concrete Slab", "Curved Metal", "Slim Urban", "Stone Seat"],
+        "bins": ["Square Box", "Compact", "Dual Recycle", "Solar Compactor"],
+        "busstops": ["Glass Shelter", "Steel Canopy", "Minimal Canopy", "Compact Marker"],
+        "facades": ["DenseBrick", "UrbanA", "UrbanC", "UrbanD"],
+        "roofs": ["StandingSeam", "RoofA", "RoofB", "USShingle"],
+        "paving": ["Asphalt", "Concrete", "Grid", "PlazaGranite"],
+    },
+    "Civic Heritage": {
+        "pedestrians": ["Visitor", "Academic", "Warm Neutral", "Commuter"],
+        "cars": ["Graphite", "Ivory", "Slate", "Burgundy", "Black"],
+        "trees": ["Plane", "Cypress", "Street Linden", "Columnar"],
+        "lights": ["Heritage Lantern", "Classic Post", "Slim Post", "Bollard Path"],
+        "benches": ["Classic Iron", "Stone Seat", "Wood Plank", "Concrete Slab"],
+        "bins": ["Cylinder", "Square Box", "Dual Recycle", "Compact"],
+        "busstops": ["Steel Canopy", "Glass Shelter", "Minimal Canopy"],
+        "facades": ["CivicStone", "MediterraneanStucco", "UrbanB", "UrbanC"],
+        "roofs": ["GermanTile", "CeramicLight", "TurkishTile", "StandingSeam"],
+        "paving": ["WarmStone", "StoneA", "Cobble", "PlazaGranite"],
+    },
+    "Coastal Light": {
+        "pedestrians": ["Casual Linen", "Visitor", "Student", "Outdoor"],
+        "cars": ["White", "Ivory", "Teal", "Sand", "Slate"],
+        "trees": ["Palm", "Plane", "Olive", "Broadleaf"],
+        "lights": ["Slim Post", "Modern Arc", "Bollard Path", "Classic Post"],
+        "benches": ["Wood Plank", "Eco Timber", "Stone Seat", "Slim Urban"],
+        "bins": ["Cylinder", "Dual Recycle", "Compact", "Square Box"],
+        "busstops": ["Minimal Canopy", "Glass Shelter", "Wood Cabin"],
+        "facades": ["CoastalWhite", "MediterraneanStucco", "UrbanD", "CampusGlass"],
+        "roofs": ["CeramicLight", "RoofA", "SolarRoof", "TurkishTile"],
+        "paving": ["WarmStone", "Permeable", "StoneA", "Concrete"],
     },
 }
 
@@ -128,6 +154,114 @@ LABELS = {
 
 class ExportError(RuntimeError):
     pass
+
+
+def copy_portable_viewer(web_root: str, output_dir: str, tour_json_path: Optional[str] = None) -> list[str]:
+    """Copy the self-contained browser viewer payload for classroom handoff."""
+    web_path = Path(web_root)
+    data_path = web_path / "data"
+    if not data_path.exists():
+        raise ExportError("No exported web/data folder found. Export project data first, then create a portable viewer.")
+
+    output_path = Path(output_dir)
+    if output_path.exists():
+        raise ExportError(f"Portable viewer folder already exists: {output_path}")
+    output_path.mkdir(parents=True, exist_ok=False)
+
+    copied: list[str] = []
+
+    def copy_dir(source: Path, target: Path) -> None:
+        if not source.exists():
+            raise ExportError(f"Required viewer folder is missing: {source}")
+        ignore = shutil.ignore_patterns("__pycache__", "*.pyc", ".git", ".idea", ".DS_Store")
+        shutil.copytree(source, target, ignore=ignore)
+        for path in target.rglob("*"):
+            if path.is_file():
+                copied.append(str(path))
+
+    copy_dir(web_path / "src", output_path / "src")
+    copy_dir(web_path / "assets" / "vendor", output_path / "assets" / "vendor")
+    copy_dir(data_path, output_path / "data")
+
+    if tour_json_path:
+        tour_source = Path(tour_json_path)
+        if not tour_source.exists():
+            raise ExportError(f"Tour JSON file does not exist: {tour_source}")
+        tour_target = output_path / "data" / "planx_tour.json"
+        shutil.copy2(tour_source, tour_target)
+        copied.append(str(tour_target))
+
+    readme_path = output_path / "README_PORTABLE_VIEWER.txt"
+    readme_path.write_text(
+        "\n".join(
+            [
+                "PlanX 3D City Portable Viewer",
+                "",
+                "This folder contains the exported viewer app, bundled vendor libraries, and the current project data.",
+                "",
+                "How to open:",
+                "Option A: double-click Start-PlanX-Viewer.bat on Windows.",
+                "Option B:",
+                "1. Open a terminal in this folder.",
+                "2. Run: py -3 -m http.server 8080",
+                "3. Open: http://127.0.0.1:8080/src/",
+                "",
+                "Notes:",
+                "- Do not open src/index.html directly from the file system; GeoTIFF and GeoJSON loading needs a local HTTP server.",
+                "- Narrative Studio JSON files store camera/tour/viewer state only. They do not embed DEM, GeoJSON, imagery, or the viewer app.",
+                "- If this package includes data/planx_tour.json, the viewer can auto-load it on another computer.",
+                "- If you export a newer project from QGIS, create a fresh portable folder so the copied data stays in sync.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    copied.append(str(readme_path))
+
+    bat_path = output_path / "Start-PlanX-Viewer.bat"
+    bat_path.write_text(
+        "\n".join(
+            [
+                "@echo off",
+                "cd /d \"%~dp0\"",
+                "start \"\" \"http://127.0.0.1:8080/src/\"",
+                "py -3 -m http.server 8080",
+                "pause",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    copied.append(str(bat_path))
+
+    ps1_path = output_path / "Start-PlanX-Viewer.ps1"
+    ps1_path.write_text(
+        "\n".join(
+            [
+                "Set-Location -LiteralPath $PSScriptRoot",
+                "Start-Process \"http://127.0.0.1:8080/src/\"",
+                "py -3 -m http.server 8080",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    copied.append(str(ps1_path))
+    return copied
+
+
+def zip_portable_viewer(web_root: str, zip_path: str, tour_json_path: Optional[str] = None) -> list[str]:
+    zip_target = Path(zip_path)
+    zip_target.parent.mkdir(parents=True, exist_ok=True)
+    if zip_target.exists():
+        zip_target.unlink()
+
+    root_name = zip_target.stem or "planx_3d_city_portable"
+    with tempfile.TemporaryDirectory(prefix="planx_3d_city_portable_") as tmp:
+        portable_root = Path(tmp) / root_name
+        copied = copy_portable_viewer(web_root, str(portable_root), tour_json_path=tour_json_path)
+        with zipfile.ZipFile(zip_target, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
+            for path in portable_root.rglob("*"):
+                if path.is_file():
+                    zf.write(path, path.relative_to(portable_root.parent).as_posix())
+    return copied + [str(zip_target)]
 
 
 def empty_feature_collection() -> dict:
@@ -291,7 +425,7 @@ def write_manifest(
     manifest = {
         "schema": "planx-3d-city-manifest/v1",
         "plugin": "planx_3d_city",
-        "version": "0.6.9",
+        "version": "0.7.3",
         "mode": mode,
         "exportedAt": datetime.now().astimezone().isoformat(timespec="seconds"),
         "project": {
@@ -306,6 +440,7 @@ def write_manifest(
         "fieldMappings": field_mappings,
         "analysisDefaults": analysis_defaults,
         "viewerDefaults": viewer_defaults,
+        "assetLibraryVersion": "2026.05-procedural-v2",
         "assetTheme": asset_theme,
         "assetPools": asset_pools,
         "pedestrianStyle": pedestrian_style,
