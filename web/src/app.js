@@ -85,6 +85,7 @@ Object.assign(i18n.TR, {
   lblModelBase: 'ROI model altligi', lblSideDrop: 'Altlik dususu', lblSideColor: 'Altlik rengi',
   lblDemQuality: 'DEM mesh kalitesi', lblFog: 'Sis', lblTime: 'Zaman',
   flattenIslands: 'Ada alti duzlestirme', islandPlateauTransition: 'Plato kenar rampi (m)',
+  dayOfYear: 'Yilin gunu (1-365)', latitude: 'Enlem (derece)',
   lblAutoTime: 'Gunes animasyonu', lblAutoTimeSpeed: 'Animasyon hizi',
   lblWeather: 'Hava', lblSSAO: 'Golge kalitesi', lblBloom: 'Bloom/parlama',
   lblIslandColor: 'Ada rengi', lblIslandTexture: 'Ada dokusu',
@@ -116,6 +117,7 @@ Object.assign(i18n.EN, {
   lblModelBase: 'ROI model base', lblSideDrop: 'Base drop', lblSideColor: 'Base color',
   lblDemQuality: 'DEM mesh quality', lblFog: 'Fog', lblTime: 'Time',
   flattenIslands: 'Flatten DEM under islands', islandPlateauTransition: 'Plateau edge ramp (m)',
+  dayOfYear: 'Day of year (1-365)', latitude: 'Latitude (deg)',
   lblAutoTime: 'Solar animation', lblAutoTimeSpeed: 'Animation speed',
   lblWeather: 'Weather', lblSSAO: 'Shadow quality', lblBloom: 'Bloom/glow',
   lblIslandColor: 'Block color', lblIslandTexture: 'Block texture',
@@ -1233,7 +1235,9 @@ const settings = {
   autoTime: false,
   autoTimeSpeed: 2.0,
   flattenIslands: true,
-  islandPlateauTransition: 6
+  islandPlateauTransition: 6,
+  dayOfYear: 172,
+  latitude: 39.0
 };
 
 const PERSISTED_SETTING_KEYS = [
@@ -1249,7 +1253,8 @@ const PERSISTED_SETTING_KEYS = [
   'showCars', 'showRoads', 'showSidewalks', 'showCrosswalks', 'showPedestrians',
   'showWindPlumes', 'windDirectionDeg', 'windPlumeDistance', 'showUrbanComfort',
   'demMeshQuality', 'timeOfDay', 'weather', 'fov', 'walkSpeed',
-  'flattenIslands', 'islandPlateauTransition'
+  'flattenIslands', 'islandPlateauTransition',
+  'dayOfYear', 'latitude'
 ];
 
 function loadPersistedSettings() {
@@ -1466,33 +1471,54 @@ function setStatus(text) {
   if (el) el.innerText = text;
 }
 
+/* Solar position via simplified NOAA formula.
+ * timeHours = local solar time (0-24), dayOfYear = 1-365, latitudeDeg = WGS84 lat.
+ * Returns elevation + azimuth in RADIANS. Azimuth follows compass convention:
+ * 0 = North, π/2 = East, π = South, 3π/2 = West. */
+function solarPosition(timeHours, dayOfYear, latitudeDeg) {
+  const declRad = THREE.MathUtils.degToRad(23.45) *
+    Math.sin(THREE.MathUtils.degToRad((360 / 365) * (284 + dayOfYear)));
+  const hourAngleRad = THREE.MathUtils.degToRad(15 * (timeHours - 12));
+  const latRad = THREE.MathUtils.degToRad(latitudeDeg);
+  const sinElev = Math.sin(latRad) * Math.sin(declRad) +
+    Math.cos(latRad) * Math.cos(declRad) * Math.cos(hourAngleRad);
+  const elevation = Math.asin(Math.max(-1, Math.min(1, sinElev)));
+  const cosElev = Math.cos(elevation) || 1e-9;
+  const cosLat = Math.cos(latRad) || 1e-9;
+  const cosAz = (Math.sin(declRad) - Math.sin(elevation) * Math.sin(latRad)) / (cosElev * cosLat);
+  const azRaw = Math.acos(Math.max(-1, Math.min(1, cosAz)));
+  const azimuth = hourAngleRad > 0 ? (2 * Math.PI - azRaw) : azRaw;
+  return { elevation, azimuth };
+}
+
+let _solarCache = { elevationDeg: 30, azimuthDeg: 180 };
+
 function updateTimeOfDay() {
   const t = settings.timeOfDay;
-  
-  // Calculate elevation: Max at noon (12), min at midnight (0/24)
-  // Let's make it rise at 6, set at 18.
-  let elevation = -5;
-  if (t > 6 && t < 18) {
-    // 6..18 maps to 0..180 degrees (0 to PI)
-    const normalized = (t - 6) / 12;
-    elevation = Math.sin(normalized * Math.PI) * 75; // max 75 degrees
-  }
-  const phi = THREE.MathUtils.degToRad(90 - elevation);
-  
-  // Azimuth from East to West (90 to 270)
-  const azimuth = 90 + ((t / 24) * 180);
-  const theta = THREE.MathUtils.degToRad(azimuth);
+  const dayOfYear = Math.max(1, Math.min(365, settings.dayOfYear || 172));
+  const latitude = Math.max(-66, Math.min(66, settings.latitude == null ? 39 : settings.latitude));
+
+  const { elevation, azimuth } = solarPosition(t, dayOfYear, latitude);
+  const elevationDeg = THREE.MathUtils.radToDeg(elevation);
+  const azimuthDeg = (THREE.MathUtils.radToDeg(azimuth) + 360) % 360;
+  _solarCache = { elevationDeg, azimuthDeg };
+
+  /* Three.js convention: phi from +Y axis (0 = up), theta from +Z around +Y.
+   * Compass azimuth 0=N(-Z), 90=E(+X), 180=S(+Z), 270=W(-X) → theta = π - azimuth. */
+  const phi = Math.PI / 2 - elevation;
+  const theta = Math.PI - azimuth;
   const pos = new THREE.Vector3().setFromSphericalCoords(1, phi, theta);
-  
+
   sun.position.copy(pos).multiplyScalar(1300);
-  sun.intensity = elevation > 0 ? 1.25 : 0;
+  // Smooth intensity ramp at horizon (golden hour feel)
+  sun.intensity = elevationDeg > 0 ? 1.25 * Math.min(1, elevationDeg / 18) : 0;
   sun.shadow.needsUpdate = true;
-  
+
   sky.material.uniforms.sunPosition.value.copy(pos);
   scene.fog.density = settings.fogDensity;
 
   // Night Mode effects
-  const isNight = t < 6.5 || t > 17.5;
+  const isNight = elevationDeg < -3;
   ambient.intensity = isNight ? 0.2 : 0.62;
   
   // Toggle bloom based on night mode and settings
@@ -1507,7 +1533,7 @@ let lastTimeOfDay = -1;
 // Lightweight day/night switch — updates only emissive + furniture lights.
 // Does NOT rebuild terrain, geometry or DEM.
 function rebuildLightingOnly() {
-  const isNight = settings.timeOfDay < 6.5 || settings.timeOfDay > 17.5;
+  const isNight = (_solarCache.elevationDeg ?? 30) < -3;
   buildingGroup.children.forEach(mesh => {
     if (!Array.isArray(mesh.material) || mesh.material.length < 2) return;
     const mat = mesh.material[1];
@@ -1522,7 +1548,7 @@ function rebuildLightingOnly() {
 
 function checkTimeChange() {
   updateTimeOfDay();
-  const isNight = settings.timeOfDay < 6.5 || settings.timeOfDay > 17.5;
+  const isNight = (_solarCache.elevationDeg ?? 30) < -3;
   if (lastTimeOfDay !== -1) {
     const wasNight = lastTimeOfDay < 6.5 || lastTimeOfDay > 17.5;
     if (isNight !== wasNight) {
@@ -3372,7 +3398,7 @@ function buildFurnitureLayer() {
     const g = new THREE.Group();
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 4, 8), metalMat);
     pole.position.y = 2;
-    const isNight = settings.timeOfDay < 6.5 || settings.timeOfDay > 17.5;
+    const isNight = (_solarCache.elevationDeg ?? 30) < -3;
     const lampMat = new THREE.MeshStandardMaterial({
       color: isNight ? 0xffffee : 0xdddddd, 
       emissive: isNight ? 0xffcc88 : 0x000000,
@@ -3614,7 +3640,7 @@ function buildFurnitureLayer() {
     });
   };
 
-  const isNight = settings.timeOfDay < 6.5 || settings.timeOfDay > 17.5;
+  const isNight = (_solarCache.elevationDeg ?? 30) < -3;
   if (settings.showLights) {
     placeItem(lights, lightGeo, 'lights');
     if (isNight && lights && lights.features) {
@@ -3763,7 +3789,7 @@ async function buildBuildingLayer(yapilar) {
         roofTextureCache[featureRoofTexture] = createRoofPresetTexture(featureRoofTexture);
       }
       const featureRoofTex = roofTextureCache[featureRoofTexture];
-      const isNight = settings.timeOfDay < 6.5 || settings.timeOfDay > 17.5;
+      const isNight = (_solarCache.elevationDeg ?? 30) < -3;
       const matRoof = new THREE.MeshStandardMaterial({ map: featureRoofTex, color: new THREE.Color(featureRoofColor), roughness: 0.85 });
       const matWall = new THREE.MeshStandardMaterial({ 
         map: facadeTex, 
@@ -3962,7 +3988,7 @@ async function buildRoadsAndTraffic(yollar) {
     winB.position.set(0, 0.95, 1.31);
     winB.rotation.x = -0.3;
 
-    const isNight = settings.timeOfDay < 6.5 || settings.timeOfDay > 17.5;
+    const isNight = (_solarCache.elevationDeg ?? 30) < -3;
     const hMat = new THREE.MeshStandardMaterial({ color: 0xffffee, emissive: isNight ? 0xffffff : 0x000000, emissiveIntensity: isNight ? 5.0 : 0 });
     const bMat = new THREE.MeshStandardMaterial({ color: 0x550000, emissive: isNight ? 0xff0000 : 0x000000, emissiveIntensity: isNight ? 5.0 : 0 });
     
@@ -4480,6 +4506,8 @@ function addGui() {
   terrain.add(settings, 'terrainAnalysisMode', ['Texture', 'Elevation tint', 'Slope tint']).name('Topography view').onChange(rebuildScene);
   terrain.add(settings, 'flattenIslands').name(t('flattenIslands')).onChange(rebuildScene);
   terrain.add(settings, 'islandPlateauTransition', 0, 20, 1).name(t('islandPlateauTransition')).onChange(rebuildScene);
+  terrain.add(settings, 'dayOfYear', 1, 365, 1).name(t('dayOfYear')).onChange(updateTimeOfDay);
+  terrain.add(settings, 'latitude', -60, 60, 0.5).name(t('latitude')).onChange(updateTimeOfDay);
   terrain.add(settings, 'pavementStyle', Object.keys(textureSets.pavement)).name(t('pavement')).onChange(rebuildScene);
   terrain.add(settings, 'showHardscape').name(t('showHardscape')).onChange(rebuildScene);
   terrain.add(settings, 'hardscapeStyle', Object.keys(textureSets.hardscape)).name(t('hardTex')).onChange(rebuildScene);
@@ -4978,6 +5006,26 @@ function animate() {
     ctx.font = 'bold 9px Montserrat, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('N', 24, 10);
+
+    // Sun azimuth indicator on the compass ring
+    if (_solarCache.elevationDeg > -3) {
+      const sunAzRad = THREE.MathUtils.degToRad(_solarCache.azimuthDeg);
+      const ringR = 19;
+      // Compass already rotated by camera angle (-ang). We want sun's true bearing,
+      // so add the camera angle back so the sun marker shows world-space azimuth.
+      const drawAng = sunAzRad - ang;
+      const sx = Math.sin(drawAng) * ringR + 24;
+      const sy = -Math.cos(drawAng) * ringR + 24;
+      const elevNorm = Math.max(0, Math.min(1, _solarCache.elevationDeg / 75));
+      const sunRadius = 3.0 + elevNorm * 1.5;
+      ctx.fillStyle = elevNorm > 0.4 ? '#fde68a' : '#f59e0b';
+      ctx.strokeStyle = 'rgba(180,120,0,0.85)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(sx, sy, sunRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
   }
 
   // Minimap + scale bar (throttled ~30fps)

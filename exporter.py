@@ -504,6 +504,9 @@ def _analysis_defaults_manifest(layer_map: dict) -> dict:
 
 
 def _viewer_defaults_manifest(layer_map: dict) -> dict:
+    latitude = layer_map.get("latitude")
+    if latitude is None:
+        latitude = _derive_latitude_from_dem(layer_map.get("dem"))
     return {
         "showTerrainSides": True,
         "terrainSideDrop": 5.0,
@@ -513,7 +516,35 @@ def _viewer_defaults_manifest(layer_map: dict) -> dict:
         "assetTheme": (layer_map.get("asset_theme") or ASSET_THEME_DEFAULT),
         "flattenIslands": bool(layer_map.get("flatten_islands", True)),
         "islandPlateauTransition": float(layer_map.get("island_plateau_transition") or 6.0),
+        "latitude": float(latitude) if latitude is not None else 39.0,
+        "dayOfYear": int(layer_map.get("day_of_year") or 172),
     }
+
+
+def _derive_latitude_from_dem(dem_layer) -> float | None:
+    """Best-effort: reproject the DEM bbox centroid to WGS84 and return its latitude."""
+    if dem_layer is None:
+        return None
+    try:
+        from qgis.core import (
+            QgsCoordinateReferenceSystem,
+            QgsCoordinateTransform,
+            QgsProject,
+        )
+        src_crs = dem_layer.crs()
+        if not src_crs.isValid():
+            return None
+        extent = dem_layer.extent()
+        cx = (extent.xMinimum() + extent.xMaximum()) / 2.0
+        cy = (extent.yMinimum() + extent.yMaximum()) / 2.0
+        wgs = QgsCoordinateReferenceSystem.fromEpsgId(4326)
+        if src_crs.authid() == "EPSG:4326":
+            return cy
+        transform = QgsCoordinateTransform(src_crs, wgs, QgsProject.instance())
+        pt = transform.transform(cx, cy)
+        return float(pt.y())
+    except Exception:
+        return None
 
 
 def _asset_theme_manifest(layer_map: dict) -> tuple[str, dict, dict]:

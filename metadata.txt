@@ -2,7 +2,7 @@
 name=PlanX 3D City Viewer
 qgisMinimumVersion=3.28
 description=Export QGIS layers and launch the interactive PlanX 3D City web viewer.
-version=0.7.8
+version=0.7.9
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 about=PlanX 3D City Viewer maps user-exported DEM, ROI, road, building, block, parcel, optional urban furniture layers, and optional raster plan texture workflows to a browser-based Three.js city cockpit with narrative keyframes, terrain quality controls, mobility, wind impact, and building statistics overlays. Developed with feedback from educational workflows at Dokuz Eylul University, Department of City and Regional Planning.
@@ -19,6 +19,11 @@ hasProcessingProvider=no
 plugin_dependencies=
 license=MIT
 changelog=
+    PlanX 3D City Viewer 0.7.9 - OpenStreetMap importer and astronomical solar model.
+        - Added "Import from OpenStreetMap" on the Data page: enter a small bounding box (WGS84) or pull it from the current QGIS canvas; the plugin fetches buildings, roads, parks/greens and trees via the Overpass API, reprojects them to the local UTM zone, and adds them as named layers ready to publish. Building floors, function, road class and tree height are mapped automatically.
+        - Replaced the simple sine sun model with a proper NOAA-style solar position calculator. New viewer sliders for Day of year (1-365) and Latitude (deg) move the sun realistically with season + location. Sunrise/sunset, golden-hour intensity ramp and night detection now follow the actual solar elevation.
+        - The compass widget gains a small live sun marker on the ring, showing the sun's true bearing from the camera.
+        - The QGIS publisher writes the derived project latitude (from the DEM bbox centroid in WGS84) and a default day-of-year into planx_manifest.json so the viewer starts at a sensible solar pose.
     PlanX 3D City Viewer 0.7.8 - Plugin Hub security/quality scan cleanup.
         - Removed unused imports and stray local variables flagged by Flake8 in dialog.py, main_plugin.py, and sample_generator.py.
         - Excluded plugin-level .zipignore from the released package so the Plugin Hub suspicious-file scanner no longer flags a hidden file. .zipignore stays in the repository for build hygiene.

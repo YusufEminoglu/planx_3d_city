@@ -29,7 +29,13 @@ from qgis.PyQt.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from qgis.core import QgsMapLayerProxyModel, QgsProject, QgsWkbTypes
+from qgis.core import (
+    QgsCoordinateReferenceSystem,
+    QgsCoordinateTransform,
+    QgsMapLayerProxyModel,
+    QgsProject,
+    QgsWkbTypes,
+)
 from qgis.gui import QgsMapLayerComboBox
 
 from .exporter import (
@@ -387,11 +393,17 @@ class PlanX3DCityDialog(QDialog):
             "Generate a tiny synthetic DEM + block + building + road dataset in EPSG:32635 "
             "and load it into the current QGIS project. Great for a first run."
         )
+        self.osm_button = QPushButton("Import from OpenStreetMap")
+        self.osm_button.setToolTip(
+            "Fetch buildings, roads, parks, and trees from OpenStreetMap for a chosen bounding box. "
+            "Layers are reprojected to a local UTM CRS and added to the current project."
+        )
         self.auto_match_button = QPushButton("Auto-match layers")
         self.check_button = QPushButton("Generate quality report")
         self.export_button = QPushButton("Export and open 3D Viewer")
         self.export_button.setObjectName("primaryButton")
         actions.addWidget(self.sample_button)
+        actions.addWidget(self.osm_button)
         actions.addWidget(self.auto_match_button)
         actions.addWidget(self.check_button)
         actions.addWidget(self.export_button)
@@ -399,6 +411,7 @@ class PlanX3DCityDialog(QDialog):
         root.addStretch(1)
 
         self.sample_button.clicked.connect(self._load_sample_project)
+        self.osm_button.clicked.connect(self._import_from_osm)
         self.auto_match_button.clicked.connect(self._auto_match_layers)
         self.check_button.clicked.connect(self._refresh_report)
         self.export_button.clicked.connect(lambda: self.exportRequested.emit(self.selected_layers()))
@@ -670,6 +683,110 @@ class PlanX3DCityDialog(QDialog):
             "Quality report updated." if not has_error else "Report contains warnings; review the Check page before publishing.",
             has_error,
         )
+
+    def _import_from_osm(self) -> None:
+        try:
+            from .osm_importer import OsmImportError, import_osm_bbox
+        except Exception as exc:
+            QMessageBox.critical(self, "OSM import", f"OSM importer unavailable: {exc}")
+            return
+
+        bbox = self._prompt_osm_bbox()
+        if not bbox:
+            return
+        min_lon, min_lat, max_lon, max_lat = bbox
+
+        self.set_status("Fetching OpenStreetMap data... (Overpass query in progress)")
+        QApplication.processEvents()
+        try:
+            result = import_osm_bbox(min_lon, min_lat, max_lon, max_lat)
+        except OsmImportError as exc:
+            QMessageBox.warning(self, "OSM import", str(exc))
+            self.set_status(f"OSM import failed: {exc}", error=True)
+            return
+        except Exception as exc:
+            QMessageBox.critical(self, "OSM import", f"OSM import failed: {exc}")
+            self.set_status(f"OSM import failed: {exc}", error=True)
+            return
+
+        layers = result.get("layers", {}) or {}
+        for key, layer in layers.items():
+            box = self.layer_boxes.get(key)
+            if box is not None and layer is not None:
+                box.setLayer(layer)
+        self._refresh_report()
+        counts = result.get("counts", {})
+        bw, bh = result.get("bbox_km", (0, 0))
+        summary = (
+            f"OSM data loaded (EPSG:{result.get('epsg')}, ~{bw}x{bh} km). "
+            f"Buildings {counts.get('buildings', 0)}, roads {counts.get('roads', 0)}, "
+            f"greens {counts.get('greens', 0)}, trees {counts.get('trees', 0)}. "
+            "Add your own DEM, then export."
+        )
+        self.set_status(summary)
+
+    def _prompt_osm_bbox(self) -> tuple | None:
+        """Small modal asking for an OSM bounding box (WGS84). Returns (minLon, minLat, maxLon, maxLat) or None."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Import from OpenStreetMap")
+        layout = QVBoxLayout(dlg)
+
+        intro = QLabel(
+            "Fetch OpenStreetMap data for a bounding box. Keep the box small (~3 km max side) "
+            "so Overpass stays happy. Coordinates are WGS84 (EPSG:4326) longitudes/latitudes."
+        )
+        intro.setWordWrap(True)
+        layout.addWidget(intro)
+
+        canvas_btn = QPushButton("Use current QGIS canvas extent")
+        layout.addWidget(canvas_btn)
+
+        grid = QGridLayout()
+        min_lon_edit = QLineEdit("28.9700")
+        min_lat_edit = QLineEdit("41.0050")
+        max_lon_edit = QLineEdit("29.0000")
+        max_lat_edit = QLineEdit("41.0250")
+        grid.addWidget(QLabel("Min longitude"), 0, 0); grid.addWidget(min_lon_edit, 0, 1)
+        grid.addWidget(QLabel("Min latitude"), 0, 2); grid.addWidget(min_lat_edit, 0, 3)
+        grid.addWidget(QLabel("Max longitude"), 1, 0); grid.addWidget(max_lon_edit, 1, 1)
+        grid.addWidget(QLabel("Max latitude"), 1, 2); grid.addWidget(max_lat_edit, 1, 3)
+        layout.addLayout(grid)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        layout.addWidget(buttons)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+
+        def _fill_from_canvas():
+            try:
+                canvas = self.iface.mapCanvas()
+                extent = canvas.extent()
+                src_crs = QgsProject.instance().crs() if canvas.mapSettings().destinationCrs().authid() == "" else canvas.mapSettings().destinationCrs()
+                wgs = QgsCoordinateReferenceSystem.fromEpsgId(4326)
+                if src_crs.isValid() and src_crs.authid() != "EPSG:4326":
+                    transform = QgsCoordinateTransform(src_crs, wgs, QgsProject.instance())
+                    extent = transform.transformBoundingBox(extent)
+                min_lon_edit.setText(f"{extent.xMinimum():.6f}")
+                min_lat_edit.setText(f"{extent.yMinimum():.6f}")
+                max_lon_edit.setText(f"{extent.xMaximum():.6f}")
+                max_lat_edit.setText(f"{extent.yMaximum():.6f}")
+            except Exception as exc:
+                QMessageBox.warning(dlg, "Canvas extent", f"Could not read canvas extent: {exc}")
+
+        canvas_btn.clicked.connect(_fill_from_canvas)
+
+        if dlg.exec_() != QDialog.Accepted:
+            return None
+        try:
+            return (
+                float(min_lon_edit.text().replace(",", ".")),
+                float(min_lat_edit.text().replace(",", ".")),
+                float(max_lon_edit.text().replace(",", ".")),
+                float(max_lat_edit.text().replace(",", ".")),
+            )
+        except ValueError as exc:
+            QMessageBox.warning(self, "OSM import", f"Invalid coordinate: {exc}")
+            return None
 
     def _load_sample_project(self) -> None:
         try:

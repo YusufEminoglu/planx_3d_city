@@ -3,6 +3,14 @@
 All notable changes to **PlanX 3D City Viewer** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 
+## [0.7.9] - 2026-05-22
+
+OpenStreetMap importer and astronomical solar model.
+- New "Import from OpenStreetMap" button on the Data page. Enter a small WGS84 bounding box (or pull it from the current QGIS canvas) and the plugin queries the Overpass API for buildings, roads, parks/greens and trees, reprojects them to the local UTM zone, and adds them as named layers. Bina katadedi, fonksiyon, yol türü ve ağaç yüksekliği otomatik eşlenir. Soft cap ~5 km per side to stay polite to the shared Overpass endpoint.
+- Replaced the simple sine sun model with a NOAA-style solar position calculator. New viewer sliders for **Day of year (1-365)** and **Latitude (deg)** move the sun realistically with season + location. Sunrise/sunset, golden-hour intensity ramp and night detection now follow the actual solar elevation rather than a fixed clock window.
+- The compass widget gains a small live sun marker on the ring showing the sun's true bearing from the current camera.
+- QGIS publisher writes the derived project latitude (from the DEM bbox centroid reprojected to WGS84) and a default day-of-year into `planx_manifest.json` so the viewer starts at a sensible solar pose for the actual site.
+
 ## [0.7.8] - 2026-05-22
 
 Plugin Hub security/quality scan cleanup.
