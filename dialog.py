@@ -394,6 +394,15 @@ class PlanX3DCityDialog(QDialog):
             "Generate a tiny synthetic DEM + block + building + road dataset in EPSG:32635 "
             "and load it into the current QGIS project. Great for a first run."
         )
+        self.save_preset_button = QPushButton("Save preset")
+        self.save_preset_button.setToolTip(
+            "Save the current layer mappings, field mappings, asset theme and viewer defaults "
+            "to a .planx JSON file you can reuse on another QGIS project."
+        )
+        self.load_preset_button = QPushButton("Load preset")
+        self.load_preset_button.setToolTip(
+            "Load a .planx preset and match its layer names against the current QGIS project."
+        )
         self.osm_button = QPushButton("Import from OpenStreetMap")
         self.osm_button.setToolTip(
             "Fetch buildings, roads, parks, and trees from OpenStreetMap for a chosen bounding box. "
@@ -405,6 +414,8 @@ class PlanX3DCityDialog(QDialog):
         self.export_button.setObjectName("primaryButton")
         actions.addWidget(self.sample_button)
         actions.addWidget(self.osm_button)
+        actions.addWidget(self.save_preset_button)
+        actions.addWidget(self.load_preset_button)
         actions.addWidget(self.auto_match_button)
         actions.addWidget(self.check_button)
         actions.addWidget(self.export_button)
@@ -413,6 +424,8 @@ class PlanX3DCityDialog(QDialog):
 
         self.sample_button.clicked.connect(self._load_sample_project)
         self.osm_button.clicked.connect(self._import_from_osm)
+        self.save_preset_button.clicked.connect(self._save_preset)
+        self.load_preset_button.clicked.connect(self._load_preset)
         self.auto_match_button.clicked.connect(self._auto_match_layers)
         self.check_button.clicked.connect(self._refresh_report)
         self.export_button.clicked.connect(lambda: self.exportRequested.emit(self.selected_layers()))
@@ -684,6 +697,117 @@ class PlanX3DCityDialog(QDialog):
             "Quality report updated." if not has_error else "Report contains warnings; review the Check page before publishing.",
             has_error,
         )
+
+    def _save_preset(self) -> None:
+        """Serialise the current dialog selections to a .planx JSON file."""
+        import json
+        from qgis.PyQt.QtWidgets import QFileDialog
+        layer_map = self.selected_layers()
+        # Replace QGIS layer objects with their display names (portable across projects).
+        serialisable = {}
+        for key, value in layer_map.items():
+            if hasattr(value, "name") and callable(value.name):
+                serialisable[key] = {"_layer_name": value.name()}
+            elif isinstance(value, (str, int, float, bool, dict, list)) or value is None:
+                serialisable[key] = value
+            else:
+                serialisable[key] = str(value)
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save PlanX preset",
+            "planx_preset.planx",
+            "PlanX preset (*.planx);;JSON (*.json)",
+        )
+        if not path:
+            return
+        try:
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump({"planx_preset_version": 1, "data": serialisable}, fh, ensure_ascii=False, indent=2)
+            self.set_status(f"Preset saved: {path}")
+        except OSError as exc:
+            QMessageBox.warning(self, "Save preset", f"Could not write preset: {exc}")
+
+    def _load_preset(self) -> None:
+        """Load a .planx preset and match its layer names to layers in the current project."""
+        import json
+        from qgis.PyQt.QtWidgets import QFileDialog
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Load PlanX preset",
+            "",
+            "PlanX preset (*.planx);;JSON (*.json);;All files (*)",
+        )
+        if not path:
+            return
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                payload = json.load(fh)
+        except (OSError, json.JSONDecodeError) as exc:
+            QMessageBox.warning(self, "Load preset", f"Invalid preset: {exc}")
+            return
+
+        data = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(data, dict):
+            QMessageBox.warning(self, "Load preset", "Preset payload missing or malformed.")
+            return
+
+        project_layers = list(QgsProject.instance().mapLayers().values())
+        by_name = {layer.name(): layer for layer in project_layers}
+        matched = []
+        missing = []
+
+        # Layer selections
+        for key, box in self.layer_boxes.items():
+            entry = data.get(key)
+            if isinstance(entry, dict) and entry.get("_layer_name"):
+                layer = by_name.get(entry["_layer_name"])
+                if layer is not None:
+                    box.setLayer(layer)
+                    matched.append(f"{key}={entry['_layer_name']}")
+                else:
+                    missing.append(f"{key}({entry['_layer_name']})")
+
+        # Mode
+        if data.get("mode") and hasattr(self, "mode_combo"):
+            idx = self.mode_combo.findData(data["mode"])
+            if idx >= 0:
+                self.mode_combo.setCurrentIndex(idx)
+
+        # Asset theme
+        if data.get("asset_theme") and hasattr(self, "asset_theme_combo"):
+            idx = self.asset_theme_combo.findData(data["asset_theme"])
+            if idx >= 0:
+                self.asset_theme_combo.setCurrentIndex(idx)
+
+        # Field mappings (FIELD_MAPPING_DEFS keys)
+        for key, combo in getattr(self, "field_mapping_combos", {}).items():
+            value = data.get(key)
+            if value:
+                idx = combo.findData(value)
+                if idx >= 0:
+                    combo.setCurrentIndex(idx)
+
+        # Simple settings
+        if hasattr(self, "flatten_islands_check") and "flatten_islands" in data:
+            self.flatten_islands_check.setChecked(bool(data["flatten_islands"]))
+        if hasattr(self, "plateau_transition_spin") and "island_plateau_transition" in data:
+            try:
+                self.plateau_transition_spin.setValue(float(data["island_plateau_transition"]))
+            except (TypeError, ValueError):
+                pass
+        if hasattr(self, "basemap_size_combo") and "basemap_export_size" in data:
+            idx = self.basemap_size_combo.findData(int(data["basemap_export_size"]))
+            if idx >= 0:
+                self.basemap_size_combo.setCurrentIndex(idx)
+
+        self._refresh_report()
+        summary = f"Preset loaded ({len(matched)} layers matched"
+        if missing:
+            summary += f", missing in current project: {', '.join(missing[:5])}"
+            if len(missing) > 5:
+                summary += f" +{len(missing) - 5} more"
+        summary += ")."
+        self.set_status(summary, error=bool(missing))
 
     def _import_from_osm(self) -> None:
         try:

@@ -3,6 +3,14 @@
 All notable changes to **PlanX 3D City Viewer** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 
+## [0.8.2] - 2026-05-22
+
+Cumulative shadow heatmap, project presets, quick time + theme.
+- **Cumulative shadow heatmap (Analysis dock).** New `Compute shadow heatmap` button raycasts 6 hours of the day (7, 9, 11, 13, 15, 17) across a 48×48 ground grid using the NOAA solar model. Each grid cell records how many sun samples are blocked by buildings/trees; a colour overlay (golden = always sunny → deep blue = always shaded) is rendered above the terrain. Runs asynchronously with progress feedback in the status bar; `Clear heatmap` removes it.
+- **Project preset save/load (Data page).** `Save preset` writes the current layer selections (by display name), mode, asset theme, field mappings, plateau settings and basemap export size into a portable `.planx` JSON file. `Load preset` reads one back, matches layer names against the active QGIS project, and reports any layers that could not be matched.
+- **Quick time-of-day presets.** Dawn 6 / Noon 12 / Sunset 19 / Night 22 buttons under the Time slider in the Scene dock. One click jumps the sun, disables `autoTime`, and reflects the new value in the dock.
+- **Theme selector.** Auto / Light / Dark dropdown in the Scene dock. Persisted in browser `localStorage`. Implemented as a `data-theme` attribute on `<html>` that overrides `prefers-color-scheme`; new CSS variables under `[data-theme="light"]` and `[data-theme="dark"]` follow.
+
 ## [0.8.1] - 2026-05-22
 
 Scale and ground-clamp fixes plus per-feature road width.

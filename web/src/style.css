@@ -1136,6 +1136,28 @@ ul {
     }
 }
 
+/* Explicit overrides via the theme selector — outweigh the OS preference. */
+[data-theme="dark"] {
+    --planx-bg-panel:        rgba(15, 23, 42, 0.82);
+    --planx-bg-panel-strong: rgba(15, 23, 42, 0.92);
+    --planx-bg-toolbar:      rgba(8, 13, 26, 0.78);
+    --planx-border:          rgba(248, 250, 252, 0.08);
+    --planx-border-strong:   rgba(248, 250, 252, 0.16);
+    --planx-text:            #f1f5f9;
+    --planx-text-muted:      #cbd5e1;
+    --planx-text-faint:      #94a3b8;
+}
+[data-theme="light"] {
+    --planx-bg-panel:        rgba(255, 255, 255, 0.86);
+    --planx-bg-panel-strong: rgba(255, 255, 255, 0.94);
+    --planx-bg-toolbar:      rgba(15, 23, 42, 0.72);
+    --planx-border:          rgba(15, 23, 42, 0.07);
+    --planx-border-strong:   rgba(15, 23, 42, 0.14);
+    --planx-text:            #1e293b;
+    --planx-text-muted:      #475569;
+    --planx-text-faint:      #64748b;
+}
+
 body {
     font-family: var(--planx-font);
     -webkit-font-smoothing: antialiased;

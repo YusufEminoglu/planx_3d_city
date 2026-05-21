@@ -94,6 +94,9 @@ Object.assign(i18n.TR, {
   shadowSummer: 'Yaz gundonumu', shadowAutumn: 'Güz ekinoksu',
   shadowPlayDay: 'Günü oynat (gündogumu-günbatimi)', shadowStop: 'Durdur',
   shadowPlaySpeed: 'Gün-oynat hizi',
+  shadowCompute: 'Gunluk golge haritasi hesapla', shadowClear: 'Haritayi temizle',
+  timeDawn: 'Şafak 6', timeNoon: 'Öğle 12', timeSunset: 'Günbatımı 19', timeNight: 'Gece 22',
+  lblThemeMode: 'Tema', themeAuto: 'Otomatik (sistem)', themeLight: 'Aydınlık', themeDark: 'Karanlık',
   lblAutoTime: 'Gunes animasyonu', lblAutoTimeSpeed: 'Animasyon hizi',
   lblWeather: 'Hava', lblSSAO: 'Golge kalitesi', lblBloom: 'Bloom/parlama',
   lblIslandColor: 'Ada rengi', lblIslandTexture: 'Ada dokusu',
@@ -132,6 +135,9 @@ Object.assign(i18n.EN, {
   shadowSummer: 'Summer solstice', shadowAutumn: 'Autumn equinox',
   shadowPlayDay: 'Play day (sunrise-sunset)', shadowStop: 'Stop',
   shadowPlaySpeed: 'Day playback speed',
+  shadowCompute: 'Compute shadow heatmap', shadowClear: 'Clear heatmap',
+  timeDawn: 'Dawn 6', timeNoon: 'Noon 12', timeSunset: 'Sunset 19', timeNight: 'Night 22',
+  lblThemeMode: 'Theme', themeAuto: 'Auto (system)', themeLight: 'Light', themeDark: 'Dark',
   lblAutoTime: 'Solar animation', lblAutoTimeSpeed: 'Animation speed',
   lblWeather: 'Weather', lblSSAO: 'Shadow quality', lblBloom: 'Bloom/glow',
   lblIslandColor: 'Block color', lblIslandTexture: 'Block texture',
@@ -372,6 +378,7 @@ let hardscapeGroup = new THREE.Group();
 let buildingGroup = new THREE.Group();
 let roadGroup = new THREE.Group();
 let treeGroup = new THREE.Group();
+let shadowHeatmapMesh = null;
 let carGroup = new THREE.Group();
 let furnitureGroup = new THREE.Group();
 let pedestrianGroup = new THREE.Group();
@@ -2946,6 +2953,113 @@ function buildingBaseYForOuterRing(outer) {
   const mid = valid[Math.floor(valid.length / 2)];
   const high = valid[Math.max(0, Math.ceil(valid.length * 0.72) - 1)];
   return Math.max(mid, high - 0.35) + LAYER.content + 0.03;
+}
+
+/* Compute a cumulative shadow heatmap across the scene:
+ * sample N hours of solar position, raycast from each grid point toward the sun,
+ * count how many samples are blocked by buildings/trees/blocks. Score 0 (always
+ * sun) .. 1 (always shaded) drives a colour overlay quad above the terrain.
+ * Useful for solar access screening of plans. */
+async function computeShadowHeatmap() {
+  if (!bounds || !terrainMesh) return;
+  removeShadowHeatmap();
+  const setProgress = (msg) => setStatus(msg);
+  setProgress('Computing shadow heatmap... (raycasting)');
+  await new Promise((r) => setTimeout(r, 16));
+
+  const gridN = 48;
+  const width = bounds.maxX - bounds.minX;
+  const depth = bounds.maxY - bounds.minY;
+  const dx = width / (gridN - 1);
+  const dz = depth / (gridN - 1);
+  const sampleHours = [7, 9, 11, 13, 15, 17];
+  const dayOfYear = settings.dayOfYear || 172;
+  const latitude = settings.latitude == null ? 39 : settings.latitude;
+
+  const blockers = [];
+  buildingGroup.traverse((o) => { if (o.isMesh) blockers.push(o); });
+  treeGroup.traverse((o) => { if (o.isMesh) blockers.push(o); });
+
+  const scores = new Float32Array(gridN * gridN);
+  const local = new THREE.Vector3();
+  const localRaycaster = new THREE.Raycaster();
+  localRaycaster.firstHitOnly = true;
+  localRaycaster.far = Math.max(800, Math.max(width, depth));
+
+  const sunDirs = [];
+  for (const hour of sampleHours) {
+    const { elevation, azimuth } = solarPosition(hour, dayOfYear, latitude);
+    if (elevation <= 0) continue;
+    const phi = Math.PI / 2 - elevation;
+    const theta = Math.PI - azimuth;
+    const dir = new THREE.Vector3().setFromSphericalCoords(1, phi, theta);
+    sunDirs.push(dir);
+  }
+  if (!sunDirs.length) {
+    setProgress('Shadow heatmap: no daylight in current day-of-year — skipping.');
+    return;
+  }
+
+  for (let gi = 0; gi < gridN; gi++) {
+    if (gi % 8 === 0) {
+      setProgress(`Computing shadow heatmap... ${Math.round((gi / gridN) * 100)}%`);
+      await new Promise((r) => setTimeout(r, 0));
+    }
+    for (let gj = 0; gj < gridN; gj++) {
+      const lx = -width * 0.5 + gj * dx;
+      const lz = -depth * 0.5 + gi * dz;
+      const y = terrainLocalYAt(lx, lz) + 0.5;
+      local.set(lx, y, lz);
+      let shaded = 0;
+      for (const dir of sunDirs) {
+        localRaycaster.set(local, dir);
+        const hits = localRaycaster.intersectObjects(blockers, false);
+        if (hits.length) shaded++;
+      }
+      scores[gi * gridN + gj] = shaded / sunDirs.length;
+    }
+  }
+
+  // Build overlay grid mesh — one quad per cell, vertex-coloured
+  const geo = new THREE.PlaneGeometry(width, depth, gridN - 1, gridN - 1);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  const colors = [];
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const z = pos.getZ(i);
+    const y = terrainLocalYAt(x, z) + 0.45;
+    pos.setY(i, y);
+    const gj = Math.min(gridN - 1, Math.max(0, Math.round((x + width * 0.5) / dx)));
+    const gi = Math.min(gridN - 1, Math.max(0, Math.round((z + depth * 0.5) / dz)));
+    const score = scores[gi * gridN + gj];
+    // Colour ramp: bright golden (no shadow) → deep cool blue (full shadow)
+    const c = new THREE.Color().setHSL(0.13 + score * 0.45, 0.7, 0.55 - score * 0.20);
+    colors.push(c.r, c.g, c.b);
+  }
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.55,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -3,
+    polygonOffsetUnits: -3
+  });
+  shadowHeatmapMesh = new THREE.Mesh(geo, mat);
+  shadowHeatmapMesh.renderOrder = 100;
+  world.add(shadowHeatmapMesh);
+  setProgress(`Shadow heatmap ready — ${sunDirs.length} solar samples, ${gridN}x${gridN} grid.`);
+}
+
+function removeShadowHeatmap() {
+  if (!shadowHeatmapMesh) return;
+  world.remove(shadowHeatmapMesh);
+  shadowHeatmapMesh.geometry.dispose();
+  shadowHeatmapMesh.material.dispose();
+  shadowHeatmapMesh = null;
 }
 
 function featureRoadWidth(feature) {
@@ -5677,6 +5791,43 @@ function initDockUi() {
     settings.autoTime = false;
     reflectDockSettings();
   });
+  document.getElementById('shadow-compute')?.addEventListener('click', () => {
+    computeShadowHeatmap();
+  });
+  document.getElementById('shadow-clear')?.addEventListener('click', () => {
+    removeShadowHeatmap();
+    setStatus('Shadow heatmap cleared.');
+  });
+
+  // Quick time-of-day presets
+  document.querySelectorAll('[data-time-preset]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const t = parseFloat(btn.dataset.timePreset);
+      if (!Number.isFinite(t)) return;
+      settings.timeOfDay = t;
+      settings.autoTime = false;
+      updateTimeOfDay();
+      reflectDockSettings();
+    });
+  });
+
+  // Theme override (auto/light/dark) — stored in localStorage
+  const themeSelect = document.getElementById('theme-mode-select');
+  if (themeSelect) {
+    const applyTheme = (value) => {
+      const root = document.documentElement;
+      root.removeAttribute('data-theme');
+      if (value === 'light' || value === 'dark') {
+        root.setAttribute('data-theme', value);
+      }
+      try { localStorage.setItem('planx_3d_city_theme', value); } catch (_) {}
+    };
+    let saved = 'auto';
+    try { saved = localStorage.getItem('planx_3d_city_theme') || 'auto'; } catch (_) {}
+    themeSelect.value = ['auto', 'light', 'dark'].includes(saved) ? saved : 'auto';
+    applyTheme(themeSelect.value);
+    themeSelect.addEventListener('change', () => applyTheme(themeSelect.value));
+  }
 }
 
 initDockUi();
