@@ -2,7 +2,7 @@
 name=PlanX 3D City Viewer
 qgisMinimumVersion=3.28
 description=Export QGIS layers and launch the interactive PlanX 3D City web viewer.
-version=0.7.9
+version=0.8.0
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 about=PlanX 3D City Viewer maps user-exported DEM, ROI, road, building, block, parcel, optional urban furniture layers, and optional raster plan texture workflows to a browser-based Three.js city cockpit with narrative keyframes, terrain quality controls, mobility, wind impact, and building statistics overlays. Developed with feedback from educational workflows at Dokuz Eylul University, Department of City and Regional Planning.
@@ -19,6 +19,10 @@ hasProcessingProvider=no
 plugin_dependencies=
 license=MIT
 changelog=
+    PlanX 3D City Viewer 0.8.0 - Modern cockpit UI, FPS HUD and Shadow Study.
+        - Added a modern cockpit theme to the web viewer: design tokens (CSS variables), unified glassmorphism for every dock and panel, polished form controls (range sliders, focus rings, scrollbars), accent-aware buttons, automatic dark-mode follow, and a reduced-motion fallback.
+        - Added a live FPS chip in the top-right HUD that colours yellow under 45 fps and red under 25 fps so users can spot when the scene needs lighter settings.
+        - Added Shadow Study to the Analysis dock: one-click presets for Winter Solstice, Spring Equinox, Summer Solstice and Autumn Equinox (jumps Day of Year + clamps time to noon), Play day / Stop buttons that animate sunrise→sunset, and a Day-playback speed slider. Built on the v0.7.9 NOAA solar model so shadows are physically correct for the site latitude.
     PlanX 3D City Viewer 0.7.9 - OpenStreetMap importer and astronomical solar model.
         - Added "Import from OpenStreetMap" on the Data page: enter a small bounding box (WGS84) or pull it from the current QGIS canvas; the plugin fetches buildings, roads, parks/greens and trees via the Overpass API, reprojects them to the local UTM zone, and adds them as named layers ready to publish. Building floors, function, road class and tree height are mapped automatically.
         - Replaced the simple sine sun model with a proper NOAA-style solar position calculator. New viewer sliders for Day of year (1-365) and Latitude (deg) move the sun realistically with season + location. Sunrise/sunset, golden-hour intensity ramp and night detection now follow the actual solar elevation.

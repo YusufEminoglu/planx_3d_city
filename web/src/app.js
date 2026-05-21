@@ -86,6 +86,12 @@ Object.assign(i18n.TR, {
   lblDemQuality: 'DEM mesh kalitesi', lblFog: 'Sis', lblTime: 'Zaman',
   flattenIslands: 'Ada alti duzlestirme', islandPlateauTransition: 'Plato kenar rampi (m)',
   dayOfYear: 'Yilin gunu (1-365)', latitude: 'Enlem (derece)',
+  shadowStudyTitle: 'Golge analizi',
+  shadowStudyNote: 'Gundonum ve ekinokslara atla, sonra günü oynat ki golgelerin nasil hareket ettigini gor.',
+  shadowWinter: 'Kıs gundonumu', shadowSpring: 'Bahar ekinoksu',
+  shadowSummer: 'Yaz gundonumu', shadowAutumn: 'Güz ekinoksu',
+  shadowPlayDay: 'Günü oynat (gündogumu-günbatimi)', shadowStop: 'Durdur',
+  shadowPlaySpeed: 'Gün-oynat hizi',
   lblAutoTime: 'Gunes animasyonu', lblAutoTimeSpeed: 'Animasyon hizi',
   lblWeather: 'Hava', lblSSAO: 'Golge kalitesi', lblBloom: 'Bloom/parlama',
   lblIslandColor: 'Ada rengi', lblIslandTexture: 'Ada dokusu',
@@ -118,6 +124,12 @@ Object.assign(i18n.EN, {
   lblDemQuality: 'DEM mesh quality', lblFog: 'Fog', lblTime: 'Time',
   flattenIslands: 'Flatten DEM under islands', islandPlateauTransition: 'Plateau edge ramp (m)',
   dayOfYear: 'Day of year (1-365)', latitude: 'Latitude (deg)',
+  shadowStudyTitle: 'Shadow study',
+  shadowStudyNote: 'Jump to solstices & equinoxes, then play the day to see how shadows move across the site.',
+  shadowWinter: 'Winter solstice', shadowSpring: 'Spring equinox',
+  shadowSummer: 'Summer solstice', shadowAutumn: 'Autumn equinox',
+  shadowPlayDay: 'Play day (sunrise-sunset)', shadowStop: 'Stop',
+  shadowPlaySpeed: 'Day playback speed',
   lblAutoTime: 'Solar animation', lblAutoTimeSpeed: 'Animation speed',
   lblWeather: 'Weather', lblSSAO: 'Shadow quality', lblBloom: 'Bloom/glow',
   lblIslandColor: 'Block color', lblIslandTexture: 'Block texture',
@@ -436,6 +448,9 @@ let _mmBg = null;           // pre-rendered static canvas
 let _mmScale = 1, _mmOx = 0, _mmOy = 0;
 const _mmW = 160, _mmH = 160;
 let _mmLastUpdate = 0;
+let _fpsLastSample = 0;
+let _fpsFrames = 0;
+let _fpsValue = 0;
 
 function _mmPx(lx, lz) {
   const w = bounds.maxX - bounds.minX;
@@ -5035,6 +5050,20 @@ function animate() {
     if (mmWrap && !mmWrap.classList.contains('collapsed')) updateMinimapCamera();
     if (time - _sbLastUpdate > 300) { _sbLastUpdate = time; updateScaleBar(); }
   }
+
+  // FPS HUD (sample once per second so the number is readable)
+  _fpsFrames++;
+  if (time - _fpsLastSample > 1000) {
+    _fpsValue = Math.round((_fpsFrames * 1000) / (time - _fpsLastSample));
+    _fpsFrames = 0;
+    _fpsLastSample = time;
+    const chip = document.getElementById('fps-chip');
+    if (chip) {
+      chip.textContent = `${_fpsValue} fps`;
+      chip.classList.toggle('warn', _fpsValue < 45 && _fpsValue >= 25);
+      chip.classList.toggle('bad', _fpsValue < 25);
+    }
+  }
 }
 
 function updateHtmlLang() {
@@ -5593,6 +5622,30 @@ function initDockUi() {
   document.querySelectorAll('.dock-panel [data-setting]').forEach((el) => {
     const handler = () => applyDockSetting(el.dataset.setting, el.type === 'checkbox' ? el.checked : el.value, el.type);
     el.addEventListener(el.tagName === 'SELECT' || el.type === 'checkbox' ? 'change' : 'input', handler);
+  });
+
+  // Shadow study presets — jump dayOfYear to a solstice/equinox and clamp time to noon.
+  const SHADOW_PRESETS = { winter: 355, spring: 79, summer: 172, autumn: 265 };
+  document.querySelectorAll('[data-shadow-preset]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.shadowPreset;
+      const day = SHADOW_PRESETS[key];
+      if (!day) return;
+      settings.dayOfYear = day;
+      settings.timeOfDay = 12;
+      updateTimeOfDay();
+      reflectDockSettings();
+      document.querySelectorAll('[data-shadow-preset]').forEach((b) => b.classList.toggle('active', b === btn));
+    });
+  });
+  document.getElementById('shadow-play-day')?.addEventListener('click', () => {
+    settings.autoTime = true;
+    if (settings.timeOfDay < 6 || settings.timeOfDay > 18) settings.timeOfDay = 6;
+    reflectDockSettings();
+  });
+  document.getElementById('shadow-stop')?.addEventListener('click', () => {
+    settings.autoTime = false;
+    reflectDockSettings();
   });
 }
 

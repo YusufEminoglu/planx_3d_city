@@ -187,6 +187,22 @@
         <label><span data-i18n="lblPlumeDistance">Impact distance</span> <input type="range" min="40" max="600" step="10" data-setting="windPlumeDistance"></label>
         <label><span data-i18n="lblSolarReview">Solar review</span> <input type="range" min="0" max="24" step="0.1" data-setting="timeOfDay"></label>
         <label><input type="checkbox" data-setting="showUrbanComfort"> <span data-i18n="lblUrbanComfort">Urban comfort screening</span></label>
+
+        <div class="dock-section">
+            <p class="dock-section-title" data-i18n="shadowStudyTitle">Shadow study</p>
+            <p class="dock-note" data-i18n="shadowStudyNote">Jump to solstices &amp; equinoxes, then play the day to see how shadows move.</p>
+            <div class="shadow-presets">
+                <button data-shadow-preset="winter" data-i18n="shadowWinter">Winter solstice</button>
+                <button data-shadow-preset="spring" data-i18n="shadowSpring">Spring equinox</button>
+                <button data-shadow-preset="summer" data-i18n="shadowSummer">Summer solstice</button>
+                <button data-shadow-preset="autumn" data-i18n="shadowAutumn">Autumn equinox</button>
+            </div>
+            <div class="dock-actions">
+                <button id="shadow-play-day" data-i18n="shadowPlayDay">Play day (6→18)</button>
+                <button id="shadow-stop" data-i18n="shadowStop">Stop</button>
+            </div>
+            <label><span data-i18n="shadowPlaySpeed">Day playback speed</span> <input type="range" min="0.5" max="6" step="0.5" data-setting="autoTimeSpeed"></label>
+        </div>
     </aside>
 
     <aside class="dock-panel hidden narrative-panel" id="narrative-dock">
@@ -219,6 +235,8 @@
         <div id="game-feedback" class="game-feedback"></div>
         <div class="game-hint" data-i18n="gameHint">Left click: throw stone</div>
     </div>
+
+    <div id="fps-chip" class="hud-chip hud-chip-fps" title="Render frames per second">-- fps</div>
 
     <div id="bldg-hover-tip" class="bldg-hover-tip"></div>
     <div id="bldg-detail-tip" class="bldg-detail-tip floating-tooltip" style="display:none;"></div>

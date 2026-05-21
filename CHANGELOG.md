@@ -3,6 +3,14 @@
 All notable changes to **PlanX 3D City Viewer** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 
+## [0.8.0] - 2026-05-22
+
+Modern cockpit UI, FPS HUD and Shadow Study.
+- **Modern cockpit theme.** Added design tokens (CSS variables) for colours, radii, blur, shadows, spacing, typography. Every dock and `.glass-panel` now uses a unified glassmorphism surface with consistent border, blur and shadow. Buttons get a subtle hover lift; range sliders, selects and number inputs get accent-coloured focus rings; scrollbars are polished. Automatic dark-mode follow via `prefers-color-scheme`. Honours `prefers-reduced-motion`.
+- **FPS HUD.** Top-right `hud-chip` shows live frames per second sampled once per second. Colour switches to amber under 45 fps and red under 25 fps so users see when the scene needs lighter settings.
+- **Shadow Study (Analysis dock).** Four preset buttons (Winter Solstice, Spring Equinox, Summer Solstice, Autumn Equinox) snap `dayOfYear` + noon time so shadow patterns are immediately visible. Play day / Stop animates sunrise→sunset using the existing `autoTime` loop; speed slider exposed in the dock. Built on the NOAA solar model from v0.7.9 so the shadows are physically correct for the site latitude.
+- Added new i18n keys (TR + EN) for the shadow study UI and theme controls.
+
 ## [0.7.9] - 2026-05-22
 
 OpenStreetMap importer and astronomical solar model.
