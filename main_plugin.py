@@ -10,7 +10,7 @@ from qgis.PyQt.QtCore import QSettings
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QFileDialog, QMessageBox
 
-from .exporter import LABELS, OPTIONAL_INPUTS, copy_portable_viewer, existing_target_files, export_all, optional_inputs_for_mode, required_inputs_for_mode, validate_inputs, zip_portable_viewer
+from .exporter import LABELS, copy_portable_viewer, existing_target_files, export_all, optional_inputs_for_mode, required_inputs_for_mode, validate_inputs, zip_portable_viewer
 from .server import PlanX3DServer
 
 PLUGIN_VERSION = "0.7.7"

@@ -37,8 +37,6 @@ from .exporter import (
     MODE_RASTER_TEXTURE,
     MODE_VECTOR,
     OPTIONAL_INPUTS,
-    REQUIRED_INPUTS,
-    optional_inputs_for_mode,
     recommended_inputs_for_mode,
     required_inputs_for_mode,
     validate_inputs,
@@ -747,7 +745,6 @@ class PlanX3DCityDialog(QDialog):
         crs_values = []
         mode = self._current_mode()
         required_keys = required_inputs_for_mode(mode)
-        optional_keys = optional_inputs_for_mode(mode)
         recommended_keys = set(recommended_inputs_for_mode(mode))
         missing = validate_inputs(layer_map)
         if missing:

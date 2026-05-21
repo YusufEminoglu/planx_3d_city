@@ -3,6 +3,13 @@
 All notable changes to **PlanX 3D City Viewer** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 
+## [0.7.8] - 2026-05-22
+
+Plugin Hub security/quality scan cleanup.
+- Removed unused imports (`json`, `os`, `typing.Tuple`, `REQUIRED_INPUTS`, `OPTIONAL_INPUTS`) and stray local variables (`optional_keys`, `crs`, `block_w`, `block_h`) flagged by the Hub Flake8 scan.
+- `zip_hub.py` now drops `.zipignore` from the released archive (added to `EXCLUDE_FILENAMES`) so the Hub suspicious-file scanner no longer reports a hidden file. The `.zipignore` itself stays in the repository for build hygiene.
+- No functional changes to the viewer or the QGIS publisher; this is a packaging/lint patch only.
+
 ## [0.7.7] - 2026-05-21
 
 Terrain low-edge stability, first-run onboarding, and a built-in sample dataset.

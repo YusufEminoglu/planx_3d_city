@@ -7,18 +7,14 @@ QGIS project. Lets a brand-new user try the plugin without preparing any data.
 """
 from __future__ import annotations
 
-import json
 import math
-import os
 import random
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Tuple
 
 from qgis.PyQt.QtCore import QVariant
 from qgis.core import (
-    QgsCoordinateReferenceSystem,
     QgsFeature,
     QgsField,
     QgsGeometry,
@@ -41,10 +37,6 @@ BLOCK_GRID = 3   # 3 x 3 city blocks
 def _ensure_dir(path: Path) -> Path:
     path.mkdir(parents=True, exist_ok=True)
     return path
-
-
-def _crs() -> QgsCoordinateReferenceSystem:
-    return QgsCoordinateReferenceSystem.fromEpsgId(SAMPLE_EPSG)
 
 
 def _write_dem(dem_path: Path) -> None:
@@ -101,7 +93,6 @@ def _rect_polygon(x0: float, y0: float, x1: float, y1: float) -> QgsGeometry:
 
 
 def _save_vector(features, geometry_type: str, fields_def, out_path: Path) -> None:
-    crs = _crs()
     layer = QgsVectorLayer(f"{geometry_type}?crs=EPSG:{SAMPLE_EPSG}", "tmp", "memory")
     pr = layer.dataProvider()
     fields = []
@@ -158,8 +149,6 @@ def _build_buildings() -> list:
     functions = ["KONUT", "TICARET", "KARMA", "EGITIM", "SAGLIK"]
     bid = 0
     for c, r, x0, y0, x1, y1 in _block_cells():
-        block_w = x1 - x0
-        block_h = y1 - y0
         # 4 - 7 buildings per block, simple rectangular footprints
         count = rnd.randint(4, 7)
         for _ in range(count):

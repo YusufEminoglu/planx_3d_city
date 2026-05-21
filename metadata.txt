@@ -2,7 +2,7 @@
 name=PlanX 3D City Viewer
 qgisMinimumVersion=3.28
 description=Export QGIS layers and launch the interactive PlanX 3D City web viewer.
-version=0.7.7
+version=0.7.8
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 about=PlanX 3D City Viewer maps user-exported DEM, ROI, road, building, block, parcel, optional urban furniture layers, and optional raster plan texture workflows to a browser-based Three.js city cockpit with narrative keyframes, terrain quality controls, mobility, wind impact, and building statistics overlays. Developed with feedback from educational workflows at Dokuz Eylul University, Department of City and Regional Planning.
@@ -19,6 +19,10 @@ hasProcessingProvider=no
 plugin_dependencies=
 license=MIT
 changelog=
+    PlanX 3D City Viewer 0.7.8 - Plugin Hub security/quality scan cleanup.
+        - Removed unused imports and stray local variables flagged by Flake8 in dialog.py, main_plugin.py, and sample_generator.py.
+        - Excluded plugin-level .zipignore from the released package so the Plugin Hub suspicious-file scanner no longer flags a hidden file. .zipignore stays in the repository for build hygiene.
+        - No functional changes to the viewer or QGIS publisher.
     PlanX 3D City Viewer 0.7.7 - Terrain low-edge stability, first-run onboarding, and a built-in sample dataset.
         - Added a median + MAD clamp to terrain vertices so low-elevation outliers no longer pull edge triangles upward. Removes the persistent spike line along the DEM/ROI low-elevation contour.
         - Added a first-run welcome dialog with a quick-start guide, a sample-project shortcut, and an online documentation link.
