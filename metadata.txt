@@ -2,7 +2,7 @@
 name=PlanX 3D City Viewer
 qgisMinimumVersion=3.28
 description=Export QGIS layers and launch the interactive PlanX 3D City web viewer.
-version=0.8.0
+version=0.8.1
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 about=PlanX 3D City Viewer maps user-exported DEM, ROI, road, building, block, parcel, optional urban furniture layers, and optional raster plan texture workflows to a browser-based Three.js city cockpit with narrative keyframes, terrain quality controls, mobility, wind impact, and building statistics overlays. Developed with feedback from educational workflows at Dokuz Eylul University, Department of City and Regional Planning.
@@ -19,6 +19,13 @@ hasProcessingProvider=no
 plugin_dependencies=
 license=MIT
 changelog=
+    PlanX 3D City Viewer 0.8.1 - Scale and ground-clamp fixes plus per-feature road width.
+        - DEM elevation now visible by default: flattenIslands default switched to off so the underlying terrain stays readable; users still toggle plateau on per project. The DEM-less render path already worked and is the default when no DEM is provided.
+        - Terrain pavement texture repeat scaled 10x larger (width/600, depth/600) so the asphalt/stone tile reads as actual paving instead of a tight checker.
+        - Street furniture (lights, benches, bins, bus stops) now sits on the terrain instead of ~1 m above it; removed the accumulated LAYER.content + LAYER.road offset. New setting furnitureGroundOffset = 0.02 m (anti z-fight only).
+        - Road width default raised to 8 m; slider range widened to 5-20 m. New optional 'Road width field (metres)' mapping subtracts ~3 m for sidewalks (1.5 m each side) and clamps to 5-20 m, so a 15 m right-of-way draws as a 12 m road surface.
+        - Park and sport materials now read parkColor + parkTexture + sportColor from settings, with matching swatches in the Terrain panel. ParkGreen is the new default park texture.
+        - Increased the procedural facade UV repeat (0.22 -> 0.55) so 4-storey buildings look like 4 storeys instead of two. Floor-height slider range widened to 2.5-5.0 m so users can also tune it manually.
     PlanX 3D City Viewer 0.8.0 - Modern cockpit UI, FPS HUD and Shadow Study.
         - Added a modern cockpit theme to the web viewer: design tokens (CSS variables), unified glassmorphism for every dock and panel, polished form controls (range sliders, focus rings, scrollbars), accent-aware buttons, automatic dark-mode follow, and a reduced-motion fallback.
         - Added a live FPS chip in the top-right HUD that colours yellow under 45 fps and red under 25 fps so users can spot when the scene needs lighter settings.

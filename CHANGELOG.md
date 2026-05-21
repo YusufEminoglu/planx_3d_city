@@ -3,6 +3,16 @@
 All notable changes to **PlanX 3D City Viewer** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 
+## [0.8.1] - 2026-05-22
+
+Scale and ground-clamp fixes plus per-feature road width.
+- **DEM visible by default.** `flattenIslands` setting now defaults to `false` so the underlying terrain stays readable. Users can still enable per-block plateau alignment from the Terrain panel; the DEM-less render path was already supported and remains the default when no DEM is provided (good for the walk-mode-only workflow the user reported).
+- **Terrain pavement texture 10× larger.** `buildTerrain` repeat counts changed from `width/60, depth/60` to `width/600, depth/600`. The asphalt/stone tile now reads as actual paving rather than a tight checker.
+- **Street furniture sits on the terrain.** Lights, benches, bins and bus stops dropped from `terrainLocalYAt + LAYER.content + LAYER.road + 0.08` (~1 m above ground) to `terrainLocalYAt + furnitureGroundOffset` (0.02 m anti-z-fight only). Night-time point-light Y kept its `+4.2 m` offset relative to the new base.
+- **Per-feature road width.** `roadWidth` default raised to 8 m, slider widened to 5–20 m. New `road_width_field` field mapping in the QGIS publisher; the viewer reads it via `featureRoadWidth(f)` and subtracts ~3 m (1.5 m each side) for sidewalks before clamping to 5–20 m. So a 15 m right-of-way draws as a 12 m road surface, an 18 m row draws as 15 m, etc. Sidewalks and crosswalks pick up the same per-feature width.
+- **Park & sport materials are now user-tunable.** `parkColor`, `parkTexture` (driven from the existing island procedural set, default `ParkGreen`) and `sportColor` are new persisted settings. Three new swatches appear in the Terrain panel.
+- **Facade scale fix.** Procedural facade UV repeat raised from 0.22 to 0.55 so a 4-storey block renders with ~4 window rows instead of ~2. The floor-height slider range widened to 2.5–5.0 m for manual tuning.
+
 ## [0.8.0] - 2026-05-22
 
 Modern cockpit UI, FPS HUD and Shadow Study.

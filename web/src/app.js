@@ -16,6 +16,7 @@ const i18n = {
     env: 'Çevre', fog: 'Sis', sunDir: 'Güneş Yönü', sunElev: 'Güneş Yük.',
     terrain: 'Zemin & Yüzey', pavement: 'Yol Kaplaması', showHardscape: 'Sert Zemin Göster',
     hardTex: 'Sert Zemin Dokusu', hardH: 'Sert Zemin Yüksekliği', islCol: 'Ada Rengi', islTex: 'Ada Dokusu',
+    parkCol: 'Park Rengi', parkTex: 'Park Dokusu', sportCol: 'Spor Alani Rengi',
     parcels: 'Parseller', showParcels: 'Parselleri Göster', boundCol: 'Sınır Rengi', boundOp: 'Sınır Opaklığı',
     bld: 'Binalar', floorH: 'Kat Yüksekliği (m)', roofShape: 'Çatı Tipi', roofTex: 'Çatı Dokusu', roofH: 'Çatı Yüksekliği (m)',
     roads: 'Yollar & Trafik', showCars: 'Arabaları Göster', showRoads: 'Yolları Göster', roadCol: 'Yol Rengi',
@@ -46,6 +47,7 @@ const i18n = {
     env: 'Environment', fog: 'Fog', sunDir: 'Sun Direction', sunElev: 'Sun Elevation',
     terrain: 'Terrain & Base', pavement: 'Pavement', showHardscape: 'Show Hardscape',
     hardTex: 'Hardscape Texture', hardH: 'Hardscape Height', islCol: 'Island Color', islTex: 'Island Texture',
+    parkCol: 'Park Color', parkTex: 'Park Texture', sportCol: 'Sport Area Color',
     parcels: 'Parcels', showParcels: 'Show Parcels', boundCol: 'Boundary Color', boundOp: 'Boundary Opacity',
     bld: 'Buildings', floorH: 'Floor Height (m)', roofShape: 'Roof Shape', roofTex: 'Roof Texture', roofH: 'Roof Height (m)',
     roads: 'Roads & Traffic', showCars: 'Show Cars', showRoads: 'Show Roads', roadCol: 'Road Color',
@@ -1211,7 +1213,7 @@ const settings = {
   roadStyle: 'Asphalt',
   roadColor: '#2f3438',
   roadColorMode: 'Default',
-  roadWidth: 7.5,
+  roadWidth: 8.0,
   trafficSpeed: 1.0,
   showWindPlumes: false,
   windDirectionDeg: 315,
@@ -1249,10 +1251,14 @@ const settings = {
   autoOrbitSpeed: 0.3,
   autoTime: false,
   autoTimeSpeed: 2.0,
-  flattenIslands: true,
+  flattenIslands: false,
   islandPlateauTransition: 6,
   dayOfYear: 172,
-  latitude: 39.0
+  latitude: 39.0,
+  parkColor: '#5e9e3e',
+  parkTexture: 'ParkGreen',
+  sportColor: '#4a8c30',
+  furnitureGroundOffset: 0.02
 };
 
 const PERSISTED_SETTING_KEYS = [
@@ -1269,7 +1275,8 @@ const PERSISTED_SETTING_KEYS = [
   'showWindPlumes', 'windDirectionDeg', 'windPlumeDistance', 'showUrbanComfort',
   'demMeshQuality', 'timeOfDay', 'weather', 'fov', 'walkSpeed',
   'flattenIslands', 'islandPlateauTransition',
-  'dayOfYear', 'latitude'
+  'dayOfYear', 'latitude',
+  'parkColor', 'parkTexture', 'sportColor'
 ];
 
 function loadPersistedSettings() {
@@ -2598,7 +2605,7 @@ async function buildTerrain(adalar) {
       ? baseMapTexture
     : (settings.pavementStyle === 'Asphalt'
       ? createAsphaltTexture()
-      : await textureFromSet('pavement', settings.pavementStyle, width / 60, depth / 60)));
+      : await textureFromSet('pavement', settings.pavementStyle, width / 600, depth / 600)));
   const terrainOpacity = useRasterTexture ? settings.terrainTextureOpacity : 1;
   const roiMaskTexture = createRoiMaskTexture(width, depth);
   const materialOptions = {
@@ -2753,8 +2760,10 @@ async function buildIslandLayer(adalar) {
     }
     return customMaterials[key];
   };
+  const parkTex = createIslandTexturePreset(settings.parkTexture || 'ParkGreen');
   const parkMat = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(0x5e9e3e),
+    color: new THREE.Color(settings.parkColor || '#5e9e3e'),
+    map: parkTex,
     roughness: 0.90,
     side: THREE.DoubleSide,
     polygonOffset: true,
@@ -2762,7 +2771,7 @@ async function buildIslandLayer(adalar) {
     polygonOffsetUnits: -2
   });
   const sportMat = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(0x4a8c30),
+    color: new THREE.Color(settings.sportColor || '#4a8c30'),
     roughness: 0.88,
     side: THREE.DoubleSide,
     polygonOffset: true,
@@ -2937,6 +2946,19 @@ function buildingBaseYForOuterRing(outer) {
   const mid = valid[Math.floor(valid.length / 2)];
   const high = valid[Math.max(0, Math.ceil(valid.length * 0.72) - 1)];
   return Math.max(mid, high - 0.35) + LAYER.content + 0.03;
+}
+
+function featureRoadWidth(feature) {
+  const widthField = mappedField('road_width_field');
+  if (widthField && feature?.properties) {
+    const raw = feature.properties[widthField];
+    const value = parseFloat(raw);
+    if (Number.isFinite(value) && value > 0) {
+      // Right-of-way width minus ~1.5 m sidewalk on each side, clamped to 5-20 m road surface.
+      return Math.max(5, Math.min(20, value - 3));
+    }
+  }
+  return Math.max(5, Math.min(20, settings.roadWidth));
 }
 
 function buildingHeightFromProps(props, levels) {
@@ -3647,7 +3669,10 @@ function buildFurnitureLayer() {
     feats.features.forEach(f => {
       if (!f.geometry || f.geometry.type !== 'Point') return;
       const [x, z] = metersToLocal(f.geometry.coordinates[0], f.geometry.coordinates[1]);
-      const y = terrainLocalYAt(x, z) + Math.max(LAYER.content, LAYER.road) + 0.08;
+      // Furniture meshes are modelled pivot-at-base; place directly on terrain
+      // with a tiny anti-z-fighting offset. Earlier (LAYER.content + LAYER.road)
+      // sum lifted them ~1 m into the air.
+      const y = terrainLocalYAt(x, z) + (settings.furnitureGroundOffset ?? 0.02);
       const m = modelTemplate.clone();
       m.position.set(x, y, z);
       m.rotation.y = furnitureRotationY(f, x, z, angleFieldKeyByKind[kind]);
@@ -3662,7 +3687,7 @@ function buildFurnitureLayer() {
       lights.features.forEach((f) => {
         if (!f.geometry || f.geometry.type !== 'Point') return;
         const [x, z] = metersToLocal(f.geometry.coordinates[0], f.geometry.coordinates[1]);
-        const y = terrainLocalYAt(x, z) + Math.max(LAYER.content, LAYER.road) + 4.2;
+        const y = terrainLocalYAt(x, z) + (settings.furnitureGroundOffset ?? 0.02) + 4.2;
         const pl = new THREE.PointLight(0xffcc88, 1.4, 24);
         pl.position.set(x, y, z);
         furnitureGroup.add(pl);
@@ -3723,7 +3748,7 @@ async function buildBuildingLayer(yapilar) {
   for (const fn of functions) {
     const key = functionFacadeState[fn];
     if (!facadeCache[key]) {
-      facadeCache[key] = await textureFromSet('facade', key, 0.22, 0.22);
+      facadeCache[key] = await textureFromSet('facade', key, 0.55, 0.55);
     }
   }
   // Per-building texture scale cache keyed by (facade_type + floor_count)
@@ -3923,6 +3948,7 @@ async function buildRoadsAndTraffic(yollar) {
       xzPts.push(new THREE.Vector3(x, 0, z));
     }
     if (xzPts.length < 2) continue;
+    const featureWidth = featureRoadWidth(f);
 
     // Resample XZ path every ~3 m and bake terrain Y so the curve hugs DEM surface
     const xzCurve = new THREE.CatmullRomCurve3(xzPts, false, 'centripetal');
@@ -3944,7 +3970,7 @@ async function buildRoadsAndTraffic(yollar) {
     for (let i = 0; i < centers.length; i++) {
       const p = centers[i];
       const t = curve.getTangent(i / (centers.length - 1));
-      const n = new THREE.Vector3(-t.z, 0, t.x).normalize().multiplyScalar(settings.roadWidth * 0.5);
+      const n = new THREE.Vector3(-t.z, 0, t.x).normalize().multiplyScalar(featureWidth * 0.5);
       left.push(new THREE.Vector3(p.x + n.x, p.y, p.z + n.z));
       right.push(new THREE.Vector3(p.x - n.x, p.y, p.z - n.z));
     }
@@ -4116,6 +4142,7 @@ function buildSidewalkLayer(yollar, sidewalks = EMPTY_GEOJSON) {
       xzPtsW.push(new THREE.Vector3(x, 0, z));
     }
     if (xzPtsW.length < 2) continue;
+    const featureWidth = featureRoadWidth(f);
     const xzCurveW = new THREE.CatmullRomCurve3(xzPtsW, false, 'centripetal');
     const wLen = xzCurveW.getLength();
     const nW = Math.max(xzPtsW.length, Math.ceil(wLen / 6) + 1);
@@ -4130,8 +4157,8 @@ function buildSidewalkLayer(yollar, sidewalks = EMPTY_GEOJSON) {
     const centers = curve.getPoints(segments);
 
     for (const side of [-1, 1]) {
-      const innerOff = settings.roadWidth * 0.5 * side;
-      const outerOff = (settings.roadWidth * 0.5 + swWidth) * side;
+      const innerOff = featureWidth * 0.5 * side;
+      const outerOff = (featureWidth * 0.5 + swWidth) * side;
       const positions = [];
       const uvs = [];
       const indices = [];
@@ -4173,13 +4200,13 @@ function buildCrosswalkLayer(yollar) {
   const stripeW = 0.38;
   const stripeGap = 0.30;
   const stripeCount = 5;
-  const cwLen = settings.roadWidth + 2.6;
   const totalLen = stripeCount * stripeW + (stripeCount - 1) * stripeGap;
 
   for (const f of yollar.features) {
     if (!f.geometry || f.geometry.type !== 'LineString') continue;
     const coords = f.geometry.coordinates;
     if (coords.length < 2) continue;
+    const cwLen = featureRoadWidth(f) + 2.6;
 
     const [px, pz] = metersToLocal(coords[0][0], coords[0][1]);
     const [nx, nz] = metersToLocal(coords[1][0], coords[1][1]);
@@ -4529,6 +4556,9 @@ function addGui() {
   terrain.add(settings, 'hardscapeHeight', 0.0, 2.0, 0.05).name(t('hardH')).onChange(rebuildScene);
   terrain.addColor(settings, 'islandColor').name(t('islCol')).onChange(rebuildScene);
   terrain.add(settings, 'islandTexture', Object.keys(textureSets.island)).name(t('islTex')).onChange(rebuildScene);
+  terrain.addColor(settings, 'parkColor').name(t('parkCol')).onChange(rebuildScene);
+  terrain.add(settings, 'parkTexture', Object.keys(textureSets.island)).name(t('parkTex')).onChange(rebuildScene);
+  terrain.addColor(settings, 'sportColor').name(t('sportCol')).onChange(rebuildScene);
 
   const parcels = globalGui.addFolder(t('parcels'));
   parcels.add(settings, 'showParcels').name(t('showParcels')).onChange(rebuildScene);
@@ -4537,7 +4567,7 @@ function addGui() {
 
   const bld = globalGui.addFolder(t('bld'));
   bld.add(settings, 'buildingMode', ['Footprint only', 'Extruded', 'Extruded + roof']).name('Building mode').onChange(rebuildScene);
-  bld.add(settings, 'floorHeight', 2.8, 3.6, 0.05).name(t('floorH')).onChange(rebuildScene);
+  bld.add(settings, 'floorHeight', 2.5, 5.0, 0.05).name(t('floorH')).onChange(rebuildScene);
   bld.add(settings, 'roofShape', ['Flat', 'Pyramid', 'Gable', 'Cone', 'Prism']).name(t('roofShape')).onChange(rebuildScene);
   bld.add(settings, 'roofHeight', 0.5, 6.0, 0.1).name(t('roofH')).onChange(rebuildScene);
   bld.add(settings, 'roofTexture', Object.keys(textureSets.roof)).name(t('roofTex')).onChange(rebuildScene);
@@ -4549,7 +4579,7 @@ function addGui() {
   roads.add(settings, 'showRoads').name(t('showRoads')).onChange(rebuildScene);
   roads.add(settings, 'roadColorMode', ['Default', 'Amenity distance', 'Access / traffic']).name('Road analysis').onChange(rebuildScene);
   roads.addColor(settings, 'roadColor').name(t('roadCol')).onChange(rebuildScene);
-  roads.add(settings, 'roadWidth', 2.8, 8.0, 0.1).name(t('roadW')).onChange(rebuildScene);
+  roads.add(settings, 'roadWidth', 5.0, 20.0, 0.5).name(t('roadW')).onChange(rebuildScene);
   roads.add(settings, 'trafficSpeed', 0, 5, 0.1).name(t('trafficSpd'));
   roads.add(settings, 'showSidewalks').name(t('showSidewalks')).onChange(rebuildScene);
   roads.add(settings, 'showCrosswalks').name(t('showCrosswalks')).onChange(rebuildScene);

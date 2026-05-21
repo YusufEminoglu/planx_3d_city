@@ -76,6 +76,7 @@ RECOMMENDED_BUILDING_FIELDS = ("katadedi", "uipfonksiyon")
 
 FIELD_MAPPING_DEFS = (
     ("road_hierarchy_field", "roads", "Road hierarchy/type field", "Road class such as arterial, street, service road, pedestrian way. / Yol sinif bilgisi."),
+    ("road_width_field", "roads", "Road width field (metres)", "Per-feature road width in metres. Sidewalks subtract ~3 m total (1.5 m each side) and final width is clamped to 5-20 m. / Metre cinsinden yol genisligi; kaldirim payi cikarilir."),
     ("building_population_field", "buildings", "Building population field", "Optional population value; otherwise the viewer estimates from dwellings and area. / Bina nufusu."),
     ("building_dwelling_field", "buildings", "Building dwelling field", "Dwelling or housing-unit count. / Daire veya konut birimi sayisi."),
     ("building_vehicle_field", "buildings", "Building vehicle field", "Estimated or calculated vehicle count. / Tahmini ya da hesapli arac sayisi."),
