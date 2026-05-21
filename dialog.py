@@ -7,11 +7,13 @@ import unicodedata
 from qgis.PyQt.QtCore import QDateTime, QUrl, pyqtSignal
 from qgis.PyQt.QtGui import QColor, QDesktopServices
 from qgis.PyQt.QtWidgets import (
+    QCheckBox,
     QColorDialog,
     QComboBox,
     QDialog,
     QDialogButtonBox,
     QApplication,
+    QDoubleSpinBox,
     QFormLayout,
     QGridLayout,
     QGroupBox,
@@ -37,6 +39,7 @@ from .exporter import (
     OPTIONAL_INPUTS,
     REQUIRED_INPUTS,
     optional_inputs_for_mode,
+    recommended_inputs_for_mode,
     required_inputs_for_mode,
     validate_inputs,
 )
@@ -159,6 +162,10 @@ class PlanX3DCityDialog(QDialog):
             payload[key] = combo.currentData() or ""
         if hasattr(self, "asset_theme_combo"):
             payload["asset_theme"] = self.asset_theme_combo.currentData() or "Modern Urban"
+        if hasattr(self, "flatten_islands_check"):
+            payload["flatten_islands"] = bool(self.flatten_islands_check.isChecked())
+        if hasattr(self, "plateau_transition_spin"):
+            payload["island_plateau_transition"] = float(self.plateau_transition_spin.value())
         asset_pool_counts = {}
         for key, combo in getattr(self, "asset_pool_count_combos", {}).items():
             asset_pool_counts[key] = int(combo.currentData() or 4)
@@ -377,16 +384,23 @@ class PlanX3DCityDialog(QDialog):
         root.addWidget(optional_group)
 
         actions = QHBoxLayout()
+        self.sample_button = QPushButton("Try with sample data")
+        self.sample_button.setToolTip(
+            "Generate a tiny synthetic DEM + block + building + road dataset in EPSG:32635 "
+            "and load it into the current QGIS project. Great for a first run."
+        )
         self.auto_match_button = QPushButton("Auto-match layers")
         self.check_button = QPushButton("Generate quality report")
         self.export_button = QPushButton("Export and open 3D Viewer")
         self.export_button.setObjectName("primaryButton")
+        actions.addWidget(self.sample_button)
         actions.addWidget(self.auto_match_button)
         actions.addWidget(self.check_button)
         actions.addWidget(self.export_button)
         root.addLayout(actions)
         root.addStretch(1)
 
+        self.sample_button.clicked.connect(self._load_sample_project)
         self.auto_match_button.clicked.connect(self._auto_match_layers)
         self.check_button.clicked.connect(self._refresh_report)
         self.export_button.clicked.connect(lambda: self.exportRequested.emit(self.selected_layers()))
@@ -443,7 +457,8 @@ class PlanX3DCityDialog(QDialog):
         self.road_access_field_combo.currentIndexChanged.connect(self._refresh_report)
 
     def _add_layer_row(self, grid: QGridLayout, row: int, key: str, required: bool) -> None:
-        label = QLabel(self._input_label_html(key, required))
+        role = self._role_for_key(key, self._current_mode() if hasattr(self, "mode_combo") else MODE_VECTOR)
+        label = QLabel(self._input_label_html(key, role))
         label.setMinimumWidth(240)
         label.setWordWrap(True)
         box = QgsMapLayerComboBox()
@@ -451,12 +466,21 @@ class PlanX3DCityDialog(QDialog):
         box.setFilters(QgsMapLayerProxyModel.RasterLayer if key == "dem" else QgsMapLayerProxyModel.VectorLayer)
         if key in ("plan_texture", "basemap"):
             box.setFilters(QgsMapLayerProxyModel.RasterLayer)
-        badge = QLabel("Missing" if required else "Optional")
+        if role == "required":
+            badge_text = "Missing"
+        elif role == "recommended":
+            badge_text = "Recommended"
+        else:
+            badge_text = "Optional"
+        badge = QLabel(badge_text)
         badge.setProperty("class", "badge")
-        badge.setStyleSheet(self._badge_style("missing" if required else "optional"))
+        badge.setStyleSheet(self._badge_style("missing" if role == "required" else ("recommended" if role == "recommended" else "optional")))
         box.layerChanged.connect(lambda _layer=None: self._refresh_report())
         self.layer_boxes[key] = box
         self.badge_labels[key] = badge
+        if not hasattr(self, "input_labels"):
+            self.input_labels = {}
+        self.input_labels[key] = label
         grid.addWidget(label, row, 0)
         grid.addWidget(box, row, 1)
         grid.addWidget(badge, row, 2)
@@ -523,6 +547,30 @@ class PlanX3DCityDialog(QDialog):
             pool_grid.addWidget(combo, row // 2, (row % 2) * 2 + 1)
         asset_root.addLayout(pool_grid)
         root.addWidget(asset_group)
+
+        terrain_group = QGroupBox("Terrain shaping / Arazi sekillendirme")
+        terrain_root = QVBoxLayout(terrain_group)
+        terrain_intro = QLabel(
+            "Optional viewer defaults for how block polygons sit on the DEM. The viewer can flatten the DEM under each block "
+            "(plateau) and ramp back to surrounding terrain so blocks no longer interpenetrate sloped DEM. / "
+            "Adalar altinda DEM duzlesir; kenarda yumusak ramp ile cevreye baglanir."
+        )
+        terrain_intro.setWordWrap(True)
+        terrain_root.addWidget(terrain_intro)
+        self.flatten_islands_check = QCheckBox("Flatten DEM under blocks (island plateau)")
+        self.flatten_islands_check.setChecked(True)
+        terrain_root.addWidget(self.flatten_islands_check)
+        plateau_row = QHBoxLayout()
+        plateau_row.addWidget(QLabel("Plateau edge ramp"))
+        self.plateau_transition_spin = QDoubleSpinBox()
+        self.plateau_transition_spin.setRange(0.0, 20.0)
+        self.plateau_transition_spin.setSingleStep(1.0)
+        self.plateau_transition_spin.setSuffix(" m")
+        self.plateau_transition_spin.setValue(6.0)
+        plateau_row.addWidget(self.plateau_transition_spin)
+        plateau_row.addStretch(1)
+        terrain_root.addLayout(plateau_row)
+        root.addWidget(terrain_group)
 
         quick = QGroupBox("Quick style for selected features")
         form = QFormLayout(quick)
@@ -625,6 +673,28 @@ class PlanX3DCityDialog(QDialog):
             has_error,
         )
 
+    def _load_sample_project(self) -> None:
+        try:
+            from .sample_generator import generate_sample_project
+        except Exception as exc:
+            QMessageBox.critical(self, "Sample data", f"Sample generator unavailable: {exc}")
+            return
+        try:
+            result = generate_sample_project()
+        except Exception as exc:
+            QMessageBox.critical(self, "Sample data", f"Sample generation failed: {exc}")
+            return
+        layers = result.get("layers", {})
+        for key, layer in layers.items():
+            box = self.layer_boxes.get(key)
+            if box is not None and layer is not None:
+                box.setLayer(layer)
+        self._refresh_report()
+        folder = result.get("folder", "")
+        self.set_status(
+            f"Sample data generated and loaded ({folder}). Click 'Export and open 3D Viewer' to publish."
+        )
+
     def _auto_match_layers(self) -> None:
         layers = list(QgsProject.instance().mapLayers().values())
         used_ids = set()
@@ -678,9 +748,15 @@ class PlanX3DCityDialog(QDialog):
         mode = self._current_mode()
         required_keys = required_inputs_for_mode(mode)
         optional_keys = optional_inputs_for_mode(mode)
+        recommended_keys = set(recommended_inputs_for_mode(mode))
         missing = validate_inputs(layer_map)
         if missing:
             warnings.append("Missing required inputs: " + ", ".join(missing))
+        if mode == MODE_VECTOR:
+            missing_recommended = [LABELS[k] for k in recommended_keys if layer_map.get(k) is None]
+            if missing_recommended:
+                warnings.append("Recommended layers missing (viewer will skip them): " + ", ".join(missing_recommended))
+            warnings.append("Vector Plan Mode now requires only the DEM. ROI, blocks, parcels, buildings, and roads are recommended but optional; the viewer skips empty layers gracefully.")
         if mode == MODE_RASTER_TEXTURE:
             warnings.append("Raster Plan Texture mode expects the plan GeoTIFF, DEM and ROI to use the same metric CRS and clipped study area.")
         road_access_field = layer_map.get("road_access_field")
@@ -693,11 +769,21 @@ class PlanX3DCityDialog(QDialog):
         ordered_keys = ("dem", "plan_texture", "basemap", "roi", "roads", "buildings", "blocks", "parcels") + OPTIONAL_INPUTS
         for key in ordered_keys:
             layer = layer_map.get(key)
-            role = "Required" if key in required_keys else "Optional"
+            if key in required_keys:
+                role = "Required"
+            elif key in recommended_keys:
+                role = "Recommended"
+            else:
+                role = "Optional"
             if key == "plan_texture" and mode != MODE_RASTER_TEXTURE:
                 role = "Not used"
             if layer is None:
-                status = "Missing" if key in required_keys else "Empty export"
+                if key in required_keys:
+                    status = "Missing"
+                elif key in recommended_keys:
+                    status = "Skipped (recommended)"
+                else:
+                    status = "Empty export"
                 rows.append((LABELS[key], role, status, "-", "-", "-"))
                 continue
 
@@ -746,18 +832,25 @@ class PlanX3DCityDialog(QDialog):
         return html, bool(warnings)
 
     def _update_badges(self, layer_map: dict) -> None:
-        required_keys = set(required_inputs_for_mode(self._current_mode()))
+        mode = self._current_mode()
+        required_keys = set(required_inputs_for_mode(mode))
+        recommended_keys = set(recommended_inputs_for_mode(mode))
         for key, badge in self.badge_labels.items():
             layer = layer_map.get(key)
             if layer is None:
-                state = "missing" if key in required_keys else "optional"
-                text = "Missing" if key in required_keys else ("Off" if key == "plan_texture" else "Optional")
+                if key in required_keys:
+                    state, text = "missing", "Missing"
+                elif key in recommended_keys:
+                    state, text = "recommended", "Recommended"
+                else:
+                    state, text = "optional", ("Off" if key == "plan_texture" else "Optional")
             else:
                 count = self._feature_count(layer)
                 state = "empty" if count == 0 else "ready"
                 text = "Empty" if count == 0 else "Ready"
             badge.setText(text)
             badge.setStyleSheet(self._badge_style(state))
+        self._refresh_input_labels()
 
     def _switch_page(self, idx: int) -> None:
         for i, page in enumerate(self.pages):
@@ -838,7 +931,7 @@ class PlanX3DCityDialog(QDialog):
     def _open_output_folder(self) -> None:
         QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.join(self.web_root, "data")))
 
-    def _input_label_html(self, key: str, required: bool) -> str:
+    def _input_label_html(self, key: str, role: str) -> str:
         descriptions = {
             "dem": "GeoTIFF/raster elevation model. / Yukseklik modeli.",
             "plan_texture": "Clipped 2D site-plan GeoTIFF draped over the DEM. / DEM uzerine kaplanacak plan texture.",
@@ -856,8 +949,28 @@ class PlanX3DCityDialog(QDialog):
             "trashbins": "Trash-bin points. / Cop kutusu noktalari.",
             "busstops": "Bus-stop points. / Otobus duragi noktalari.",
         }
-        mark = " *" if required else ""
+        if role == "required":
+            mark = " <span style='color:#b91c1c'>*</span>"
+        elif role == "recommended":
+            mark = " <span style='color:#0369a1; font-size: 11px;'>(recommended)</span>"
+        else:
+            mark = ""
         return f"<b>{LABELS[key]}{mark}</b><br><span style='color:#64748b'>{descriptions[key]}</span>"
+
+    def _role_for_key(self, key: str, mode: str) -> str:
+        required = required_inputs_for_mode(mode)
+        recommended = recommended_inputs_for_mode(mode)
+        if key in required:
+            return "required"
+        if key in recommended:
+            return "recommended"
+        return "optional"
+
+    def _refresh_input_labels(self) -> None:
+        mode = self._current_mode()
+        for key, label in getattr(self, "input_labels", {}).items():
+            role = self._role_for_key(key, mode)
+            label.setText(self._input_label_html(key, role))
 
     def _sync_road_access_fields(self) -> None:
         if not hasattr(self, "road_access_field_combo"):
@@ -916,7 +1029,75 @@ class PlanX3DCityDialog(QDialog):
             "ready": ("#dcfce7", "#166534"),
             "missing": ("#ffe4e6", "#be123c"),
             "optional": ("#e0f2fe", "#075985"),
+            "recommended": ("#fef9c3", "#854d0e"),
             "empty": ("#fef3c7", "#92400e"),
         }
         bg, fg = colors.get(state, colors["optional"])
         return f"border-radius:10px; padding:3px 8px; font-weight:700; background:{bg}; color:{fg};"
+
+
+class PlanXWelcomeDialog(QDialog):
+    """First-run onboarding shown once per plugin version."""
+
+    sampleRequested = pyqtSignal()
+    docRequested = pyqtSignal()
+
+    def __init__(self, parent=None, version: str = ""):
+        super().__init__(parent)
+        self.setWindowTitle("Welcome to PlanX 3D City")
+        self.setModal(True)
+        self.resize(560, 420)
+        root = QVBoxLayout(self)
+
+        title = QLabel(f"<h2 style='margin-bottom:4px;'>PlanX 3D City Viewer{(' v' + version) if version else ''}</h2>")
+        root.addWidget(title)
+
+        subtitle = QLabel(
+            "<span style='color:#475569;'>Turn QGIS layers into an interactive 3D city in your browser.</span>"
+        )
+        subtitle.setWordWrap(True)
+        root.addWidget(subtitle)
+
+        intro = QLabel(
+            "<p>This plugin publishes a DEM + your vector layers (blocks, buildings, roads, parcels, optional "
+            "street furniture) into a Three.js cockpit. It runs offline through a local HTTP server, with sun "
+            "animation, walk mode, narrative keyframes, and a portable export option for handoff.</p>"
+            "<p><b>Quick start (3 steps)</b></p>"
+            "<ol>"
+            "<li><b>Data</b> — Open <i>1 Data</i> page and select your DEM. Other layers are optional; map them "
+            "if available. Click <i>Try with sample data</i> for an instant demo dataset.</li>"
+            "<li><b>Check</b> — <i>2 Kontrol</i> verifies geometry, CRS and recommended fields without blocking export.</li>"
+            "<li><b>Publish</b> — <i>Export and open 3D Viewer</i> writes the data contract and opens the browser cockpit.</li>"
+            "</ol>"
+            "<p><b>Tips for new users</b></p>"
+            "<ul>"
+            "<li>Vector mode now needs only the DEM — start with what you have.</li>"
+            "<li>Use Style → <i>Terrain shaping</i> to flatten DEM under blocks for clean presentations.</li>"
+            "<li>4 Yayin → <i>Portable ZIP</i> packages the viewer for handoff to students or jury members.</li>"
+            "</ul>"
+        )
+        intro.setWordWrap(True)
+        intro.setTextFormat(2)  # Qt.RichText
+        root.addWidget(intro, 1)
+
+        btn_row = QHBoxLayout()
+        self.sample_btn = QPushButton("Generate sample project")
+        self.docs_btn = QPushButton("Open documentation")
+        self.close_btn = QPushButton("Got it, take me to the dialog")
+        self.close_btn.setDefault(True)
+        btn_row.addWidget(self.sample_btn)
+        btn_row.addWidget(self.docs_btn)
+        btn_row.addStretch(1)
+        btn_row.addWidget(self.close_btn)
+        root.addLayout(btn_row)
+
+        self.sample_btn.clicked.connect(self._on_sample)
+        self.docs_btn.clicked.connect(self._on_docs)
+        self.close_btn.clicked.connect(self.accept)
+
+    def _on_sample(self) -> None:
+        self.sampleRequested.emit()
+        self.accept()
+
+    def _on_docs(self) -> None:
+        self.docRequested.emit()

@@ -117,19 +117,26 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 
 ## Quick Start
 
-1. Open the DEM and vector layers in one QGIS project.
-2. Start `PlanX 3D City` from the toolbar or plugin menu.
-3. In `1 Data`, choose a publishing mode.
-4. Use `Auto-match layers` if your layer names contain common hints such as `dem`, `roi`, `yol`, `bina`, `ada`, `parsel`, or `plan`.
-5. For `Vector Plan Mode`, select all required layers: DEM, ROI, roads, buildings, blocks, parcels.
-6. For `Raster Plan Texture Mode`, select DEM, ROI, plan texture GeoTIFF, roads, and buildings. Blocks and parcels are optional in this mode.
-7. Select optional layers if available: trees, hardscape, sidewalks, lights, benches, trash bins, bus stops.
-8. If your roads layer has pedestrian/vehicle information, choose the road access field and keep or edit the no-car / vehicle keywords. Cars will not be spawned on pedestrian-only roads.
-9. In the field mapping area, optionally map population, dwelling, vehicle, land-use, odor/noise source, and furniture direction fields.
-10. In `2 Kontrol`, generate and inspect the quality report.
-11. In `3 Stil`, optionally create PlanX style fields and apply styles to selected blocks/buildings.
-12. Click `Disari aktar ve 3D Viewer ac`.
-13. Use `4 Yayin` to copy the viewer URL, reopen the browser, open exported data, create a portable viewer folder, create a portable ZIP, or stop the local server.
+### First time? (zero data required)
+
+1. Start `PlanX 3D City` from the QGIS toolbar or plugin menu — a welcome dialog appears on the first launch.
+2. Click **Generate sample project**. The plugin synthesises a tiny DEM + blocks + buildings + roads + trees dataset in EPSG:32635 and adds them to your current QGIS project.
+3. Click **Export and open 3D Viewer**. The browser opens the cockpit with the generated city — no preparation needed.
+
+### With your own data
+
+1. Open the DEM and any vector layers you have in one QGIS project (same metric CRS recommended).
+2. Start `PlanX 3D City`.
+3. In `1 Data` page, pick a publishing mode (Vector or Raster Plan Texture).
+4. Map your **DEM** layer (the only mandatory input). ROI, blocks, parcels, buildings, and roads are recommended but optional — the viewer skips empty layers gracefully.
+5. Optionally map enrichment layers (trees, hardscape, sidewalks, lights, benches, trash bins, bus stops).
+6. `Auto-match layers` matches by common name hints (`dem`, `roi`, `yol`/`road`, `bina`/`building`, `ada`/`block`, etc.) in any language.
+7. If your roads layer has a pedestrian/vehicle access field, map it under the road access dropdown — cars will not spawn on pedestrian-only roads.
+8. Field mapping is optional (population, dwelling, vehicle, land-use, odor/noise source, furniture direction).
+9. In `2 Kontrol`, inspect the quality report. Required / Recommended / Optional roles are colour-coded and update live with the publish mode.
+10. In `3 Stil`, optionally pick an Asset Theme (Modern Urban, Mediterranean, Campus, Eco, etc.), toggle island plateau flattening, or apply per-feature styles.
+11. Click **Export and open 3D Viewer**.
+12. Use `4 Yayin` to copy the viewer URL, reopen the browser, open exported data, create a portable viewer folder, create a portable ZIP, or stop the local server.
 
 ## Data Contract
 

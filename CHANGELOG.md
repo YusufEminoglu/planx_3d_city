@@ -3,6 +3,34 @@
 All notable changes to **PlanX 3D City Viewer** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 
+## [0.7.7] - 2026-05-21
+
+Terrain low-edge stability, first-run onboarding, and a built-in sample dataset.
+- Added a median + median-absolute-deviation (MAD) clamp to terrain vertices: any DEM sample more than 3 MAD below the median is treated as a low outlier and pulled up to a robust local neighbourhood height. Eliminates the upward triangle spikes that used to ride the lowest-elevation contour along DEM/ROI edges and broke the DEM texture along that line.
+- Added a first-run welcome dialog shown once per plugin version, with quick-start steps, a "Generate sample project" shortcut, and a link to the online documentation.
+- Added an in-plugin synthetic sample-project generator (DEM + ROI + blocks + buildings + roads + trees in EPSG:32635) reachable from both the welcome dialog and a new "Try with sample data" button on the Data page. New global users can publish and explore the 3D viewer with zero data preparation.
+- Quality report and badge UI now reflects Required / Recommended / Optional roles dynamically when the publish mode changes — in Vector mode only the DEM is starred as required, ROI / blocks / parcels / buildings / roads carry a clear "Recommended" hint instead of a hard requirement.
+
+## [0.7.6] - 2026-05-21
+
+Island plateau alignment and flexible Vector Plan Mode inputs.
+- Added Island Plateau: under each block polygon, DEM vertices are pulled to the block's local median height with a configurable transition ramp (default 6 m) toward the surrounding terrain. Eliminates the remaining DEM/island interpenetration.
+- The plateau cache is shared with terrainLocalYAt() so buildings, trees, and street furniture inside a block also clamp to the plateau height instead of the underlying raw DEM.
+- New viewer toggles: "Flatten DEM under islands" (default on) and "Plateau edge ramp (m)" slider in the Terrain panel.
+- Vector Plan Mode now requires only the DEM; ROI, blocks, parcels, buildings, and roads are reclassified as recommended but optional. The viewer skips empty layers gracefully so minimal exports (DEM-only, DEM + buildings, etc.) render cleanly.
+- QGIS publisher quality report now distinguishes Required / Recommended / Optional roles and warns when recommended Vector layers are missing without blocking export.
+- Bounds derivation in the viewer falls back through ROI → blocks → roads → buildings → parcels so any single vector layer is enough to anchor the scene.
+
+## [0.7.5] - 2026-05-21
+
+DEM edge stability, island layer overhaul, and themed facade textures release.
+- Hardened terrain edge cleanup further: widened the boundary blend band (~2× wider), strengthened the spike clamp toward the local median, increased the boundary median sampling radius, and out-of-ROI vertices now snap to a robust DEM average so the raster halo around the export window no longer pulls triangles up or down.
+- Reused a single ROI polygon cache between the terrain vertex pass and the boundary spike limiter for faster terrain rebuilds.
+- Islands now render as a clean second layer above the DEM: raised the island elevation offset, subdivided block polygons so they drape across DEM curvature instead of cutting through it, and removed the unused island alpha-mask code path and its stale comment.
+- Added four themed island materials: ParkGreen, ResidentialBeige, CivicGravel, and CoastalSand.
+- Rewrote procedural facade textures for theme facades (CampusGlass, EcoTimber, CivicStone, DenseBrick, CoastalWhite, MediterraneanStucco, UrbanE) with real window grids, floor lines, optional ground-floor shopfronts, and per-theme column patterns (brick, timber, pilaster, flat).
+- UrbanA-D PNG facades remain unchanged for backwards-compatible feature-level styling.
+
 ## [0.7.4] - 2026-05-20
 
 Security scan compliance and vendor cleanup release.

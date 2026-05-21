@@ -6,11 +6,16 @@ import webbrowser
 from datetime import datetime
 from pathlib import Path
 
+from qgis.PyQt.QtCore import QSettings
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QFileDialog, QMessageBox
 
 from .exporter import LABELS, OPTIONAL_INPUTS, copy_portable_viewer, existing_target_files, export_all, optional_inputs_for_mode, required_inputs_for_mode, validate_inputs, zip_portable_viewer
 from .server import PlanX3DServer
+
+PLUGIN_VERSION = "0.7.7"
+WELCOME_SETTINGS_KEY = "PlanX/PlanX3DCity/welcomeSeenVersion"
+DOC_URL = "https://github.com/YusufEminoglu/planx_3d_city#planx-3d-city-viewer"
 
 
 class PlanX3DCityPlugin:
@@ -49,9 +54,28 @@ class PlanX3DCityPlugin:
             self.dialog.reopenViewerRequested.connect(self.reopen_viewer)
             self.dialog.portableExportRequested.connect(self.export_portable_viewer)
             self.dialog.portableZipRequested.connect(self.export_portable_viewer_zip)
+        self._maybe_show_welcome()
         self.dialog.show()
         self.dialog.raise_()
         self.dialog.activateWindow()
+
+    def _maybe_show_welcome(self):
+        settings = QSettings()
+        seen = settings.value(WELCOME_SETTINGS_KEY, "", type=str)
+        if seen == PLUGIN_VERSION:
+            return
+        from .dialog import PlanXWelcomeDialog
+        welcome = PlanXWelcomeDialog(self.iface.mainWindow(), version=PLUGIN_VERSION)
+        welcome.sampleRequested.connect(self._welcome_sample)
+        welcome.docRequested.connect(lambda: webbrowser.open(DOC_URL))
+        welcome.exec_()
+        settings.setValue(WELCOME_SETTINGS_KEY, PLUGIN_VERSION)
+
+    def _welcome_sample(self):
+        if self.dialog is None:
+            return
+        # Defer until the dialog has had a chance to render.
+        self.dialog._load_sample_project()
 
     def export_and_launch(self, layer_map: dict):
         missing = validate_inputs(layer_map)

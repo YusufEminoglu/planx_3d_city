@@ -84,6 +84,7 @@ Object.assign(i18n.TR, {
   lblTextureBrightness: 'Texture parlakligi', lblTextureContrast: 'Texture kontrasti',
   lblModelBase: 'ROI model altligi', lblSideDrop: 'Altlik dususu', lblSideColor: 'Altlik rengi',
   lblDemQuality: 'DEM mesh kalitesi', lblFog: 'Sis', lblTime: 'Zaman',
+  flattenIslands: 'Ada alti duzlestirme', islandPlateauTransition: 'Plato kenar rampi (m)',
   lblAutoTime: 'Gunes animasyonu', lblAutoTimeSpeed: 'Animasyon hizi',
   lblWeather: 'Hava', lblSSAO: 'Golge kalitesi', lblBloom: 'Bloom/parlama',
   lblIslandColor: 'Ada rengi', lblIslandTexture: 'Ada dokusu',
@@ -114,6 +115,7 @@ Object.assign(i18n.EN, {
   lblTextureBrightness: 'Texture brightness', lblTextureContrast: 'Texture contrast',
   lblModelBase: 'ROI model base', lblSideDrop: 'Base drop', lblSideColor: 'Base color',
   lblDemQuality: 'DEM mesh quality', lblFog: 'Fog', lblTime: 'Time',
+  flattenIslands: 'Flatten DEM under islands', islandPlateauTransition: 'Plateau edge ramp (m)',
   lblAutoTime: 'Solar animation', lblAutoTimeSpeed: 'Animation speed',
   lblWeather: 'Weather', lblSSAO: 'Shadow quality', lblBloom: 'Bloom/glow',
   lblIslandColor: 'Block color', lblIslandTexture: 'Block texture',
@@ -382,10 +384,10 @@ world.add(roiBoundaryGroup);
  *  Each layer offset is relative to the DEM terrain surface.
  */
 const LAYER = {
-  island:   0.25,   // Adalar – DEM üzerinde
-  content:  0.40,   // Yapılar, Sert Zemin, Ağaçlar, Kent Mobilyaları
-  parcel:   0.55,   // Parsel sınırları – adaların üzerinde net görünür
-  road:     0.55,   // Yollar – içerik üzerinde
+  island:   0.60,   // Adalar – DEM üzerinde ikinci katman (z-fighting tamponu + curvature payı)
+  content:  0.70,   // Yapılar, Sert Zemin, Ağaçlar, Kent Mobilyaları
+  parcel:   0.85,   // Parsel sınırları – adaların üzerinde net görünür
+  road:     0.85,   // Yollar – içerik üzerinde
   carExtra: 0.60    // Arabalar – yol üzerinde ekstra
 };
 LAYER.carExtra = 0.08;
@@ -407,6 +409,7 @@ let pedestrians = [];
 let buildingFunctionMaterials = new Map();
 let manifestDefaultsApplied = false;
 let terrainHeightStats = { min: 0, max: 0, avg: 0, p02: 0, p98: 0 };
+const islandPlateauCache = [];
 
 // --- Performance ---
 const rc = new THREE.Raycaster();
@@ -620,7 +623,11 @@ const textureSets = {
   island: {
     None: null,
     SoftNoise: 'SoftNoise',
-    FineGrid: 'FineGrid'
+    FineGrid: 'FineGrid',
+    ParkGreen: 'ParkGreen',
+    ResidentialBeige: 'ResidentialBeige',
+    CivicGravel: 'CivicGravel',
+    CoastalSand: 'CoastalSand'
   },
   hardscape: {
     Cobble: 'assets/pavement.png',
@@ -807,6 +814,177 @@ function uniqueAssetVariants(category, fallback = []) {
   return values;
 }
 
+function drawWindowedFacade(ctx, size, palette, opts) {
+  const floors = Math.max(3, opts.floorRows | 0);
+  const cols = Math.max(2, opts.windowCols | 0);
+  const groundShop = !!opts.groundShop;
+  const aspect = Math.max(0.2, Math.min(1, opts.windowAspect || 0.6));
+  const accent = opts.accent || palette[1];
+  const frame = opts.windowFrameColor || palette[1];
+  const glassPattern = opts.glassPattern || 'uniform';
+  const columnPattern = opts.columnPattern || 'flat';
+
+  ctx.fillStyle = palette[0];
+  ctx.fillRect(0, 0, size, size);
+
+  if (columnPattern === 'brick') {
+    const brickH = 8;
+    const brickW = 22;
+    for (let y = 0; y < size; y += brickH) {
+      const offset = ((y / brickH) % 2) * (brickW * 0.5);
+      for (let x = -brickW; x < size + brickW; x += brickW) {
+        ctx.fillStyle = ((x + y) % 7 === 0) ? palette[2] : palette[0];
+        ctx.fillRect(x + offset, y, brickW - 1, brickH - 1);
+        ctx.strokeStyle = `${accent}aa`;
+        ctx.lineWidth = 0.6;
+        ctx.strokeRect(x + offset + 0.5, y + 0.5, brickW - 1, brickH - 1);
+      }
+    }
+  } else if (columnPattern === 'timber') {
+    const plankW = size / cols;
+    for (let c = 0; c < cols; c++) {
+      const grad = ctx.createLinearGradient(c * plankW, 0, c * plankW + plankW, 0);
+      grad.addColorStop(0, palette[0]);
+      grad.addColorStop(0.5, palette[2]);
+      grad.addColorStop(1, palette[0]);
+      ctx.fillStyle = grad;
+      ctx.fillRect(c * plankW, 0, plankW, size);
+      ctx.strokeStyle = `${accent}66`;
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(c * plankW, 0);
+      ctx.lineTo(c * plankW, size);
+      ctx.stroke();
+    }
+  } else if (columnPattern === 'pilaster') {
+    const pilW = (size / cols) * 0.18;
+    for (let c = 0; c <= cols; c++) {
+      const x = c * (size / cols) - pilW * 0.5;
+      const grad = ctx.createLinearGradient(x, 0, x + pilW, 0);
+      grad.addColorStop(0, accent);
+      grad.addColorStop(0.5, palette[2]);
+      grad.addColorStop(1, accent);
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, 0, pilW, size);
+    }
+  }
+
+  const groundH = groundShop ? (size / (floors + 1)) * 1.6 : 0;
+  const upperArea = size - groundH;
+  const floorH = upperArea / floors;
+  const colW = size / cols;
+
+  ctx.strokeStyle = `${accent}99`;
+  ctx.lineWidth = opts.floorLineWidth || 1.2;
+  for (let f = 0; f <= floors; f++) {
+    const y = groundH + f * floorH;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(size, y);
+    ctx.stroke();
+  }
+
+  for (let f = 0; f < floors; f++) {
+    const yTop = groundH + f * floorH;
+    for (let c = 0; c < cols; c++) {
+      const xLeft = c * colW;
+      const padX = colW * (1 - aspect) * 0.5;
+      const padY = floorH * 0.18;
+      const wx = xLeft + padX;
+      const wy = yTop + padY;
+      const ww = colW - padX * 2;
+      const wh = floorH - padY * 2;
+      ctx.fillStyle = frame;
+      ctx.fillRect(wx - 1, wy - 1, ww + 2, wh + 2);
+      if (glassPattern === 'horizontal-bands') {
+        const grad = ctx.createLinearGradient(wx, wy, wx, wy + wh);
+        grad.addColorStop(0, palette[2]);
+        grad.addColorStop(0.45, accent);
+        grad.addColorStop(0.55, palette[2]);
+        grad.addColorStop(1, accent);
+        ctx.fillStyle = grad;
+        ctx.fillRect(wx, wy, ww, wh);
+      } else if (glassPattern === 'striped') {
+        const grad = ctx.createLinearGradient(wx, wy, wx + ww, wy);
+        grad.addColorStop(0, palette[2]);
+        grad.addColorStop(1, accent);
+        ctx.fillStyle = grad;
+        ctx.fillRect(wx, wy, ww, wh);
+        ctx.strokeStyle = `${frame}66`;
+        ctx.lineWidth = 0.6;
+        ctx.beginPath();
+        ctx.moveTo(wx + ww / 2, wy);
+        ctx.lineTo(wx + ww / 2, wy + wh);
+        ctx.stroke();
+      } else if (glassPattern === 'shutters') {
+        const half = ww * 0.5;
+        ctx.fillStyle = palette[2];
+        ctx.fillRect(wx, wy, ww, wh);
+        ctx.fillStyle = accent;
+        ctx.fillRect(wx, wy, half * 0.42, wh);
+        ctx.fillRect(wx + ww - half * 0.42, wy, half * 0.42, wh);
+        ctx.strokeStyle = `${frame}88`;
+        ctx.lineWidth = 0.5;
+        for (let s = 1; s < 4; s++) {
+          const sy = wy + (wh / 4) * s;
+          ctx.beginPath();
+          ctx.moveTo(wx, sy);
+          ctx.lineTo(wx + ww, sy);
+          ctx.stroke();
+        }
+      } else {
+        const grad = ctx.createLinearGradient(wx, wy, wx + ww, wy + wh);
+        grad.addColorStop(0, palette[2]);
+        grad.addColorStop(1, accent);
+        ctx.fillStyle = grad;
+        ctx.fillRect(wx, wy, ww, wh);
+      }
+    }
+  }
+
+  if (groundShop && groundH > 0) {
+    ctx.fillStyle = accent;
+    ctx.fillRect(0, 0, size, groundH);
+    const bay = size / Math.max(2, Math.floor(cols * 1.2));
+    for (let i = 0; i < size; i += bay) {
+      const bw = bay * 0.85;
+      const bh = groundH * 0.78;
+      const bx = i + (bay - bw) * 0.5;
+      const by = (groundH - bh) * 0.5;
+      const grad = ctx.createLinearGradient(bx, by, bx, by + bh);
+      grad.addColorStop(0, palette[2]);
+      grad.addColorStop(1, palette[0]);
+      ctx.fillStyle = grad;
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeStyle = `${frame}cc`;
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(bx + 0.5, by + 0.5, bw, bh);
+    }
+    ctx.strokeStyle = `${accent}cc`;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(0, groundH);
+    ctx.lineTo(size, groundH);
+    ctx.stroke();
+  }
+
+  for (let i = 0; i < 360; i++) {
+    const v = 130 + Math.floor(Math.random() * 80);
+    ctx.fillStyle = `rgba(${v},${v},${v},0.05)`;
+    ctx.fillRect(Math.random() * size, Math.random() * size, 1, 1);
+  }
+}
+
+const FACADE_RECIPES = {
+  CampusGlass:         { floorRows: 14, windowCols: 5, groundShop: true,  windowAspect: 0.82, glassPattern: 'horizontal-bands', columnPattern: 'flat',     accent: '#3d6b85' },
+  EcoTimber:           { floorRows: 10, windowCols: 4, groundShop: true,  windowAspect: 0.55, glassPattern: 'uniform',          columnPattern: 'timber',   accent: '#6b4a2a' },
+  CivicStone:          { floorRows: 12, windowCols: 5, groundShop: false, windowAspect: 0.35, glassPattern: 'shutters',         columnPattern: 'pilaster', accent: '#8a7a62' },
+  DenseBrick:          { floorRows: 11, windowCols: 6, groundShop: true,  windowAspect: 0.62, glassPattern: 'uniform',          columnPattern: 'brick',    accent: '#4a1f15' },
+  CoastalWhite:        { floorRows:  9, windowCols: 3, groundShop: true,  windowAspect: 0.95, glassPattern: 'striped',          columnPattern: 'flat',     accent: '#bcd1dc' },
+  MediterraneanStucco: { floorRows: 10, windowCols: 4, groundShop: true,  windowAspect: 0.50, glassPattern: 'shutters',         columnPattern: 'flat',     accent: '#a05a3c' },
+  UrbanE:              { floorRows: 13, windowCols: 6, groundShop: true,  windowAspect: 0.78, glassPattern: 'horizontal-bands', columnPattern: 'flat',     accent: '#2f3e52' }
+};
+
 function proceduralTextureCanvas(name, size = 256) {
   const c = document.createElement('canvas');
   c.width = size;
@@ -872,21 +1050,25 @@ function proceduralTextureCanvas(name, size = 256) {
     }
   } else {
     const isFacade = Object.prototype.hasOwnProperty.call(textureSets.facade, name);
-    const cols = isFacade ? 6 : 10;
-    const rows = isFacade ? 11 : 10;
-    for (let r = 0; r < rows; r++) {
-      for (let col = 0; col < cols; col++) {
-        const x = (col / cols) * size;
-        const y = (r / rows) * size;
-        const w = size / cols;
-        const h = size / rows;
-        ctx.fillStyle = (r + col) % 3 === 0 ? palette[2] : palette[0];
-        ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
-        ctx.strokeStyle = `${palette[1]}77`;
-        ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
-        if (isFacade && r % 2 === 0 && col % 2 === 0) {
-          ctx.fillStyle = 'rgba(50,80,100,0.18)';
-          ctx.fillRect(x + w * 0.22, y + h * 0.28, w * 0.42, h * 0.32);
+    if (isFacade && FACADE_RECIPES[name]) {
+      drawWindowedFacade(ctx, size, palette, FACADE_RECIPES[name]);
+    } else {
+      const cols = isFacade ? 6 : 10;
+      const rows = isFacade ? 11 : 10;
+      for (let r = 0; r < rows; r++) {
+        for (let col = 0; col < cols; col++) {
+          const x = (col / cols) * size;
+          const y = (r / rows) * size;
+          const w = size / cols;
+          const h = size / rows;
+          ctx.fillStyle = (r + col) % 3 === 0 ? palette[2] : palette[0];
+          ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+          ctx.strokeStyle = `${palette[1]}77`;
+          ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+          if (isFacade && r % 2 === 0 && col % 2 === 0) {
+            ctx.fillStyle = 'rgba(50,80,100,0.18)';
+            ctx.fillRect(x + w * 0.22, y + h * 0.28, w * 0.42, h * 0.32);
+          }
         }
       }
     }
@@ -1049,7 +1231,9 @@ const settings = {
   autoOrbit: false,
   autoOrbitSpeed: 0.3,
   autoTime: false,
-  autoTimeSpeed: 2.0
+  autoTimeSpeed: 2.0,
+  flattenIslands: true,
+  islandPlateauTransition: 6
 };
 
 const PERSISTED_SETTING_KEYS = [
@@ -1064,7 +1248,8 @@ const PERSISTED_SETTING_KEYS = [
   'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture',
   'showCars', 'showRoads', 'showSidewalks', 'showCrosswalks', 'showPedestrians',
   'showWindPlumes', 'windDirectionDeg', 'windPlumeDistance', 'showUrbanComfort',
-  'demMeshQuality', 'timeOfDay', 'weather', 'fov', 'walkSpeed'
+  'demMeshQuality', 'timeOfDay', 'weather', 'fov', 'walkSpeed',
+  'flattenIslands', 'islandPlateauTransition'
 ];
 
 function loadPersistedSettings() {
@@ -1182,21 +1367,90 @@ function createIslandTexturePreset(name) {
   const c = document.createElement('canvas');
   c.width = 256; c.height = 256;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#e5e7eb';
-  ctx.fillRect(0, 0, 256, 256);
-  if (name === 'SoftNoise') {
-    for (let i = 0; i < 1400; i++) {
-      const x = Math.random() * 256;
-      const y = Math.random() * 256;
-      const r = Math.random() * 1.4;
-      ctx.fillStyle = 'rgba(120,130,140,0.14)';
-      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  const islandPalette = {
+    ParkGreen:        { base: '#6f9c52', shadow: '#3f6b2c', highlight: '#a6c982' },
+    ResidentialBeige: { base: '#d6c8a6', shadow: '#a18c63', highlight: '#efe6cf' },
+    CivicGravel:      { base: '#b6b3a8', shadow: '#7b7a72', highlight: '#dad7ce' },
+    CoastalSand:      { base: '#ecd9b0', shadow: '#b39361', highlight: '#fff1d2' }
+  }[name];
+  if (islandPalette) {
+    ctx.fillStyle = islandPalette.base;
+    ctx.fillRect(0, 0, 256, 256);
+    if (name === 'ParkGreen') {
+      for (let i = 0; i < 2200; i++) {
+        const x = Math.random() * 256;
+        const y = Math.random() * 256;
+        const r = 0.6 + Math.random() * 1.6;
+        ctx.fillStyle = `rgba(${Math.random() < 0.5 ? '63,107,44' : '166,201,130'},${0.10 + Math.random() * 0.18})`;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      }
+      for (let i = 0; i < 28; i++) {
+        ctx.strokeStyle = `rgba(63,107,44,${0.10 + Math.random() * 0.10})`;
+        ctx.lineWidth = 0.6 + Math.random() * 0.5;
+        ctx.beginPath();
+        const sx = Math.random() * 256;
+        const sy = Math.random() * 256;
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(sx + (Math.random() - 0.5) * 30, sy + (Math.random() - 0.5) * 30);
+        ctx.stroke();
+      }
+    } else if (name === 'ResidentialBeige') {
+      for (let i = 0; i < 900; i++) {
+        const x = Math.random() * 256;
+        const y = Math.random() * 256;
+        ctx.fillStyle = `rgba(161,140,99,${0.06 + Math.random() * 0.12})`;
+        ctx.fillRect(x, y, 1.5, 1.5);
+      }
+      ctx.strokeStyle = 'rgba(161,140,99,0.18)';
+      ctx.lineWidth = 0.8;
+      for (let i = 0; i < 256; i += 36) {
+        ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(256, i); ctx.stroke();
+      }
+    } else if (name === 'CivicGravel') {
+      for (let i = 0; i < 1800; i++) {
+        const x = Math.random() * 256;
+        const y = Math.random() * 256;
+        const r = 0.4 + Math.random() * 1.2;
+        const tone = Math.random() < 0.5 ? '123,122,114' : '218,215,206';
+        ctx.fillStyle = `rgba(${tone},${0.18 + Math.random() * 0.20})`;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      }
+    } else if (name === 'CoastalSand') {
+      for (let i = 0; i < 1600; i++) {
+        const x = Math.random() * 256;
+        const y = Math.random() * 256;
+        ctx.fillStyle = `rgba(179,147,97,${0.05 + Math.random() * 0.12})`;
+        ctx.fillRect(x, y, 1, 1);
+      }
+      for (let band = 0; band < 6; band++) {
+        ctx.strokeStyle = 'rgba(255,241,210,0.22)';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        const yBand = band * 42 + 8 + Math.random() * 6;
+        ctx.moveTo(0, yBand);
+        for (let x = 0; x <= 256; x += 8) {
+          ctx.lineTo(x, yBand + Math.sin(x * 0.18 + band) * 2.2);
+        }
+        ctx.stroke();
+      }
     }
-  } else if (name === 'FineGrid') {
-    ctx.strokeStyle = 'rgba(120,130,140,0.24)';
-    for (let i = 0; i < 256; i += 12) {
-      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 256); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(256, i); ctx.stroke();
+  } else {
+    ctx.fillStyle = '#e5e7eb';
+    ctx.fillRect(0, 0, 256, 256);
+    if (name === 'SoftNoise') {
+      for (let i = 0; i < 1400; i++) {
+        const x = Math.random() * 256;
+        const y = Math.random() * 256;
+        const r = Math.random() * 1.4;
+        ctx.fillStyle = 'rgba(120,130,140,0.14)';
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      }
+    } else if (name === 'FineGrid') {
+      ctx.strokeStyle = 'rgba(120,130,140,0.24)';
+      for (let i = 0; i < 256; i += 12) {
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 256); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(256, i); ctx.stroke();
+      }
     }
   }
   const t = new THREE.CanvasTexture(c);
@@ -1738,58 +1992,6 @@ function clearGroup(g) {
   }
 }
 
-function createIslandMaskTexture(adalar, width, depth) {
-  const roi = layerDataCache?.roi;
-  const size = 1024;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-
-  const toPixel = (x, z) => {
-    const u = (x + width * 0.5) / width;
-    const v = (z + depth * 0.5) / depth;
-    return [u * size, v * size];
-  };
-
-  const drawPolygons = (features, color) => {
-    ctx.fillStyle = color;
-    for (const f of features) {
-      for (const poly of getPolygonRings(f.geometry)) {
-        const outer = poly[0];
-        if (!outer || outer.length < 3) continue;
-        ctx.beginPath();
-        outer.forEach((c, i) => {
-          const [lx, lz] = metersToLocal(c[0], c[1]);
-          const [px, py] = toPixel(lx, lz);
-          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-        });
-        ctx.closePath();
-        ctx.fill();
-      }
-    }
-  };
-
-  if (roi && roi.features.length > 0) {
-    // Outside ROI → transparent. Start black, paint ROI white, then cut islands.
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, size, size);
-    drawPolygons(roi.features, '#ffffff');   // ROI interior → opaque
-    drawPolygons(adalar.features, '#000000'); // island areas → transparent (own geometry on top)
-  } else {
-    // No ROI: original behaviour — everything opaque except island areas
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, size, size);
-    drawPolygons(adalar.features, '#000000');
-  }
-
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.wrapS = THREE.ClampToEdgeWrapping;
-  tex.wrapT = THREE.ClampToEdgeWrapping;
-  tex.needsUpdate = true;
-  return tex;
-}
-
 function createRoiMaskTexture(width, depth) {
   const roi = layerDataCache?.roi;
   if (!roi || !roi.features || !roi.features.length) return null;
@@ -2026,7 +2228,7 @@ function currentTerrainSegments() {
 
 function terrainVertexBoundaryBlend(localX, localY, width, depth) {
   const edgeDistance = Math.min(localX + width * 0.5, width * 0.5 - localX, localY + depth * 0.5, depth * 0.5 - localY);
-  const band = Math.max(8, Math.min(width, depth) * 0.018);
+  const band = Math.max(8, Math.min(width, depth) * 0.035);
   if (edgeDistance >= band) return 0;
   return 1 - Math.max(0, edgeDistance) / band;
 }
@@ -2072,13 +2274,13 @@ function pointInRoiLocal(x, z, polygons) {
   return false;
 }
 
-function limitTerrainBoundarySpikes(pos, segments, width, depth, fallback) {
+function limitTerrainBoundarySpikes(pos, segments, width, depth, fallback, roiPolyCache) {
   const cols = segments + 1;
   const rows = segments + 1;
   const count = cols * rows;
   const original = new Float32Array(count);
   const inside = new Uint8Array(count);
-  const polygons = roiLocalPolygons();
+  const polygons = roiPolyCache || roiLocalPolygons();
   const hasRoi = polygons.length > 0;
   for (let i = 0; i < count; i++) {
     original[i] = pos.getZ(i);
@@ -2087,8 +2289,8 @@ function limitTerrainBoundarySpikes(pos, segments, width, depth, fallback) {
   const range = Math.max(1, (terrainHeightStats.p98 || fallback) - (terrainHeightStats.p02 || fallback));
   const riseLimit = Math.max(1.2, Math.min(7.5, range * 0.055));
   const dropLimit = Math.max(1.8, Math.min(10.0, range * 0.080));
-  const bboxBand = Math.max(2, Math.ceil(cols * 0.025));
-  const radius = 2;
+  const bboxBand = Math.max(2, Math.ceil(cols * 0.035));
+  const radius = 3;
 
   const medianAround = (row, col) => {
     const values = [];
@@ -2124,12 +2326,126 @@ function limitTerrainBoundarySpikes(pos, segments, width, depth, fallback) {
       const med = medianAround(row, col);
       if (!Number.isFinite(z) || !Number.isFinite(med)) continue;
       if (z > med + riseLimit) {
-        pos.setZ(idx, med + riseLimit * 0.18);
+        pos.setZ(idx, med + riseLimit * 0.30);
       } else if (z < med - dropLimit) {
-        pos.setZ(idx, med - dropLimit * 0.30);
+        pos.setZ(idx, med - dropLimit * 0.50);
       }
     }
   }
+  pos.needsUpdate = true;
+}
+
+function distanceToRingLocal(x, z, ring) {
+  let minD2 = Infinity;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const ax = ring[j][0], az = ring[j][1];
+    const bx = ring[i][0], bz = ring[i][1];
+    const dx = bx - ax, dz = bz - az;
+    const len2 = dx * dx + dz * dz;
+    let t = len2 > 0 ? ((x - ax) * dx + (z - az) * dz) / len2 : 0;
+    if (t < 0) t = 0; else if (t > 1) t = 1;
+    const px = ax + t * dx, pz = az + t * dz;
+    const dxp = x - px, dzp = z - pz;
+    const d2 = dxp * dxp + dzp * dzp;
+    if (d2 < minD2) minD2 = d2;
+  }
+  return Math.sqrt(minD2);
+}
+
+function pointInLocalPolys(x, z, localPolys) {
+  for (const localRings of localPolys) {
+    const outer = localRings[0];
+    if (!outer || outer.length < 3) continue;
+    if (pointInRingLocal(x, z, outer)) {
+      let inHole = false;
+      for (let h = 1; h < localRings.length; h++) {
+        if (pointInRingLocal(x, z, localRings[h])) { inHole = true; break; }
+      }
+      if (!inHole) return true;
+    }
+  }
+  return false;
+}
+
+function applyIslandPlateaus(pos, segments, width, depth, adalar, transitionM) {
+  islandPlateauCache.length = 0;
+  if (!adalar?.features?.length) return;
+  const count = pos.count;
+
+  for (const feature of adalar.features) {
+    const rings = getPolygonRings(feature.geometry);
+    if (!rings.length) continue;
+    const localPolys = rings.map((poly) => poly.map((ring) => ring.map((c) => metersToLocal(c[0], c[1]))));
+
+    let bboxMinX = Infinity, bboxMaxX = -Infinity, bboxMinZ = Infinity, bboxMaxZ = -Infinity;
+    for (const localRings of localPolys) {
+      for (const r of localRings) {
+        for (let p = 0; p < r.length; p++) {
+          const px = r[p][0];
+          const pz = r[p][1];
+          if (px < bboxMinX) bboxMinX = px;
+          if (px > bboxMaxX) bboxMaxX = px;
+          if (pz < bboxMinZ) bboxMinZ = pz;
+          if (pz > bboxMaxZ) bboxMaxZ = pz;
+        }
+      }
+    }
+    if (!Number.isFinite(bboxMinX)) continue;
+
+    const insideIdx = [];
+    const heights = [];
+    for (let i = 0; i < count; i++) {
+      const lx = pos.getX(i);
+      const lz = -pos.getY(i);
+      if (lx < bboxMinX || lx > bboxMaxX || lz < bboxMinZ || lz > bboxMaxZ) continue;
+      if (pointInLocalPolys(lx, lz, localPolys)) {
+        insideIdx.push(i);
+        heights.push(pos.getZ(i));
+      }
+    }
+    if (!heights.length) continue;
+    heights.sort((a, b) => a - b);
+    const plateauY = heights[Math.floor(heights.length / 2)];
+
+    for (let k = 0; k < insideIdx.length; k++) {
+      pos.setZ(insideIdx[k], plateauY);
+    }
+
+    if (transitionM > 0) {
+      const expMinX = bboxMinX - transitionM;
+      const expMaxX = bboxMaxX + transitionM;
+      const expMinZ = bboxMinZ - transitionM;
+      const expMaxZ = bboxMaxZ + transitionM;
+      for (let i = 0; i < count; i++) {
+        const lx = pos.getX(i);
+        const lz = -pos.getY(i);
+        if (lx < expMinX || lx > expMaxX || lz < expMinZ || lz > expMaxZ) continue;
+        if (pointInLocalPolys(lx, lz, localPolys)) continue;
+        let minDist = Infinity;
+        for (const localRings of localPolys) {
+          for (const r of localRings) {
+            const d = distanceToRingLocal(lx, lz, r);
+            if (d < minDist) minDist = d;
+          }
+        }
+        if (minDist < transitionM) {
+          let t = 1 - minDist / transitionM;
+          t = t * t * (3 - 2 * t);
+          const z = pos.getZ(i);
+          pos.setZ(i, z * (1 - t) + plateauY * t);
+        }
+      }
+    }
+
+    islandPlateauCache.push({
+      feature,
+      localRings: localPolys,
+      plateauY,
+      bbox: { minX: bboxMinX, maxX: bboxMaxX, minZ: bboxMinZ, maxZ: bboxMaxZ },
+      transition: transitionM
+    });
+  }
+
   pos.needsUpdate = true;
 }
 
@@ -2165,14 +2481,26 @@ async function buildTerrain(adalar) {
   if (zMin === Infinity) { zMin = avgZ; zMax = avgZ; }
   validHeights.sort((a, b) => a - b);
   const percentile = (p, fallback) => validHeights.length ? validHeights[Math.max(0, Math.min(validHeights.length - 1, Math.floor((validHeights.length - 1) * p)))] : fallback;
+  const medianZ = validHeights.length ? validHeights[Math.floor(validHeights.length / 2)] : avgZ;
+  let madZ = 1;
+  if (validHeights.length) {
+    const deviations = validHeights.map((v) => Math.abs(v - medianZ));
+    deviations.sort((a, b) => a - b);
+    madZ = Math.max(0.5, deviations[Math.floor(deviations.length / 2)] || 1);
+  }
   terrainHeightStats = {
     min: zMin,
     max: zMax,
     avg: avgZ,
     p02: percentile(0.02, zMin),
-    p98: percentile(0.98, zMax)
+    p98: percentile(0.98, zMax),
+    median: medianZ,
+    mad: madZ
   };
+  const lowFloor = medianZ - 3 * madZ;
 
+  const roiPolyCache = roiLocalPolygons();
+  const hasRoiCache = roiPolyCache.length > 0;
   for (let i = 0; i < pos.count; i++) {
     const lx = pos.getX(i);
     const ly = pos.getY(i);
@@ -2180,14 +2508,27 @@ async function buildTerrain(adalar) {
     const wy = -ly + centerY;
     let z = robustTerrainHeightAtProjected(wx, wy, avgZ);
     if (z === null) z = avgZ;
+    if (hasRoiCache && !pointInRoiLocal(lx, -ly, roiPolyCache)) {
+      const outsideZ = demHeightMedianAtProjected(wx, wy, avgZ, 3);
+      z = Number.isFinite(outsideZ) ? outsideZ : avgZ;
+    }
+    if (z < lowFloor) {
+      const repaired = demHeightMedianAtProjected(wx, wy, lowFloor, 3);
+      z = Number.isFinite(repaired) && repaired >= lowFloor ? repaired : lowFloor;
+    }
     const edgeBlend = terrainVertexBoundaryBlend(lx, ly, width, depth);
     if (edgeBlend > 0) {
-      const smoothZ = demHeightMedianAtProjected(wx, wy, z, 2);
+      const smoothZ = demHeightMedianAtProjected(wx, wy, z, 3);
       z = z * (1 - edgeBlend) + smoothZ * edgeBlend;
     }
     pos.setZ(i, z);
   }
-  limitTerrainBoundarySpikes(pos, segments, width, depth, avgZ);
+  limitTerrainBoundarySpikes(pos, segments, width, depth, avgZ, roiPolyCache);
+  if (settings.flattenIslands && adalar?.features?.length) {
+    applyIslandPlateaus(pos, segments, width, depth, adalar, settings.islandPlateauTransition);
+  } else {
+    islandPlateauCache.length = 0;
+  }
   geo.computeVertexNormals();
   const useTopoTint = settings.terrainAnalysisMode && settings.terrainAnalysisMode !== 'Texture';
   if (useTopoTint) {
@@ -2217,8 +2558,6 @@ async function buildTerrain(adalar) {
     : (settings.pavementStyle === 'Asphalt'
       ? createAsphaltTexture()
       : await textureFromSet('pavement', settings.pavementStyle, width / 60, depth / 60)));
-  /* Ada poligonları içinde DEM texture %100 transparan,
-   * kalan yerlerde (yollar, boş alanlar) normal asfalt görünür */
   const terrainOpacity = useRasterTexture ? settings.terrainTextureOpacity : 1;
   const roiMaskTexture = createRoiMaskTexture(width, depth);
   const materialOptions = {
@@ -2252,6 +2591,17 @@ async function buildTerrain(adalar) {
 let _lastTerrainY = 0;
 function terrainLocalYAt(localX, localZ) {
   if (!demSampler) return _lastTerrainY;
+  if (islandPlateauCache.length) {
+    for (const cache of islandPlateauCache) {
+      const t = cache.transition || 0;
+      if (localX < cache.bbox.minX - t || localX > cache.bbox.maxX + t) continue;
+      if (localZ < cache.bbox.minZ - t || localZ > cache.bbox.maxZ + t) continue;
+      if (pointInLocalPolys(localX, localZ, cache.localRings)) {
+        _lastTerrainY = cache.plateauY;
+        return cache.plateauY;
+      }
+    }
+  }
   /* metersToLocal(mx, my) → [mx-centerX, my-centerY]
    * Ters dönüşüm: mx = localX + centerX, my = localZ + centerY */
   const wx = localX + centerX;
@@ -2264,8 +2614,71 @@ function terrainLocalYAt(localX, localZ) {
   return _lastTerrainY;
 }
 
+function subdivideShapeGeometry(geometry, maxEdgeLen) {
+  let geo = geometry.index ? geometry.toNonIndexed() : geometry;
+  const maxIterations = 5;
+  for (let iter = 0; iter < maxIterations; iter++) {
+    const positions = geo.attributes.position.array;
+    const uvs = geo.attributes.uv ? geo.attributes.uv.array : null;
+    const newPos = [];
+    const newUv = uvs ? [] : null;
+    let didSplit = false;
+    const triCount = positions.length / 9;
+    for (let i = 0; i < triCount; i++) {
+      const ax = positions[i * 9],     ay = positions[i * 9 + 1], az = positions[i * 9 + 2];
+      const bx = positions[i * 9 + 3], by = positions[i * 9 + 4], bz = positions[i * 9 + 5];
+      const cx = positions[i * 9 + 6], cy = positions[i * 9 + 7], cz = positions[i * 9 + 8];
+      const dAB = Math.hypot(ax - bx, ay - by, az - bz);
+      const dBC = Math.hypot(bx - cx, by - cy, bz - cz);
+      const dCA = Math.hypot(cx - ax, cy - ay, cz - az);
+      const maxD = Math.max(dAB, dBC, dCA);
+      if (maxD <= maxEdgeLen) {
+        newPos.push(ax, ay, az, bx, by, bz, cx, cy, cz);
+        if (uvs) {
+          newUv.push(
+            uvs[i * 6],     uvs[i * 6 + 1],
+            uvs[i * 6 + 2], uvs[i * 6 + 3],
+            uvs[i * 6 + 4], uvs[i * 6 + 5]
+          );
+        }
+        continue;
+      }
+      didSplit = true;
+      let p1, p2, p3, u1, u2, u3;
+      if (maxD === dAB) {
+        p1 = [ax, ay, az]; p2 = [bx, by, bz]; p3 = [cx, cy, cz];
+        if (uvs) { u1 = [uvs[i * 6], uvs[i * 6 + 1]]; u2 = [uvs[i * 6 + 2], uvs[i * 6 + 3]]; u3 = [uvs[i * 6 + 4], uvs[i * 6 + 5]]; }
+      } else if (maxD === dBC) {
+        p1 = [bx, by, bz]; p2 = [cx, cy, cz]; p3 = [ax, ay, az];
+        if (uvs) { u1 = [uvs[i * 6 + 2], uvs[i * 6 + 3]]; u2 = [uvs[i * 6 + 4], uvs[i * 6 + 5]]; u3 = [uvs[i * 6], uvs[i * 6 + 1]]; }
+      } else {
+        p1 = [cx, cy, cz]; p2 = [ax, ay, az]; p3 = [bx, by, bz];
+        if (uvs) { u1 = [uvs[i * 6 + 4], uvs[i * 6 + 5]]; u2 = [uvs[i * 6], uvs[i * 6 + 1]]; u3 = [uvs[i * 6 + 2], uvs[i * 6 + 3]]; }
+      }
+      const mx = (p1[0] + p2[0]) / 2;
+      const my = (p1[1] + p2[1]) / 2;
+      const mz = (p1[2] + p2[2]) / 2;
+      newPos.push(p1[0], p1[1], p1[2], mx, my, mz, p3[0], p3[1], p3[2]);
+      newPos.push(mx, my, mz, p2[0], p2[1], p2[2], p3[0], p3[1], p3[2]);
+      if (uvs) {
+        const mu = (u1[0] + u2[0]) / 2;
+        const mv = (u1[1] + u2[1]) / 2;
+        newUv.push(u1[0], u1[1], mu, mv, u3[0], u3[1]);
+        newUv.push(mu, mv, u2[0], u2[1], u3[0], u3[1]);
+      }
+    }
+    if (!didSplit) break;
+    const next = new THREE.BufferGeometry();
+    next.setAttribute('position', new THREE.Float32BufferAttribute(newPos, 3));
+    if (newUv) next.setAttribute('uv', new THREE.Float32BufferAttribute(newUv, 2));
+    geo = next;
+  }
+  return geo;
+}
+
 async function buildIslandLayer(adalar) {
   clearGroup(islandGroup);
+  if (!adalar?.features?.length) return;
   const t = createIslandTexturePreset(settings.islandTexture);
   const defaultMat = new THREE.MeshStandardMaterial({
     color: new THREE.Color(settings.islandColor),
@@ -2330,13 +2743,23 @@ async function buildIslandLayer(adalar) {
         const [x, z] = metersToLocal(c[0], c[1]);
         if (i === 0) shape.moveTo(x, z); else shape.lineTo(x, z);
       });
-      const g = new THREE.ShapeGeometry(shape);
-      g.rotateX(Math.PI / 2);
+      const rawGeo = new THREE.ShapeGeometry(shape);
+      rawGeo.rotateX(Math.PI / 2);
+      const cacheEntry = settings.flattenIslands ? islandPlateauCache.find((c) => c.feature === f) : null;
+      const plateauY = cacheEntry?.plateauY;
+      const g = plateauY != null ? rawGeo : subdivideShapeGeometry(rawGeo, 8);
       const pos = g.attributes.position;
-      for (let vi = 0; vi < pos.count; vi++) {
-        const vx = pos.getX(vi);
-        const vz = pos.getZ(vi);
-        pos.setY(vi, terrainLocalYAt(vx, vz) + LAYER.island);
+      if (plateauY != null) {
+        const flatY = plateauY + LAYER.island;
+        for (let vi = 0; vi < pos.count; vi++) {
+          pos.setY(vi, flatY);
+        }
+      } else {
+        for (let vi = 0; vi < pos.count; vi++) {
+          const vx = pos.getX(vi);
+          const vz = pos.getZ(vi);
+          pos.setY(vi, terrainLocalYAt(vx, vz) + LAYER.island);
+        }
       }
       pos.needsUpdate = true;
       g.computeVertexNormals();
@@ -2350,6 +2773,7 @@ async function buildIslandLayer(adalar) {
 
 function buildParcelLayer(parseller) {
   clearGroup(parcelGroup);
+  if (!parseller?.features?.length) return;
   /* Parsel: sadece boundary (sınır çizgisi), fill yok.
    * Her vertex kendi DEM yüksekliğini alır (relevant to DEM). */
   const lineMat = new THREE.LineBasicMaterial({
@@ -3239,6 +3663,7 @@ function getFunctionIcon(fn) {
 async function buildBuildingLayer(yapilar) {
   clearGroup(buildingGroup);
   buildingFunctionMaterials.clear();
+  if (!yapilar?.features?.length) return;
 
   const defaultFuncColors = ['#f1f5f9', '#dbeafe', '#fee2e2', '#dcfce7', '#fef3c7', '#ede9fe'];
   const facadeOptions = uniqueAssetVariants('facades', Object.keys(textureSets.facade))
@@ -3839,9 +4264,21 @@ async function rebuildScene() {
   if (layerDataCache.roi && layerDataCache.roi.features.length > 0) {
     bounds = geometryBounds(layerDataCache.roi.features);
   } else {
-    const islandBounds = geometryBounds(adalar.features);
-    const roadBounds = geometryBounds(yollar.features);
-    bounds = mergeBounds(islandBounds, roadBounds);
+    const boundsCandidates = [
+      adalar?.features?.length ? geometryBounds(adalar.features) : null,
+      yollar?.features?.length ? geometryBounds(yollar.features) : null,
+      yapilar?.features?.length ? geometryBounds(yapilar.features) : null,
+      parseller?.features?.length ? geometryBounds(parseller.features) : null
+    ].filter(Boolean);
+    if (boundsCandidates.length) {
+      bounds = boundsCandidates.reduce((acc, b) => acc ? mergeBounds(acc, b) : b, null);
+    } else {
+      bounds = null;
+    }
+  }
+  if (!bounds) {
+    setStatus('No vector layer found; terrain bounds will be derived from DEM raster.');
+    bounds = { minX: -500, maxX: 500, minY: -500, maxY: 500 };
   }
   centerX = (bounds.minX + bounds.maxX) / 2;
   centerY = (bounds.minY + bounds.maxY) / 2;
@@ -4041,6 +4478,8 @@ function addGui() {
   terrain.addColor(settings, 'terrainSideColor').name('Side color').onChange(rebuildScene);
   terrain.add(settings, 'demMeshQuality', 48, 360, 8).name('DEM mesh quality').onChange(rebuildScene);
   terrain.add(settings, 'terrainAnalysisMode', ['Texture', 'Elevation tint', 'Slope tint']).name('Topography view').onChange(rebuildScene);
+  terrain.add(settings, 'flattenIslands').name(t('flattenIslands')).onChange(rebuildScene);
+  terrain.add(settings, 'islandPlateauTransition', 0, 20, 1).name(t('islandPlateauTransition')).onChange(rebuildScene);
   terrain.add(settings, 'pavementStyle', Object.keys(textureSets.pavement)).name(t('pavement')).onChange(rebuildScene);
   terrain.add(settings, 'showHardscape').name(t('showHardscape')).onChange(rebuildScene);
   terrain.add(settings, 'hardscapeStyle', Object.keys(textureSets.hardscape)).name(t('hardTex')).onChange(rebuildScene);

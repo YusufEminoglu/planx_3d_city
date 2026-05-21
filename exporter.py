@@ -25,10 +25,12 @@ from qgis.core import (
 
 MODE_VECTOR = "vector"
 MODE_RASTER_TEXTURE = "raster_texture"
-VECTOR_REQUIRED_INPUTS = ("dem", "roi", "roads", "buildings", "blocks", "parcels")
+VECTOR_REQUIRED_INPUTS = ("dem",)
+VECTOR_RECOMMENDED_INPUTS = ("roi", "roads", "buildings", "blocks", "parcels")
 RASTER_TEXTURE_REQUIRED_INPUTS = ("dem", "roi", "plan_texture", "roads", "buildings")
 REQUIRED_INPUTS = VECTOR_REQUIRED_INPUTS
 OPTIONAL_INPUTS = ("trees", "hardscape", "sidewalks", "lights", "benches", "trashbins", "busstops")
+VECTOR_OPTIONAL_INPUTS = VECTOR_RECOMMENDED_INPUTS + OPTIONAL_INPUTS
 ASSET_THEME_DEFAULT = "Modern Urban"
 ASSET_CATEGORIES = ("pedestrians", "cars", "trees", "lights", "benches", "bins", "busstops", "facades", "roofs", "paving")
 ASSET_THEME_PRESETS = {
@@ -308,7 +310,13 @@ def required_inputs_for_mode(mode: str) -> tuple[str, ...]:
 def optional_inputs_for_mode(mode: str) -> tuple[str, ...]:
     if mode == MODE_RASTER_TEXTURE:
         return ("blocks", "parcels") + OPTIONAL_INPUTS
-    return OPTIONAL_INPUTS
+    return VECTOR_OPTIONAL_INPUTS
+
+
+def recommended_inputs_for_mode(mode: str) -> tuple[str, ...]:
+    if mode == MODE_RASTER_TEXTURE:
+        return ()
+    return VECTOR_RECOMMENDED_INPUTS
 
 
 def validate_inputs(layer_map: dict) -> list[str]:
@@ -503,6 +511,8 @@ def _viewer_defaults_manifest(layer_map: dict) -> dict:
         "demMeshQuality": 160,
         "showXyzTiles": bool(layer_map.get("basemap")),
         "assetTheme": (layer_map.get("asset_theme") or ASSET_THEME_DEFAULT),
+        "flattenIslands": bool(layer_map.get("flatten_islands", True)),
+        "islandPlateauTransition": float(layer_map.get("island_plateau_transition") or 6.0),
     }
 
 
