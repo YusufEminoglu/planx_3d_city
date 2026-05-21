@@ -1,0 +1,8 @@
+# Plugin Hub package excludes (path-prefix match, relative to plugin folder).
+# Anything listed here is left out of QGIS_Plugin_Releases/<plugin>.zip even
+# though it may live on disk for local development or runtime export.
+#
+# web/data is the runtime export sink for the QGIS publisher (DEM, basemap PNG,
+# GeoJSON layers). It can balloon to >25 MB and the Hub rejects oversized zips.
+# The .gitignore already keeps it out of git; this keeps it out of the zip too.
+web/data
