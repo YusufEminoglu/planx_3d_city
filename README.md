@@ -13,6 +13,11 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 
 ## Latest Release Notes
 
+### 0.8.13
+
+- Cleans the QGIS Hub Bandit B310 finding in the OpenStreetMap importer by validating the Overpass endpoint scheme before `urlopen` and documenting the narrow suppression.
+- Removes the unused OSM importer typing import and Flake8 style warnings reported by the Hub scan.
+
 ### 0.8.12
 
 - Prevents the web viewer from getting stuck at `Processing city layers...` when one vector layer fails during scene build.

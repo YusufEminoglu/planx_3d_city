@@ -20,7 +20,6 @@ import urllib.parse
 import urllib.request
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable
 
 from qgis.PyQt.QtCore import QVariant
 from qgis.core import (
@@ -96,6 +95,9 @@ out body geom;
 def fetch_overpass(min_lat: float, min_lon: float, max_lat: float, max_lon: float,
                    timeout_s: int = DEFAULT_TIMEOUT_S) -> dict:
     """Fetch Overpass results for the bbox. Returns the parsed JSON."""
+    parsed_endpoint = urllib.parse.urlparse(OVERPASS_ENDPOINT)
+    if parsed_endpoint.scheme not in {"https", "http"} or not parsed_endpoint.netloc:
+        raise OsmImportError(f"Invalid Overpass endpoint URL: {OVERPASS_ENDPOINT}")
     query = _overpass_query(min_lat, min_lon, max_lat, max_lon)
     data = urllib.parse.urlencode({"data": query}).encode("utf-8")
     req = urllib.request.Request(
@@ -104,7 +106,7 @@ def fetch_overpass(min_lat: float, min_lon: float, max_lat: float, max_lon: floa
         headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout_s + 10) as resp:
+        with urllib.request.urlopen(req, timeout=timeout_s + 10) as resp:  # nosec B310 - endpoint scheme is validated above.
             payload = resp.read().decode("utf-8", errors="replace")
     except urllib.error.HTTPError as exc:
         if exc.code == 429:

@@ -3,6 +3,14 @@
 All notable changes to **PlanX 3D City Viewer** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 
+## [0.8.13] - 2026-05-22
+
+QGIS Hub security and quality scan cleanup.
+- Hardened the OpenStreetMap Overpass fetcher for Bandit B310 by validating the endpoint scheme before `urlopen` and documenting the narrow `nosec` suppression.
+- Removed the unused typing import in `osm_importer.py`.
+- Cleaned Flake8 style findings in the QGIS OSM import dialog and exporter spacing.
+- Updated the viewer module cache key to `app.js?v=0.8.13`.
+
 ## [0.8.12] - 2026-05-22
 
 Viewer loader resilience hotfix.

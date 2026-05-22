@@ -25,7 +25,7 @@ from qgis.core import (
 
 MODE_VECTOR = "vector"
 MODE_RASTER_TEXTURE = "raster_texture"
-PLUGIN_VERSION_FALLBACK = "0.8.12"
+PLUGIN_VERSION_FALLBACK = "0.8.13"
 VECTOR_REQUIRED_INPUTS = ()
 VECTOR_RECOMMENDED_INPUTS = ("dem", "roi", "roads", "buildings", "blocks", "parcels")
 RASTER_TEXTURE_REQUIRED_INPUTS = ("dem", "roi", "plan_texture", "roads", "buildings")
@@ -132,6 +132,7 @@ def plugin_version() -> str:
         if sep and key.strip() == "version":
             return value.strip() or PLUGIN_VERSION_FALLBACK
     return PLUGIN_VERSION_FALLBACK
+
 
 VECTOR_TARGETS = {
     "roi": "roi.geojson",
