@@ -4873,6 +4873,25 @@ function buildRoiBoundary(roi) {
   }
 }
 
+function hideLoadingOverlay(delay = 450) {
+  const loading = document.getElementById('loading');
+  if (!loading) return;
+  loading.style.opacity = 0;
+  setTimeout(() => { loading.style.display = 'none'; }, delay);
+}
+
+async function runLayerBuild(label, buildFn, clearFn = null) {
+  try {
+    await buildFn();
+    return true;
+  } catch (err) {
+    console.warn(`${label} layer skipped`, err);
+    if (clearFn) clearFn();
+    setStatus(`${label} layer skipped: ${err?.message || err}`, true);
+    return false;
+  }
+}
+
 async function rebuildScene() {
   const buildToken = ++sceneBuildToken;
   const loadingText = document.getElementById('loading-text');
@@ -5034,28 +5053,59 @@ async function rebuildScene() {
 
   loadingText.innerText = t('processing');
   setSceneState('sceneLayers');
-  if (settings.showIslands && (!isRasterTextureMode() || adalar.features.length)) await buildIslandLayer(adalar, buildToken); else clearGroup(islandGroup);
+  if (settings.showIslands && (!isRasterTextureMode() || adalar.features.length)) {
+    await runLayerBuild('Blocks', () => buildIslandLayer(adalar, buildToken), () => clearGroup(islandGroup));
+  } else {
+    clearGroup(islandGroup);
+  }
   if (isSceneBuildStale(buildToken)) return;
-  if (settings.showParcels && parseller) buildParcelLayer(parseller); else clearGroup(parcelGroup);
-  if (settings.showHardscape && hardscape) await buildHardscapeLayer(hardscape, buildToken); else clearGroup(hardscapeGroup);
+  if (settings.showParcels && parseller) {
+    await runLayerBuild('Parcels', () => buildParcelLayer(parseller), () => clearGroup(parcelGroup));
+  } else {
+    clearGroup(parcelGroup);
+  }
+  if (settings.showHardscape && hardscape) {
+    await runLayerBuild('Hardscape', () => buildHardscapeLayer(hardscape, buildToken), () => clearGroup(hardscapeGroup));
+  } else {
+    clearGroup(hardscapeGroup);
+  }
   if (isSceneBuildStale(buildToken)) return;
-  buildWindPlumeLayer();
-  if (settings.showBuildings) await buildBuildingLayer(yapilar, buildToken); else clearGroup(buildingGroup);
+  await runLayerBuild('Wind plume', () => buildWindPlumeLayer(), () => clearGroup(windPlumeGroup));
+  if (settings.showBuildings) {
+    await runLayerBuild('Buildings', () => buildBuildingLayer(yapilar, buildToken), () => clearGroup(buildingGroup));
+  } else {
+    clearGroup(buildingGroup);
+  }
   if (isSceneBuildStale(buildToken)) return;
-  await buildRoadsAndTraffic(yollar, buildToken);
+  await runLayerBuild('Roads', () => buildRoadsAndTraffic(yollar, buildToken), () => { clearGroup(roadGroup); clearGroup(carGroup); clearGroup(pedestrianGroup); });
   if (isSceneBuildStale(buildToken)) return;
-  if (settings.showSidewalks) buildSidewalkLayer(yollar, sidewalks); else clearGroup(sidewalkGroup);
-  if (settings.showCrosswalks) buildCrosswalkLayer(yollar); else clearGroup(crosswalkGroup);
-  if (settings.showTrees) buildTreeLayer(agaclar); else clearGroup(treeGroup);
-  if (settings.showFurniture) buildFurnitureLayer(); else clearGroup(furnitureGroup);
+  if (settings.showSidewalks) {
+    await runLayerBuild('Sidewalks', () => buildSidewalkLayer(yollar, sidewalks), () => clearGroup(sidewalkGroup));
+  } else {
+    clearGroup(sidewalkGroup);
+  }
+  if (settings.showCrosswalks) {
+    await runLayerBuild('Crosswalks', () => buildCrosswalkLayer(yollar), () => clearGroup(crosswalkGroup));
+  } else {
+    clearGroup(crosswalkGroup);
+  }
+  if (settings.showTrees) {
+    await runLayerBuild('Trees', () => buildTreeLayer(agaclar), () => clearGroup(treeGroup));
+  } else {
+    clearGroup(treeGroup);
+  }
+  if (settings.showFurniture) {
+    await runLayerBuild('Street furniture', () => buildFurnitureLayer(), () => clearGroup(furnitureGroup));
+  } else {
+    clearGroup(furnitureGroup);
+  }
   rebuildMinimapBg();
   updateDockControls();
   renderFunctionStyleDock();
   updateDashboard(layerDataCache);
   setSceneState('sceneReady');
 
-  document.getElementById('loading').style.opacity = 0;
-  setTimeout(() => (document.getElementById('loading').style.display = 'none'), 450);
+  hideLoadingOverlay();
 }
 
 let globalGui = null;
@@ -5800,6 +5850,8 @@ rebuildScene().then(() => {
 }).catch((e) => {
   console.error(e);
   setStatus(e?.message || t('demFail'));
+  setSceneState(e?.message || 'Scene error', 'warn');
+  hideLoadingOverlay(0);
 });
 animate();
 

@@ -13,6 +13,12 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 
 ## Latest Release Notes
 
+### 0.8.12
+
+- Prevents the web viewer from getting stuck at `Processing city layers...` when one vector layer fails during scene build.
+- Skips only the problematic layer, keeps terrain/basemap and other layers rendering, and reports the skipped layer in the status text.
+- Hides the loading overlay on catastrophic scene errors instead of leaving an infinite spinner.
+
 ### 0.8.11
 
 - Adds an Outside ROI terrain toggle. Keep the wide DEM/blank context visible, or clip the terrain surface to the ROI for a clean model-only view.

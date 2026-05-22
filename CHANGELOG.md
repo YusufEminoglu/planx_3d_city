@@ -3,6 +3,14 @@
 All notable changes to **PlanX 3D City Viewer** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 
+## [0.8.12] - 2026-05-22
+
+Viewer loader resilience hotfix.
+- Hardened the web viewer scene build so one problematic vector layer cannot leave the app stuck at `Processing city layers...`.
+- Layer builds now fail soft: the broken layer is cleared/skipped, the rest of the DEM, basemap, terrain and available layers continue to render, and the status text reports which layer was skipped.
+- Catastrophic scene errors now hide the loading overlay and show a scene-state warning instead of leaving an infinite spinner.
+- Updated the viewer module cache key to `app.js?v=0.8.12`.
+
 ## [0.8.11] - 2026-05-22
 
 Final beta-exit polish: optional outside-ROI terrain.
