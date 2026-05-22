@@ -3,6 +3,12 @@
 All notable changes to **PlanX 3D City Viewer** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 
+## [0.8.4] - 2026-05-22
+
+Smooth island drape and recipe-aware facade UV scale.
+- **Island drape rebuilt.** `subdivideShapeGeometry` now runs at 4 m max-edge (was 8 m) and the result feeds a new `indexAndMergeNonIndexed` pass that collapses coincident vertices into a shared index buffer. `computeVertexNormals` can finally produce smooth shading across triangle edges; the drape returns to a continuous surface instead of a faceted/stuttering one.
+- **Per-building facade UV scale.** The cached facade texture clone now uses `repeat = (0.5, levels / textureFloorRows)`, where `textureFloorRows` is read from `FACADE_RECIPES[featureFacade].floorRows`. A 4-storey building renders 4 actual floor rows on the procedural facade instead of squashing the whole pattern into ~1.3 rows. Horizontal repeat raised from `0.22` to `0.5` so window columns read at human scale.
+
 ## [0.8.3] - 2026-05-22
 
 User-controlled terrain texture tile size.

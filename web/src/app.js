@@ -2675,6 +2675,43 @@ function terrainLocalYAt(localX, localZ) {
   return _lastTerrainY;
 }
 
+/* Collapse coincident vertices of a non-indexed BufferGeometry into an indexed
+ * one with shared vertices, so computeVertexNormals can produce smooth shading
+ * across shared edges. Tolerance in scene units. */
+function indexAndMergeNonIndexed(geometry, tolerance = 0.01) {
+  if (geometry.index) return geometry;
+  const posAttr = geometry.attributes.position;
+  const uvAttr = geometry.attributes.uv;
+  if (!posAttr) return geometry;
+  const positions = posAttr.array;
+  const uvs = uvAttr ? uvAttr.array : null;
+  const count = positions.length / 3;
+  const inv = 1 / Math.max(tolerance, 1e-6);
+  const uniquePositions = [];
+  const uniqueUvs = uvs ? [] : null;
+  const indices = new Array(count);
+  const map = new Map();
+  for (let i = 0; i < count; i++) {
+    const x = positions[i * 3];
+    const y = positions[i * 3 + 1];
+    const z = positions[i * 3 + 2];
+    const key = `${Math.round(x * inv)}|${Math.round(y * inv)}|${Math.round(z * inv)}`;
+    let idx = map.get(key);
+    if (idx === undefined) {
+      idx = uniquePositions.length / 3;
+      uniquePositions.push(x, y, z);
+      if (uvs) uniqueUvs.push(uvs[i * 2], uvs[i * 2 + 1]);
+      map.set(key, idx);
+    }
+    indices[i] = idx;
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(uniquePositions, 3));
+  if (uniqueUvs) out.setAttribute('uv', new THREE.Float32BufferAttribute(uniqueUvs, 2));
+  out.setIndex(indices);
+  return out;
+}
+
 function subdivideShapeGeometry(geometry, maxEdgeLen) {
   let geo = geometry.index ? geometry.toNonIndexed() : geometry;
   const maxIterations = 5;
@@ -2810,7 +2847,16 @@ async function buildIslandLayer(adalar) {
       rawGeo.rotateX(Math.PI / 2);
       const cacheEntry = settings.flattenIslands ? islandPlateauCache.find((c) => c.feature === f) : null;
       const plateauY = cacheEntry?.plateauY;
-      const g = plateauY != null ? rawGeo : subdivideShapeGeometry(rawGeo, 8);
+      let g;
+      if (plateauY != null) {
+        g = rawGeo;
+      } else {
+        // Finer subdivision (4 m) so the drape follows DEM curvature smoothly,
+        // then merge coincident vertices so computeVertexNormals can do real
+        // smooth shading instead of producing a faceted surface.
+        const subdivided = subdivideShapeGeometry(rawGeo, 4);
+        g = indexAndMergeNonIndexed(subdivided, 0.05);
+      }
       const pos = g.attributes.position;
       if (plateauY != null) {
         const flatY = plateauY + LAYER.island;
@@ -3930,16 +3976,23 @@ async function buildBuildingLayer(yapilar) {
       const minY = extrude.boundingBox ? extrude.boundingBox.min.y : 0;
       if (minY !== 0) extrude.translate(0, -minY, 0);
 
-      // Clone texture per (facade_type, floor_count) so Y-repeat matches floor count
+      // Clone texture per (facade_type, floor_count) so the texture's floor
+      // grid lines up with the actual number of building levels. The vertical
+      // repeat equals levels / texture_floor_rows so a 4-storey building shows
+      // 4 floor rows on the procedural facade instead of squashing the whole
+      // pattern into ~1.3 rows.
       if (!facadeCache[featureFacade]) {
-        facadeCache[featureFacade] = await textureFromSet('facade', featureFacade, 0.22, 0.22);
+        facadeCache[featureFacade] = await textureFromSet('facade', featureFacade, 0.5, 0.5);
       }
       const texKey = `${featureFacade}_${levels}`;
       if (!facadeScaleCache[texKey]) {
         const base = facadeCache[featureFacade];
         if (base) {
+          const recipe = (typeof FACADE_RECIPES !== 'undefined') ? FACADE_RECIPES[featureFacade] : null;
+          const textureFloorRows = recipe?.floorRows || 10;
+          const repeatV = Math.max(0.2, Math.min(3.0, levels / textureFloorRows));
           const t = base.clone();
-          t.repeat.set(0.22, levels * 0.0275);
+          t.repeat.set(0.5, repeatV);
           t.needsUpdate = true;
           facadeScaleCache[texKey] = t;
         }
