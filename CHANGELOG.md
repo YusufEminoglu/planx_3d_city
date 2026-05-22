@@ -3,6 +3,63 @@
 All notable changes to **PlanX 3D City Viewer** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 
+## [0.8.11] - 2026-05-22
+
+Final beta-exit polish: optional outside-ROI terrain.
+- Added an Outside ROI terrain toggle to the Layers and Scene panels. When enabled, wide DEM context remains visible with the blank outside colour; when disabled, the terrain surface is clipped to the ROI mask.
+- The outside-ROI toggle works with basemap, plan texture, pavement, elevation tint, and slope tint modes.
+- Persisted and exported the new outside-ROI terrain setting so projects reopen with the same presentation intent.
+- Updated the viewer module cache key to `app.js?v=0.8.11`.
+
+## [0.8.10] - 2026-05-22
+
+Layer dock authority, basemap-only terrain workflow, and block opacity controls.
+- Fixed stale async rebuilds so Layers panel visibility toggles are authoritative; buildings no longer reappear after being disabled from the dock.
+- Added Blocks visibility to the Layers panel and Advanced controls.
+- Added Block transparency control with a default of `0`, meaning blocks render fully opaque unless the user chooses transparency.
+- Made QGIS basemap texture take priority when enabled, so users can reliably view satellite/basemap imagery directly on DEM terrain without vector layers.
+- Island plateau now skips hidden block-only presentation states when no block-dependent visible content is active, preserving pure DEM plus basemap review.
+- Updated the viewer module cache key to `app.js?v=0.8.10`.
+
+## [0.8.9] - 2026-05-22
+
+Release-readiness pass for facade scale, hardscape drape, polygon holes, and settings migration.
+- Tuned facade texture scale back 45% from the 8x enlargement target to a 4.85x default and exposed it as a viewer Building panel control.
+- Added settings schema migration so older browser-local settings cannot silently keep island plateau disabled after upgrading.
+- Subdivided hardscape slabs before draping them to the final terrain surface, reducing long-triangle instability between paved surfaces and islands.
+- Added polygon hole support for islands, hardscape, and building footprints/extrusions so courtyards and donut polygons render correctly.
+- Updated the viewer module cache key to `app.js?v=0.8.9`.
+
+## [0.8.8] - 2026-05-22
+
+Plateau defaults, road/hardscape Z stability, facade scale, and HTML guide.
+- Re-enabled island plateau by default in the QGIS publisher, export manifest, and viewer defaults so blocks flatten their underlying terrain again unless the user disables the cleanup toggle.
+- Separated hardscape, parcel, road, and vehicle elevation offsets and added road polygon offset to keep OSM roads and hardscape slabs above the final terrain surface without z-fighting.
+- Enlarged building facade texture scale by 8x so procedural windows and floor lines read at presentation distance.
+- Reordered the Data page actions: Auto-match, sample data, OSM import, quality report, export, then Save preset / Load preset on the right.
+- Added a new 0 Guide panel that opens a detailed English HTML user guide bundled with the plugin.
+- Updated the viewer module cache key to `app.js?v=0.8.8`.
+
+## [0.8.7] - 2026-05-22
+
+Stable terrain surface, DEM-less viewer, and ROI-only texture overlay.
+- Added a stable terrain surface cache built from the final terrain mesh after DEM smoothing, boundary cleanup and optional island plateau passes. Islands, buildings, roads, trees and street furniture now clamp to the same visible surface instead of re-sampling unstable raw DEM values.
+- Added DEM smoothing controls: smooth passes, smooth strength and max slope clamp. These damp abrupt elevation jumps that were tearing island drapes and causing unstable Z placement.
+- Vector Plan Mode can now export without a DEM. The browser falls back to a dummy flat presentation plane and continues rendering available vector layers.
+- Wide DEM exports now keep surrounding topography visible while clipping the active texture to the ROI: outside the ROI the terrain remains visible with a configurable blank color, inside the ROI the selected plan/basemap/pavement texture is shown normally.
+- Updated the viewer module cache key to `app.js?v=0.8.7`.
+
+## [0.8.6] - 2026-05-22
+
+Flexible DEM-only exports and source-folder repair.
+- Restored the released 0.8.5 source tree into the plugin folder after the working directory had only vendor/data directories and an incomplete `.git` directory.
+- Viewer GeoJSON loading now follows manifest `requiredInputs`: in Vector Plan Mode, blocks, parcels, buildings, roads and ROI are optional and load as empty layers when absent; Raster Plan Texture Mode still treats its declared inputs as required.
+- DEM-only Vector scenes now derive terrain bounds from the DEM raster extent instead of using the old `-500..500` placeholder, so a project with only `mydem.tif` opens over the real georeferenced raster.
+- Added defensive empty-layer guards for minimap, hardscape, roads, sidewalks, crosswalks, trees and ROI boundary rendering.
+- Publisher manifests now write the current metadata version dynamically and include `flexibleInputs=true` for Vector Plan Mode.
+- Island plateau defaults are consistently off in the publisher and viewer, keeping the DEM visible unless the user enables plateau flattening.
+- The viewer module script now carries a version query (`app.js?v=0.8.6`) so browser cache does not hold an older cockpit after plugin updates.
+
 ## [0.8.5] - 2026-05-22
 
 Conforming island subdivision and camera bookmarks.

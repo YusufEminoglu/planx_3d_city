@@ -80,9 +80,9 @@ Object.assign(i18n.TR, {
   dockLayers: 'Katmanlar', dockScene: 'Sahne', dockStyle: 'Stil', dockMobility: 'Hareketlilik',
   dockFurniture: 'Kent Mobilyalari', dockAnalysis: 'Analiz',
   lblRoads: 'Yollar', lblSidewalks: 'Kaldirimlar', lblCrosswalks: 'Yaya gecitleri',
-  lblParcels: 'Parseller', lblHardscape: 'Sert zemin', lblBuildings: 'Binalar',
+  lblBlocks: 'Adalar / bloklar', lblParcels: 'Parseller', lblHardscape: 'Sert zemin', lblBuildings: 'Binalar',
   lblTrees: 'Agaclar', lblFurniture: 'Kent mobilyalari', lblCars: 'Araclar', lblPedestrians: 'Yayalar',
-  lblPlanTexture: 'Plan texture', lblTextureOpacity: 'Texture opakligi',
+  lblPlanTexture: 'Plan texture', lblOutsideRoiTerrain: 'ROI disi zemin', lblTextureOpacity: 'Texture opakligi',
   lblTextureBrightness: 'Texture parlakligi', lblTextureContrast: 'Texture kontrasti',
   lblModelBase: 'ROI model altligi', lblSideDrop: 'Altlik dususu', lblSideColor: 'Altlik rengi',
   lblDemQuality: 'DEM mesh kalitesi', lblFog: 'Sis', lblTime: 'Zaman',
@@ -104,11 +104,11 @@ Object.assign(i18n.TR, {
   bookmarkGotoTitle: 'Bu görünüme uç', bookmarkDeleteTitle: 'Yer imini sil',
   lblAutoTime: 'Gunes animasyonu', lblAutoTimeSpeed: 'Animasyon hizi',
   lblWeather: 'Hava', lblSSAO: 'Golge kalitesi', lblBloom: 'Bloom/parlama',
-  lblIslandColor: 'Ada rengi', lblIslandTexture: 'Ada dokusu',
+  lblIslandColor: 'Ada rengi', lblIslandTexture: 'Ada dokusu', lblIslandTransparency: 'Ada transparanligi',
   lblParcelColor: 'Parsel sinir rengi', lblParcelOpacity: 'Parsel sinir opakligi',
   lblRoadColor: 'Yol rengi', lblRoadStyle: 'Yol dokusu', lblPavementStyle: 'Zemin dokusu',
   lblHardscapeStyle: 'Sert zemin dokusu', lblHardscapeHeight: 'Sert zemin yuksekligi',
-  lblBuildingMode: 'Bina modu', lblTerrainAnalysis: 'Topoğrafya görünümü', lblAssetTheme: 'Asset theme',
+  lblBuildingMode: 'Bina modu', lblFacadeTextureScale: 'Cephe olcegi', lblTerrainAnalysis: 'Topoğrafya görünümü', lblAssetTheme: 'Asset theme',
   lblXyzTiles: 'QGIS basemap altligi', lblXyzUrl: 'XYZ URL sablonu',
   lblFloorHeight: 'Kat yuksekligi', lblRoofShape: 'Cati tipi', lblRoofHeight: 'Cati yuksekligi',
   lblRoofTexture: 'Cati dokusu', lblFunctionStyles: 'Kullanim renkleri ve cepheleri',
@@ -126,9 +126,9 @@ Object.assign(i18n.EN, {
   dockLayers: 'Layers', dockScene: 'Scene', dockStyle: 'Style', dockMobility: 'Mobility',
   dockFurniture: 'Street Furniture', dockAnalysis: 'Analysis',
   lblRoads: 'Roads', lblSidewalks: 'Sidewalks', lblCrosswalks: 'Crosswalks',
-  lblParcels: 'Parcels', lblHardscape: 'Hardscape', lblBuildings: 'Buildings',
+  lblBlocks: 'Blocks', lblParcels: 'Parcels', lblHardscape: 'Hardscape', lblBuildings: 'Buildings',
   lblTrees: 'Trees', lblFurniture: 'Street furniture', lblCars: 'Cars', lblPedestrians: 'Pedestrians',
-  lblPlanTexture: 'Plan texture', lblTextureOpacity: 'Texture opacity',
+  lblPlanTexture: 'Plan texture', lblOutsideRoiTerrain: 'Outside ROI terrain', lblTextureOpacity: 'Texture opacity',
   lblTextureBrightness: 'Texture brightness', lblTextureContrast: 'Texture contrast',
   lblModelBase: 'ROI model base', lblSideDrop: 'Base drop', lblSideColor: 'Base color',
   lblDemQuality: 'DEM mesh quality', lblFog: 'Fog', lblTime: 'Time',
@@ -150,11 +150,11 @@ Object.assign(i18n.EN, {
   bookmarkGotoTitle: 'Fly to this view', bookmarkDeleteTitle: 'Delete bookmark',
   lblAutoTime: 'Solar animation', lblAutoTimeSpeed: 'Animation speed',
   lblWeather: 'Weather', lblSSAO: 'Shadow quality', lblBloom: 'Bloom/glow',
-  lblIslandColor: 'Block color', lblIslandTexture: 'Block texture',
+  lblIslandColor: 'Block color', lblIslandTexture: 'Block texture', lblIslandTransparency: 'Block transparency',
   lblParcelColor: 'Parcel boundary color', lblParcelOpacity: 'Parcel boundary opacity',
   lblRoadColor: 'Road color', lblRoadStyle: 'Road texture', lblPavementStyle: 'Ground texture',
   lblHardscapeStyle: 'Hardscape texture', lblHardscapeHeight: 'Hardscape height',
-  lblBuildingMode: 'Building mode', lblTerrainAnalysis: 'Topography view', lblAssetTheme: 'Asset theme',
+  lblBuildingMode: 'Building mode', lblFacadeTextureScale: 'Facade scale', lblTerrainAnalysis: 'Topography view', lblAssetTheme: 'Asset theme',
   lblXyzTiles: 'QGIS basemap texture', lblXyzUrl: 'XYZ URL template',
   lblFloorHeight: 'Floor height', lblRoofShape: 'Roof shape', lblRoofHeight: 'Roof height',
   lblRoofTexture: 'Roof texture', lblFunctionStyles: 'Function colors and facades',
@@ -412,18 +412,20 @@ world.add(furnitureGroup);
 world.add(pedestrianGroup);
 world.add(roiBoundaryGroup);
 
-/* ── Layer Elevation Hierarchy ─────────────────────────────────
- *  DEM  <  DEM Texture  <  Adalar  <  Parcels=Buildings=Hardscape=Trees  <  Roads  <  Cars
- *  Each layer offset is relative to the DEM terrain surface.
+/* Layer Elevation Hierarchy
+ * DEM < islands < buildings/trees < parcels < hardscape slab < roads < cars.
+ * Offsets are relative to the final visible terrain surface.
  */
 const LAYER = {
-  island:   0.60,   // Adalar – DEM üzerinde ikinci katman (z-fighting tamponu + curvature payı)
-  content:  0.70,   // Yapılar, Sert Zemin, Ağaçlar, Kent Mobilyaları
-  parcel:   0.85,   // Parsel sınırları – adaların üzerinde net görünür
-  road:     0.85,   // Yollar – içerik üzerinde
-  carExtra: 0.60    // Arabalar – yol üzerinde ekstra
+  island:    0.60,
+  content:   0.78,
+  parcel:    0.94,
+  hardscape: 0.98,
+  road:      1.36,
+  carExtra:  0.08
 };
-LAYER.carExtra = 0.08;
+const FACADE_TEXTURE_SCALE_MULTIPLIER = 4.85;
+const SETTINGS_SCHEMA_VERSION = 5;
 
 let centerX = 0;
 let centerY = 0;
@@ -435,6 +437,7 @@ let layerDataCache = null;
 let projectManifest = null;
 let terrainTexture = null;
 let baseMapTexture = null;
+let terrainOverlayMesh = null;
 let roadCurves = [];
 let vehicleRoadCurves = [];
 let cars = [];
@@ -442,6 +445,8 @@ let pedestrians = [];
 let buildingFunctionMaterials = new Map();
 let manifestDefaultsApplied = false;
 let terrainHeightStats = { min: 0, max: 0, avg: 0, p02: 0, p98: 0 };
+let terrainSurfaceCache = null;
+let sceneBuildToken = 0;
 const islandPlateauCache = [];
 
 // --- Performance ---
@@ -583,7 +588,7 @@ function rebuildMinimapBg() {
   ctx.fillRect(0, 0, _mmW, _mmH);
 
   // ROI outline
-  if (layerDataCache.roi) {
+  if (layerDataCache.roi?.features?.length) {
     ctx.strokeStyle = 'rgba(239,68,68,0.75)';
     ctx.lineWidth = 1.5;
     ctx.setLineDash([4, 3]);
@@ -605,7 +610,7 @@ function rebuildMinimapBg() {
   }
 
   // Island blocks
-  for (const f of layerDataCache.adalar.features) {
+  for (const f of layerDataCache.adalar?.features || []) {
     for (const poly of getPolygonRings(f.geometry)) {
       const ring = poly[0]; if (!ring) continue;
       const fn = ((f.properties?.uipfonksiyon || f.properties?.arazi_kull || '')).toString().toUpperCase();
@@ -621,7 +626,7 @@ function rebuildMinimapBg() {
 
   // Roads
   ctx.strokeStyle = '#222a38'; ctx.lineWidth = 1.2;
-  for (const f of layerDataCache.yollar.features) {
+  for (const f of layerDataCache.yollar?.features || []) {
     if (f.geometry?.type !== 'LineString') continue;
     ctx.beginPath();
     f.geometry.coordinates.forEach(([cx, cy], i) => {
@@ -632,7 +637,7 @@ function rebuildMinimapBg() {
   }
 
   // Buildings (colored by function)
-  for (const f of layerDataCache.yapilar.features) {
+  for (const f of layerDataCache.yapilar?.features || []) {
     const fn = (f.properties?.uipfonksiyon || 'BELIRSIZ').toString();
     ctx.fillStyle = functionColorState[fn] || '#94a3b8';
     for (const poly of getPolygonRings(f.geometry)) {
@@ -648,7 +653,7 @@ function rebuildMinimapBg() {
 
   // Trees
   ctx.fillStyle = '#4ade80';
-  for (const f of layerDataCache.agaclar.features) {
+  for (const f of layerDataCache.agaclar?.features || []) {
     if (f.geometry?.type !== 'Point') continue;
     const [lx, lz] = metersToLocal(f.geometry.coordinates[0], f.geometry.coordinates[1]);
     const [mx, my] = _mmPx(lx, lz);
@@ -1297,9 +1302,14 @@ const settings = {
   floorHeight: 3.2,
   pavementStyle: 'Asphalt',
   showTerrainTexture: true,
+  showOutsideRoiTerrain: true,
   terrainTextureOpacity: 1.0,
   terrainTextureBrightness: 1.0,
   terrainTextureContrast: 1.0,
+  terrainOutsideColor: '#edf2ef',
+  terrainSmoothingPasses: 2,
+  terrainSmoothingStrength: 0.45,
+  terrainMaxSlope: 0.75,
   showTerrainSides: true,
   terrainSideDrop: 5.0,
   terrainSideColor: '#d9fbf5',
@@ -1327,9 +1337,11 @@ const settings = {
   windPlumeDistance: 180,
   showUrbanComfort: false,
   carDensity: 0.2,
+  showIslands: true,
   showParcels: true,
   showHardscape: false,
   showBuildings: true,
+  facadeTextureScale: FACADE_TEXTURE_SCALE_MULTIPLIER,
   showTrees: true,
   showFurniture: true,
   showCars: false,
@@ -1358,8 +1370,9 @@ const settings = {
   autoOrbitSpeed: 0.3,
   autoTime: false,
   autoTimeSpeed: 2.0,
-  flattenIslands: false,
+  flattenIslands: true,
   islandPlateauTransition: 6,
+  islandTransparency: 0,
   dayOfYear: 172,
   latitude: 39.0,
   parkColor: '#5e9e3e',
@@ -1370,15 +1383,16 @@ const settings = {
 };
 
 const PERSISTED_SETTING_KEYS = [
-  'islandColor', 'islandTexture', 'parcelBoundaryColor', 'parcelBoundaryOpacity',
-  'showTerrainTexture', 'terrainTextureOpacity', 'terrainTextureBrightness', 'terrainTextureContrast',
+  'islandColor', 'islandTexture', 'islandTransparency', 'parcelBoundaryColor', 'parcelBoundaryOpacity',
+  'showTerrainTexture', 'showOutsideRoiTerrain', 'terrainTextureOpacity', 'terrainTextureBrightness', 'terrainTextureContrast',
+  'terrainOutsideColor', 'terrainSmoothingPasses', 'terrainSmoothingStrength', 'terrainMaxSlope',
   'showTerrainSides', 'terrainSideDrop', 'terrainSideColor',
   'fogDensity', 'autoTime', 'autoTimeSpeed', 'enableSSAO', 'enableBloom',
-  'pavementStyle', 'hardscapeStyle', 'hardscapeHeight', 'buildingMode', 'terrainAnalysisMode', 'showXyzTiles', 'xyzTileUrl',
+  'pavementStyle', 'hardscapeStyle', 'hardscapeHeight', 'buildingMode', 'facadeTextureScale', 'terrainAnalysisMode', 'showXyzTiles', 'xyzTileUrl',
   'assetTheme',
   'floorHeight', 'roofTexture', 'roofShape', 'roofHeight', 'roadStyle', 'roadColor', 'roadColorMode', 'roadWidth',
   'showLights', 'lightStyle', 'showBenches', 'benchStyle', 'showBins', 'binStyle', 'showBusStops', 'stopStyle',
-  'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture',
+  'showIslands', 'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture',
   'showCars', 'showRoads', 'showSidewalks', 'showCrosswalks', 'showPedestrians',
   'showWindPlumes', 'windDirectionDeg', 'windPlumeDistance', 'showUrbanComfort',
   'demMeshQuality', 'timeOfDay', 'weather', 'fov', 'walkSpeed',
@@ -1393,11 +1407,19 @@ function loadPersistedSettings() {
     const raw = localStorage.getItem('planx_3d_city_settings');
     if (!raw) return;
     const saved = JSON.parse(raw);
+    const schemaVersion = Number(saved._schemaVersion || 0);
     for (const key of PERSISTED_SETTING_KEYS) {
       if (!(key in saved) || !(key in settings)) continue;
       if (typeof settings[key] === 'number') settings[key] = Number(saved[key]);
       else if (typeof settings[key] === 'boolean') settings[key] = Boolean(saved[key]);
       else settings[key] = saved[key];
+    }
+    if (schemaVersion < SETTINGS_SCHEMA_VERSION) {
+      if (!('facadeTextureScale' in saved)) settings.facadeTextureScale = FACADE_TEXTURE_SCALE_MULTIPLIER;
+      if (!('showOutsideRoiTerrain' in saved)) settings.showOutsideRoiTerrain = true;
+      if (!('showIslands' in saved)) settings.showIslands = true;
+      if (!('islandTransparency' in saved)) settings.islandTransparency = 0;
+      settings.flattenIslands = true;
     }
   } catch (err) {
     console.warn('Could not restore PlanX viewer settings', err);
@@ -1408,6 +1430,7 @@ function savePersistedSettings() {
   try {
     const payload = {};
     for (const key of PERSISTED_SETTING_KEYS) payload[key] = settings[key];
+    payload._schemaVersion = SETTINGS_SCHEMA_VERSION;
     localStorage.setItem('planx_3d_city_settings', JSON.stringify(payload));
   } catch (err) {
     console.warn('Could not save PlanX viewer settings', err);
@@ -1835,7 +1858,9 @@ async function loadGeoJson(path, options = {}) {
     if (required) {
       throw new Error(`${label} could not be loaded: ${path}`);
     }
-    console.warn(`Optional layer skipped: ${path}`, err);
+    if (!String(err?.message || err).includes('HTTP 404')) {
+      console.warn(`Optional layer skipped: ${path}`, err);
+    }
     return { ...EMPTY_GEOJSON, name: label };
   }
 }
@@ -1858,6 +1883,19 @@ function applyManifestDefaults() {
   if (persistedRaw) {
     try {
       const persisted = JSON.parse(persistedRaw);
+      const schemaVersion = Number(persisted._schemaVersion || 0);
+      const defaults = { ...(projectManifest.viewerDefaults || {}), ...(projectManifest.analysisDefaults || {}) };
+      if (projectManifest.assetTheme && !defaults.assetTheme) defaults.assetTheme = projectManifest.assetTheme;
+      for (const [key, value] of Object.entries(defaults)) {
+        if (key in settings && !(key in persisted) && value !== null && value !== undefined) settings[key] = value;
+      }
+      if (schemaVersion < SETTINGS_SCHEMA_VERSION) {
+        if (!('facadeTextureScale' in persisted)) settings.facadeTextureScale = FACADE_TEXTURE_SCALE_MULTIPLIER;
+        if (!('showOutsideRoiTerrain' in persisted)) settings.showOutsideRoiTerrain = true;
+        if (!('showIslands' in persisted)) settings.showIslands = true;
+        if (!('islandTransparency' in persisted)) settings.islandTransparency = 0;
+        settings.flattenIslands = true;
+      }
       if (!persisted.assetTheme && projectManifest.assetTheme) settings.assetTheme = projectManifest.assetTheme;
     } catch (_err) {
       if (projectManifest.assetTheme) settings.assetTheme = projectManifest.assetTheme;
@@ -1892,6 +1930,73 @@ function viewerMode() {
 
 function isRasterTextureMode() {
   return viewerMode() === 'raster_texture';
+}
+
+function manifestRequiresInput(key) {
+  const required = projectManifest?.requiredInputs;
+  if (Array.isArray(required)) return required.includes(key);
+  if (isRasterTextureMode()) return ['roi', 'roads', 'buildings'].includes(key);
+  return false;
+}
+
+function asFeatureCollection(data, name = 'Layer') {
+  return data && Array.isArray(data.features) ? data : { ...EMPTY_GEOJSON, name };
+}
+
+function demSamplerBounds() {
+  if (!demSampler) return null;
+  if (demSampler.flat && demSampler.bounds) return { ...demSampler.bounds };
+  const x0 = demSampler.originX;
+  const x1 = demSampler.originX + demSampler.resX * demSampler.width;
+  const y0 = demSampler.originY;
+  const y1 = demSampler.originY + demSampler.resY * demSampler.height;
+  return {
+    minX: Math.min(x0, x1),
+    maxX: Math.max(x0, x1),
+    minY: Math.min(y0, y1),
+    maxY: Math.max(y0, y1)
+  };
+}
+
+function deriveVectorBounds(data) {
+  const roi = asFeatureCollection(data?.roi, 'ROI');
+  if (roi.features.length) return geometryBounds(roi.features);
+  const candidates = [
+    asFeatureCollection(data?.adalar, 'Blocks').features,
+    asFeatureCollection(data?.yollar, 'Roads').features,
+    asFeatureCollection(data?.yapilar, 'Buildings').features,
+    asFeatureCollection(data?.parseller, 'Parcels').features
+  ]
+    .filter((features) => features.length)
+    .map((features) => geometryBounds(features))
+    .filter(Boolean);
+  return candidates.length ? candidates.reduce((acc, b) => acc ? mergeBounds(acc, b) : b, null) : null;
+}
+
+function fallbackSceneBounds() {
+  return { minX: -500, maxX: 500, minY: -500, maxY: 500 };
+}
+
+function activateFlatTerrainFallback(sourceBounds = null, height = 0) {
+  const b = sourceBounds || bounds || deriveVectorBounds(layerDataCache) || fallbackSceneBounds();
+  bounds = { ...b };
+  demSampler = {
+    flat: true,
+    flatHeight: height,
+    bounds: { ...b },
+    originX: b.minX,
+    originY: b.minY,
+    resX: Math.max(1, b.maxX - b.minX),
+    resY: Math.max(1, b.maxY - b.minY),
+    width: 1,
+    height: 1,
+    noData: null
+  };
+  terrainHeightStats = { min: height, max: height, avg: height, p02: height, p98: height, median: height, mad: 1 };
+  demReady = true;
+  demLoadingStarted = false;
+  _lastTerrainY = height;
+  setStatus('DEM not found; using a flat presentation plane.');
 }
 
 function normalizeAccessText(value) {
@@ -2057,6 +2162,7 @@ async function loadBaseMapTexture() {
 
 function demHeightAtProjected(x, y, fallback = 0) {
   if (!demSampler) return fallback;
+  if (demSampler.flat) return Number.isFinite(demSampler.flatHeight) ? demSampler.flatHeight : fallback;
   const px = Math.floor((x - demSampler.originX) / demSampler.resX);
   const py = Math.floor((y - demSampler.originY) / demSampler.resY);
   if (px < 0 || px >= demSampler.width || py < 0 || py >= demSampler.height) return fallback;
@@ -2069,6 +2175,7 @@ function demHeightAtProjected(x, y, fallback = 0) {
 
 function demHeightMedianAtProjected(x, y, fallback = null, radius = 1) {
   if (!demSampler) return fallback;
+  if (demSampler.flat) return Number.isFinite(demSampler.flatHeight) ? demSampler.flatHeight : fallback;
   const px = Math.floor((x - demSampler.originX) / demSampler.resX);
   const py = Math.floor((y - demSampler.originY) / demSampler.resY);
   const values = [];
@@ -2214,11 +2321,129 @@ function smoothSideLineHeights(points, fallbackHeight) {
 }
 
 function robustTerrainHeightAtProjected(x, y, fallback) {
+  const base = Number.isFinite(fallback) ? fallback : (Number.isFinite(terrainHeightStats.avg) ? terrainHeightStats.avg : 0);
   let z = demHeightMedianAtProjected(x, y, null, 1);
-  if (z === null) z = fallback;
-  const lo = Number.isFinite(terrainHeightStats.p02) ? terrainHeightStats.p02 : fallback - 20;
-  const hi = Number.isFinite(terrainHeightStats.p98) ? terrainHeightStats.p98 : fallback + 20;
+  if (z === null) z = base;
+  const lo = Number.isFinite(terrainHeightStats.p02) ? terrainHeightStats.p02 : base - 20;
+  const hi = Number.isFinite(terrainHeightStats.p98) ? terrainHeightStats.p98 : base + 20;
   return Math.max(lo, Math.min(hi, z));
+}
+
+function terrainHeightStatsFromPositions(pos) {
+  const values = [];
+  for (let i = 0; i < pos.count; i++) {
+    const z = pos.getZ(i);
+    if (Number.isFinite(z)) values.push(z);
+  }
+  if (!values.length) {
+    return { min: 0, max: 0, avg: 0, p02: 0, p98: 0, median: 0, mad: 1 };
+  }
+  values.sort((a, b) => a - b);
+  const sum = values.reduce((acc, v) => acc + v, 0);
+  const median = values[Math.floor(values.length / 2)];
+  const deviations = values.map((v) => Math.abs(v - median)).sort((a, b) => a - b);
+  return {
+    min: values[0],
+    max: values[values.length - 1],
+    avg: sum / values.length,
+    p02: values[Math.max(0, Math.floor((values.length - 1) * 0.02))],
+    p98: values[Math.min(values.length - 1, Math.floor((values.length - 1) * 0.98))],
+    median,
+    mad: Math.max(0.5, deviations[Math.floor(deviations.length / 2)] || 1)
+  };
+}
+
+function smoothTerrainSurface(pos, segments, width, depth) {
+  const passes = Math.max(0, Math.min(6, Math.round(Number(settings.terrainSmoothingPasses) || 0)));
+  if (!passes) return;
+  const strength = Math.max(0, Math.min(0.9, Number(settings.terrainSmoothingStrength) || 0));
+  if (strength <= 0) return;
+
+  const cols = segments + 1;
+  const rows = segments + 1;
+  const count = cols * rows;
+  let current = new Float32Array(count);
+  for (let i = 0; i < count; i++) current[i] = pos.getZ(i);
+
+  const gridStep = Math.max(width / Math.max(1, segments), depth / Math.max(1, segments));
+  const maxSlope = Math.max(0.1, Math.min(3.0, Number(settings.terrainMaxSlope) || 0.75));
+  const maxDelta = Math.max(0.5, Math.min(16, gridStep * maxSlope));
+
+  for (let pass = 0; pass < passes; pass++) {
+    const next = new Float32Array(count);
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const idx = row * cols + col;
+        const values = [];
+        let sum = 0;
+        let n = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          const rr = row + dy;
+          if (rr < 0 || rr >= rows) continue;
+          for (let dx = -1; dx <= 1; dx++) {
+            const cc = col + dx;
+            if (cc < 0 || cc >= cols) continue;
+            const v = current[rr * cols + cc];
+            if (!Number.isFinite(v)) continue;
+            values.push(v);
+            sum += v;
+            n++;
+          }
+        }
+        if (!values.length) {
+          next[idx] = current[idx];
+          continue;
+        }
+        values.sort((a, b) => a - b);
+        const med = values[Math.floor(values.length / 2)];
+        const mean = sum / n;
+        let clamped = current[idx];
+        if (clamped > med + maxDelta) clamped = med + maxDelta;
+        else if (clamped < med - maxDelta) clamped = med - maxDelta;
+        const target = med * 0.62 + mean * 0.25 + clamped * 0.13;
+        next[idx] = current[idx] * (1 - strength) + target * strength;
+      }
+    }
+    current = next;
+  }
+
+  for (let i = 0; i < count; i++) pos.setZ(i, current[i]);
+  pos.needsUpdate = true;
+}
+
+function buildTerrainSurfaceCache(pos, segments, width, depth) {
+  const values = new Float32Array(pos.count);
+  for (let i = 0; i < pos.count; i++) values[i] = pos.getZ(i);
+  terrainSurfaceCache = {
+    values,
+    segments,
+    cols: segments + 1,
+    rows: segments + 1,
+    width,
+    depth
+  };
+}
+
+function terrainSurfaceCacheYAt(localX, localZ) {
+  const cache = terrainSurfaceCache;
+  if (!cache) return null;
+  const fx = ((localX + cache.width * 0.5) / cache.width) * cache.segments;
+  const fz = ((localZ + cache.depth * 0.5) / cache.depth) * cache.segments;
+  if (fx < 0 || fz < 0 || fx > cache.segments || fz > cache.segments) return null;
+  const c0 = Math.max(0, Math.min(cache.segments, Math.floor(fx)));
+  const r0 = Math.max(0, Math.min(cache.segments, Math.floor(fz)));
+  const c1 = Math.min(cache.segments, c0 + 1);
+  const r1 = Math.min(cache.segments, r0 + 1);
+  const tx = fx - c0;
+  const tz = fz - r0;
+  const z00 = cache.values[r0 * cache.cols + c0];
+  const z10 = cache.values[r0 * cache.cols + c1];
+  const z01 = cache.values[r1 * cache.cols + c0];
+  const z11 = cache.values[r1 * cache.cols + c1];
+  if (![z00, z10, z01, z11].every(Number.isFinite)) return null;
+  const za = z00 * (1 - tx) + z10 * tx;
+  const zb = z01 * (1 - tx) + z11 * tx;
+  return za * (1 - tz) + zb * tz;
 }
 
 function ringToLocalPolyline(ring, maxStep = 5) {
@@ -2524,6 +2749,49 @@ function pointInLocalPolys(x, z, localPolys) {
   return false;
 }
 
+function shapeFromLocalPolygon(poly) {
+  const outer = poly?.[0];
+  if (!outer || outer.length < 3) return null;
+  const shape = new THREE.Shape();
+  outer.forEach((c, i) => {
+    const [x, z] = metersToLocal(c[0], c[1]);
+    if (i === 0) shape.moveTo(x, z); else shape.lineTo(x, z);
+  });
+  for (let h = 1; h < poly.length; h++) {
+    const ring = poly[h];
+    if (!ring || ring.length < 3) continue;
+    const path = new THREE.Path();
+    ring.forEach((c, i) => {
+      const [x, z] = metersToLocal(c[0], c[1]);
+      if (i === 0) path.moveTo(x, z); else path.lineTo(x, z);
+    });
+    shape.holes.push(path);
+  }
+  return shape;
+}
+
+function isSceneBuildStale(token) {
+  return token !== sceneBuildToken;
+}
+
+function islandOpacityValue() {
+  const transparency = Math.max(0, Math.min(0.95, Number(settings.islandTransparency) || 0));
+  return Math.max(0.05, 1 - transparency);
+}
+
+function applyIslandMaterialVisibility(material) {
+  const opacity = islandOpacityValue();
+  material.opacity = opacity;
+  material.transparent = opacity < 0.999;
+  material.depthWrite = opacity >= 0.999;
+  return material;
+}
+
+function shouldApplyIslandPlateaus(adalar) {
+  if (!settings.flattenIslands || !adalar?.features?.length) return false;
+  return !!(settings.showIslands || settings.showBuildings || settings.showHardscape || settings.showTrees || settings.showFurniture);
+}
+
 function applyIslandPlateaus(pos, segments, width, depth, adalar, transitionM) {
   islandPlateauCache.length = 0;
   if (!adalar?.features?.length) return;
@@ -2606,7 +2874,7 @@ function applyIslandPlateaus(pos, segments, width, depth, adalar, transitionM) {
   pos.needsUpdate = true;
 }
 
-async function buildTerrain(adalar) {
+async function buildTerrain(adalar, buildToken = sceneBuildToken) {
   const width = bounds.maxX - bounds.minX;
   const depth = bounds.maxY - bounds.minY;
   const segments = currentTerrainSegments();
@@ -2681,11 +2949,17 @@ async function buildTerrain(adalar) {
     pos.setZ(i, z);
   }
   limitTerrainBoundarySpikes(pos, segments, width, depth, avgZ, roiPolyCache);
-  if (settings.flattenIslands && adalar?.features?.length) {
+  smoothTerrainSurface(pos, segments, width, depth);
+  if (shouldApplyIslandPlateaus(adalar)) {
     applyIslandPlateaus(pos, segments, width, depth, adalar, settings.islandPlateauTransition);
   } else {
     islandPlateauCache.length = 0;
   }
+  const finalStats = terrainHeightStatsFromPositions(pos);
+  terrainHeightStats = finalStats;
+  zMin = finalStats.min;
+  zMax = finalStats.max;
+  buildTerrainSurfaceCache(pos, segments, width, depth);
   geo.computeVertexNormals();
   const useTopoTint = settings.terrainAnalysisMode && settings.terrainAnalysisMode !== 'Texture';
   if (useTopoTint) {
@@ -2706,50 +2980,75 @@ async function buildTerrain(adalar) {
     geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   }
 
-  const useRasterTexture = isRasterTextureMode() && settings.showTerrainTexture && terrainTexture;
-  const useBaseMapTexture = !useRasterTexture && settings.showXyzTiles && baseMapTexture;
-  const groundTex = useRasterTexture
-    ? terrainTexture
-    : (useBaseMapTexture
-      ? baseMapTexture
+  const useBaseMapTexture = settings.showXyzTiles && baseMapTexture;
+  const useRasterTexture = !useBaseMapTexture && isRasterTextureMode() && settings.showTerrainTexture && terrainTexture;
+  const groundTex = useBaseMapTexture
+    ? baseMapTexture
+    : (useRasterTexture
+      ? terrainTexture
     : (settings.pavementStyle === 'Asphalt'
       ? createAsphaltTexture()
       : await textureFromSet('pavement', settings.pavementStyle,
         width / Math.max(2, settings.terrainTileMeters || 60),
         depth / Math.max(2, settings.terrainTileMeters || 60))));
+  if (isSceneBuildStale(buildToken)) {
+    geo.dispose();
+    return false;
+  }
   const terrainOpacity = useRasterTexture ? settings.terrainTextureOpacity : 1;
   const roiMaskTexture = createRoiMaskTexture(width, depth);
+  const clipTerrainToRoi = !settings.showOutsideRoiTerrain && !!roiMaskTexture;
+  const maskTextureToRoi = settings.showOutsideRoiTerrain && !useTopoTint && !!roiMaskTexture && !!groundTex;
   const materialOptions = {
-    map: useTopoTint ? null : groundTex,
+    color: maskTextureToRoi ? new THREE.Color(settings.terrainOutsideColor || '#edf2ef') : 0xffffff,
+    map: useTopoTint || maskTextureToRoi ? null : groundTex,
+    alphaMap: clipTerrainToRoi ? roiMaskTexture : null,
+    alphaTest: clipTerrainToRoi ? 0.02 : 0,
     vertexColors: useTopoTint,
-    transparent: terrainOpacity < 1 || !!roiMaskTexture,
-    opacity: terrainOpacity,
+    transparent: clipTerrainToRoi || (!maskTextureToRoi && terrainOpacity < 1),
+    opacity: maskTextureToRoi ? 1 : terrainOpacity,
     roughness: (useRasterTexture || useBaseMapTexture) ? 0.82 : 0.95,
     metalness: 0.02,
     depthWrite: true
   };
-  if (roiMaskTexture) {
-    materialOptions.alphaMap = roiMaskTexture;
-    materialOptions.alphaTest = 0.02;
-  }
   const mat = new THREE.MeshStandardMaterial(materialOptions);
   terrainMesh = new THREE.Mesh(geo, mat);
   terrainMesh.rotation.x = -Math.PI / 2;
   terrainMesh.receiveShadow = true;
   terrainMesh.renderOrder = -30;
   world.add(terrainMesh);
-  buildTerrainSideSkirt(width, depth, zMin, avgZ);
-  _lastTerrainY = avgZ;   // fallback için ortalama DEM yüksekliğini başlat
-  setStatus(`${t('demLoaded')} (mydem.tif). Z: ${zMin.toFixed(1)} - ${zMax.toFixed(1)} m`);
+  if (maskTextureToRoi) {
+    const overlayMat = new THREE.MeshStandardMaterial({
+      map: groundTex,
+      alphaMap: roiMaskTexture,
+      alphaTest: 0.02,
+      transparent: true,
+      opacity: terrainOpacity,
+      roughness: (useRasterTexture || useBaseMapTexture) ? 0.82 : 0.95,
+      metalness: 0.02,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1
+    });
+    terrainOverlayMesh = new THREE.Mesh(geo.clone(), overlayMat);
+    terrainOverlayMesh.rotation.x = -Math.PI / 2;
+    terrainOverlayMesh.receiveShadow = false;
+    terrainOverlayMesh.renderOrder = -29;
+    world.add(terrainOverlayMesh);
+  }
+  buildTerrainSideSkirt(width, depth, zMin, finalStats.avg);
+  _lastTerrainY = finalStats.avg;   // fallback için kararlı terrain yüksekliğini başlat
+  const terrainLabel = demSampler?.flat ? 'Flat terrain plane' : 'mydem.tif';
+  setStatus(`${t('demLoaded')} (${terrainLabel}). Z: ${zMin.toFixed(1)} - ${zMax.toFixed(1)} m`);
+  return true;
 }
 
-/* terrainLocalYAt: DEM yüzeyinden Y değerini raycaster ile okur.
 /* terrainLocalYAt: DEM'den doğrudan yükseklik okur.
  * Raycasting KULLANMAZ — demHeightAtProjected ile aynı kaynağı kullanır.
  * Terrain mesh segment çözünürlüğüne bağımlılık ortadan kalkar. */
 let _lastTerrainY = 0;
 function terrainLocalYAt(localX, localZ) {
-  if (!demSampler) return _lastTerrainY;
   if (islandPlateauCache.length) {
     for (const cache of islandPlateauCache) {
       const t = cache.transition || 0;
@@ -2761,6 +3060,12 @@ function terrainLocalYAt(localX, localZ) {
       }
     }
   }
+  const cachedY = terrainSurfaceCacheYAt(localX, localZ);
+  if (cachedY !== null) {
+    _lastTerrainY = cachedY;
+    return cachedY;
+  }
+  if (!demSampler || demSampler.flat) return _lastTerrainY;
   /* metersToLocal(mx, my) → [mx-centerX, my-centerY]
    * Ters dönüşüm: mx = localX + centerX, my = localZ + centerY */
   const wx = localX + centerX;
@@ -2896,11 +3201,11 @@ function subdivideShapeGeometry(geometry, maxEdgeLen) {
   return geo;
 }
 
-async function buildIslandLayer(adalar) {
+async function buildIslandLayer(adalar, buildToken = sceneBuildToken) {
   clearGroup(islandGroup);
   if (!adalar?.features?.length) return;
   const t = createIslandTexturePreset(settings.islandTexture);
-  const defaultMat = new THREE.MeshStandardMaterial({
+  const defaultMat = applyIslandMaterialVisibility(new THREE.MeshStandardMaterial({
     color: new THREE.Color(settings.islandColor),
     map: t,
     roughness: 0.92,
@@ -2908,7 +3213,7 @@ async function buildIslandLayer(adalar) {
     polygonOffset: true,
     polygonOffsetFactor: -2,
     polygonOffsetUnits: -2
-  });
+  }));
   const customMaterials = {};
   const materialForIsland = (feature, fallbackMat) => {
     const props = feature.properties || {};
@@ -2920,7 +3225,7 @@ async function buildIslandLayer(adalar) {
     const textureName = customTexture || settings.islandTexture;
     const key = `${color}_${textureName}`;
     if (!customMaterials[key]) {
-      customMaterials[key] = new THREE.MeshStandardMaterial({
+      customMaterials[key] = applyIslandMaterialVisibility(new THREE.MeshStandardMaterial({
         color: new THREE.Color(color),
         map: createIslandTexturePreset(textureName),
         roughness: 0.92,
@@ -2928,12 +3233,12 @@ async function buildIslandLayer(adalar) {
         polygonOffset: true,
         polygonOffsetFactor: -2,
         polygonOffsetUnits: -2
-      });
+      }));
     }
     return customMaterials[key];
   };
   const parkTex = createIslandTexturePreset(settings.parkTexture || 'ParkGreen');
-  const parkMat = new THREE.MeshStandardMaterial({
+  const parkMat = applyIslandMaterialVisibility(new THREE.MeshStandardMaterial({
     color: new THREE.Color(settings.parkColor || '#5e9e3e'),
     map: parkTex,
     roughness: 0.90,
@@ -2941,15 +3246,15 @@ async function buildIslandLayer(adalar) {
     polygonOffset: true,
     polygonOffsetFactor: -2,
     polygonOffsetUnits: -2
-  });
-  const sportMat = new THREE.MeshStandardMaterial({
+  }));
+  const sportMat = applyIslandMaterialVisibility(new THREE.MeshStandardMaterial({
     color: new THREE.Color(settings.sportColor || '#4a8c30'),
     roughness: 0.88,
     side: THREE.DoubleSide,
     polygonOffset: true,
     polygonOffsetFactor: -2,
     polygonOffsetUnits: -2
-  });
+  }));
 
   for (const f of adalar.features) {
     const fn = ((f.properties?.uipfonksiyon || f.properties?.arazi_kull || '')).toString().toUpperCase();
@@ -2960,11 +3265,8 @@ async function buildIslandLayer(adalar) {
     for (const poly of getPolygonRings(f.geometry)) {
       const outer = poly[0];
       if (!outer || outer.length < 3) continue;
-      const shape = new THREE.Shape();
-      outer.forEach((c, i) => {
-        const [x, z] = metersToLocal(c[0], c[1]);
-        if (i === 0) shape.moveTo(x, z); else shape.lineTo(x, z);
-      });
+      const shape = shapeFromLocalPolygon(poly);
+      if (!shape) continue;
       const rawGeo = new THREE.ShapeGeometry(shape);
       rawGeo.rotateX(Math.PI / 2);
       const cacheEntry = settings.flattenIslands ? islandPlateauCache.find((c) => c.feature === f) : null;
@@ -3033,9 +3335,11 @@ function buildParcelLayer(parseller) {
   }
 }
 
-async function buildHardscapeLayer(hardscape) {
+async function buildHardscapeLayer(hardscape, buildToken = sceneBuildToken) {
   clearGroup(hardscapeGroup);
+  if (!hardscape?.features?.length) return;
   const t = await textureFromSet('hardscape', settings.hardscapeStyle, 8, 8);
+  if (isSceneBuildStale(buildToken)) return;
   const mat = new THREE.MeshStandardMaterial({
     map: t, roughness: 0.94, metalness: 0.02,
     side: THREE.DoubleSide,
@@ -3047,13 +3351,11 @@ async function buildHardscapeLayer(hardscape) {
     for (const poly of getPolygonRings(f.geometry)) {
       const outer = poly[0];
       if (!outer || outer.length < 3) continue;
-      const shape = new THREE.Shape();
-      outer.forEach((c, i) => {
-        const [x, z] = metersToLocal(c[0], c[1]);
-        if (i === 0) shape.moveTo(x, z); else shape.lineTo(x, z);
-      });
-      const g = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false });
-      g.rotateX(Math.PI / 2);
+      const shape = shapeFromLocalPolygon(poly);
+      if (!shape) continue;
+      const raw = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false });
+      raw.rotateX(Math.PI / 2);
+      const g = indexAndMergeNonIndexed(subdivideShapeGeometry(raw, 8), 0.1);
       /* -- Per-vertex DEM elevation -- */
       const pos = g.attributes.position;
       for (let vi = 0; vi < pos.count; vi++) {
@@ -3061,11 +3363,12 @@ async function buildHardscapeLayer(hardscape) {
         const vz = pos.getZ(vi);
         const isTop = pos.getY(vi) > -0.5;
         const baseDem = terrainLocalYAt(vx, vz);
-        const yVal = isTop ? (baseDem + LAYER.content + settings.hardscapeHeight) : (baseDem + LAYER.content);
+        const yVal = isTop ? (baseDem + LAYER.hardscape + settings.hardscapeHeight) : (baseDem + LAYER.hardscape);
         pos.setY(vi, yVal);
       }
       pos.needsUpdate = true;
       g.computeVertexNormals();
+      if (isSceneBuildStale(buildToken)) return;
       const m = new THREE.Mesh(g, mat);
       m.receiveShadow = true;
       m.renderOrder = 5;
@@ -3592,6 +3895,7 @@ function roofMeshFor(shape, footprintPoints, hBase, height, roofShape = settings
 // InstancedMesh trees — one draw call per variant (6 total) instead of 2N+ draw calls
 function buildTreeLayer(agaclar) {
   clearGroup(treeGroup);
+  if (!agaclar?.features?.length) return;
   const feats = agaclar.features.filter(f => f.geometry?.type === 'Point');
   if (!feats.length) return;
   const heightFields = namesWithMapping('tree_height_field', ['planx_tree_height', 'tree_height', 'height', 'boy', 'agac_boyu', 'aÄŸaÃ§_boyu', 'yukseklik', 'yÃ¼kseklik']);
@@ -4015,7 +4319,7 @@ function getFunctionIcon(fn) {
   return '🏢';
 }
 
-async function buildBuildingLayer(yapilar) {
+async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
   clearGroup(buildingGroup);
   buildingFunctionMaterials.clear();
   if (!yapilar?.features?.length) return;
@@ -4034,10 +4338,12 @@ async function buildBuildingLayer(yapilar) {
   const roofTex = createRoofPresetTexture(settings.roofTexture);
   const roofTextureCache = { [settings.roofTexture]: roofTex };
   const facadeCache = {};
+  const facadeScaleMultiplier = Math.max(1, Math.min(8, Number(settings.facadeTextureScale) || FACADE_TEXTURE_SCALE_MULTIPLIER));
   for (const fn of functions) {
     const key = functionFacadeState[fn];
     if (!facadeCache[key]) {
-      facadeCache[key] = await textureFromSet('facade', key, 0.55, 0.55);
+      facadeCache[key] = await textureFromSet('facade', key, 0.55 / facadeScaleMultiplier, 0.55 / facadeScaleMultiplier);
+      if (isSceneBuildStale(buildToken)) return;
     }
   }
   // Per-building texture scale cache keyed by (facade_type + floor_count)
@@ -4057,7 +4363,8 @@ async function buildBuildingLayer(yapilar) {
     for (const poly of getPolygonRings(f.geometry)) {
       const outer = poly[0];
       if (!outer || outer.length < 3) continue;
-      const shape = new THREE.Shape();
+      const shape = shapeFromLocalPolygon(poly);
+      if (!shape) continue;
       const footprint = [];
       let sx = 0;
       let sy = 0;
@@ -4066,7 +4373,6 @@ async function buildBuildingLayer(yapilar) {
         sx += outer[i][0];
         sy += outer[i][1];
         footprint.push(new THREE.Vector3(x, 0, z));
-        if (i === 0) shape.moveTo(x, z); else shape.lineTo(x, z);
       }
 
       const baseY = buildingBaseYForOuterRing(outer);
@@ -4089,6 +4395,7 @@ async function buildBuildingLayer(yapilar) {
         fp.receiveShadow = true;
         fp.renderOrder = 34;
         fp.userData = { ...(f.properties || {}), planx_calc_footprint_area: footprintArea, planx_calc_floor_area: floorArea, planx_calc_dwellings: dwellings, planx_calc_population: population, planx_calc_vehicles: vehicles };
+        if (isSceneBuildStale(buildToken)) return;
         buildingGroup.add(fp);
         continue;
       }
@@ -4105,7 +4412,8 @@ async function buildBuildingLayer(yapilar) {
       // 4 floor rows on the procedural facade instead of squashing the whole
       // pattern into ~1.3 rows.
       if (!facadeCache[featureFacade]) {
-        facadeCache[featureFacade] = await textureFromSet('facade', featureFacade, 0.5, 0.5);
+        facadeCache[featureFacade] = await textureFromSet('facade', featureFacade, 0.5 / facadeScaleMultiplier, 0.5 / facadeScaleMultiplier);
+        if (isSceneBuildStale(buildToken)) return;
       }
       const texKey = `${featureFacade}_${levels}`;
       if (!facadeScaleCache[texKey]) {
@@ -4113,9 +4421,9 @@ async function buildBuildingLayer(yapilar) {
         if (base) {
           const recipe = (typeof FACADE_RECIPES !== 'undefined') ? FACADE_RECIPES[featureFacade] : null;
           const textureFloorRows = recipe?.floorRows || 10;
-          const repeatV = Math.max(0.2, Math.min(3.0, levels / textureFloorRows));
+          const repeatV = Math.max(0.025, Math.min(3.0, levels / textureFloorRows / facadeScaleMultiplier));
           const t = base.clone();
-          t.repeat.set(0.5, repeatV);
+          t.repeat.set(0.5 / facadeScaleMultiplier, repeatV);
           t.needsUpdate = true;
           facadeScaleCache[texKey] = t;
         }
@@ -4147,6 +4455,7 @@ async function buildBuildingLayer(yapilar) {
         planx_calc_population: population,
         planx_calc_vehicles: vehicles
       };
+      if (isSceneBuildStale(buildToken)) return;
       buildingGroup.add(b);
 
       if (settings.buildingMode === 'Extruded + roof') {
@@ -4155,6 +4464,7 @@ async function buildBuildingLayer(yapilar) {
         roof.material.color = new THREE.Color(featureRoofColor);
         roof.material.needsUpdate = true;
         roof.userData = b.userData;
+        if (isSceneBuildStale(buildToken)) return;
         buildingGroup.add(roof);
       }
     }
@@ -4209,7 +4519,7 @@ function createPedestrianModel(index = 0) {
   return { mesh: root, limbRefs: { leftArm, rightArm, leftLeg, rightLeg, leftShoe, rightShoe } };
 }
 
-async function buildRoadsAndTraffic(yollar) {
+async function buildRoadsAndTraffic(yollar, buildToken = sceneBuildToken) {
   clearGroup(roadGroup);
   clearGroup(carGroup);
   clearGroup(pedestrianGroup);
@@ -4217,6 +4527,7 @@ async function buildRoadsAndTraffic(yollar) {
   vehicleRoadCurves = [];
   cars = [];
   pedestrians = [];
+  if (!yollar?.features?.length) return;
 
   let roadTex = null;
   if (settings.roadStyle === 'Asphalt') {
@@ -4226,13 +4537,17 @@ async function buildRoadsAndTraffic(yollar) {
   } else if (settings.roadStyle === 'SharedStreet') {
     roadTex = await textureFromSet('road', 'SharedStreet', 2, 16);
   }
+  if (isSceneBuildStale(buildToken)) return;
 
   const roadMat = new THREE.MeshStandardMaterial({
     color: new THREE.Color(settings.roadColor),
     map: roadTex,
     roughness: 0.97,
     transparent: !settings.showRoads,
-    opacity: settings.showRoads ? 1.0 : 0.0
+    opacity: settings.showRoads ? 1.0 : 0.0,
+    polygonOffset: true,
+    polygonOffsetFactor: -4,
+    polygonOffsetUnits: -4
   });
   const amenityPoints = settings.roadColorMode === 'Amenity distance' ? estimateAmenityPoints() : [];
 
@@ -4293,6 +4608,7 @@ async function buildRoadsAndTraffic(yollar) {
     roadGeo.computeVertexNormals();
     const featureRoadMat = roadMat.clone();
     featureRoadMat.color = roadVisualColor(f, amenityPoints);
+    if (isSceneBuildStale(buildToken)) return;
     const mesh = new THREE.Mesh(roadGeo, featureRoadMat);
     mesh.receiveShadow = true;
     mesh.renderOrder = 30;
@@ -4411,6 +4727,7 @@ function buildSidewalkPolygonLayer(sidewalks) {
       }
       pos.needsUpdate = true;
       g.computeVertexNormals();
+      if (isSceneBuildStale(buildToken)) return;
       const mesh = new THREE.Mesh(g, mat);
       mesh.receiveShadow = true;
       mesh.renderOrder = 33;
@@ -4426,6 +4743,7 @@ function buildSidewalkLayer(yollar, sidewalks = EMPTY_GEOJSON) {
     buildSidewalkPolygonLayer(sidewalks);
     return;
   }
+  if (!yollar?.features?.length) return;
 
   const swWidth = 1.3;
   const swMat = new THREE.MeshStandardMaterial({ color: 0xc9bfa2, roughness: 0.95, metalness: 0.0 });
@@ -4491,6 +4809,7 @@ function buildSidewalkLayer(yollar, sidewalks = EMPTY_GEOJSON) {
 function buildCrosswalkLayer(yollar) {
   clearGroup(crosswalkGroup);
   if (!settings.showCrosswalks) return;
+  if (!yollar?.features?.length) return;
 
   const cwMat = new THREE.MeshStandardMaterial({ color: 0xf0ede5, roughness: 0.85 });
   const stripeW = 0.38;
@@ -4531,7 +4850,7 @@ function buildCrosswalkLayer(yollar) {
 
 function buildRoiBoundary(roi) {
   clearGroup(roiBoundaryGroup);
-  if (!roi || !roi.features.length) return;
+  if (!roi?.features?.length) return;
   const mat = new THREE.LineBasicMaterial({ color: 0xff4444, linewidth: 2, depthTest: false });
   for (const f of roi.features) {
     if (!f.geometry) continue;
@@ -4555,6 +4874,7 @@ function buildRoiBoundary(roi) {
 }
 
 async function rebuildScene() {
+  const buildToken = ++sceneBuildToken;
   const loadingText = document.getElementById('loading-text');
   loadingText.innerText = t('loadingData');
   setSceneState('sceneLoading');
@@ -4563,39 +4883,59 @@ async function rebuildScene() {
     loadingText.innerText = t('sceneGeojson') + '...';
     projectManifest = await loadManifest();
     applyManifestDefaults();
-    const rasterMode = isRasterTextureMode();
-    const adalar = await loadGeoJson('../data/yerlesim/myblocks.geojson', { required: !rasterMode, label: 'Blocks' });
-    const yapilar = await loadGeoJson('../data/yerlesim/mybuildings.geojson', { required: true, label: 'Buildings' });
-    const yollar = await loadGeoJson('../data/yerlesim/myroads.geojson', { required: true, label: 'Roads' });
+    const adalar = await loadGeoJson('../data/yerlesim/myblocks.geojson', { required: manifestRequiresInput('blocks'), label: 'Blocks' });
+    const yapilar = await loadGeoJson('../data/yerlesim/mybuildings.geojson', { required: manifestRequiresInput('buildings'), label: 'Buildings' });
+    const yollar = await loadGeoJson('../data/yerlesim/myroads.geojson', { required: manifestRequiresInput('roads'), label: 'Roads' });
     const agaclar = await loadGeoJson('../data/yerlesim/mytrees.geojson', { label: 'Trees' });
     const lights = await loadGeoJson('../data/yerlesim/mylights.geojson', { label: 'Lights' });
     const benches = await loadGeoJson('../data/yerlesim/mybenches.geojson', { label: 'Benches' });
     const bins = await loadGeoJson('../data/yerlesim/mytrashbins.geojson', { label: 'Trash bins' });
     const busstops = await loadGeoJson('../data/yerlesim/mybusstops.geojson', { label: 'Bus stops' });
     
-    const roi = await loadGeoJson('../data/yerlesim/roi.geojson', { required: true, label: 'ROI' });
+    const roi = await loadGeoJson('../data/yerlesim/roi.geojson', { required: manifestRequiresInput('roi'), label: 'ROI' });
     layerDataCache = {
-       adalar, yapilar, yollar, agaclar, parseller: null, hardscape: null, sidewalks: null,
-       furniture: { lights, benches, bins, busstops }, roi
+       adalar: asFeatureCollection(adalar, 'Blocks'),
+       yapilar: asFeatureCollection(yapilar, 'Buildings'),
+       yollar: asFeatureCollection(yollar, 'Roads'),
+       agaclar: asFeatureCollection(agaclar, 'Trees'),
+       parseller: null,
+       hardscape: null,
+       sidewalks: null,
+       furniture: {
+         lights: asFeatureCollection(lights, 'Lights'),
+         benches: asFeatureCollection(benches, 'Benches'),
+         bins: asFeatureCollection(bins, 'Trash bins'),
+         busstops: asFeatureCollection(busstops, 'Bus stops')
+       },
+       roi: asFeatureCollection(roi, 'ROI')
     };
   }
+  if (isSceneBuildStale(buildToken)) return;
   if (settings.showParcels && !layerDataCache.parseller) {
-    layerDataCache.parseller = await loadGeoJson('../data/yerlesim/myparcels.geojson', { required: !isRasterTextureMode(), label: 'Parcels' });
+    const parseller = await loadGeoJson('../data/yerlesim/myparcels.geojson', { required: manifestRequiresInput('parcels'), label: 'Parcels' });
+    layerDataCache.parseller = asFeatureCollection(parseller, 'Parcels');
   }
   if (settings.showHardscape && !layerDataCache.hardscape) {
-    layerDataCache.hardscape = await loadGeoJson('../data/yerlesim/myhardscape.geojson', { label: 'Hardscape' });
+    const hardscape = await loadGeoJson('../data/yerlesim/myhardscape.geojson', { label: 'Hardscape' });
+    layerDataCache.hardscape = asFeatureCollection(hardscape, 'Hardscape');
   }
   if (settings.showWindPlumes && !layerDataCache.hardscape) {
-    layerDataCache.hardscape = await loadGeoJson('../data/yerlesim/myhardscape.geojson', { label: 'Hardscape' });
+    const hardscape = await loadGeoJson('../data/yerlesim/myhardscape.geojson', { label: 'Hardscape' });
+    layerDataCache.hardscape = asFeatureCollection(hardscape, 'Hardscape');
   }
   if (settings.showSidewalks && !layerDataCache.sidewalks) {
-    layerDataCache.sidewalks = await loadGeoJson('../data/yerlesim/mysidewalks.geojson', { label: 'Sidewalks' });
+    const sidewalks = await loadGeoJson('../data/yerlesim/mysidewalks.geojson', { label: 'Sidewalks' });
+    layerDataCache.sidewalks = asFeatureCollection(sidewalks, 'Sidewalks');
   }
   
-  const { adalar, yapilar, yollar, agaclar } = layerDataCache;
-  const parseller = layerDataCache.parseller;
-  const hardscape = layerDataCache.hardscape;
-  const sidewalks = layerDataCache.sidewalks;
+  const adalar = asFeatureCollection(layerDataCache.adalar, 'Blocks');
+  const yapilar = asFeatureCollection(layerDataCache.yapilar, 'Buildings');
+  const yollar = asFeatureCollection(layerDataCache.yollar, 'Roads');
+  const agaclar = asFeatureCollection(layerDataCache.agaclar, 'Trees');
+  const parseller = layerDataCache.parseller ? asFeatureCollection(layerDataCache.parseller, 'Parcels') : null;
+  const hardscape = layerDataCache.hardscape ? asFeatureCollection(layerDataCache.hardscape, 'Hardscape') : null;
+  const sidewalks = layerDataCache.sidewalks ? asFeatureCollection(layerDataCache.sidewalks, 'Sidewalks') : null;
+  Object.assign(layerDataCache, { adalar, yapilar, yollar, agaclar, parseller, hardscape, sidewalks });
   updateDashboard(layerDataCache);
 
   // Calculate and update stats
@@ -4625,27 +4965,9 @@ async function rebuildScene() {
     statDiv.innerHTML = html;
   }
 
-  if (layerDataCache.roi && layerDataCache.roi.features.length > 0) {
-    bounds = geometryBounds(layerDataCache.roi.features);
-  } else {
-    const boundsCandidates = [
-      adalar?.features?.length ? geometryBounds(adalar.features) : null,
-      yollar?.features?.length ? geometryBounds(yollar.features) : null,
-      yapilar?.features?.length ? geometryBounds(yapilar.features) : null,
-      parseller?.features?.length ? geometryBounds(parseller.features) : null
-    ].filter(Boolean);
-    if (boundsCandidates.length) {
-      bounds = boundsCandidates.reduce((acc, b) => acc ? mergeBounds(acc, b) : b, null);
-    } else {
-      bounds = null;
-    }
-  }
-  if (!bounds) {
-    setStatus('No vector layer found; terrain bounds will be derived from DEM raster.');
-    bounds = { minX: -500, maxX: 500, minY: -500, maxY: 500 };
-  }
-  centerX = (bounds.minX + bounds.maxX) / 2;
-  centerY = (bounds.minY + bounds.maxY) / 2;
+  const vectorBounds = deriveVectorBounds(layerDataCache);
+  bounds = vectorBounds || (demReady ? demSamplerBounds() : null);
+  if (isSceneBuildStale(buildToken)) return;
 
   if (!demReady && !demLoadingStarted) {
     demLoadingStarted = true;
@@ -4654,16 +4976,36 @@ async function rebuildScene() {
     loadProjectDem()
       .then(() => rebuildScene())
       .catch((err) => {
-        console.error('DEM yükleme hatası:', err);
-        setStatus(t('demFail'));
+        if (isSceneBuildStale(buildToken)) return;
+        const demMissing = String(err?.message || err).includes('DEM not found');
+        if (demMissing) console.info('DEM not found; using flat terrain fallback.');
+        else console.warn('DEM could not be loaded; using flat terrain fallback:', err);
+        activateFlatTerrainFallback(vectorBounds || bounds);
+        rebuildScene();
       });
+    return;
   }
+  if (!demReady) return;
+  if (!bounds) {
+    setStatus('No vector bounds or DEM extent found; using fallback terrain bounds.');
+    bounds = { minX: -500, maxX: 500, minY: -500, maxY: 500 };
+  }
+  if (isSceneBuildStale(buildToken)) return;
+  centerX = (bounds.minX + bounds.maxX) / 2;
+  centerY = (bounds.minY + bounds.maxY) / 2;
   if (terrainMesh) {
     world.remove(terrainMesh);
     terrainMesh.geometry.dispose();
     terrainMesh.material.dispose();
     terrainMesh = null;
   }
+  if (terrainOverlayMesh) {
+    world.remove(terrainOverlayMesh);
+    terrainOverlayMesh.geometry.dispose();
+    terrainOverlayMesh.material.dispose();
+    terrainOverlayMesh = null;
+  }
+  terrainSurfaceCache = null;
   clearGroup(terrainSideGroup);
   if (isRasterTextureMode() && settings.showTerrainTexture && !terrainTexture) {
     try {
@@ -4687,16 +5029,21 @@ async function rebuildScene() {
   }
   loadingText.innerText = t('sceneTerrain') + '...';
   setSceneState('sceneTerrain');
-  await buildTerrain(adalar);
+  const terrainBuilt = await buildTerrain(adalar, buildToken);
+  if (!terrainBuilt || isSceneBuildStale(buildToken)) return;
 
   loadingText.innerText = t('processing');
   setSceneState('sceneLayers');
-  if (!isRasterTextureMode() || adalar.features.length) await buildIslandLayer(adalar); else clearGroup(islandGroup);
+  if (settings.showIslands && (!isRasterTextureMode() || adalar.features.length)) await buildIslandLayer(adalar, buildToken); else clearGroup(islandGroup);
+  if (isSceneBuildStale(buildToken)) return;
   if (settings.showParcels && parseller) buildParcelLayer(parseller); else clearGroup(parcelGroup);
-  if (settings.showHardscape && hardscape) await buildHardscapeLayer(hardscape); else clearGroup(hardscapeGroup);
+  if (settings.showHardscape && hardscape) await buildHardscapeLayer(hardscape, buildToken); else clearGroup(hardscapeGroup);
+  if (isSceneBuildStale(buildToken)) return;
   buildWindPlumeLayer();
-  if (settings.showBuildings) await buildBuildingLayer(yapilar); else clearGroup(buildingGroup);
-  await buildRoadsAndTraffic(yollar);
+  if (settings.showBuildings) await buildBuildingLayer(yapilar, buildToken); else clearGroup(buildingGroup);
+  if (isSceneBuildStale(buildToken)) return;
+  await buildRoadsAndTraffic(yollar, buildToken);
+  if (isSceneBuildStale(buildToken)) return;
   if (settings.showSidewalks) buildSidewalkLayer(yollar, sidewalks); else clearGroup(sidewalkGroup);
   if (settings.showCrosswalks) buildCrosswalkLayer(yollar); else clearGroup(crosswalkGroup);
   if (settings.showTrees) buildTreeLayer(agaclar); else clearGroup(treeGroup);
@@ -4834,13 +5181,18 @@ function addGui() {
 
   const terrain = globalGui.addFolder(t('terrain'));
   terrain.add(settings, 'showTerrainTexture').name('Plan texture').onChange(rebuildScene);
+  terrain.add(settings, 'showOutsideRoiTerrain').name(t('lblOutsideRoiTerrain')).onChange(rebuildScene);
   terrain.add(settings, 'terrainTextureOpacity', 0.1, 1.0, 0.05).name('Texture opacity').onChange(rebuildScene);
   terrain.add(settings, 'terrainTextureBrightness', 0.5, 1.5, 0.05).name('Texture brightness').onChange(() => { terrainTexture = null; rebuildScene(); });
   terrain.add(settings, 'terrainTextureContrast', 0.5, 1.8, 0.05).name('Texture contrast').onChange(() => { terrainTexture = null; rebuildScene(); });
+  terrain.addColor(settings, 'terrainOutsideColor').name('Outside ROI color').onChange(rebuildScene);
   terrain.add(settings, 'showTerrainSides').name('Build sides').onChange(rebuildScene);
   terrain.add(settings, 'terrainSideDrop', 0, 40, 0.5).name('Side drop from DEM min').onChange(rebuildScene);
   terrain.addColor(settings, 'terrainSideColor').name('Side color').onChange(rebuildScene);
   terrain.add(settings, 'demMeshQuality', 48, 360, 8).name('DEM mesh quality').onChange(rebuildScene);
+  terrain.add(settings, 'terrainSmoothingPasses', 0, 5, 1).name('DEM smooth passes').onChange(rebuildScene);
+  terrain.add(settings, 'terrainSmoothingStrength', 0, 0.9, 0.05).name('DEM smooth strength').onChange(rebuildScene);
+  terrain.add(settings, 'terrainMaxSlope', 0.1, 3.0, 0.05).name('DEM max slope').onChange(rebuildScene);
   terrain.add(settings, 'terrainAnalysisMode', ['Texture', 'Elevation tint', 'Slope tint']).name('Topography view').onChange(rebuildScene);
   terrain.add(settings, 'flattenIslands').name(t('flattenIslands')).onChange(rebuildScene);
   terrain.add(settings, 'islandPlateauTransition', 0, 20, 1).name(t('islandPlateauTransition')).onChange(rebuildScene);
@@ -4850,8 +5202,10 @@ function addGui() {
   terrain.add(settings, 'showHardscape').name(t('showHardscape')).onChange(rebuildScene);
   terrain.add(settings, 'hardscapeStyle', Object.keys(textureSets.hardscape)).name(t('hardTex')).onChange(rebuildScene);
   terrain.add(settings, 'hardscapeHeight', 0.0, 2.0, 0.05).name(t('hardH')).onChange(rebuildScene);
+  terrain.add(settings, 'showIslands').name(t('lblBlocks')).onChange(rebuildScene);
   terrain.addColor(settings, 'islandColor').name(t('islCol')).onChange(rebuildScene);
   terrain.add(settings, 'islandTexture', Object.keys(textureSets.island)).name(t('islTex')).onChange(rebuildScene);
+  terrain.add(settings, 'islandTransparency', 0, 0.95, 0.05).name(t('lblIslandTransparency')).onChange(rebuildScene);
   terrain.addColor(settings, 'parkColor').name(t('parkCol')).onChange(rebuildScene);
   terrain.add(settings, 'parkTexture', Object.keys(textureSets.island)).name(t('parkTex')).onChange(rebuildScene);
   terrain.addColor(settings, 'sportColor').name(t('sportCol')).onChange(rebuildScene);
@@ -4863,6 +5217,7 @@ function addGui() {
 
   const bld = globalGui.addFolder(t('bld'));
   bld.add(settings, 'buildingMode', ['Footprint only', 'Extruded', 'Extruded + roof']).name('Building mode').onChange(rebuildScene);
+  bld.add(settings, 'facadeTextureScale', 1.0, 8.0, 0.05).name('Facade scale').onChange(rebuildScene);
   bld.add(settings, 'floorHeight', 2.5, 5.0, 0.05).name(t('floorH')).onChange(rebuildScene);
   bld.add(settings, 'roofShape', ['Flat', 'Pyramid', 'Gable', 'Cone', 'Prism']).name(t('roofShape')).onChange(rebuildScene);
   bld.add(settings, 'roofHeight', 0.5, 6.0, 0.1).name(t('roofH')).onChange(rebuildScene);
@@ -5620,7 +5975,7 @@ if (autoOrbitBtn) {
 }
 
 const TOUR_SETTING_KEYS = [
-  'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture',
+  'showIslands', 'islandTransparency', 'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture',
   'showCars', 'showRoads', 'showSidewalks', 'showCrosswalks', 'showPedestrians',
   'roadColorMode', 'showWindPlumes', 'windDirectionDeg', 'windPlumeDistance',
   'showTerrainTexture', 'showTerrainSides'
@@ -5897,13 +6252,26 @@ function applyDockSetting(key, value, inputType) {
   } else {
     settings[key] = value;
   }
+  if (inputType === 'checkbox' && value === false) {
+    if (key === 'showBuildings') clearGroup(buildingGroup);
+    else if (key === 'showIslands') clearGroup(islandGroup);
+    else if (key === 'showParcels') clearGroup(parcelGroup);
+    else if (key === 'showHardscape') clearGroup(hardscapeGroup);
+    else if (key === 'showTrees') clearGroup(treeGroup);
+    else if (key === 'showFurniture') clearGroup(furnitureGroup);
+    else if (key === 'showRoads') clearGroup(roadGroup);
+    else if (key === 'showSidewalks') clearGroup(sidewalkGroup);
+    else if (key === 'showCrosswalks') clearGroup(crosswalkGroup);
+    else if (key === 'showCars') clearGroup(carGroup);
+    else if (key === 'showPedestrians') clearGroup(pedestrianGroup);
+  }
   if (key === 'assetTheme') {
     applyThemeDefaultsToSettings(true);
     terrainTexture = null;
     baseMapTexture = null;
     updateDockControls();
   }
-  if (key === 'terrainTextureBrightness' || key === 'terrainTextureContrast' || key === 'terrainAnalysisMode') {
+  if (key === 'showTerrainTexture' || key === 'terrainTextureBrightness' || key === 'terrainTextureContrast' || key === 'terrainAnalysisMode') {
     terrainTexture = null;
   }
   if (key === 'showXyzTiles' || key === 'xyzTileUrl') {

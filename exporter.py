@@ -25,8 +25,9 @@ from qgis.core import (
 
 MODE_VECTOR = "vector"
 MODE_RASTER_TEXTURE = "raster_texture"
-VECTOR_REQUIRED_INPUTS = ("dem",)
-VECTOR_RECOMMENDED_INPUTS = ("roi", "roads", "buildings", "blocks", "parcels")
+PLUGIN_VERSION_FALLBACK = "0.8.11"
+VECTOR_REQUIRED_INPUTS = ()
+VECTOR_RECOMMENDED_INPUTS = ("dem", "roi", "roads", "buildings", "blocks", "parcels")
 RASTER_TEXTURE_REQUIRED_INPUTS = ("dem", "roi", "plan_texture", "roads", "buildings")
 REQUIRED_INPUTS = VECTOR_REQUIRED_INPUTS
 OPTIONAL_INPUTS = ("trees", "hardscape", "sidewalks", "lights", "benches", "trashbins", "busstops")
@@ -119,6 +120,18 @@ ASSET_THEME_PRESETS = {
         "paving": ["WarmStone", "Permeable", "StoneA", "Concrete"],
     },
 }
+
+
+def plugin_version() -> str:
+    try:
+        metadata = Path(__file__).with_name("metadata.txt").read_text(encoding="utf-8-sig")
+    except Exception:
+        return PLUGIN_VERSION_FALLBACK
+    for line in metadata.splitlines():
+        key, sep, value = line.partition("=")
+        if sep and key.strip() == "version":
+            return value.strip() or PLUGIN_VERSION_FALLBACK
+    return PLUGIN_VERSION_FALLBACK
 
 VECTOR_TARGETS = {
     "roi": "roi.geojson",
@@ -342,9 +355,16 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
     written = []
     manifest_inputs = []
 
-    _export_dem(layer_map["dem"], dem_dir / "mydem.tif")
-    written.append(str(dem_dir / "mydem.tif"))
-    manifest_inputs.append(_layer_manifest("dem", layer_map["dem"], "dem/mydem.tif", False, required_inputs))
+    dem_path = dem_dir / "mydem.tif"
+    dem_layer = layer_map.get("dem")
+    if dem_layer is None:
+        if dem_path.exists():
+            dem_path.unlink()
+        manifest_inputs.append(_layer_manifest("dem", None, "dem/mydem.tif", True, required_inputs))
+    else:
+        _export_dem(dem_layer, dem_path)
+        written.append(str(dem_path))
+        manifest_inputs.append(_layer_manifest("dem", dem_layer, "dem/mydem.tif", False, required_inputs))
 
     terrain_texture = None
     base_map_texture = None
@@ -433,8 +453,9 @@ def write_manifest(
     manifest = {
         "schema": "planx-3d-city-manifest/v1",
         "plugin": "planx_3d_city",
-        "version": "0.7.3",
+        "version": plugin_version(),
         "mode": mode,
+        "flexibleInputs": mode == MODE_VECTOR,
         "exportedAt": datetime.now().astimezone().isoformat(timespec="seconds"),
         "project": {
             "title": project_title,
@@ -512,10 +533,18 @@ def _viewer_defaults_manifest(layer_map: dict) -> dict:
         "terrainSideDrop": 5.0,
         "terrainSideColor": "#d9fbf5",
         "demMeshQuality": 160,
+        "showOutsideRoiTerrain": True,
+        "terrainOutsideColor": "#edf2ef",
+        "terrainSmoothingPasses": 2,
+        "terrainSmoothingStrength": 0.45,
+        "terrainMaxSlope": 0.75,
+        "facadeTextureScale": float(layer_map.get("facade_texture_scale") or 4.85),
         "showXyzTiles": bool(layer_map.get("basemap")),
         "assetTheme": (layer_map.get("asset_theme") or ASSET_THEME_DEFAULT),
         "flattenIslands": bool(layer_map.get("flatten_islands", True)),
         "islandPlateauTransition": float(layer_map.get("island_plateau_transition") or 6.0),
+        "showIslands": True,
+        "islandTransparency": 0.0,
         "latitude": float(latitude) if latitude is not None else 39.0,
         "dayOfYear": int(layer_map.get("day_of_year") or 172),
     }

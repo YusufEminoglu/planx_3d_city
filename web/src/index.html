@@ -104,6 +104,10 @@
 
     <aside class="dock-panel hidden" id="layer-dock">
         <div class="dock-head"><span data-i18n="dockLayers">Layers</span><button class="dock-close" data-close="layer-dock">x</button></div>
+        <label><input type="checkbox" data-setting="showXyzTiles"> <span data-i18n="lblXyzTiles">QGIS basemap texture</span></label>
+        <label><input type="checkbox" data-setting="showTerrainTexture"> <span data-i18n="lblPlanTexture">Plan texture</span></label>
+        <label><input type="checkbox" data-setting="showOutsideRoiTerrain"> <span data-i18n="lblOutsideRoiTerrain">Outside ROI terrain</span></label>
+        <label><input type="checkbox" data-setting="showIslands"> <span data-i18n="lblBlocks">Blocks</span></label>
         <label><input type="checkbox" data-setting="showRoads"> <span data-i18n="lblRoads">Roads</span></label>
         <label><input type="checkbox" data-setting="showSidewalks"> <span data-i18n="lblSidewalks">Sidewalks</span></label>
         <label><input type="checkbox" data-setting="showCrosswalks"> <span data-i18n="lblCrosswalks">Crosswalks</span></label>
@@ -119,6 +123,7 @@
     <aside class="dock-panel hidden" id="scene-dock">
         <div class="dock-head"><span data-i18n="dockScene">Scene</span><button class="dock-close" data-close="scene-dock">x</button></div>
         <label><input type="checkbox" data-setting="showTerrainTexture"> <span data-i18n="lblPlanTexture">Plan texture</span></label>
+        <label><input type="checkbox" data-setting="showOutsideRoiTerrain"> <span data-i18n="lblOutsideRoiTerrain">Outside ROI terrain</span></label>
         <label><span data-i18n="lblTextureOpacity">Texture opacity</span> <input type="range" min="0.1" max="1" step="0.05" data-setting="terrainTextureOpacity"></label>
         <label><span data-i18n="lblTextureBrightness">Texture brightness</span> <input type="range" min="0.5" max="1.5" step="0.05" data-setting="terrainTextureBrightness"></label>
         <label><span data-i18n="lblTextureContrast">Texture contrast</span> <input type="range" min="0.5" max="1.8" step="0.05" data-setting="terrainTextureContrast"></label>
@@ -157,6 +162,7 @@
         <div class="dock-head"><span data-i18n="dockStyle">Style</span><button class="dock-close" data-close="style-dock">x</button></div>
         <label><span data-i18n="lblIslandColor">Block color</span> <input type="color" data-setting="islandColor"></label>
         <label><span data-i18n="lblIslandTexture">Block texture</span> <select data-setting="islandTexture"></select></label>
+        <label><span data-i18n="lblIslandTransparency">Block transparency</span> <input type="range" min="0" max="0.95" step="0.05" data-setting="islandTransparency"></label>
         <label><span data-i18n="lblParcelColor">Parcel boundary color</span> <input type="color" data-setting="parcelBoundaryColor"></label>
         <label><span data-i18n="lblParcelOpacity">Parcel boundary opacity</span> <input type="range" min="0.05" max="1" step="0.01" data-setting="parcelBoundaryOpacity"></label>
         <label><span data-i18n="lblRoadColor">Road color</span> <input type="color" data-setting="roadColor"></label>
@@ -169,6 +175,7 @@
         <label><span data-i18n="lblHardscapeHeight">Hardscape height</span> <input type="range" min="0" max="2" step="0.05" data-setting="hardscapeHeight"></label>
         <label><span data-i18n="lblAssetTheme">Asset theme</span> <select data-setting="assetTheme"></select></label>
         <label><span data-i18n="lblBuildingMode">Building mode</span> <select data-setting="buildingMode"></select></label>
+        <label><span data-i18n="lblFacadeTextureScale">Facade scale</span> <input type="range" min="1" max="8" step="0.05" data-setting="facadeTextureScale"></label>
         <label><span data-i18n="lblFloorHeight">Floor height</span> <input type="range" min="2.8" max="3.6" step="0.05" data-setting="floorHeight"></label>
         <label><span data-i18n="lblRoofShape">Roof shape</span> <select data-setting="roofShape"></select></label>
         <label><span data-i18n="lblRoofHeight">Roof height</span> <input type="range" min="0.5" max="6" step="0.1" data-setting="roofHeight"></label>
@@ -278,6 +285,6 @@
         <canvas id="compass-canvas" width="48" height="48"></canvas>
     </div>
 
-    <script type="module" src="app.js"></script>
+    <script type="module" src="app.js?v=0.8.11"></script>
 </body>
 </html>

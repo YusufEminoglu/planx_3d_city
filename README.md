@@ -13,6 +13,48 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 
 ## Latest Release Notes
 
+### 0.8.11
+
+- Adds an Outside ROI terrain toggle. Keep the wide DEM/blank context visible, or clip the terrain surface to the ROI for a clean model-only view.
+- Persists and exports the outside-ROI terrain preference.
+
+### 0.8.10
+
+- Makes Layers panel visibility authoritative, including a stale async rebuild guard so disabled buildings cannot reappear.
+- Adds Blocks visibility and Block transparency controls. Transparency defaults to `0` for fully visible blocks.
+- Makes QGIS basemap texture win when enabled, so DEM plus satellite/basemap review is a clean workflow.
+- Skips island plateau in hidden block-only review states so pure topography plus basemap stays pure.
+
+### 0.8.9
+
+- Sets the facade texture scale to a tuned 4.85x default and exposes a Building panel slider for final scene-level adjustment.
+- Migrates older browser settings so island plateau does not remain silently disabled after an upgrade.
+- Subdivides hardscape slabs before terrain drape, reducing paved-surface instability next to islands and plateau edges.
+- Supports polygon holes in islands, hardscape, and building geometry.
+
+### 0.8.8
+
+- Re-enables island plateau by default so block surfaces and the underlying DEM are aligned again unless disabled.
+- Separates hardscape, parcel, road, and vehicle elevation offsets to reduce z-fighting between islands, hardscape, and OSM roads.
+- Enlarges building facade texture scale by 8x for more readable windows and floor lines.
+- Reorders QGIS Data page actions and moves Save preset / Load preset to the right side.
+- Adds a bundled English HTML user guide available from the new 0 Guide panel.
+
+### 0.8.7
+
+- Stabilizes terrain placement by making all draped layers clamp to the final smoothed terrain mesh, not the raw DEM sampler.
+- Adds DEM smoothing controls for abrupt elevation jumps: smooth passes, smooth strength, and max slope clamp.
+- Allows Vector Plan Mode to run without a DEM by using a flat presentation plane.
+- Supports wide DEM context with ROI-only texture: outside the ROI the terrain stays visible in a blank colour, while the selected texture appears normally inside the ROI.
+
+### 0.8.6
+
+- Restores the released source tree into the development plugin folder and bumps the package metadata.
+- Makes Vector Plan Mode genuinely DEM-only capable: missing ROI, blocks, parcels, buildings and roads load as empty layers instead of stopping the viewer.
+- Derives terrain bounds from the DEM raster extent when no vector layer is present, so DEM-only exports open over the real georeferenced raster.
+- Keeps island plateau flattening off by default in both the publisher and viewer; it remains available as a presentation cleanup toggle.
+- Cache-busts the viewer module as `app.js?v=0.8.6` so updated cockpit code is loaded after plugin updates.
+
 ### 0.7.3
 
 - Makes English the primary default language in the QGIS publisher and browser cockpit.
@@ -128,7 +170,7 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 1. Open the DEM and any vector layers you have in one QGIS project (same metric CRS recommended).
 2. Start `PlanX 3D City`.
 3. In `1 Data` page, pick a publishing mode (Vector or Raster Plan Texture).
-4. Map your **DEM** layer (the only mandatory input). ROI, blocks, parcels, buildings, and roads are recommended but optional — the viewer skips empty layers gracefully.
+4. Map the layers you have. **DEM** is recommended for real topography, but Vector Plan Mode can also open on a flat presentation plane when no DEM is selected.
 5. Optionally map enrichment layers (trees, hardscape, sidewalks, lights, benches, trash bins, bus stops).
 6. `Auto-match layers` matches by common name hints (`dem`, `roi`, `yol`/`road`, `bina`/`building`, `ada`/`block`, etc.) in any language.
 7. If your roads layer has a pedestrian/vehicle access field, map it under the road access dropdown — cars will not spawn on pedestrian-only roads.
@@ -166,7 +208,7 @@ The manifest can also record `fieldMappings`, `analysisDefaults`, `viewerDefault
 
 ### Vector Plan Mode
 
-This is the original workflow. The 3D base is built from vector blocks, parcels, roads, buildings, DEM, ROI, and optional enrichment layers. Blocks and parcels are required.
+This is the original workflow. The 3D base is built from whichever vector layers, DEM, ROI, and optional enrichment layers you provide. DEM is recommended, but the viewer can fall back to a flat presentation plane; missing vector layers are skipped.
 
 ### Raster Plan Texture Mode
 

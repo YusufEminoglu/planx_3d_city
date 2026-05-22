@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PlanX 3D City Viewer User Guide</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #102027;
+      --muted: #52636d;
+      --line: #d6e0e6;
+      --brand: #0f766e;
+      --soft: #eef8f6;
+      --warn: #fff7ed;
+      --paper: #ffffff;
+    }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      line-height: 1.55;
+      color: var(--ink);
+      background: #f6f8fa;
+    }
+    header {
+      background: var(--brand);
+      color: white;
+      padding: 42px max(24px, calc((100vw - 1080px) / 2));
+    }
+    header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(30px, 4vw, 48px);
+      letter-spacing: 0;
+    }
+    header p {
+      max-width: 820px;
+      margin: 0;
+      font-size: 18px;
+      opacity: 0.94;
+    }
+    main {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 28px 24px 64px;
+      background: var(--paper);
+    }
+    nav {
+      border: 1px solid var(--line);
+      background: var(--soft);
+      padding: 18px 20px;
+      margin-bottom: 28px;
+    }
+    nav a {
+      display: inline-block;
+      margin: 4px 18px 4px 0;
+      color: #075e57;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    section {
+      padding: 22px 0;
+      border-top: 1px solid var(--line);
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 28px;
+    }
+    h3 {
+      margin: 22px 0 8px;
+      font-size: 20px;
+    }
+    p, li {
+      color: var(--muted);
+    }
+    code {
+      background: #edf2f7;
+      padding: 2px 5px;
+      border-radius: 4px;
+      color: #1f2937;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 18px;
+      font-size: 15px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 9px 10px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      background: #f1f5f9;
+      color: #1f2937;
+    }
+    .callout {
+      border-left: 4px solid var(--brand);
+      background: var(--soft);
+      padding: 12px 16px;
+      margin: 14px 0;
+    }
+    .warning {
+      border-left-color: #ea580c;
+      background: var(--warn);
+    }
+    .steps li {
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PlanX 3D City Viewer User Guide</h1>
+    <p>A practical guide for publishing QGIS planning layers into the embedded Three.js city viewer, including DEM-free scenes, wide DEM context, ROI texture clipping, OpenStreetMap imports, styling, and troubleshooting.</p>
+  </header>
+  <main>
+    <nav aria-label="Table of contents">
+      <a href="#quick-start">Quick Start</a>
+      <a href="#data">Data Layers</a>
+      <a href="#terrain">Terrain Strategy</a>
+      <a href="#osm">OpenStreetMap Import</a>
+      <a href="#styling">Styling</a>
+      <a href="#viewer">Viewer Controls</a>
+      <a href="#publishing">Publishing</a>
+      <a href="#troubleshooting">Troubleshooting</a>
+    </nav>
+
+    <section id="quick-start">
+      <h2>1. Quick Start</h2>
+      <ol class="steps">
+        <li>Open QGIS and load the layers you want to present. For Vector Plan Mode, every vector layer is optional; the viewer can also run with only a DEM or without a DEM.</li>
+        <li>Open <b>PlanX 3D City Publisher</b> from the QGIS plugin menu.</li>
+        <li>Use <b>Auto-match layers</b> first. The plugin searches common Turkish and English layer names such as roads, buildings, blocks, parcels, hardscape, sidewalks, trees, benches, and bus stops.</li>
+        <li>If you do not have project data yet, click <b>Try with sample data</b> or <b>Import from OpenStreetMap</b>.</li>
+        <li>Click <b>Generate quality report</b>. Required issues stop export; recommended issues are guidance only.</li>
+        <li>Click <b>Export and open 3D Viewer</b>. The plugin writes the web data package and launches the local browser viewer.</li>
+      </ol>
+      <div class="callout">
+        <b>Presentation rule of thumb:</b> use a DEM when terrain matters, use a wide DEM when nearby topography matters, and allow the flat fallback when the plan itself is the main subject.
+      </div>
+    </section>
+
+    <section id="data">
+      <h2>2. Data Layers</h2>
+      <p>The publisher supports two workflows. <b>Vector Plan Mode</b> builds the scene from GIS layers. <b>Raster Plan Texture Mode</b> uses a raster plan image as the main surface texture.</p>
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Geometry</th><th>Vector Plan Mode</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>DEM</td><td>Raster</td><td>Recommended, not required</td><td>If missing, the viewer creates a flat presentation plane.</td></tr>
+          <tr><td>ROI</td><td>Polygon</td><td>Optional</td><td>Used to clip the active texture. Wide DEM outside ROI remains visible with a blank color.</td></tr>
+          <tr><td>Blocks / Islands</td><td>Polygon</td><td>Optional</td><td>Blocks are draped or plateaued over the visible terrain. Use them for planning islands, parks, and large land-use polygons.</td></tr>
+          <tr><td>Parcels</td><td>Polygon</td><td>Optional</td><td>Drawn as boundary lines above blocks.</td></tr>
+          <tr><td>Buildings</td><td>Polygon</td><td>Optional</td><td>Extruded by floor count or height fields. Facade textures are assigned by theme or feature attribute.</td></tr>
+          <tr><td>Roads</td><td>Line</td><td>Optional</td><td>Road widths are estimated or read from a mapped width field. Vehicle access can be controlled with road class values.</td></tr>
+          <tr><td>Hardscape</td><td>Polygon</td><td>Optional</td><td>Plazas, paved courtyards, squares, pedestrian surfaces, and other firm ground surfaces.</td></tr>
+          <tr><td>Sidewalks</td><td>Polygon</td><td>Optional</td><td>If absent, sidewalks can be generated along roads in the viewer.</td></tr>
+          <tr><td>Trees / Lights / Benches / Bins / Bus stops</td><td>Point</td><td>Optional</td><td>Point assets are placed on the final visible terrain surface.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Useful building fields</h3>
+      <p><code>katadedi</code> controls floor count. Height can also be read from common height fields. Optional fields such as population, dwellings, total floor area, vehicle count, roof type, roof color, facade texture, and planning function improve dashboards and thematic styling.</p>
+
+      <h3>Coordinate systems</h3>
+      <p>Projected CRS data in metres gives the best result. The plugin can reproject OpenStreetMap imports to a local UTM CRS. Avoid mixing layers with unknown or incorrect CRS definitions.</p>
+    </section>
+
+    <section id="terrain">
+      <h2>3. Terrain Strategy</h2>
+      <h3>DEM, flat fallback, and wide terrain</h3>
+      <p>If a DEM is present, the viewer builds a mesh from the raster extent. If no DEM is exported, the viewer creates a dummy flat terrain plane so available roads, buildings, blocks, trees, and furniture still render.</p>
+      <p>For context presentations, export a DEM that is wider than the plan area. Add an ROI polygon for the actual project boundary. With Outside ROI terrain enabled, the terrain remains visible outside the ROI, but the active pavement, basemap, or plan texture is shown only inside the ROI and the outside area uses a clean blank terrain color. Disable Outside ROI terrain when you want the terrain surface clipped to the ROI for a pure model-only presentation.</p>
+
+      <h3>DEM smoothing</h3>
+      <p>Real DEMs can contain abrupt pixel jumps, nodata halos, clipped export edges, or locally noisy elevation values. The viewer runs boundary cleanup, median repair, and optional smoothing before other layers are placed. The Style or Terrain panel exposes:</p>
+      <ul>
+        <li><b>Smooth passes</b>: number of repeated smoothing passes.</li>
+        <li><b>Smooth strength</b>: how strongly each pass moves a vertex toward the local robust surface.</li>
+        <li><b>Max slope clamp</b>: limits extreme height jumps between neighbouring terrain vertices.</li>
+        <li><b>Flatten DEM under blocks</b>: creates a stable plateau under each block or island polygon.</li>
+        <li><b>Plateau edge ramp</b>: blends the plateau back to surrounding terrain over a configurable distance.</li>
+      </ul>
+
+      <div class="callout warning">
+        <b>When terrain looks unstable:</b> keep island plateau enabled, increase smooth passes to 2 or 3, keep smooth strength around 0.35 to 0.55, and use a 6 to 12 metre plateau edge ramp.
+      </div>
+    </section>
+
+    <section id="osm">
+      <h2>4. Import from OpenStreetMap</h2>
+      <p>The <b>Import from OpenStreetMap</b> button fetches a bounded package of roads, buildings, parks or blocks, and point assets where available. Imported layers are added to QGIS and can be exported like normal project layers.</p>
+      <ol class="steps">
+        <li>Use a moderate bounding box first. Very large OSM requests can be slow or incomplete.</li>
+        <li>Run Auto-match after import so the new layers fill the Data page automatically.</li>
+        <li>If no DEM is available, export anyway. The viewer will use the flat plane fallback.</li>
+        <li>Inspect roads after export. Roads should sit above the visible terrain surface; if imported geometry is far outside the current DEM, either export a wider DEM or rely on the flat fallback.</li>
+      </ol>
+    </section>
+
+    <section id="styling">
+      <h2>5. Styling and Presets</h2>
+      <p>The Style page controls the asset theme, terrain behavior, island and pavement materials, and the procedural city palette. Use <b>Save preset</b> to store the current layer mappings and style defaults as a reusable <code>.planx</code> JSON file. Use <b>Load preset</b> on another project to restore the same setup.</p>
+
+      <h3>Facade textures</h3>
+      <p>Facade materials are generated procedurally or loaded from bundled PNG assets depending on the selected theme. Theme facades include floor lines, window grids, ground-floor variation, and per-theme wall patterns. Building facades use a presentation-scale UV repeat so windows remain readable from normal review-camera distance. Use the viewer's Facade scale control when a project needs denser or larger window modules.</p>
+
+      <h3>Hardscape, parks, and streets</h3>
+      <p>Hardscape polygons are rendered as subdivided thin slabs above islands and below roads. Roads, sidewalks, crosswalks, trees, furniture, and buildings clamp to the final terrain surface cache, which keeps layer placement consistent after DEM smoothing and island plateau passes.</p>
+    </section>
+
+    <section id="viewer">
+      <h2>6. Web Viewer Controls</h2>
+      <p>The viewer opens as a browser-based city cockpit. Use the left and right docks to tune display, theme, terrain, analysis, mobility, weather, camera, and narrative tools.</p>
+      <ul>
+        <li><b>Scene and camera</b>: orbit, fly-to selected building, walk mode, field of view, time of day, auto orbit, and camera bookmarks.</li>
+        <li><b>Terrain</b>: texture source, ROI texture clipping, outside ROI color, terrain sides, smoothing, island plateau, topographic tint, and slope tint.</li>
+        <li><b>Layers</b>: basemap texture, plan texture, outside-ROI terrain, blocks, buildings, roads, sidewalks, parks, parcels, hardscape, trees, furniture, cars, pedestrians, and ROI outline.</li>
+        <li><b>Analysis</b>: building metrics, shadow heatmap, urban comfort, wind plume, minimap, and function filters.</li>
+        <li><b>Narrative Studio</b>: save keyframes, build presentation tours, and export portable viewer packages.</li>
+      </ul>
+    </section>
+
+    <section id="publishing">
+      <h2>7. Publishing and Portable Handoff</h2>
+      <p>Export writes a local web data package under the plugin's <code>web/data</code> folder and opens the viewer through a local HTTP server. Portable export copies the viewer, vendor libraries, and latest data into a standalone folder. Portable ZIP creates a single handoff archive for another computer.</p>
+      <p>After each publish, check the Publish page for the viewer URL, file count, empty optional layers, and portable export commands.</p>
+    </section>
+
+    <section id="troubleshooting">
+      <h2>8. Troubleshooting</h2>
+      <table>
+        <thead>
+          <tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Viewer opens but terrain is flat</td><td>No DEM was exported, or the DEM failed to load</td><td>This is allowed in Vector Plan Mode. Select a DEM if real topography is needed.</td></tr>
+          <tr><td>Blocks or hardscape shimmer</td><td>Layer offsets are too close to terrain, a previous scene rebuild is stale, or the DEM has abrupt jumps</td><td>Keep island plateau enabled, increase smoothing slightly, and avoid very noisy DEM exports. Use the Layers panel to hide blocks or buildings when reviewing DEM plus basemap only.</td></tr>
+          <tr><td>Roads appear low after OSM import</td><td>OSM geometry is outside the DEM or the scene is using fallback terrain</td><td>Re-export with wider DEM context, or use the flat fallback; roads are placed on the final visible terrain cache.</td></tr>
+          <tr><td>Texture appears only inside ROI</td><td>ROI texture clipping is active</td><td>This is intentional for wide DEM context. Change terrain outside color if needed.</td></tr>
+          <tr><td>Quality report marks layers missing</td><td>Recommended layers are absent</td><td>Vector Plan Mode can still export. Missing optional layers are written as empty GeoJSON and skipped by the viewer.</td></tr>
+          <tr><td>Buildings have no height</td><td>No floor count or height field is mapped</td><td>Map <code>katadedi</code> or a height field, or let the viewer use fallback height rules.</td></tr>
+          <tr><td>Browser shows an older viewer</td><td>Browser cache kept an old module</td><td>Hard refresh the browser or re-open from QGIS after publishing.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

@@ -288,7 +288,7 @@ class PlanX3DCityDialog(QDialog):
         shell = QHBoxLayout(self)
         self.nav = QListWidget()
         self.nav.setFixedWidth(170)
-        for label in ("1 Data", "2 Check", "3 Style", "4 Publish"):
+        for label in ("0 Guide", "1 Data", "2 Check", "3 Style", "4 Publish"):
             QListWidgetItem(label, self.nav)
         self.nav.setCurrentRow(0)
         shell.addWidget(self.nav)
@@ -308,6 +308,7 @@ class PlanX3DCityDialog(QDialog):
         content.addLayout(hero)
 
         raw_pages = [
+            self._make_guide_page(),
             self._make_data_page(),
             self._make_check_page(),
             self._make_style_page(),
@@ -318,7 +319,7 @@ class PlanX3DCityDialog(QDialog):
             page.setVisible(i == 0)
             content.addWidget(page)
 
-        self.status_label = QLabel("Ready. Complete the data selection, then generate the quality report before publishing.")
+        self.status_label = QLabel("Ready. Open the guide for the full workflow, or start from Data to publish a scene.")
         self.status_label.setObjectName("statusLabel")
         self.status_label.setWordWrap(True)
         content.addWidget(self.status_label)
@@ -338,11 +339,49 @@ class PlanX3DCityDialog(QDialog):
         scroll.setHorizontalScrollBarPolicy(1)
         return scroll
 
+    def _guide_path(self) -> str:
+        return os.path.join(os.path.dirname(__file__), "docs", "user_guide.html")
+
+    def _open_html_guide(self) -> None:
+        path = self._guide_path()
+        if not os.path.exists(path):
+            self.set_status(f"Guide file was not found: {path}", error=True)
+            return
+        QDesktopServices.openUrl(QUrl.fromLocalFile(path))
+        self.set_status("Opened the PlanX 3D City HTML user guide in your browser.")
+
+    def _make_guide_page(self) -> QWidget:
+        page = QWidget()
+        root = QVBoxLayout(page)
+
+        guide_group = QGroupBox("Guide / Documentation")
+        guide_layout = QVBoxLayout(guide_group)
+        summary = QTextBrowser()
+        summary.setOpenExternalLinks(True)
+        summary.setHtml(
+            "<h2>PlanX 3D City Viewer Guide</h2>"
+            "<p>This plugin can publish a complete vector city model, a DEM-only terrain scene, "
+            "or a DEM-less flat presentation plane. The full HTML guide explains layer preparation, "
+            "OpenStreetMap import, terrain and ROI texture behavior, styling, publishing, portable export, "
+            "and troubleshooting.</p>"
+            "<p><b>Recommended reading order:</b> quick start, data contracts, terrain strategy, "
+            "style controls, publish workflow, then troubleshooting.</p>"
+        )
+        summary.setMinimumHeight(220)
+        self.open_guide_button = QPushButton("Open full HTML guide")
+        self.open_guide_button.setObjectName("primaryButton")
+        self.open_guide_button.clicked.connect(self._open_html_guide)
+        guide_layout.addWidget(summary)
+        guide_layout.addWidget(self.open_guide_button)
+        root.addWidget(guide_group)
+        root.addStretch(1)
+        return page
+
     def _make_data_page(self) -> QWidget:
         page = QWidget()
         root = QVBoxLayout(page)
 
-        required_group = QGroupBox("Required data layers / Zorunlu veri katmanlari")
+        required_group = QGroupBox("Data layers / Veri katmanlari")
         required_grid = QGridLayout(required_group)
         mode_label = QLabel(
             "<b>Publish mode</b><br><span style='color:#64748b'>Vector plan workflow or raster plan texture workflow. / "
@@ -412,13 +451,14 @@ class PlanX3DCityDialog(QDialog):
         self.check_button = QPushButton("Generate quality report")
         self.export_button = QPushButton("Export and open 3D Viewer")
         self.export_button.setObjectName("primaryButton")
+        actions.addWidget(self.auto_match_button)
         actions.addWidget(self.sample_button)
         actions.addWidget(self.osm_button)
-        actions.addWidget(self.save_preset_button)
-        actions.addWidget(self.load_preset_button)
-        actions.addWidget(self.auto_match_button)
         actions.addWidget(self.check_button)
         actions.addWidget(self.export_button)
+        actions.addStretch(1)
+        actions.addWidget(self.save_preset_button)
+        actions.addWidget(self.load_preset_button)
         root.addLayout(actions)
         root.addStretch(1)
 
@@ -995,7 +1035,7 @@ class PlanX3DCityDialog(QDialog):
             missing_recommended = [LABELS[k] for k in recommended_keys if layer_map.get(k) is None]
             if missing_recommended:
                 warnings.append("Recommended layers missing (viewer will skip them): " + ", ".join(missing_recommended))
-            warnings.append("Vector Plan Mode now requires only the DEM. ROI, blocks, parcels, buildings, and roads are recommended but optional; the viewer skips empty layers gracefully.")
+            warnings.append("Vector Plan Mode has no mandatory layer. DEM is recommended for real topography; without it, the viewer uses a flat presentation plane.")
         if mode == MODE_RASTER_TEXTURE:
             warnings.append("Raster Plan Texture mode expects the plan GeoTIFF, DEM and ROI to use the same metric CRS and clipped study area.")
         road_access_field = layer_map.get("road_access_field")
@@ -1303,14 +1343,14 @@ class PlanXWelcomeDialog(QDialog):
             "animation, walk mode, narrative keyframes, and a portable export option for handoff.</p>"
             "<p><b>Quick start (3 steps)</b></p>"
             "<ol>"
-            "<li><b>Data</b> — Open <i>1 Data</i> page and select your DEM. Other layers are optional; map them "
+            "<li><b>Data</b> — Open <i>1 Data</i> page and select the layers you have. DEM is recommended for real topography; without it the viewer uses a flat plane. Map other layers "
             "if available. Click <i>Try with sample data</i> for an instant demo dataset.</li>"
             "<li><b>Check</b> — <i>2 Kontrol</i> verifies geometry, CRS and recommended fields without blocking export.</li>"
             "<li><b>Publish</b> — <i>Export and open 3D Viewer</i> writes the data contract and opens the browser cockpit.</li>"
             "</ol>"
             "<p><b>Tips for new users</b></p>"
             "<ul>"
-            "<li>Vector mode now needs only the DEM — start with what you have.</li>"
+            "<li>Vector mode can start from any available layer set; DEM-less exports open on a flat presentation plane.</li>"
             "<li>Use Style → <i>Terrain shaping</i> to flatten DEM under blocks for clean presentations.</li>"
             "<li>4 Yayin → <i>Portable ZIP</i> packages the viewer for handoff to students or jury members.</li>"
             "</ul>"
