@@ -98,6 +98,10 @@ Object.assign(i18n.TR, {
   timeDawn: 'Şafak 6', timeNoon: 'Öğle 12', timeSunset: 'Günbatımı 19', timeNight: 'Gece 22',
   lblThemeMode: 'Tema', themeAuto: 'Otomatik (sistem)', themeLight: 'Aydınlık', themeDark: 'Karanlık',
   lblTerrainTileMeters: 'Doku karo boyutu (m)',
+  lblBookmarks: 'Kamera yer imleri', bookmarkSave: 'Bu görünümü kaydet',
+  bookmarkEmpty: 'Henüz kaydedilmiş görünüm yok.',
+  bookmarkPrompt: 'Görünüm için bir isim verin:',
+  bookmarkGotoTitle: 'Bu görünüme uç', bookmarkDeleteTitle: 'Yer imini sil',
   lblAutoTime: 'Gunes animasyonu', lblAutoTimeSpeed: 'Animasyon hizi',
   lblWeather: 'Hava', lblSSAO: 'Golge kalitesi', lblBloom: 'Bloom/parlama',
   lblIslandColor: 'Ada rengi', lblIslandTexture: 'Ada dokusu',
@@ -140,6 +144,10 @@ Object.assign(i18n.EN, {
   timeDawn: 'Dawn 6', timeNoon: 'Noon 12', timeSunset: 'Sunset 19', timeNight: 'Night 22',
   lblThemeMode: 'Theme', themeAuto: 'Auto (system)', themeLight: 'Light', themeDark: 'Dark',
   lblTerrainTileMeters: 'Texture tile size (m)',
+  lblBookmarks: 'Camera bookmarks', bookmarkSave: 'Save current view',
+  bookmarkEmpty: 'No bookmarks yet.',
+  bookmarkPrompt: 'Name this view:',
+  bookmarkGotoTitle: 'Fly to this view', bookmarkDeleteTitle: 'Delete bookmark',
   lblAutoTime: 'Solar animation', lblAutoTimeSpeed: 'Animation speed',
   lblWeather: 'Weather', lblSSAO: 'Shadow quality', lblBloom: 'Bloom/glow',
   lblIslandColor: 'Block color', lblIslandTexture: 'Block texture',
@@ -453,6 +461,96 @@ let _flyOrigin = null;
 let _flyTarget = null;
 let _flyControlsTarget = null;
 let _flyT = 1.0;
+
+const BOOKMARK_STORAGE_KEY = 'planx_3d_city_camera_bookmarks';
+let cameraBookmarks = [];
+
+function loadCameraBookmarks() {
+  try {
+    const raw = localStorage.getItem(BOOKMARK_STORAGE_KEY);
+    cameraBookmarks = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(cameraBookmarks)) cameraBookmarks = [];
+  } catch (_err) {
+    cameraBookmarks = [];
+  }
+}
+
+function saveCameraBookmarks() {
+  try {
+    localStorage.setItem(BOOKMARK_STORAGE_KEY, JSON.stringify(cameraBookmarks));
+  } catch (_err) {
+    /* localStorage quota etc. — fail silently */
+  }
+}
+
+function addCameraBookmark(name) {
+  const label = (name || '').trim() || `View ${cameraBookmarks.length + 1}`;
+  cameraBookmarks.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    name: label,
+    position: [camera.position.x, camera.position.y, camera.position.z],
+    target: [controls.target.x, controls.target.y, controls.target.z],
+    fov: camera.fov,
+    timeOfDay: settings.timeOfDay,
+    createdAt: Date.now()
+  });
+  saveCameraBookmarks();
+  renderCameraBookmarks();
+}
+
+function removeCameraBookmark(id) {
+  cameraBookmarks = cameraBookmarks.filter((b) => b.id !== id);
+  saveCameraBookmarks();
+  renderCameraBookmarks();
+}
+
+function gotoCameraBookmark(id) {
+  const bm = cameraBookmarks.find((b) => b.id === id);
+  if (!bm) return;
+  _flyOrigin = camera.position.clone();
+  _flyTarget = new THREE.Vector3(bm.position[0], bm.position[1], bm.position[2]);
+  _flyControlsTarget = new THREE.Vector3(bm.target[0], bm.target[1], bm.target[2]);
+  _flyT = 0;
+  if (Number.isFinite(bm.fov) && bm.fov > 0) {
+    camera.fov = bm.fov;
+    camera.updateProjectionMatrix();
+    settings.fov = bm.fov;
+  }
+  if (Number.isFinite(bm.timeOfDay)) {
+    settings.timeOfDay = bm.timeOfDay;
+    updateTimeOfDay();
+  }
+}
+
+function renderCameraBookmarks() {
+  const host = document.getElementById('bookmark-list');
+  if (!host) return;
+  host.innerHTML = '';
+  if (!cameraBookmarks.length) {
+    const empty = document.createElement('div');
+    empty.className = 'bookmark-empty';
+    empty.textContent = t('bookmarkEmpty');
+    host.appendChild(empty);
+    return;
+  }
+  cameraBookmarks.forEach((bm) => {
+    const row = document.createElement('div');
+    row.className = 'bookmark-row';
+    const gotoBtn = document.createElement('button');
+    gotoBtn.className = 'bookmark-goto';
+    gotoBtn.textContent = bm.name;
+    gotoBtn.title = t('bookmarkGotoTitle');
+    gotoBtn.addEventListener('click', () => gotoCameraBookmark(bm.id));
+    const delBtn = document.createElement('button');
+    delBtn.className = 'bookmark-del';
+    delBtn.textContent = '×';
+    delBtn.title = t('bookmarkDeleteTitle');
+    delBtn.addEventListener('click', () => removeCameraBookmark(bm.id));
+    row.appendChild(gotoBtn);
+    row.appendChild(delBtn);
+    host.appendChild(row);
+  });
+}
 
 // --- Minimap ---
 let _mmBg = null;           // pre-rendered static canvas
@@ -2713,59 +2811,83 @@ function indexAndMergeNonIndexed(geometry, tolerance = 0.01) {
 }
 
 function subdivideShapeGeometry(geometry, maxEdgeLen) {
+  // Conforming 4-1 (Loop-style) subdivision: every triangle is split into 4
+  // children at the midpoints of ALL three edges. Because two neighbouring
+  // triangles share an edge, both compute the exact same midpoint, so the
+  // resulting mesh is watertight (no T-vertices, no gaps). Earlier code
+  // bisected only the longest edge per triangle, which produced T-vertex
+  // cracks visible after DEM drape.
   let geo = geometry.index ? geometry.toNonIndexed() : geometry;
-  const maxIterations = 5;
+  const maxIterations = 6;
   for (let iter = 0; iter < maxIterations; iter++) {
     const positions = geo.attributes.position.array;
     const uvs = geo.attributes.uv ? geo.attributes.uv.array : null;
-    const newPos = [];
-    const newUv = uvs ? [] : null;
-    let didSplit = false;
     const triCount = positions.length / 9;
+
+    // Decide whether further subdivision is needed (longest edge > target).
+    let maxEdge = 0;
+    for (let i = 0; i < triCount; i++) {
+      const ax = positions[i * 9],     az = positions[i * 9 + 2];
+      const bx = positions[i * 9 + 3], bz = positions[i * 9 + 5];
+      const cx = positions[i * 9 + 6], cz = positions[i * 9 + 8];
+      const d1 = Math.hypot(ax - bx, az - bz);
+      const d2 = Math.hypot(bx - cx, bz - cz);
+      const d3 = Math.hypot(cx - ax, cz - az);
+      if (d1 > maxEdge) maxEdge = d1;
+      if (d2 > maxEdge) maxEdge = d2;
+      if (d3 > maxEdge) maxEdge = d3;
+    }
+    if (maxEdge <= maxEdgeLen) break;
+
+    const newPos = new Array(triCount * 4 * 9);
+    const newUv = uvs ? new Array(triCount * 4 * 6) : null;
+    let pi = 0;
+    let ui = 0;
     for (let i = 0; i < triCount; i++) {
       const ax = positions[i * 9],     ay = positions[i * 9 + 1], az = positions[i * 9 + 2];
       const bx = positions[i * 9 + 3], by = positions[i * 9 + 4], bz = positions[i * 9 + 5];
       const cx = positions[i * 9 + 6], cy = positions[i * 9 + 7], cz = positions[i * 9 + 8];
-      const dAB = Math.hypot(ax - bx, ay - by, az - bz);
-      const dBC = Math.hypot(bx - cx, by - cy, bz - cz);
-      const dCA = Math.hypot(cx - ax, cy - ay, cz - az);
-      const maxD = Math.max(dAB, dBC, dCA);
-      if (maxD <= maxEdgeLen) {
-        newPos.push(ax, ay, az, bx, by, bz, cx, cy, cz);
-        if (uvs) {
-          newUv.push(
-            uvs[i * 6],     uvs[i * 6 + 1],
-            uvs[i * 6 + 2], uvs[i * 6 + 3],
-            uvs[i * 6 + 4], uvs[i * 6 + 5]
-          );
-        }
-        continue;
-      }
-      didSplit = true;
-      let p1, p2, p3, u1, u2, u3;
-      if (maxD === dAB) {
-        p1 = [ax, ay, az]; p2 = [bx, by, bz]; p3 = [cx, cy, cz];
-        if (uvs) { u1 = [uvs[i * 6], uvs[i * 6 + 1]]; u2 = [uvs[i * 6 + 2], uvs[i * 6 + 3]]; u3 = [uvs[i * 6 + 4], uvs[i * 6 + 5]]; }
-      } else if (maxD === dBC) {
-        p1 = [bx, by, bz]; p2 = [cx, cy, cz]; p3 = [ax, ay, az];
-        if (uvs) { u1 = [uvs[i * 6 + 2], uvs[i * 6 + 3]]; u2 = [uvs[i * 6 + 4], uvs[i * 6 + 5]]; u3 = [uvs[i * 6], uvs[i * 6 + 1]]; }
-      } else {
-        p1 = [cx, cy, cz]; p2 = [ax, ay, az]; p3 = [bx, by, bz];
-        if (uvs) { u1 = [uvs[i * 6 + 4], uvs[i * 6 + 5]]; u2 = [uvs[i * 6], uvs[i * 6 + 1]]; u3 = [uvs[i * 6 + 2], uvs[i * 6 + 3]]; }
-      }
-      const mx = (p1[0] + p2[0]) / 2;
-      const my = (p1[1] + p2[1]) / 2;
-      const mz = (p1[2] + p2[2]) / 2;
-      newPos.push(p1[0], p1[1], p1[2], mx, my, mz, p3[0], p3[1], p3[2]);
-      newPos.push(mx, my, mz, p2[0], p2[1], p2[2], p3[0], p3[1], p3[2]);
+      const mabx = (ax + bx) / 2, maby = (ay + by) / 2, mabz = (az + bz) / 2;
+      const mbcx = (bx + cx) / 2, mbcy = (by + cy) / 2, mbcz = (bz + cz) / 2;
+      const mcax = (cx + ax) / 2, mcay = (cy + ay) / 2, mcaz = (cz + az) / 2;
+      // 4 triangles: corner_a, corner_b, corner_c, central
+      // [A, Mab, Mca]
+      newPos[pi++] = ax;   newPos[pi++] = ay;   newPos[pi++] = az;
+      newPos[pi++] = mabx; newPos[pi++] = maby; newPos[pi++] = mabz;
+      newPos[pi++] = mcax; newPos[pi++] = mcay; newPos[pi++] = mcaz;
+      // [Mab, B, Mbc]
+      newPos[pi++] = mabx; newPos[pi++] = maby; newPos[pi++] = mabz;
+      newPos[pi++] = bx;   newPos[pi++] = by;   newPos[pi++] = bz;
+      newPos[pi++] = mbcx; newPos[pi++] = mbcy; newPos[pi++] = mbcz;
+      // [Mca, Mbc, C]
+      newPos[pi++] = mcax; newPos[pi++] = mcay; newPos[pi++] = mcaz;
+      newPos[pi++] = mbcx; newPos[pi++] = mbcy; newPos[pi++] = mbcz;
+      newPos[pi++] = cx;   newPos[pi++] = cy;   newPos[pi++] = cz;
+      // [Mab, Mbc, Mca] central
+      newPos[pi++] = mabx; newPos[pi++] = maby; newPos[pi++] = mabz;
+      newPos[pi++] = mbcx; newPos[pi++] = mbcy; newPos[pi++] = mbcz;
+      newPos[pi++] = mcax; newPos[pi++] = mcay; newPos[pi++] = mcaz;
       if (uvs) {
-        const mu = (u1[0] + u2[0]) / 2;
-        const mv = (u1[1] + u2[1]) / 2;
-        newUv.push(u1[0], u1[1], mu, mv, u3[0], u3[1]);
-        newUv.push(mu, mv, u2[0], u2[1], u3[0], u3[1]);
+        const au = uvs[i * 6],     av = uvs[i * 6 + 1];
+        const bu = uvs[i * 6 + 2], bv = uvs[i * 6 + 3];
+        const cu = uvs[i * 6 + 4], cv = uvs[i * 6 + 5];
+        const mabu = (au + bu) / 2, mabv = (av + bv) / 2;
+        const mbcu = (bu + cu) / 2, mbcv = (bv + cv) / 2;
+        const mcau = (cu + au) / 2, mcav = (cv + av) / 2;
+        newUv[ui++] = au;   newUv[ui++] = av;
+        newUv[ui++] = mabu; newUv[ui++] = mabv;
+        newUv[ui++] = mcau; newUv[ui++] = mcav;
+        newUv[ui++] = mabu; newUv[ui++] = mabv;
+        newUv[ui++] = bu;   newUv[ui++] = bv;
+        newUv[ui++] = mbcu; newUv[ui++] = mbcv;
+        newUv[ui++] = mcau; newUv[ui++] = mcav;
+        newUv[ui++] = mbcu; newUv[ui++] = mbcv;
+        newUv[ui++] = cu;   newUv[ui++] = cv;
+        newUv[ui++] = mabu; newUv[ui++] = mabv;
+        newUv[ui++] = mbcu; newUv[ui++] = mbcv;
+        newUv[ui++] = mcau; newUv[ui++] = mcav;
       }
     }
-    if (!didSplit) break;
     const next = new THREE.BufferGeometry();
     next.setAttribute('position', new THREE.Float32BufferAttribute(newPos, 3));
     if (newUv) next.setAttribute('uv', new THREE.Float32BufferAttribute(newUv, 2));
@@ -2851,11 +2973,12 @@ async function buildIslandLayer(adalar) {
       if (plateauY != null) {
         g = rawGeo;
       } else {
-        // Finer subdivision (4 m) so the drape follows DEM curvature smoothly,
-        // then merge coincident vertices so computeVertexNormals can do real
-        // smooth shading instead of producing a faceted surface.
-        const subdivided = subdivideShapeGeometry(rawGeo, 4);
-        g = indexAndMergeNonIndexed(subdivided, 0.05);
+        // Conforming 4-1 subdivision down to ~6 m edges, then merge coincident
+        // vertices so computeVertexNormals can produce smooth shading across
+        // shared edges. Output is watertight (every shared edge agrees on its
+        // midpoint), so DEM drape lands on a continuous surface.
+        const subdivided = subdivideShapeGeometry(rawGeo, 6);
+        g = indexAndMergeNonIndexed(subdivided, 0.1);
       }
       const pos = g.attributes.position;
       if (plateauY != null) {
@@ -5887,6 +6010,15 @@ function initDockUi() {
     applyTheme(themeSelect.value);
     themeSelect.addEventListener('change', () => applyTheme(themeSelect.value));
   }
+
+  // Camera bookmarks
+  loadCameraBookmarks();
+  renderCameraBookmarks();
+  document.getElementById('bookmark-save')?.addEventListener('click', () => {
+    const name = window.prompt(t('bookmarkPrompt'), `View ${cameraBookmarks.length + 1}`);
+    if (name === null) return;
+    addCameraBookmark(name);
+  });
 }
 
 initDockUi();

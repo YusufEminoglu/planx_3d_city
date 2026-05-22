@@ -3,6 +3,12 @@
 All notable changes to **PlanX 3D City Viewer** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 
+## [0.8.5] - 2026-05-22
+
+Conforming island subdivision and camera bookmarks.
+- **Conforming 4-1 subdivision (Loop-style).** Earlier `subdivideShapeGeometry` bisected only the longest edge per triangle. Two neighbouring triangles often disagreed on the midpoint, leaving T-vertex cracks that DEM drape made visible as a broken-up / faceted surface — the issue the user kept reporting. The new pass splits every triangle into 4 children at all three edge midpoints, so neighbours always agree on the shared midpoint. Combined with `indexAndMergeNonIndexed`, the drape lands on a watertight, smooth-shaded mesh again.
+- **Camera bookmarks.** New section under the Scene dock: `Save current view` button records the camera position, target, FOV and time-of-day under a user-supplied name; the saved views list lets you jump to any of them via the existing fly-to animation, and × removes one. Bookmarks are persisted in browser `localStorage` (`planx_3d_city_camera_bookmarks`).
+
 ## [0.8.4] - 2026-05-22
 
 Smooth island drape and recipe-aware facade UV scale.
