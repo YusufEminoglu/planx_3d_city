@@ -3,6 +3,11 @@
 All notable changes to **PlanX 3D City Viewer** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 
+## [0.8.3] - 2026-05-22
+
+User-controlled terrain texture tile size.
+- Renamed `terrainTextureScale` to `terrainTileMeters` and exposed it as a slider in the Style dock (5-300 m per tile, default 60 m). The user can now dial in the right ground-texture density for their site instead of relying on a hard-coded constant. Persisted in browser local storage.
+
 ## [0.8.2] - 2026-05-22
 
 Cumulative shadow heatmap, project presets, quick time + theme.

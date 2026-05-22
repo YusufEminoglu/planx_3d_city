@@ -97,6 +97,7 @@ Object.assign(i18n.TR, {
   shadowCompute: 'Gunluk golge haritasi hesapla', shadowClear: 'Haritayi temizle',
   timeDawn: 'Şafak 6', timeNoon: 'Öğle 12', timeSunset: 'Günbatımı 19', timeNight: 'Gece 22',
   lblThemeMode: 'Tema', themeAuto: 'Otomatik (sistem)', themeLight: 'Aydınlık', themeDark: 'Karanlık',
+  lblTerrainTileMeters: 'Doku karo boyutu (m)',
   lblAutoTime: 'Gunes animasyonu', lblAutoTimeSpeed: 'Animasyon hizi',
   lblWeather: 'Hava', lblSSAO: 'Golge kalitesi', lblBloom: 'Bloom/parlama',
   lblIslandColor: 'Ada rengi', lblIslandTexture: 'Ada dokusu',
@@ -138,6 +139,7 @@ Object.assign(i18n.EN, {
   shadowCompute: 'Compute shadow heatmap', shadowClear: 'Clear heatmap',
   timeDawn: 'Dawn 6', timeNoon: 'Noon 12', timeSunset: 'Sunset 19', timeNight: 'Night 22',
   lblThemeMode: 'Theme', themeAuto: 'Auto (system)', themeLight: 'Light', themeDark: 'Dark',
+  lblTerrainTileMeters: 'Texture tile size (m)',
   lblAutoTime: 'Solar animation', lblAutoTimeSpeed: 'Animation speed',
   lblWeather: 'Weather', lblSSAO: 'Shadow quality', lblBloom: 'Bloom/glow',
   lblIslandColor: 'Block color', lblIslandTexture: 'Block texture',
@@ -1265,7 +1267,8 @@ const settings = {
   parkColor: '#5e9e3e',
   parkTexture: 'ParkGreen',
   sportColor: '#4a8c30',
-  furnitureGroundOffset: 0.02
+  furnitureGroundOffset: 0.02,
+  terrainTileMeters: 60
 };
 
 const PERSISTED_SETTING_KEYS = [
@@ -1283,7 +1286,8 @@ const PERSISTED_SETTING_KEYS = [
   'demMeshQuality', 'timeOfDay', 'weather', 'fov', 'walkSpeed',
   'flattenIslands', 'islandPlateauTransition',
   'dayOfYear', 'latitude',
-  'parkColor', 'parkTexture', 'sportColor'
+  'parkColor', 'parkTexture', 'sportColor',
+  'terrainTileMeters'
 ];
 
 function loadPersistedSettings() {
@@ -2612,7 +2616,9 @@ async function buildTerrain(adalar) {
       ? baseMapTexture
     : (settings.pavementStyle === 'Asphalt'
       ? createAsphaltTexture()
-      : await textureFromSet('pavement', settings.pavementStyle, width / 600, depth / 600)));
+      : await textureFromSet('pavement', settings.pavementStyle,
+        width / Math.max(2, settings.terrainTileMeters || 60),
+        depth / Math.max(2, settings.terrainTileMeters || 60))));
   const terrainOpacity = useRasterTexture ? settings.terrainTextureOpacity : 1;
   const roiMaskTexture = createRoiMaskTexture(width, depth);
   const materialOptions = {

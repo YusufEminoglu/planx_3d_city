@@ -2,7 +2,7 @@
 name=PlanX 3D City Viewer
 qgisMinimumVersion=3.28
 description=Export QGIS layers and launch the interactive PlanX 3D City web viewer.
-version=0.8.2
+version=0.8.3
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 about=PlanX 3D City Viewer maps user-exported DEM, ROI, road, building, block, parcel, optional urban furniture layers, and optional raster plan texture workflows to a browser-based Three.js city cockpit with narrative keyframes, terrain quality controls, mobility, wind impact, and building statistics overlays. Developed with feedback from educational workflows at Dokuz Eylul University, Department of City and Regional Planning.
@@ -19,6 +19,8 @@ hasProcessingProvider=no
 plugin_dependencies=
 license=MIT
 changelog=
+    PlanX 3D City Viewer 0.8.3 - User-controlled terrain texture tile size.
+        - Renamed the internal terrainTextureScale to terrainTileMeters and exposed it as a slider in the Style dock (5-300 m per tile, default 60 m). Users can now dial in the right ground-texture density for their site instead of relying on a hard-coded constant. Persisted in browser local storage.
     PlanX 3D City Viewer 0.8.2 - Cumulative shadow heatmap, project presets, quick time + theme.
         - Cumulative shadow heatmap in the Analysis dock: ray-casts 6 hours of the day across a 48x48 ground grid using the v0.7.9 NOAA solar model and renders a colour overlay above the terrain (golden = full sun, deep blue = full shade). Compute + Clear buttons; runs asynchronously with progress feedback.
         - Project preset save/load on the Data page: stores layer names, mode, asset theme, field mappings, plateau and basemap selections into a portable .planx JSON file and matches it back against the layers of any QGIS project.
