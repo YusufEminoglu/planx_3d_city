@@ -427,6 +427,8 @@ const LAYER = {
 const FACADE_TEXTURE_SCALE_MULTIPLIER = 4.85;
 const SETTINGS_SCHEMA_VERSION = 5;
 
+// Match the viewer's local X axis to the QGIS map orientation.
+const LOCAL_X_SIGN = -1;
 let centerX = 0;
 let centerY = 0;
 let bounds = null;
@@ -1765,7 +1767,11 @@ function updateWeather() {
 updateWeather();
 
 function metersToLocal(x, y) {
-  return [x - centerX, y - centerY];
+  return [(x - centerX) * LOCAL_X_SIGN, y - centerY];
+}
+
+function localToMeters(localX, localZ) {
+  return [centerX + localX * LOCAL_X_SIGN, centerY + localZ];
 }
 
 function parseLevel(v) {
@@ -2102,6 +2108,23 @@ function applyTone(value) {
   return Math.max(0, Math.min(255, Math.round(v * 255)));
 }
 
+function terrainTextureRasterOrientation(image) {
+  let resolution = null;
+  try {
+    resolution = image?.getResolution ? image.getResolution() : null;
+  } catch (err) {
+    resolution = null;
+  }
+  const resX = Array.isArray(resolution) ? Number(resolution[0]) : NaN;
+  const resY = Array.isArray(resolution) ? Number(resolution[1]) : NaN;
+  const rasterXSign = Number.isFinite(resX) && resX !== 0 ? Math.sign(resX) : 1;
+  const rasterYSign = Number.isFinite(resY) && resY !== 0 ? Math.sign(resY) : -1;
+  return {
+    mirrorX: rasterXSign !== LOCAL_X_SIGN,
+    mirrorY: rasterYSign > 0
+  };
+}
+
 async function loadTerrainTextureFromGeoTiff() {
   const target = projectManifest?.terrainTexture?.target;
   if (!target || !settings.showTerrainTexture) return null;
@@ -2118,26 +2141,32 @@ async function loadTerrainTextureFromGeoTiff() {
   const outH = Math.max(1, Math.round(h * scale));
   const samples = image.getSamplesPerPixel ? image.getSamplesPerPixel() : 1;
   const raster = await image.readRasters({ interleave: true, width: outW, height: outH });
+  const orientation = terrainTextureRasterOrientation(image);
   const canvas = document.createElement('canvas');
   canvas.width = outW;
   canvas.height = outH;
   const ctx = canvas.getContext('2d');
   const img = ctx.createImageData(outW, outH);
-  for (let i = 0; i < outW * outH; i++) {
-    const src = i * samples;
-    const dst = i * 4;
-    const gray = raster[src];
-    const r = samples >= 3 ? raster[src] : gray;
-    const g = samples >= 3 ? raster[src + 1] : gray;
-    const b = samples >= 3 ? raster[src + 2] : gray;
-    const a = samples >= 4 ? raster[src + 3] : 255;
-    img.data[dst] = applyTone(Number(r) || 0);
-    img.data[dst + 1] = applyTone(Number(g) || 0);
-    img.data[dst + 2] = applyTone(Number(b) || 0);
-    img.data[dst + 3] = Number.isFinite(a) ? Math.max(0, Math.min(255, a)) : 255;
+  for (let y = 0; y < outH; y++) {
+    const srcY = orientation.mirrorY ? outH - 1 - y : y;
+    for (let x = 0; x < outW; x++) {
+      const srcX = orientation.mirrorX ? outW - 1 - x : x;
+      const src = (srcY * outW + srcX) * samples;
+      const dst = (y * outW + x) * 4;
+      const gray = raster[src];
+      const r = samples >= 3 ? raster[src] : gray;
+      const g = samples >= 3 ? raster[src + 1] : gray;
+      const b = samples >= 3 ? raster[src + 2] : gray;
+      const a = samples >= 4 ? raster[src + 3] : 255;
+      img.data[dst] = applyTone(Number(r) || 0);
+      img.data[dst + 1] = applyTone(Number(g) || 0);
+      img.data[dst + 2] = applyTone(Number(b) || 0);
+      img.data[dst + 3] = Number.isFinite(a) ? Math.max(0, Math.min(255, a)) : 255;
+    }
   }
   ctx.putImageData(img, 0, 0);
   const tex = new THREE.CanvasTexture(canvas);
+  // The canvas is normalized to the corrected local map axes; terrain UVs use it directly.
   tex.flipY = false;
   tex.wrapS = THREE.ClampToEdgeWrapping;
   tex.wrapT = THREE.ClampToEdgeWrapping;
@@ -2299,8 +2328,7 @@ function createRoiMaskTexture(width, depth) {
 }
 
 function edgeHeightAt(localX, localZ, fallback) {
-  const wx = localX + centerX;
-  const wy = localZ + centerY;
+  const [wx, wy] = localToMeters(localX, localZ);
   let z = demHeightMedianAtProjected(wx, wy, null, 2);
   if (z === null) z = fallback;
   const lo = Number.isFinite(terrainHeightStats.p02) ? terrainHeightStats.p02 : fallback - 20;
@@ -2890,8 +2918,7 @@ async function buildTerrain(adalar, buildToken = sceneBuildToken) {
   for (let i = 0; i < pos.count; i++) {
     const lx = pos.getX(i);
     const ly = pos.getY(i);
-    const wx = lx + centerX;
-    const wy = -ly + centerY;
+    const [wx, wy] = localToMeters(lx, -ly);
     const z = demHeightAtProjected(wx, wy, null);
     if (z !== null) {
       zMin = Math.min(zMin, z);
@@ -2929,8 +2956,7 @@ async function buildTerrain(adalar, buildToken = sceneBuildToken) {
   for (let i = 0; i < pos.count; i++) {
     const lx = pos.getX(i);
     const ly = pos.getY(i);
-    const wx = lx + centerX;
-    const wy = -ly + centerY;
+    const [wx, wy] = localToMeters(lx, -ly);
     let z = robustTerrainHeightAtProjected(wx, wy, avgZ);
     if (z === null) z = avgZ;
     if (hasRoiCache && !pointInRoiLocal(lx, -ly, roiPolyCache)) {
@@ -3066,10 +3092,7 @@ function terrainLocalYAt(localX, localZ) {
     return cachedY;
   }
   if (!demSampler || demSampler.flat) return _lastTerrainY;
-  /* metersToLocal(mx, my) → [mx-centerX, my-centerY]
-   * Ters dönüşüm: mx = localX + centerX, my = localZ + centerY */
-  const wx = localX + centerX;
-  const wy = localZ + centerY;
+  const [wx, wy] = localToMeters(localX, localZ);
   const z = robustTerrainHeightAtProjected(wx, wy, null);
   if (z !== null) {
     _lastTerrainY = z;

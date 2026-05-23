@@ -13,6 +13,16 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 
 ## Latest Release Notes
 
+### 0.8.15
+
+- Fixes the scene-wide left/right orientation in both Vector Plan and Raster Plan Texture modes by correcting the projected-coordinate to local-coordinate transform.
+- Keeps DEM sampling, island plateaus, buildings, hardscape, roads, furniture, walk mode, and raster plan textures aligned with the corrected local X axis.
+
+### 0.8.14
+
+- Fixes Raster Plan Texture Mode orientation: siteplan GeoTIFF pixels are normalized from their georeferenced X/Y resolution signs before they become the terrain CanvasTexture, preventing mirrored plan textures.
+- Leaves basemap PNG texture orientation unchanged.
+
 ### 0.8.13
 
 - Cleans the QGIS Hub Bandit B310 finding in the OpenStreetMap importer by validating the Overpass endpoint scheme before `urlopen` and documenting the narrow suppression.

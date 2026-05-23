@@ -2,7 +2,7 @@
 name=PlanX 3D City Viewer
 qgisMinimumVersion=3.28
 description=Export QGIS layers and launch the interactive PlanX 3D City web viewer.
-version=0.8.13
+version=0.8.15
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 about=PlanX 3D City Viewer maps user-exported DEM, ROI, road, building, block, parcel, optional urban furniture layers, and optional raster plan texture workflows to a browser-based Three.js city cockpit with narrative keyframes, terrain quality controls, mobility, wind impact, and building statistics overlays. Developed with feedback from educational workflows at Dokuz Eylul University, Department of City and Regional Planning.
@@ -19,6 +19,15 @@ hasProcessingProvider=no
 plugin_dependencies=
 license=MIT
 changelog=
+    PlanX 3D City Viewer 0.8.15 - Scene-wide left/right orientation hotfix.
+        - Fixed the web viewer's projected-coordinate to local-coordinate mapping so Vector Plan and Raster Plan Texture modes no longer render the entire city mirrored left/right.
+        - DEM sampling now uses the same inverse local-to-projected transform, keeping terrain heights, island plateaus, buildings, hardscape, roads, furniture, walk mode, and the terrain cache aligned after the orientation correction.
+        - Raster plan GeoTIFF orientation now follows the corrected local X axis, so siteplan textures stay aligned with vector layers after the scene-wide fix.
+        - Updated the viewer module cache key to app.js?v=0.8.15.
+    PlanX 3D City Viewer 0.8.14 - Raster plan texture orientation hotfix.
+        - Fixed Raster Plan Texture Mode in the web viewer: siteplan GeoTIFF pixels are now normalized from their georeferenced X/Y resolution signs before becoming a CanvasTexture, so south-up or west-flipped rasters no longer appear mirrored on the DEM terrain.
+        - Basemap PNG texture orientation is unchanged.
+        - Updated the viewer module cache key to app.js?v=0.8.14.
     PlanX 3D City Viewer 0.8.13 - QGIS Hub security and quality scan cleanup.
         - Hardened the OpenStreetMap Overpass fetcher for Bandit B310 by validating the endpoint scheme before urlopen and documenting the narrow nosec suppression.
         - Removed the unused typing import in osm_importer.py.

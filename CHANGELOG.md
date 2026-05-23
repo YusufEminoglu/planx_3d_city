@@ -3,6 +3,21 @@
 All notable changes to **PlanX 3D City Viewer** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 
+## [0.8.15] - 2026-05-23
+
+Scene-wide left/right orientation hotfix.
+- Fixed the web viewer's projected-coordinate to local-coordinate mapping so Vector Plan and Raster Plan Texture modes no longer render the entire city mirrored left/right.
+- DEM sampling now uses the same inverse local-to-projected transform, keeping terrain heights, island plateaus, buildings, hardscape, roads, furniture, walk mode, and the terrain cache aligned after the orientation correction.
+- Raster plan GeoTIFF orientation now follows the corrected local X axis, so siteplan textures stay aligned with vector layers after the scene-wide fix.
+- Updated the viewer module cache key to `app.js?v=0.8.15`.
+
+## [0.8.14] - 2026-05-23
+
+Raster plan texture orientation hotfix.
+- Fixed Raster Plan Texture Mode in the web viewer: siteplan GeoTIFF pixels are now normalized from their georeferenced X/Y resolution signs before becoming a CanvasTexture, so south-up or west-flipped rasters no longer appear mirrored on the DEM terrain.
+- Basemap PNG texture orientation is unchanged.
+- Updated the viewer module cache key to `app.js?v=0.8.14`.
+
 ## [0.8.13] - 2026-05-22
 
 QGIS Hub security and quality scan cleanup.
