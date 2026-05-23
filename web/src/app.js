@@ -2125,6 +2125,97 @@ function terrainTextureRasterOrientation(image) {
   };
 }
 
+function geoTiffImageBounds(image) {
+  try {
+    const b = image?.getBoundingBox ? image.getBoundingBox() : null;
+    if (Array.isArray(b) && b.length >= 4 && b.every(Number.isFinite)) {
+      return {
+        minX: Math.min(b[0], b[2]),
+        maxX: Math.max(b[0], b[2]),
+        minY: Math.min(b[1], b[3]),
+        maxY: Math.max(b[1], b[3])
+      };
+    }
+  } catch (err) {
+    // Fall back to origin/resolution below.
+  }
+
+  try {
+    const origin = image?.getOrigin ? image.getOrigin() : null;
+    const resolution = image?.getResolution ? image.getResolution() : null;
+    if (Array.isArray(origin) && Array.isArray(resolution)) {
+      const x0 = Number(origin[0]);
+      const y0 = Number(origin[1]);
+      const x1 = x0 + Number(resolution[0]) * image.getWidth();
+      const y1 = y0 + Number(resolution[1]) * image.getHeight();
+      if ([x0, y0, x1, y1].every(Number.isFinite)) {
+        return {
+          minX: Math.min(x0, x1),
+          maxX: Math.max(x0, x1),
+          minY: Math.min(y0, y1),
+          maxY: Math.max(y0, y1)
+        };
+      }
+    }
+  } catch (err) {
+    return null;
+  }
+  return null;
+}
+
+function terrainTexturePixelForProjected(x, y, canvasWidth, canvasHeight) {
+  const width = Math.max(1e-6, bounds.maxX - bounds.minX);
+  const depth = Math.max(1e-6, bounds.maxY - bounds.minY);
+  const [localX, localZ] = metersToLocal(x, y);
+  const px = ((localX + width * 0.5) / width) * canvasWidth;
+  const py = ((depth * 0.5 - localZ) / depth) * canvasHeight;
+  return [px, py];
+}
+
+function terrainTextureAtlasSize(maxSize = 4096) {
+  const width = Math.max(1, bounds.maxX - bounds.minX);
+  const depth = Math.max(1, bounds.maxY - bounds.minY);
+  if (width >= depth) {
+    return [maxSize, Math.max(1, Math.round(maxSize * depth / width))];
+  }
+  return [Math.max(1, Math.round(maxSize * width / depth)), maxSize];
+}
+
+function alignTerrainTextureCanvas(sourceCanvas, textureBounds) {
+  if (!bounds || !textureBounds) return sourceCanvas;
+  const terrainWidth = Math.max(1e-6, bounds.maxX - bounds.minX);
+  const terrainDepth = Math.max(1e-6, bounds.maxY - bounds.minY);
+  const texWidth = Math.max(1e-6, textureBounds.maxX - textureBounds.minX);
+  const texDepth = Math.max(1e-6, textureBounds.maxY - textureBounds.minY);
+  const sameExtent =
+    Math.abs(textureBounds.minX - bounds.minX) <= terrainWidth * 0.001 &&
+    Math.abs(textureBounds.maxX - bounds.maxX) <= terrainWidth * 0.001 &&
+    Math.abs(textureBounds.minY - bounds.minY) <= terrainDepth * 0.001 &&
+    Math.abs(textureBounds.maxY - bounds.maxY) <= terrainDepth * 0.001;
+  if (sameExtent) return sourceCanvas;
+
+  const [atlasW, atlasH] = terrainTextureAtlasSize();
+  const atlas = document.createElement('canvas');
+  atlas.width = atlasW;
+  atlas.height = atlasH;
+  const ctx = atlas.getContext('2d');
+  ctx.fillStyle = settings.terrainOutsideColor || '#edf2ef';
+  ctx.fillRect(0, 0, atlasW, atlasH);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+
+  const [xA, yA] = terrainTexturePixelForProjected(textureBounds.minX, textureBounds.maxY, atlasW, atlasH);
+  const [xB, yB] = terrainTexturePixelForProjected(textureBounds.maxX, textureBounds.minY, atlasW, atlasH);
+  const dx = Math.min(xA, xB);
+  const dy = Math.min(yA, yB);
+  const dw = Math.abs(xB - xA);
+  const dh = Math.abs(yB - yA);
+  if (dw < 1 || dh < 1 || texWidth <= 0 || texDepth <= 0) return sourceCanvas;
+
+  ctx.drawImage(sourceCanvas, dx, dy, dw, dh);
+  return atlas;
+}
+
 async function loadTerrainTextureFromGeoTiff() {
   const target = projectManifest?.terrainTexture?.target;
   if (!target || !settings.showTerrainTexture) return null;
@@ -2135,17 +2226,18 @@ async function loadTerrainTextureFromGeoTiff() {
   const image = await tiff.getImage();
   const w = image.getWidth();
   const h = image.getHeight();
-  const maxSize = 2048;
+  const maxSize = 4096;
   const scale = Math.min(1, maxSize / Math.max(w, h));
   const outW = Math.max(1, Math.round(w * scale));
   const outH = Math.max(1, Math.round(h * scale));
   const samples = image.getSamplesPerPixel ? image.getSamplesPerPixel() : 1;
   const raster = await image.readRasters({ interleave: true, width: outW, height: outH });
   const orientation = terrainTextureRasterOrientation(image);
-  const canvas = document.createElement('canvas');
-  canvas.width = outW;
-  canvas.height = outH;
-  const ctx = canvas.getContext('2d');
+  const textureBounds = geoTiffImageBounds(image);
+  const sourceCanvas = document.createElement('canvas');
+  sourceCanvas.width = outW;
+  sourceCanvas.height = outH;
+  const ctx = sourceCanvas.getContext('2d');
   const img = ctx.createImageData(outW, outH);
   for (let y = 0; y < outH; y++) {
     const srcY = orientation.mirrorY ? outH - 1 - y : y;
@@ -2165,6 +2257,7 @@ async function loadTerrainTextureFromGeoTiff() {
     }
   }
   ctx.putImageData(img, 0, 0);
+  const canvas = alignTerrainTextureCanvas(sourceCanvas, textureBounds);
   const tex = new THREE.CanvasTexture(canvas);
   // The canvas is normalized to the corrected local map axes; terrain UVs use it directly.
   tex.flipY = false;

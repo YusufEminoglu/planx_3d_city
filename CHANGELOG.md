@@ -3,6 +3,14 @@
 All notable changes to **PlanX 3D City Viewer** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 
+## [0.8.16] - 2026-05-23
+
+Raster plan texture georeference alignment hotfix.
+- Fixed Raster Plan Texture Mode placement: `siteplan.tif` is now drawn into a terrain-sized atlas using its own GeoTIFF bounding box, so the plan texture lands at its projected map position instead of being stretched across the whole DEM extent.
+- Preserved the 0.8.15 scene-wide left/right orientation fix; vector layers, DEM sampling, and raster plan texture now share the same corrected local axes.
+- Raised the plan texture processing cap to 4096 px so wide DEM context does not excessively blur a smaller ROI/siteplan texture.
+- Updated the viewer module cache key to `app.js?v=0.8.16`.
+
 ## [0.8.15] - 2026-05-23
 
 Scene-wide left/right orientation hotfix.

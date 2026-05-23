@@ -13,6 +13,11 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 
 ## Latest Release Notes
 
+### 0.8.16
+
+- Places Raster Plan Texture GeoTIFFs by their own projected bounding box inside the terrain extent, instead of stretching `siteplan.tif` over the full DEM.
+- Keeps the 0.8.15 scene orientation fix and raises the plan texture processing cap to 4096 px for wide DEM context workflows.
+
 ### 0.8.15
 
 - Fixes the scene-wide left/right orientation in both Vector Plan and Raster Plan Texture modes by correcting the projected-coordinate to local-coordinate transform.
