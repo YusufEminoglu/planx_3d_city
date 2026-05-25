@@ -327,7 +327,7 @@ class PlanX3DCityDialog(QDialog):
         self.status_label.setWordWrap(True)
         content.addWidget(self.status_label)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.Close)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
         buttons.rejected.connect(self.reject)
         content.addWidget(buttons)
         shell.addLayout(content, 1)
@@ -924,7 +924,7 @@ class PlanX3DCityDialog(QDialog):
         grid.addWidget(max_lat_edit, 1, 3)
         layout.addLayout(grid)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         layout.addWidget(buttons)
         buttons.accepted.connect(dlg.accept)
         buttons.rejected.connect(dlg.reject)
@@ -947,7 +947,7 @@ class PlanX3DCityDialog(QDialog):
 
         canvas_btn.clicked.connect(_fill_from_canvas)
 
-        if dlg.exec_() != QDialog.Accepted:
+        if dlg.exec() != QDialog.Accepted:
             return None
         try:
             return (

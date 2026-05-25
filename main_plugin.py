@@ -68,7 +68,7 @@ class PlanX3DCityPlugin:
         welcome = PlanXWelcomeDialog(self.iface.mainWindow(), version=PLUGIN_VERSION)
         welcome.sampleRequested.connect(self._welcome_sample)
         welcome.docRequested.connect(lambda: webbrowser.open(DOC_URL))
-        welcome.exec_()
+        welcome.exec()
         settings.setValue(WELCOME_SETTINGS_KEY, PLUGIN_VERSION)
 
     def _welcome_sample(self):
@@ -80,7 +80,7 @@ class PlanX3DCityPlugin:
     def export_and_launch(self, layer_map: dict):
         missing = validate_inputs(layer_map)
         if missing:
-            self._message("Missing required data", "Please select these inputs:\n- " + "\n- ".join(missing), QMessageBox.Warning)
+            self._message("Missing required data", "Please select these inputs:\n- " + "\n- ".join(missing), QMessageBox.Icon.Warning)
             if self.dialog:
                 self.dialog.set_status("Missing required data: " + ", ".join(missing), error=True)
             return
@@ -95,10 +95,10 @@ class PlanX3DCityPlugin:
                 "Overwrite existing data?",
                 "The existing files in the PlanX 3D City data folder will be updated:\n\n"
                 f"{preview}\n\nContinue?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
             )
-            if answer != QMessageBox.Yes:
+            if answer != QMessageBox.StandardButton.Yes:
                 if self.dialog:
                     self.dialog.set_status("Export cancelled.", error=True)
                 return
@@ -111,7 +111,7 @@ class PlanX3DCityPlugin:
             url = self.server.start()
             webbrowser.open(url)
         except Exception as exc:
-            self._message("PlanX 3D City error", str(exc), QMessageBox.Critical)
+            self._message("PlanX 3D City error", str(exc), QMessageBox.Icon.Critical)
             if self.dialog:
                 self.dialog.set_status(str(exc), error=True)
             return
@@ -141,7 +141,7 @@ class PlanX3DCityPlugin:
                 self.dialog.set_status(f"Local server started: {url}")
                 self.dialog.set_publish_summary(url, [], [])
         except Exception as exc:
-            self._message("PlanX 3D City error", str(exc), QMessageBox.Critical)
+            self._message("PlanX 3D City error", str(exc), QMessageBox.Icon.Critical)
 
     def export_portable_viewer(self):
         parent = QFileDialog.getExistingDirectory(
@@ -157,7 +157,7 @@ class PlanX3DCityPlugin:
         try:
             copied = copy_portable_viewer(self.web_root, str(output_dir))
         except Exception as exc:
-            self._message("Portable viewer error", str(exc), QMessageBox.Critical)
+            self._message("Portable viewer error", str(exc), QMessageBox.Icon.Critical)
             if self.dialog:
                 self.dialog.set_status(str(exc), error=True)
             return
@@ -186,10 +186,10 @@ class PlanX3DCityPlugin:
             "Include a narrative tour?",
             "Do you want to include a planx_tour.json file exported from Narrative Studio > Export JSON?\n\n"
             "If included, the ZIP carries the tour as data/planx_tour.json for use on another computer.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
         )
-        if answer == QMessageBox.Yes:
+        if answer == QMessageBox.StandardButton.Yes:
             tour_json, _filter = QFileDialog.getOpenFileName(
                 self.iface.mainWindow(),
                 "Select planx_tour.json",
@@ -202,7 +202,7 @@ class PlanX3DCityPlugin:
         try:
             copied = zip_portable_viewer(self.web_root, zip_path, tour_json_path=tour_json)
         except Exception as exc:
-            self._message("Portable viewer ZIP error", str(exc), QMessageBox.Critical)
+            self._message("Portable viewer ZIP error", str(exc), QMessageBox.Icon.Critical)
             if self.dialog:
                 self.dialog.set_status(str(exc), error=True)
             return
@@ -212,4 +212,4 @@ class PlanX3DCityPlugin:
             self.dialog.set_portable_zip_summary(zip_path, len(copied))
 
     def _message(self, title: str, text: str, icon):
-        QMessageBox(icon, title, text, QMessageBox.Ok, self.iface.mainWindow()).exec_()
+        QMessageBox(icon, title, text, QMessageBox.StandardButton.Ok, self.iface.mainWindow()).exec()
