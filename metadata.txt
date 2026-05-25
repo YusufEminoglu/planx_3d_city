@@ -2,7 +2,7 @@
 name=PlanX 3D City Viewer
 qgisMinimumVersion=3.28
 description=Export QGIS layers and launch the interactive PlanX 3D City web viewer.
-version=0.8.17
+version=0.8.18
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 about=PlanX 3D City Viewer maps user-exported DEM, ROI, road, building, block, parcel, optional urban furniture layers, and optional raster plan texture workflows to a browser-based Three.js city cockpit with narrative keyframes, terrain quality controls, mobility, wind impact, and building statistics overlays. Developed with feedback from educational workflows at Dokuz Eylul University, Department of City and Regional Planning.
@@ -19,6 +19,12 @@ hasProcessingProvider=no
 plugin_dependencies=
 license=MIT
 changelog=
+    PlanX 3D City Viewer 0.8.18 - Sidewalk visibility, inner-block pedestrian paths, and raster building clamping release.
+        - Fixed exported sidewalk polygon rendering in the web viewer by passing the scene build token into the sidewalk polygon builder and raising sidewalk surfaces above road meshes with their own layer offset.
+        - Added an optional Pedestrian paths input (mypedestrian_paths.geojson) for inner-block paths/walkways; accepts line or polygon layers, appears in the QGIS publisher, exports in both Vector Plan and Raster Plan Texture modes, and has a dedicated viewer visibility toggle.
+        - Pedestrian animation now uses both road-side sidewalk curves and the new inner-block path curves, with path walkers clamped to the path surface instead of the road surface.
+        - Raster Plan Texture Mode building bases now use a low raster-specific ground offset so buildings sit on the textured DEM surface instead of floating, while Vector Plan building offsets remain unchanged.
+        - Updated the viewer module cache key to app.js?v=0.8.18.
     PlanX 3D City Viewer 0.8.17 - Modern Turkish facade asset release.
         - Added 40 new realistic Turkish urban facade PNG textures: Urban_TR_A_1 through Urban_TR_D_10, covering four modern apartment / mixed-use facade families across 1-10 storeys.
         - Added a Modern Turkish asset theme in the QGIS publisher and web viewer.

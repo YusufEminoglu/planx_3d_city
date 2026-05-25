@@ -3,6 +3,15 @@
 All notable changes to **PlanX 3D City Viewer** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 
+## [0.8.18] - 2026-05-25
+
+Sidewalk visibility, inner-block pedestrian paths, and raster building clamping release.
+- Fixed exported sidewalk polygon rendering in the web viewer by passing the scene build token into the sidewalk polygon builder and raising sidewalk surfaces above road meshes with their own layer offset.
+- Added an optional `Pedestrian paths` input (`mypedestrian_paths.geojson`) for inner-block paths/walkways; accepts line or polygon layers, appears in the QGIS publisher, exports in both Vector Plan and Raster Plan Texture modes, and has a dedicated viewer visibility toggle.
+- Pedestrian animation now uses both road-side sidewalk curves and the new inner-block path curves, with path walkers clamped to the path surface instead of the road surface.
+- Raster Plan Texture Mode building bases now use a low raster-specific ground offset so buildings sit on the textured DEM surface instead of floating, while Vector Plan building offsets remain unchanged.
+- Updated the viewer module cache key to `app.js?v=0.8.18`.
+
 ## [0.8.17] - 2026-05-25
 
 Modern Turkish facade asset release.

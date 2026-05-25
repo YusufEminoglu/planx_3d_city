@@ -66,6 +66,7 @@ EXPECTED_GEOMETRIES = {
     "trees": "Point",
     "hardscape": "Polygon",
     "sidewalks": "Polygon",
+    "pedestrian_paths": "Line/Polygon",
     "lights": "Point",
     "benches": "Point",
     "trashbins": "Point",
@@ -126,6 +127,7 @@ AUTO_MATCH_ALIASES = {
     "trees": ("trees", "tree", "agac", "agaclar", "mytrees"),
     "hardscape": ("hardscape", "sert", "zemin", "myhardscape"),
     "sidewalks": ("sidewalk", "sidewalks", "kaldirim", "kaldirimlar", "kaldırım", "kaldırımlar", "yaya kaldirimi", "mysidewalks"),
+    "pedestrian_paths": ("path", "paths", "patika", "patikalar", "walkway", "footpath", "pedestrian", "pedestrian_paths", "yaya yolu", "yaya yollari", "yaya yolları", "mypedestrian_paths"),
     "lights": ("lights", "light", "aydinlatma", "lamba", "mylights"),
     "benches": ("benches", "bench", "bank", "mybenches"),
     "trashbins": ("trashbins", "trash", "bin", "cop", "mytrashbins"),
@@ -1080,7 +1082,8 @@ class PlanX3DCityDialog(QDialog):
                 status = "Empty required layer"
                 warnings.append(f"{LABELS[key]} is required but appears empty.")
             expected = EXPECTED_GEOMETRIES.get(key)
-            if expected and geom != "-" and expected not in geom:
+            expected_tokens = [token.strip() for token in expected.split("/") if token.strip()] if expected else []
+            if expected_tokens and geom != "-" and not any(token in geom for token in expected_tokens):
                 status = "Geometry warning"
                 warnings.append(f"{LABELS[key]} expected geometry is {expected}; selected layer is {geom}.")
             rows.append((LABELS[key], role, status, str(count), geom, crs))
@@ -1228,6 +1231,7 @@ class PlanX3DCityDialog(QDialog):
             "trees": "Tree points; height field can be mapped above. / Agac noktalari.",
             "hardscape": "Hardscape polygons. / Sert zemin poligonlari.",
             "sidewalks": "Sidewalk polygons; used instead of auto-sidewalks when selected. / Kaldirim poligonlari.",
+            "pedestrian_paths": "Inner-block pedestrian paths or walkway polygons. / Ada ici patika veya yaya yolu katmani.",
             "lights": "Light fixture points. / Aydinlatma noktalari.",
             "benches": "Bench points. / Bank noktalari.",
             "trashbins": "Trash-bin points. / Cop kutusu noktalari.",

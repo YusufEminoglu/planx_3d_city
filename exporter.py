@@ -25,12 +25,12 @@ from qgis.core import (
 
 MODE_VECTOR = "vector"
 MODE_RASTER_TEXTURE = "raster_texture"
-PLUGIN_VERSION_FALLBACK = "0.8.17"
+PLUGIN_VERSION_FALLBACK = "0.8.18"
 VECTOR_REQUIRED_INPUTS = ()
 VECTOR_RECOMMENDED_INPUTS = ("dem", "roi", "roads", "buildings", "blocks", "parcels")
 RASTER_TEXTURE_REQUIRED_INPUTS = ("dem", "roi", "plan_texture", "roads", "buildings")
 REQUIRED_INPUTS = VECTOR_REQUIRED_INPUTS
-OPTIONAL_INPUTS = ("trees", "hardscape", "sidewalks", "lights", "benches", "trashbins", "busstops")
+OPTIONAL_INPUTS = ("trees", "hardscape", "sidewalks", "pedestrian_paths", "lights", "benches", "trashbins", "busstops")
 VECTOR_OPTIONAL_INPUTS = VECTOR_RECOMMENDED_INPUTS + OPTIONAL_INPUTS
 ASSET_THEME_DEFAULT = "Modern Urban"
 ASSET_CATEGORIES = ("pedestrians", "cars", "trees", "lights", "benches", "bins", "busstops", "facades", "roofs", "paving")
@@ -155,6 +155,7 @@ VECTOR_TARGETS = {
     "trees": "mytrees.geojson",
     "hardscape": "myhardscape.geojson",
     "sidewalks": "mysidewalks.geojson",
+    "pedestrian_paths": "mypedestrian_paths.geojson",
     "lights": "mylights.geojson",
     "benches": "mybenches.geojson",
     "trashbins": "mytrashbins.geojson",
@@ -173,6 +174,7 @@ LABELS = {
     "trees": "Trees",
     "hardscape": "Hardscape",
     "sidewalks": "Sidewalks",
+    "pedestrian_paths": "Pedestrian paths",
     "lights": "Lights",
     "benches": "Benches",
     "trashbins": "Trash bins",

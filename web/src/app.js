@@ -36,7 +36,7 @@ const i18n = {
     fxFolder: 'Zaman & Efektler', timeOfDay: 'Zaman (Saat)', sSsa: 'SSAO (Gölgeler)', sBloom: 'Bloom (Parlama)',
     pedDensity: 'Yaya Yoğunluğu',
     weather: 'Hava Durumu',
-    showSidewalks: 'Kaldırımlar', showCrosswalks: 'Yaya Geçitleri',
+    showSidewalks: 'Kaldırımlar', showCrosswalks: 'Yaya Geçitleri', showPedestrianPaths: 'Ada İçi Patikalar',
     binaInfo: 'Bina Bilgisi', biFonk: 'Fonksiyon', biKat: 'Kat Sayısı', biNiz: 'Nizam', biAlan: 'Alan',
     sapanMode: 'Sapan Modu', sapanHit: 'Vuruş! +1', sapanScoreLbl: 'Skor',
     autoTime: '⏱ Güneş Animasyonu', autoTimeSpd: 'Hız (sa/s)',
@@ -67,7 +67,7 @@ const i18n = {
     fxFolder: 'Time & Effects', timeOfDay: 'Time of Day', sSsa: 'SSAO (Shadows)', sBloom: 'Bloom (Glow)',
     pedDensity: 'Pedestrian Density',
     weather: 'Weather',
-    showSidewalks: 'Sidewalks', showCrosswalks: 'Crosswalks',
+    showSidewalks: 'Sidewalks', showCrosswalks: 'Crosswalks', showPedestrianPaths: 'Block Paths',
     binaInfo: 'Building Info', biFonk: 'Function', biKat: 'Floors', biNiz: 'Type', biAlan: 'Area',
     sapanMode: 'Slingshot Mode', sapanHit: 'Hit! +1', sapanScoreLbl: 'Score',
     autoTime: '⏱ Solar Animation', autoTimeSpd: 'Speed (h/s)',
@@ -79,7 +79,7 @@ function t(key) { return i18n[currentLang]?.[key] ?? i18n.EN?.[key] ?? key; }
 Object.assign(i18n.TR, {
   dockLayers: 'Katmanlar', dockScene: 'Sahne', dockStyle: 'Stil', dockMobility: 'Hareketlilik',
   dockFurniture: 'Kent Mobilyalari', dockAnalysis: 'Analiz',
-  lblRoads: 'Yollar', lblSidewalks: 'Kaldirimlar', lblCrosswalks: 'Yaya gecitleri',
+  lblRoads: 'Yollar', lblSidewalks: 'Kaldirimlar', lblCrosswalks: 'Yaya gecitleri', lblPedestrianPaths: 'Ada ici patikalar',
   lblBlocks: 'Adalar / bloklar', lblParcels: 'Parseller', lblHardscape: 'Sert zemin', lblBuildings: 'Binalar',
   lblTrees: 'Agaclar', lblFurniture: 'Kent mobilyalari', lblCars: 'Araclar', lblPedestrians: 'Yayalar',
   lblPlanTexture: 'Plan texture', lblOutsideRoiTerrain: 'ROI disi zemin', lblTextureOpacity: 'Texture opakligi',
@@ -125,7 +125,7 @@ Object.assign(i18n.TR, {
 Object.assign(i18n.EN, {
   dockLayers: 'Layers', dockScene: 'Scene', dockStyle: 'Style', dockMobility: 'Mobility',
   dockFurniture: 'Street Furniture', dockAnalysis: 'Analysis',
-  lblRoads: 'Roads', lblSidewalks: 'Sidewalks', lblCrosswalks: 'Crosswalks',
+  lblRoads: 'Roads', lblSidewalks: 'Sidewalks', lblCrosswalks: 'Crosswalks', lblPedestrianPaths: 'Block paths',
   lblBlocks: 'Blocks', lblParcels: 'Parcels', lblHardscape: 'Hardscape', lblBuildings: 'Buildings',
   lblTrees: 'Trees', lblFurniture: 'Street furniture', lblCars: 'Cars', lblPedestrians: 'Pedestrians',
   lblPlanTexture: 'Plan texture', lblOutsideRoiTerrain: 'Outside ROI terrain', lblTextureOpacity: 'Texture opacity',
@@ -393,6 +393,7 @@ let carGroup = new THREE.Group();
 let furnitureGroup = new THREE.Group();
 let pedestrianGroup = new THREE.Group();
 let sidewalkGroup = new THREE.Group();
+let pedestrianPathGroup = new THREE.Group();
 let crosswalkGroup = new THREE.Group();
 let terrainSideGroup = new THREE.Group();
 let windPlumeGroup = new THREE.Group();
@@ -402,6 +403,7 @@ world.add(parcelGroup);
 world.add(hardscapeGroup);
 world.add(buildingGroup);
 world.add(sidewalkGroup);
+world.add(pedestrianPathGroup);
 world.add(crosswalkGroup);
 world.add(terrainSideGroup);
 world.add(windPlumeGroup);
@@ -413,19 +415,21 @@ world.add(pedestrianGroup);
 world.add(roiBoundaryGroup);
 
 /* Layer Elevation Hierarchy
- * DEM < islands < buildings/trees < parcels < hardscape slab < roads < cars.
+ * DEM < islands < block paths < buildings/trees < parcels < hardscape slab < roads < sidewalks < cars.
  * Offsets are relative to the final visible terrain surface.
  */
 const LAYER = {
   island:    0.60,
+  path:      0.72,
   content:   0.78,
   parcel:    0.94,
   hardscape: 0.98,
   road:      1.36,
+  sidewalk:  1.52,
   carExtra:  0.08
 };
 const FACADE_TEXTURE_SCALE_MULTIPLIER = 4.85;
-const SETTINGS_SCHEMA_VERSION = 5;
+const SETTINGS_SCHEMA_VERSION = 6;
 
 // Match the viewer's local X axis to the QGIS map orientation.
 const LOCAL_X_SIGN = -1;
@@ -442,6 +446,7 @@ let baseMapTexture = null;
 let terrainOverlayMesh = null;
 let roadCurves = [];
 let vehicleRoadCurves = [];
+let pedestrianPathCurves = [];
 let cars = [];
 let pedestrians = [];
 let buildingFunctionMaterials = new Map();
@@ -636,6 +641,18 @@ function rebuildMinimapBg() {
       i === 0 ? ctx.moveTo(mx, my) : ctx.lineTo(mx, my);
     });
     ctx.stroke();
+  }
+
+  ctx.strokeStyle = '#b7ad93'; ctx.lineWidth = 0.9;
+  for (const f of layerDataCache.pedestrianPaths?.features || []) {
+    for (const line of lineSetsFromGeometry(f.geometry)) {
+      ctx.beginPath();
+      line.forEach(([cx, cy], i) => {
+        const [lx, lz] = metersToLocal(cx, cy); const [mx, my] = _mmPx(lx, lz);
+        i === 0 ? ctx.moveTo(mx, my) : ctx.lineTo(mx, my);
+      });
+      ctx.stroke();
+    }
   }
 
   // Buildings (colored by function)
@@ -1403,6 +1420,7 @@ const settings = {
   showCars: false,
   showRoads: true,
   showSidewalks: true,
+  showPedestrianPaths: true,
   showCrosswalks: true,
   showLights: true,
   lightStyle: 'Modern Arc',
@@ -1449,7 +1467,7 @@ const PERSISTED_SETTING_KEYS = [
   'floorHeight', 'roofTexture', 'roofShape', 'roofHeight', 'roadStyle', 'roadColor', 'roadColorMode', 'roadWidth',
   'showLights', 'lightStyle', 'showBenches', 'benchStyle', 'showBins', 'binStyle', 'showBusStops', 'stopStyle',
   'showIslands', 'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture',
-  'showCars', 'showRoads', 'showSidewalks', 'showCrosswalks', 'showPedestrians',
+  'showCars', 'showRoads', 'showSidewalks', 'showPedestrianPaths', 'showCrosswalks', 'showPedestrians',
   'showWindPlumes', 'windDirectionDeg', 'windPlumeDistance', 'showUrbanComfort',
   'demMeshQuality', 'timeOfDay', 'weather', 'fov', 'walkSpeed',
   'flattenIslands', 'islandPlateauTransition',
@@ -1954,6 +1972,7 @@ function applyManifestDefaults() {
         if (!('showOutsideRoiTerrain' in persisted)) settings.showOutsideRoiTerrain = true;
         if (!('showIslands' in persisted)) settings.showIslands = true;
         if (!('islandTransparency' in persisted)) settings.islandTransparency = 0;
+        if (!('showPedestrianPaths' in persisted)) settings.showPedestrianPaths = true;
         settings.flattenIslands = true;
       }
       if (!persisted.assetTheme && projectManifest.assetTheme) settings.assetTheme = projectManifest.assetTheme;
@@ -2025,7 +2044,9 @@ function deriveVectorBounds(data) {
     asFeatureCollection(data?.adalar, 'Blocks').features,
     asFeatureCollection(data?.yollar, 'Roads').features,
     asFeatureCollection(data?.yapilar, 'Buildings').features,
-    asFeatureCollection(data?.parseller, 'Parcels').features
+    asFeatureCollection(data?.parseller, 'Parcels').features,
+    asFeatureCollection(data?.sidewalks, 'Sidewalks').features,
+    asFeatureCollection(data?.pedestrianPaths, 'Pedestrian paths').features
   ]
     .filter((features) => features.length)
     .map((features) => geometryBounds(features))
@@ -3579,6 +3600,10 @@ function estimateBuildingFeatureMetrics(feature) {
   return { footprint, floorArea, dwellings, population, vehicles };
 }
 
+function buildingGroundOffset() {
+  return isRasterTextureMode() ? 0.08 : LAYER.content + 0.03;
+}
+
 function buildingBaseYForOuterRing(outer) {
   const samples = [];
   let sx = 0;
@@ -3597,10 +3622,11 @@ function buildingBaseYForOuterRing(outer) {
     samples.push(terrainLocalYAt(cx, cz));
   }
   const valid = samples.filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
-  if (!valid.length) return terrainLocalYAt(0, 0) + LAYER.content;
+  const groundOffset = buildingGroundOffset();
+  if (!valid.length) return terrainLocalYAt(0, 0) + groundOffset;
   const mid = valid[Math.floor(valid.length / 2)];
   const high = valid[Math.max(0, Math.ceil(valid.length * 0.72) - 1)];
-  return Math.max(mid, high - 0.35) + LAYER.content + 0.03;
+  return Math.max(mid, high - 0.35) + groundOffset;
 }
 
 /* Compute a cumulative shadow heatmap across the scene:
@@ -4851,27 +4877,37 @@ async function buildRoadsAndTraffic(yollar, buildToken = sceneBuildToken) {
     }
   }
 
-  if (!settings.showPedestrians || roadCurves.length === 0) return;
-  const pedCount = Math.min(600, roadCurves.length * Math.floor(20 * settings.pedestrianDensity));
+}
+
+function buildPedestrianLayer() {
+  clearGroup(pedestrianGroup);
+  pedestrians = [];
+  if (!settings.showPedestrians) return;
+  const candidateRoutes = roadCurves.map((curve) => ({ curve, surface: 'sidewalk' }))
+    .concat(settings.showPedestrianPaths ? pedestrianPathCurves.map((curve) => ({ curve, surface: 'path' })) : []);
+  if (!candidateRoutes.length) return;
+  const pedCount = Math.min(600, candidateRoutes.length * Math.floor(20 * settings.pedestrianDensity));
   for (let i = 0; i < pedCount; i++) {
-    const curve = roadCurves[Math.floor(Math.random() * roadCurves.length)];
+    const route = candidateRoutes[Math.floor(Math.random() * candidateRoutes.length)];
     const { mesh: pedGeo, limbRefs } = createPedestrianModel(i);
     pedestrianGroup.add(pedGeo);
     pedGeo.renderOrder = 41;
     pedestrians.push({
       mesh: pedGeo,
       limbRefs,
-      curve: curve,
+      curve: route.curve,
+      surface: route.surface,
       t: Math.random(),
-      speed: 0.0001 + Math.random() * 0.0001, // Slower than cars
+      speed: 0.0001 + Math.random() * 0.0001,
       phase: Math.random() * Math.PI * 2,
       walkAmplitude: 0.45 + Math.random() * 0.15,
-      offsetDir: (Math.random() > 0.5 ? 1 : -1) // Right or left sidewalk
+      offsetDir: (Math.random() > 0.5 ? 1 : -1),
+      lateralOffset: route.surface === 'path' ? (Math.random() - 0.5) * 0.45 : null
     });
   }
 }
 
-function buildSidewalkPolygonLayer(sidewalks) {
+function buildSidewalkPolygonLayer(sidewalks, buildToken = sceneBuildToken) {
   const mat = new THREE.MeshStandardMaterial({
     color: 0xd8d2c2,
     roughness: 0.96,
@@ -4898,7 +4934,7 @@ function buildSidewalkPolygonLayer(sidewalks) {
         const vz = pos.getZ(vi);
         const isTop = pos.getY(vi) > -0.09;
         const baseDem = terrainLocalYAt(vx, vz);
-        pos.setY(vi, baseDem + LAYER.road + (isTop ? 0.14 : 0.02));
+        pos.setY(vi, baseDem + LAYER.sidewalk + (isTop ? 0.05 : -0.08));
       }
       pos.needsUpdate = true;
       g.computeVertexNormals();
@@ -4911,11 +4947,11 @@ function buildSidewalkPolygonLayer(sidewalks) {
   }
 }
 
-function buildSidewalkLayer(yollar, sidewalks = EMPTY_GEOJSON) {
+function buildSidewalkLayer(yollar, sidewalks = EMPTY_GEOJSON, buildToken = sceneBuildToken) {
   clearGroup(sidewalkGroup);
   if (!settings.showSidewalks) return;
   if (sidewalks?.features?.length) {
-    buildSidewalkPolygonLayer(sidewalks);
+    buildSidewalkPolygonLayer(sidewalks, buildToken);
     return;
   }
   if (!yollar?.features?.length) return;
@@ -4938,7 +4974,7 @@ function buildSidewalkLayer(yollar, sidewalks = EMPTY_GEOJSON) {
     const wPts = [];
     for (let i = 0; i <= nW; i++) {
       const tp = xzCurveW.getPointAt(i / nW);
-      tp.y = terrainLocalYAt(tp.x, tp.z) + LAYER.road + 0.13;
+      tp.y = terrainLocalYAt(tp.x, tp.z) + LAYER.sidewalk;
       wPts.push(tp);
     }
     const curve = new THREE.CatmullRomCurve3(wPts, false, 'centripetal');
@@ -4977,6 +5013,116 @@ function buildSidewalkLayer(yollar, sidewalks = EMPTY_GEOJSON) {
       mesh.receiveShadow = true;
       mesh.renderOrder = 32;
       sidewalkGroup.add(mesh);
+    }
+  }
+}
+
+function pedestrianPathWidth(feature) {
+  const width = parseNumberProp(
+    feature?.properties || {},
+    ['width', 'genislik', 'genişlik', 'path_width', 'walkway_width', 'yaya_yolu_genisligi'],
+    2.2
+  );
+  return Math.max(0.8, Math.min(6.0, width || 2.2));
+}
+
+function lineSetsFromGeometry(geometry) {
+  if (!geometry) return [];
+  if (geometry.type === 'LineString') return [geometry.coordinates];
+  if (geometry.type === 'MultiLineString') return geometry.coordinates || [];
+  return [];
+}
+
+function buildPedestrianPathStrip(coords, width, mat, buildToken) {
+  const xzPts = [];
+  for (const c of coords || []) {
+    if (!c || c.length < 2) continue;
+    const [x, z] = metersToLocal(c[0], c[1]);
+    xzPts.push(new THREE.Vector3(x, 0, z));
+  }
+  if (xzPts.length < 2) return;
+  const xzCurve = new THREE.CatmullRomCurve3(xzPts, false, 'centripetal');
+  const pathLen = xzCurve.getLength();
+  const nSamples = Math.max(xzPts.length, Math.ceil(pathLen / 3) + 1);
+  const terrainPts = [];
+  for (let i = 0; i <= nSamples; i++) {
+    const tp = xzCurve.getPointAt(i / nSamples);
+    tp.y = terrainLocalYAt(tp.x, tp.z) + LAYER.path + 0.04;
+    terrainPts.push(tp);
+  }
+  const curve = new THREE.CatmullRomCurve3(terrainPts, false, 'centripetal');
+  pedestrianPathCurves.push(curve);
+  const centers = curve.getPoints(Math.max(16, terrainPts.length * 3));
+  const positions = [];
+  const uvs = [];
+  const indices = [];
+  for (let i = 0; i < centers.length; i++) {
+    const p = centers[i];
+    const tng = curve.getTangent(i / Math.max(1, centers.length - 1));
+    const n = new THREE.Vector3(-tng.z, 0, tng.x).normalize().multiplyScalar(width * 0.5);
+    positions.push(p.x + n.x, p.y, p.z + n.z, p.x - n.x, p.y, p.z - n.z);
+    const v = i / Math.max(1, centers.length - 1);
+    uvs.push(0, v, 1, v);
+  }
+  for (let i = 0; i < centers.length - 1; i++) {
+    const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
+    indices.push(a, c, b, c, d, b);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  if (isSceneBuildStale(buildToken)) return;
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.receiveShadow = true;
+  mesh.renderOrder = 31;
+  pedestrianPathGroup.add(mesh);
+}
+
+function buildPedestrianPathLayer(paths = EMPTY_GEOJSON, buildToken = sceneBuildToken) {
+  clearGroup(pedestrianPathGroup);
+  pedestrianPathCurves = [];
+  if (!settings.showPedestrianPaths || !paths?.features?.length) return;
+  const pathMat = new THREE.MeshStandardMaterial({
+    color: 0xb7ad93,
+    roughness: 0.98,
+    metalness: 0.0,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -3,
+    polygonOffsetUnits: -3
+  });
+
+  for (const f of paths.features) {
+    if (!f.geometry) continue;
+    if (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon') {
+      for (const poly of getPolygonRings(f.geometry)) {
+        const shape = shapeFromLocalPolygon(poly);
+        if (!shape) continue;
+        const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.08, bevelEnabled: false });
+        geo.rotateX(Math.PI / 2);
+        const pos = geo.attributes.position;
+        for (let vi = 0; vi < pos.count; vi++) {
+          const vx = pos.getX(vi);
+          const vz = pos.getZ(vi);
+          const isTop = pos.getY(vi) > -0.04;
+          pos.setY(vi, terrainLocalYAt(vx, vz) + LAYER.path + (isTop ? 0.06 : -0.02));
+        }
+        pos.needsUpdate = true;
+        geo.computeVertexNormals();
+        if (isSceneBuildStale(buildToken)) return;
+        const mesh = new THREE.Mesh(geo, pathMat);
+        mesh.receiveShadow = true;
+        mesh.renderOrder = 31;
+        pedestrianPathGroup.add(mesh);
+      }
+      continue;
+    }
+
+    const width = pedestrianPathWidth(f);
+    for (const line of lineSetsFromGeometry(f.geometry)) {
+      buildPedestrianPathStrip(line, width, pathMat, buildToken);
     }
   }
 }
@@ -5095,6 +5241,7 @@ async function rebuildScene() {
        parseller: null,
        hardscape: null,
        sidewalks: null,
+       pedestrianPaths: null,
        furniture: {
          lights: asFeatureCollection(lights, 'Lights'),
          benches: asFeatureCollection(benches, 'Benches'),
@@ -5121,6 +5268,10 @@ async function rebuildScene() {
     const sidewalks = await loadGeoJson('../data/yerlesim/mysidewalks.geojson', { label: 'Sidewalks' });
     layerDataCache.sidewalks = asFeatureCollection(sidewalks, 'Sidewalks');
   }
+  if (settings.showPedestrianPaths && !layerDataCache.pedestrianPaths) {
+    const pedestrianPaths = await loadGeoJson('../data/yerlesim/mypedestrian_paths.geojson', { label: 'Pedestrian paths' });
+    layerDataCache.pedestrianPaths = asFeatureCollection(pedestrianPaths, 'Pedestrian paths');
+  }
   
   const adalar = asFeatureCollection(layerDataCache.adalar, 'Blocks');
   const yapilar = asFeatureCollection(layerDataCache.yapilar, 'Buildings');
@@ -5129,7 +5280,8 @@ async function rebuildScene() {
   const parseller = layerDataCache.parseller ? asFeatureCollection(layerDataCache.parseller, 'Parcels') : null;
   const hardscape = layerDataCache.hardscape ? asFeatureCollection(layerDataCache.hardscape, 'Hardscape') : null;
   const sidewalks = layerDataCache.sidewalks ? asFeatureCollection(layerDataCache.sidewalks, 'Sidewalks') : null;
-  Object.assign(layerDataCache, { adalar, yapilar, yollar, agaclar, parseller, hardscape, sidewalks });
+  const pedestrianPaths = layerDataCache.pedestrianPaths ? asFeatureCollection(layerDataCache.pedestrianPaths, 'Pedestrian paths') : null;
+  Object.assign(layerDataCache, { adalar, yapilar, yollar, agaclar, parseller, hardscape, sidewalks, pedestrianPaths });
   updateDashboard(layerDataCache);
 
   // Calculate and update stats
@@ -5255,15 +5407,22 @@ async function rebuildScene() {
   await runLayerBuild('Roads', () => buildRoadsAndTraffic(yollar, buildToken), () => { clearGroup(roadGroup); clearGroup(carGroup); clearGroup(pedestrianGroup); });
   if (isSceneBuildStale(buildToken)) return;
   if (settings.showSidewalks) {
-    await runLayerBuild('Sidewalks', () => buildSidewalkLayer(yollar, sidewalks), () => clearGroup(sidewalkGroup));
+    await runLayerBuild('Sidewalks', () => buildSidewalkLayer(yollar, sidewalks, buildToken), () => clearGroup(sidewalkGroup));
   } else {
     clearGroup(sidewalkGroup);
+  }
+  if (settings.showPedestrianPaths) {
+    await runLayerBuild('Pedestrian paths', () => buildPedestrianPathLayer(pedestrianPaths, buildToken), () => { clearGroup(pedestrianPathGroup); pedestrianPathCurves = []; });
+  } else {
+    clearGroup(pedestrianPathGroup);
+    pedestrianPathCurves = [];
   }
   if (settings.showCrosswalks) {
     await runLayerBuild('Crosswalks', () => buildCrosswalkLayer(yollar), () => clearGroup(crosswalkGroup));
   } else {
     clearGroup(crosswalkGroup);
   }
+  await runLayerBuild('Pedestrians', () => buildPedestrianLayer(), () => clearGroup(pedestrianGroup));
   if (settings.showTrees) {
     await runLayerBuild('Trees', () => buildTreeLayer(agaclar), () => clearGroup(treeGroup));
   } else {
@@ -5307,6 +5466,7 @@ function updateDashboard(data) {
   const parseller = data.parseller || EMPTY_GEOJSON;
   const hardscape = data.hardscape || EMPTY_GEOJSON;
   const sidewalks = data.sidewalks || EMPTY_GEOJSON;
+  const pedestrianPaths = data.pedestrianPaths || EMPTY_GEOJSON;
   const furniture = data.furniture || {};
 
   const bldCount = yapilar.features.length;
@@ -5365,6 +5525,7 @@ function updateDashboard(data) {
       ['trees', 'Trees', agaclar.features.length],
       ['hardscape', 'Hardscape', hardscape?.features?.length || 0],
       ['sidewalks', 'Sidewalks', sidewalks?.features?.length || 0],
+      ['pedestrian_paths', 'Paths', pedestrianPaths?.features?.length || 0],
       ['lights', 'Lights', furniture.lights?.features?.length || 0],
       ['benches', 'Benches', furniture.benches?.features?.length || 0],
       ['busstops', 'Stops', furniture.busstops?.features?.length || 0],
@@ -5458,6 +5619,7 @@ function addGui() {
   roads.add(settings, 'roadWidth', 5.0, 20.0, 0.5).name(t('roadW')).onChange(rebuildScene);
   roads.add(settings, 'trafficSpeed', 0, 5, 0.1).name(t('trafficSpd'));
   roads.add(settings, 'showSidewalks').name(t('showSidewalks')).onChange(rebuildScene);
+  roads.add(settings, 'showPedestrianPaths').name(t('showPedestrianPaths')).onChange(rebuildScene);
   roads.add(settings, 'showCrosswalks').name(t('showCrosswalks')).onChange(rebuildScene);
   roads.add(settings, 'showPedestrians').onChange(rebuildScene);
   roads.add(settings, 'pedestrianDensity', 0.0, 1.0, 0.1).name(t('pedDensity')).onChange(rebuildScene);
@@ -5836,11 +5998,12 @@ function animate() {
     const pos = p.curve.getPointAt(safe);
     const tan = p.curve.getTangentAt(safe);
     const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
-    // Offset by roadWidth/2 + 0.3m for outer edge of road
-    const offsetMag = (settings.roadWidth * 0.5 + 0.3) * p.offsetDir;
+    const offsetMag = p.surface === 'path'
+      ? (p.lateralOffset || 0)
+      : (settings.roadWidth * 0.5 + 0.3) * p.offsetDir;
     pos.add(right.multiplyScalar(offsetMag));
 
-    const pedY = terrainLocalYAt(pos.x, pos.z) + LAYER.road + 0.03;
+    const pedY = terrainLocalYAt(pos.x, pos.z) + (p.surface === 'path' ? LAYER.path + 0.10 : LAYER.sidewalk + 0.08);
     const walkT = time * 0.006 + p.phase;
     const swing = Math.sin(walkT) * p.walkAmplitude;
     const counter = -swing;
@@ -6203,7 +6366,7 @@ if (autoOrbitBtn) {
 
 const TOUR_SETTING_KEYS = [
   'showIslands', 'islandTransparency', 'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture',
-  'showCars', 'showRoads', 'showSidewalks', 'showCrosswalks', 'showPedestrians',
+  'showCars', 'showRoads', 'showSidewalks', 'showPedestrianPaths', 'showCrosswalks', 'showPedestrians',
   'roadColorMode', 'showWindPlumes', 'windDirectionDeg', 'windPlumeDistance',
   'showTerrainTexture', 'showTerrainSides'
 ];
@@ -6488,6 +6651,7 @@ function applyDockSetting(key, value, inputType) {
     else if (key === 'showFurniture') clearGroup(furnitureGroup);
     else if (key === 'showRoads') clearGroup(roadGroup);
     else if (key === 'showSidewalks') clearGroup(sidewalkGroup);
+    else if (key === 'showPedestrianPaths') { clearGroup(pedestrianPathGroup); pedestrianPathCurves = []; }
     else if (key === 'showCrosswalks') clearGroup(crosswalkGroup);
     else if (key === 'showCars') clearGroup(carGroup);
     else if (key === 'showPedestrians') clearGroup(pedestrianGroup);

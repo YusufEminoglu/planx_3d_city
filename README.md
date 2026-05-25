@@ -13,6 +13,12 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 
 ## Latest Release Notes
 
+### 0.8.18
+
+- Fixes exported sidewalk polygon visibility and gives sidewalks a dedicated elevation layer above roads.
+- Adds an optional Pedestrian paths input for inner-block walkways (`mypedestrian_paths.geojson`) in both Vector Plan and Raster Plan Texture modes.
+- Keeps raster-mode buildings seated on the textured DEM surface with a raster-specific building base offset, without changing Vector Plan building placement.
+
 ### 0.8.17
 
 - Adds 40 Modern Turkish facade PNG textures: `Urban_TR_A_1` through `Urban_TR_D_10`, with four facade families and 1-10 storey variants.
@@ -203,7 +209,7 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 2. Start `PlanX 3D City`.
 3. In `1 Data` page, pick a publishing mode (Vector or Raster Plan Texture).
 4. Map the layers you have. **DEM** is recommended for real topography, but Vector Plan Mode can also open on a flat presentation plane when no DEM is selected.
-5. Optionally map enrichment layers (trees, hardscape, sidewalks, lights, benches, trash bins, bus stops).
+5. Optionally map enrichment layers (trees, hardscape, sidewalks, pedestrian paths, lights, benches, trash bins, bus stops).
 6. `Auto-match layers` matches by common name hints (`dem`, `roi`, `yol`/`road`, `bina`/`building`, `ada`/`block`, etc.) in any language.
 7. If your roads layer has a pedestrian/vehicle access field, map it under the road access dropdown — cars will not spawn on pedestrian-only roads.
 8. Field mapping is optional (population, dwelling, vehicle, land-use, odor/noise source, furniture direction).
@@ -223,7 +229,7 @@ The plugin writes the viewer inputs to fixed paths:
 - `web/data/yerlesim/mybuildings.geojson`
 - `web/data/yerlesim/myblocks.geojson`
 - `web/data/yerlesim/myparcels.geojson`
-- optional `mytrees`, `myhardscape`, `mysidewalks`, `mylights`, `mybenches`, `mytrashbins`, `mybusstops`
+- optional `mytrees`, `myhardscape`, `mysidewalks`, `mypedestrian_paths`, `mylights`, `mybenches`, `mytrashbins`, `mybusstops`
 - `web/data/planx_manifest.json`
 
 Optional layers can be left empty. The plugin writes empty GeoJSON files so the viewer remains stable.
@@ -256,7 +262,7 @@ Use this workflow when you already have a clipped 2D settlement plan as a GeoTIF
 ## Data Quality Expectations
 
 - All vector layers and the DEM should use the same metric CRS.
-- ROI, buildings, blocks, parcels, hardscape, and sidewalks should be polygon layers.
+- ROI, buildings, blocks, parcels, hardscape, and sidewalks should be polygon layers. Pedestrian paths may be line or polygon layers.
 - Roads should be line layers.
 - Trees, lights, benches, trash bins, and bus stops should be point layers.
 - Buildings should ideally include `katadedi` and `uipfonksiyon`.
