@@ -25,7 +25,7 @@ from qgis.core import (
 
 MODE_VECTOR = "vector"
 MODE_RASTER_TEXTURE = "raster_texture"
-PLUGIN_VERSION_FALLBACK = "0.8.16"
+PLUGIN_VERSION_FALLBACK = "0.8.17"
 VECTOR_REQUIRED_INPUTS = ()
 VECTOR_RECOMMENDED_INPUTS = ("dem", "roi", "roads", "buildings", "blocks", "parcels")
 RASTER_TEXTURE_REQUIRED_INPUTS = ("dem", "roi", "plan_texture", "roads", "buildings")
@@ -46,6 +46,18 @@ ASSET_THEME_PRESETS = {
         "facades": ["UrbanA", "UrbanB", "UrbanC", "UrbanD", "UrbanE"],
         "roofs": ["RoofA", "RoofB", "GermanTile", "USShingle", "StandingSeam"],
         "paving": ["Asphalt", "StoneA", "Cobble", "Concrete", "PlazaGranite"],
+    },
+    "Modern Turkish": {
+        "pedestrians": ["Commuter", "Urban Casual", "Office", "Student", "Visitor"],
+        "cars": ["White", "Graphite", "Silver", "Navy", "Slate", "Burgundy"],
+        "trees": ["Plane", "Street Linden", "Compact Maple", "Columnar", "Olive"],
+        "lights": ["Modern Arc", "Slim Post", "Dual Head", "Classic Post"],
+        "benches": ["Wood Plank", "Concrete Slab", "Slim Urban", "Stone Seat"],
+        "bins": ["Square Box", "Dual Recycle", "Cylinder", "Compact"],
+        "busstops": ["Glass Shelter", "Steel Canopy", "Minimal Canopy", "Compact Marker"],
+        "facades": ["Urban_TR_A", "Urban_TR_B", "Urban_TR_C", "Urban_TR_D"],
+        "roofs": ["TurkishTile", "CeramicLight", "StandingSeam", "RoofA"],
+        "paving": ["Concrete", "StoneA", "WarmStone", "Asphalt", "PlazaGranite"],
     },
     "Mediterranean": {
         "pedestrians": ["Casual Linen", "Warm Neutral", "Student", "Visitor"],

@@ -92,6 +92,7 @@ FIELD_MAPPING_DEFS = (
 
 ASSET_THEME_OPTIONS = (
     "Modern Urban",
+    "Modern Turkish",
     "Mediterranean",
     "Campus",
     "Eco",

@@ -13,6 +13,12 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 
 ## Latest Release Notes
 
+### 0.8.17
+
+- Adds 40 Modern Turkish facade PNG textures: `Urban_TR_A_1` through `Urban_TR_D_10`, with four facade families and 1-10 storey variants.
+- Adds a `Modern Turkish` asset theme and automatically maps Turkish facade families to each building's parsed floor count.
+- Gives the first floor an entrance/commercial/lobby character while upper floors keep repeatable modern apartment facade language.
+
 ### 0.8.16
 
 - Places Raster Plan Texture GeoTIFFs by their own projected bounding box inside the terrain extent, instead of stretching `siteplan.tif` over the full DEM.

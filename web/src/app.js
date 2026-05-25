@@ -799,6 +799,17 @@ const textureSets = {
   }
 };
 
+const TURKISH_FACADE_TYPES = ['A', 'B', 'C', 'D'];
+const TURKISH_FACADE_MAX_FLOORS = 10;
+const TURKISH_FACADE_BASE_KEYS = TURKISH_FACADE_TYPES.map((type) => `Urban_TR_${type}`);
+for (const type of TURKISH_FACADE_TYPES) {
+  const baseKey = `Urban_TR_${type}`;
+  textureSets.facade[baseKey] = baseKey;
+  for (let floors = 1; floors <= TURKISH_FACADE_MAX_FLOORS; floors++) {
+    textureSets.facade[`${baseKey}_${floors}`] = `assets/facade_urban_tr_${type.toLowerCase()}_${floors}.png`;
+  }
+}
+
 const assetThemePresets = {
   'Modern Urban': {
     pedestrians: ['Commuter', 'Urban Casual', 'Office', 'Student', 'Evening'],
@@ -811,6 +822,18 @@ const assetThemePresets = {
     facades: ['UrbanA', 'UrbanB', 'UrbanC', 'UrbanD', 'UrbanE'],
     roofs: ['RoofA', 'RoofB', 'GermanTile', 'USShingle', 'StandingSeam'],
     paving: ['Asphalt', 'StoneA', 'Cobble', 'Concrete', 'PlazaGranite']
+  },
+  'Modern Turkish': {
+    pedestrians: ['Commuter', 'Urban Casual', 'Office', 'Student', 'Visitor'],
+    cars: ['White', 'Graphite', 'Silver', 'Navy', 'Slate', 'Burgundy'],
+    trees: ['Plane', 'Street Linden', 'Compact Maple', 'Columnar', 'Olive'],
+    lights: ['Modern Arc', 'Slim Post', 'Dual Head', 'Classic Post'],
+    benches: ['Wood Plank', 'Concrete Slab', 'Slim Urban', 'Stone Seat'],
+    bins: ['Square Box', 'Dual Recycle', 'Cylinder', 'Compact'],
+    busstops: ['Glass Shelter', 'Steel Canopy', 'Minimal Canopy', 'Compact Marker'],
+    facades: TURKISH_FACADE_BASE_KEYS,
+    roofs: ['TurkishTile', 'CeramicLight', 'StandingSeam', 'RoofA'],
+    paving: ['Concrete', 'StoneA', 'WarmStone', 'Asphalt', 'PlazaGranite']
   },
   Mediterranean: {
     pedestrians: ['Casual Linen', 'Warm Neutral', 'Student', 'Visitor'],
@@ -945,6 +968,37 @@ function uniqueAssetVariants(category, fallback = []) {
   add(fallback);
   Object.values(assetThemePresets).forEach((preset) => add(preset[category]));
   return values;
+}
+
+function turkishFacadeMatch(key) {
+  return /^Urban_TR_([A-D])(?:_(\d{1,2}))?$/i.exec(String(key || ''));
+}
+
+function facadeFloorVariantCount(levels) {
+  const n = Math.round(Number(levels) || 1);
+  return Math.max(1, Math.min(TURKISH_FACADE_MAX_FLOORS, n));
+}
+
+function resolveFacadeForLevels(key, levels) {
+  const match = turkishFacadeMatch(key);
+  if (!match) return key;
+  const type = match[1].toUpperCase();
+  return `Urban_TR_${type}_${facadeFloorVariantCount(levels)}`;
+}
+
+function isTurkishFacadeFamily(key) {
+  return !!turkishFacadeMatch(key);
+}
+
+function isTurkishFloorFacade(key) {
+  const match = turkishFacadeMatch(key);
+  return !!(match && match[2]);
+}
+
+function facadeTextureFloorRows(key, fallback = 10) {
+  const match = turkishFacadeMatch(key);
+  if (match && match[2]) return Math.max(1, Math.min(TURKISH_FACADE_MAX_FLOORS, Number(match[2]) || fallback));
+  return fallback;
 }
 
 function drawWindowedFacade(ctx, size, palette, opts) {
@@ -4457,6 +4511,7 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
   const facadeScaleMultiplier = Math.max(1, Math.min(8, Number(settings.facadeTextureScale) || FACADE_TEXTURE_SCALE_MULTIPLIER));
   for (const fn of functions) {
     const key = functionFacadeState[fn];
+    if (isTurkishFacadeFamily(key)) continue;
     if (!facadeCache[key]) {
       facadeCache[key] = await textureFromSet('facade', key, 0.55 / facadeScaleMultiplier, 0.55 / facadeScaleMultiplier);
       if (isSceneBuildStale(buildToken)) return;
@@ -4471,7 +4526,8 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
     const levels = parseLevel(f.properties?.katadedi);
     const height = buildingHeightFromProps(props, levels);
     const featureColor = normalizeHexColor(propFirst(props, ['planx_color', 'planx_renk', 'color', 'renk']), functionColorState[fn]);
-    const featureFacade = presetValue(propFirst(props, ['planx_facade', 'planx_texture', 'facade', 'cephe', 'doku']), textureSets.facade, functionFacadeState[fn]);
+    const selectedFacade = presetValue(propFirst(props, ['planx_facade', 'planx_texture', 'facade', 'cephe', 'doku']), textureSets.facade, functionFacadeState[fn]);
+    const featureFacade = resolveFacadeForLevels(selectedFacade, levels);
     const featureRoofTexture = presetValue(propFirst(props, ['planx_roof_texture', 'roof_texture', 'cati_doku', 'cati_texture']), textureSets.roof, settings.roofTexture);
     const featureRoofShape = roofShapeValue(propFirst(props, ['planx_roof_shape', 'roof_shape', 'cati_tipi']), settings.roofShape);
     const featureRoofColor = normalizeHexColor(propFirst(props, ['planx_roof_color', 'roof_color', 'cati_renk']), '#ffffff');
@@ -4531,15 +4587,18 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
         facadeCache[featureFacade] = await textureFromSet('facade', featureFacade, 0.5 / facadeScaleMultiplier, 0.5 / facadeScaleMultiplier);
         if (isSceneBuildStale(buildToken)) return;
       }
-      const texKey = `${featureFacade}_${levels}`;
+      const texKey = `${featureFacade}_${levels}_${height.toFixed(2)}`;
       if (!facadeScaleCache[texKey]) {
         const base = facadeCache[featureFacade];
         if (base) {
           const recipe = (typeof FACADE_RECIPES !== 'undefined') ? FACADE_RECIPES[featureFacade] : null;
-          const textureFloorRows = recipe?.floorRows || 10;
-          const repeatV = Math.max(0.025, Math.min(3.0, levels / textureFloorRows / facadeScaleMultiplier));
+          const textureFloorRows = facadeTextureFloorRows(featureFacade, recipe?.floorRows || 10);
+          const repeatV = isTurkishFloorFacade(featureFacade)
+            ? Math.max(0.01, Math.min(1.0, 1 / Math.max(1, height)))
+            : Math.max(0.025, Math.min(3.0, levels / textureFloorRows / facadeScaleMultiplier));
           const t = base.clone();
           t.repeat.set(0.5 / facadeScaleMultiplier, repeatV);
+          if (isTurkishFloorFacade(featureFacade)) t.offset.y = -repeatV;
           t.needsUpdate = true;
           facadeScaleCache[texKey] = t;
         }

@@ -3,6 +3,15 @@
 All notable changes to **PlanX 3D City Viewer** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 
+## [0.8.17] - 2026-05-25
+
+Modern Turkish facade asset release.
+- Added 40 new realistic Turkish urban facade PNG textures: `Urban_TR_A_1` through `Urban_TR_D_10`, covering four modern apartment / mixed-use facade families across 1-10 storeys.
+- Added a `Modern Turkish` asset theme in the QGIS publisher and web viewer.
+- Turkish facade families auto-resolve to the building floor count, so choosing `Urban_TR_A` applies `Urban_TR_A_1..10` according to `katadedi` / parsed levels.
+- Ground floors are drawn as entrance/commercial/lobby floors while upper storeys use repeatable residential facade language.
+- Updated the viewer module cache key to `app.js?v=0.8.17`.
+
 ## [0.8.16] - 2026-05-23
 
 Raster plan texture georeference alignment hotfix.
