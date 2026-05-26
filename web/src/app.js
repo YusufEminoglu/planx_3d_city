@@ -109,6 +109,7 @@ Object.assign(i18n.TR, {
   lblRoadColor: 'Yol rengi', lblRoadStyle: 'Yol dokusu', lblPavementStyle: 'Zemin dokusu',
   lblHardscapeStyle: 'Sert zemin dokusu', lblHardscapeHeight: 'Sert zemin yuksekligi',
   lblBuildingMode: 'Bina modu', lblFacadeTextureScale: 'Cephe olcegi', lblTerrainAnalysis: 'Topoğrafya görünümü', lblAssetTheme: 'Asset theme',
+  lblTreeRenderMode: 'Agac render modu',
   lblTreeRandomize: 'Agaclari rastgele dagit', lblTreeVariantCount: 'Agac cesit sayisi', lblTreeHeightRandom: 'Agac yukseklik ifadesi',
   lblXyzTiles: 'QGIS basemap altligi', lblXyzUrl: 'XYZ URL sablonu',
   lblFloorHeight: 'Kat yuksekligi', lblRoofShape: 'Cati tipi', lblRoofHeight: 'Cati yuksekligi',
@@ -156,6 +157,7 @@ Object.assign(i18n.EN, {
   lblRoadColor: 'Road color', lblRoadStyle: 'Road texture', lblPavementStyle: 'Ground texture',
   lblHardscapeStyle: 'Hardscape texture', lblHardscapeHeight: 'Hardscape height',
   lblBuildingMode: 'Building mode', lblFacadeTextureScale: 'Facade scale', lblTerrainAnalysis: 'Topography view', lblAssetTheme: 'Asset theme',
+  lblTreeRenderMode: 'Tree render mode',
   lblTreeRandomize: 'Randomize trees', lblTreeVariantCount: 'Tree variant count', lblTreeHeightRandom: 'Tree height expression',
   lblXyzTiles: 'QGIS basemap texture', lblXyzUrl: 'XYZ URL template',
   lblFloorHeight: 'Floor height', lblRoofShape: 'Roof shape', lblRoofHeight: 'Roof height',
@@ -431,7 +433,7 @@ const LAYER = {
   carExtra:  0.08
 };
 const FACADE_TEXTURE_SCALE_MULTIPLIER = 4.85;
-const SETTINGS_SCHEMA_VERSION = 7;
+const SETTINGS_SCHEMA_VERSION = 8;
 
 // Match the viewer's local X axis to the QGIS map orientation.
 const LOCAL_X_SIGN = -1;
@@ -954,6 +956,7 @@ const TREE_VARIANT_PROFILES = {
   Pine: { shape: 'pine', trunkRatio: 0.28, crownWidth: 0.32, crownHeight: 1.0, crownLift: 0.47, crownEmbed: 0.18 },
   Broadleaf: { shape: 'broadleaf', trunkRatio: 0.22, crownWidth: 0.5, crownHeight: 0.76, crownLift: 0.34, crownEmbed: 0.09 }
 };
+const treeLeafTextureCache = new Map();
 
 function activeAssetTheme() {
   const name = settings.assetTheme || projectManifest?.assetTheme || 'Modern Urban';
@@ -1433,6 +1436,7 @@ const settings = {
   showBuildings: true,
   facadeTextureScale: FACADE_TEXTURE_SCALE_MULTIPLIER,
   showTrees: true,
+  treeRenderMode: 'Stylized',
   treeRandomize: true,
   treeVariantCount: 8,
   treeHeightRandomExpr: '',
@@ -1487,7 +1491,7 @@ const PERSISTED_SETTING_KEYS = [
   'floorHeight', 'roofTexture', 'roofShape', 'roofHeight', 'roadStyle', 'roadColor', 'roadColorMode', 'roadWidth',
   'showLights', 'lightStyle', 'showBenches', 'benchStyle', 'showBins', 'binStyle', 'showBusStops', 'stopStyle',
   'showIslands', 'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture',
-  'treeRandomize', 'treeVariantCount', 'treeHeightRandomExpr',
+  'treeRenderMode', 'treeRandomize', 'treeVariantCount', 'treeHeightRandomExpr',
   'showCars', 'showRoads', 'showSidewalks', 'showPedestrianPaths', 'showCrosswalks', 'showPedestrians',
   'showWindPlumes', 'windDirectionDeg', 'windPlumeDistance', 'showUrbanComfort',
   'demMeshQuality', 'timeOfDay', 'weather', 'fov', 'walkSpeed',
@@ -1515,6 +1519,7 @@ function loadPersistedSettings() {
       if (!('showIslands' in saved)) settings.showIslands = true;
       if (!('islandTransparency' in saved)) settings.islandTransparency = 0;
       settings.flattenIslands = true;
+      if (!('treeRenderMode' in saved)) settings.treeRenderMode = 'Stylized';
       if (!('treeRandomize' in saved)) settings.treeRandomize = true;
       if (!('treeVariantCount' in saved)) settings.treeVariantCount = 8;
       if (!('treeHeightRandomExpr' in saved)) settings.treeHeightRandomExpr = '';
@@ -4196,19 +4201,74 @@ function deterministicUnitHash(x, z, salt = 0) {
   return raw - Math.floor(raw);
 }
 
-function treeCrownGeometry(shape) {
+function treeLeafTextureForVariant(variantName) {
+  const key = String(variantName || 'default');
+  const cached = treeLeafTextureCache.get(key);
+  if (cached) return cached;
+  const baseColor = assetColor(variantName, 0x3b6e2e);
+  const r = (baseColor >> 16) & 255;
+  const g = (baseColor >> 8) & 255;
+  const b = baseColor & 255;
+  const c = document.createElement('canvas');
+  c.width = 128;
+  c.height = 128;
+  const ctx = c.getContext('2d');
+  if (!ctx) {
+    const fallback = new THREE.CanvasTexture(c);
+    treeLeafTextureCache.set(key, fallback);
+    return fallback;
+  }
+  const grad = ctx.createRadialGradient(64, 56, 8, 64, 64, 62);
+  grad.addColorStop(0, `rgba(${Math.min(255, r + 20)},${Math.min(255, g + 24)},${Math.min(255, b + 18)},0.98)`);
+  grad.addColorStop(0.7, `rgba(${Math.max(0, r - 12)},${Math.max(0, g - 14)},${Math.max(0, b - 12)},0.94)`);
+  grad.addColorStop(1, `rgba(${Math.max(0, r - 28)},${Math.max(0, g - 30)},${Math.max(0, b - 26)},0.88)`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 220; i++) {
+    const x = Math.random() * 128;
+    const y = Math.random() * 128;
+    const radius = 1.0 + Math.random() * 2.4;
+    const alpha = 0.08 + Math.random() * 0.16;
+    ctx.fillStyle = `rgba(${Math.max(0, r - 20 + Math.random() * 26)},${Math.max(0, g - 18 + Math.random() * 24)},${Math.max(0, b - 18 + Math.random() * 24)},${alpha})`;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy?.() || 1);
+  treeLeafTextureCache.set(key, tex);
+  return tex;
+}
+
+function treeLeafMaterial(variantName, profile, realisticMode = false) {
+  if (!realisticMode) {
+    return new THREE.MeshStandardMaterial({
+      color: assetColor(variantName, 0x3b6e2e),
+      roughness: profile.shape === 'columnar' || profile.shape === 'cypress' ? 0.86 : 0.9
+    });
+  }
+  return new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    map: treeLeafTextureForVariant(variantName),
+    roughness: 0.88,
+    metalness: 0.02
+  });
+}
+
+function treeCrownGeometry(shape, realisticMode = false) {
   switch (shape) {
-    case 'linden': return new THREE.SphereGeometry(1, 8, 6);
-    case 'plane': return new THREE.DodecahedronGeometry(1, 1);
-    case 'compact': return new THREE.IcosahedronGeometry(1, 1);
-    case 'columnar': return new THREE.CylinderGeometry(0.62, 0.78, 2.1, 10);
-    case 'olive': return new THREE.SphereGeometry(1, 7, 5);
-    case 'cypress': return new THREE.ConeGeometry(1, 2.8, 10);
-    case 'palm': return new THREE.ConeGeometry(1, 1.2, 6);
-    case 'jacaranda': return new THREE.DodecahedronGeometry(1, 0);
-    case 'pine': return new THREE.ConeGeometry(1, 2.5, 9);
-    case 'broadleaf': return new THREE.SphereGeometry(1, 10, 7);
-    default: return new THREE.SphereGeometry(1, 8, 6);
+    case 'linden': return new THREE.SphereGeometry(1, realisticMode ? 16 : 8, realisticMode ? 12 : 6);
+    case 'plane': return realisticMode ? new THREE.SphereGeometry(1, 14, 10) : new THREE.DodecahedronGeometry(1, 1);
+    case 'compact': return realisticMode ? new THREE.IcosahedronGeometry(1, 2) : new THREE.IcosahedronGeometry(1, 1);
+    case 'columnar': return new THREE.CylinderGeometry(0.62, 0.78, 2.1, realisticMode ? 14 : 10);
+    case 'olive': return new THREE.SphereGeometry(1, realisticMode ? 14 : 7, realisticMode ? 10 : 5);
+    case 'cypress': return new THREE.ConeGeometry(1, 2.8, realisticMode ? 14 : 10);
+    case 'palm': return new THREE.ConeGeometry(1, 1.2, realisticMode ? 10 : 6);
+    case 'jacaranda': return realisticMode ? new THREE.SphereGeometry(1, 14, 10) : new THREE.DodecahedronGeometry(1, 0);
+    case 'pine': return new THREE.ConeGeometry(1, 2.5, realisticMode ? 14 : 9);
+    case 'broadleaf': return new THREE.SphereGeometry(1, realisticMode ? 16 : 10, realisticMode ? 12 : 7);
+    default: return new THREE.SphereGeometry(1, realisticMode ? 16 : 8, realisticMode ? 12 : 6);
   }
 }
 
@@ -4307,6 +4367,7 @@ function buildTreeLayer(agaclar) {
   const heightFields = mappedHeightField ? [mappedHeightField, ...fallbackHeightFields] : fallbackHeightFields;
   const randomHeightExpr = parseRandRangeExpr(settings.treeHeightRandomExpr);
   const randomizeTrees = !!settings.treeRandomize;
+  const realisticTrees = String(settings.treeRenderMode || 'Stylized') === 'Realistic';
   const mustUseDefaultHeightRandom = !mappedHeightField && !randomHeightExpr;
   const treeVariants = activeTreeVariantsForBuild();
   if (!treeVariants.length) return;
@@ -4343,11 +4404,8 @@ function buildTreeLayer(agaclar) {
     if (!trees.length) return;
     const variantName = variantsForBuild[vi] || TREE_VARIANT_CATALOG[0];
     const profile = TREE_VARIANT_PROFILES[variantName] || TREE_PROFILE_DEFAULT;
-    const crownGeo = treeCrownGeometry(profile.shape);
-    const leafMat = new THREE.MeshStandardMaterial({
-      color: assetColor(variantName, 0x3b6e2e),
-      roughness: profile.shape === 'columnar' || profile.shape === 'cypress' ? 0.86 : 0.9
-    });
+    const crownGeo = treeCrownGeometry(profile.shape, realisticTrees);
+    const leafMat = treeLeafMaterial(variantName, profile, realisticTrees);
     const trunkInst = new THREE.InstancedMesh(trunkGeo, trunkMat, trees.length);
     trunkInst.frustumCulled = false;
     trunkInst.castShadow = true;
@@ -4355,6 +4413,15 @@ function buildTreeLayer(agaclar) {
     crownInst.frustumCulled = false;
     crownInst.castShadow = true;
     crownInst.userData.planxTreeVariant = variantName;
+    let canopyUpperInst = null;
+    if (realisticTrees && profile.shape !== 'palm') {
+      const upperGeo = treeCrownGeometry(profile.shape, true);
+      const upperMat = treeLeafMaterial(variantName, profile, true);
+      canopyUpperInst = new THREE.InstancedMesh(upperGeo, upperMat, trees.length);
+      canopyUpperInst.frustumCulled = false;
+      canopyUpperInst.castShadow = true;
+      canopyUpperInst.userData.planxTreeVariant = `${variantName}-upper`;
+    }
 
     trees.forEach(({ x, y, z, h }, idx) => {
       const trunkH = Math.max(1.1, h * profile.trunkRatio);
@@ -4376,13 +4443,29 @@ function buildTreeLayer(agaclar) {
       dummy.scale.set(crownRadius, crownVertical, crownRadius);
       dummy.updateMatrix();
       crownInst.setMatrixAt(idx, dummy.matrix);
+      if (canopyUpperInst) {
+        const upperRadius = crownRadius * 0.76;
+        const upperVertical = crownVertical * 0.62;
+        const upperY = crownY + upperVertical * 0.56;
+        dummy.position.set(x, upperY, z);
+        dummy.rotation.set(0, rot + 0.45, 0);
+        dummy.scale.set(upperRadius, upperVertical, upperRadius);
+        dummy.updateMatrix();
+        canopyUpperInst.setMatrixAt(idx, dummy.matrix);
+      }
     });
 
     trunkInst.instanceMatrix.needsUpdate = true;
     crownInst.instanceMatrix.needsUpdate = true;
     trunkInst.computeBoundingSphere();
     crownInst.computeBoundingSphere();
-    treeGroup.add(trunkInst, crownInst);
+    if (canopyUpperInst) {
+      canopyUpperInst.instanceMatrix.needsUpdate = true;
+      canopyUpperInst.computeBoundingSphere();
+      treeGroup.add(trunkInst, crownInst, canopyUpperInst);
+    } else {
+      treeGroup.add(trunkInst, crownInst);
+    }
   });
 }
 
@@ -6801,6 +6884,7 @@ function populateDockSelects() {
     roadStyle: Object.keys(textureSets.road),
     roadColorMode: ['Default', 'Amenity distance', 'Access / traffic'],
     assetTheme: Object.keys(assetThemePresets),
+    treeRenderMode: ['Stylized', 'Realistic'],
     treeVariantCount: Array.from({ length: TREE_VARIANT_CATALOG.length }, (_item, idx) => String(idx + 1)),
     lightStyle: uniqueAssetVariants('lights', ['Modern Arc', 'Classic Post', 'Dual Head', 'Slim Post']),
     benchStyle: uniqueAssetVariants('benches', ['Wood Plank', 'Concrete Slab', 'Curved Metal']),

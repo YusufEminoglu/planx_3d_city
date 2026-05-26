@@ -576,6 +576,9 @@ def _viewer_defaults_manifest(layer_map: dict) -> dict:
         tree_variant_count = 8
     tree_variant_count = max(1, min(len(TREE_VARIANT_CATALOG), tree_variant_count))
     tree_expr = str(layer_map.get("tree_height_random_expr") or "").strip()
+    tree_render_mode = str(layer_map.get("tree_render_mode") or "Stylized").strip() or "Stylized"
+    if tree_render_mode not in ("Stylized", "Realistic"):
+        tree_render_mode = "Stylized"
     return {
         "showTerrainSides": True,
         "terrainSideDrop": 5.0,
@@ -595,6 +598,7 @@ def _viewer_defaults_manifest(layer_map: dict) -> dict:
         "islandTransparency": 0.0,
         "latitude": float(latitude) if latitude is not None else 39.0,
         "dayOfYear": int(layer_map.get("day_of_year") or 172),
+        "treeRenderMode": tree_render_mode,
         "treeRandomize": bool(layer_map.get("tree_randomize_enabled", True)),
         "treeVariantCount": tree_variant_count,
         "treeHeightRandomExpr": tree_expr,

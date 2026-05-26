@@ -132,6 +132,10 @@ TREE_VARIANT_OPTIONS = (
 TREE_VARIANT_DEFAULT_COUNT = 8
 TREE_VARIANT_MIN_COUNT = 1
 TREE_VARIANT_MAX_COUNT = len(TREE_VARIANT_OPTIONS)
+TREE_RENDER_MODE_OPTIONS = (
+    ("Stylized", "Stylized (Fast)"),
+    ("Realistic", "Realistic (Enhanced)"),
+)
 
 AUTO_MATCH_ALIASES = {
     "dem": ("dem", "mydem", "elevation", "yukseklik", "yukseklik modeli"),
@@ -227,6 +231,8 @@ class PlanX3DCityDialog(QDialog):
                 payload["tree_random_variant_count"] = TREE_VARIANT_DEFAULT_COUNT
         if hasattr(self, "tree_height_random_expr"):
             payload["tree_height_random_expr"] = self.tree_height_random_expr.text().strip()
+        if hasattr(self, "tree_render_mode_combo"):
+            payload["tree_render_mode"] = self.tree_render_mode_combo.currentData() or "Stylized"
         if hasattr(self, "tree_variant_list"):
             payload["tree_variants"] = self._selected_tree_variants()
         return payload
@@ -690,6 +696,15 @@ class PlanX3DCityDialog(QDialog):
         )
         tree_help.setWordWrap(True)
         tree_root.addWidget(tree_help)
+        tree_mode_row = QHBoxLayout()
+        tree_mode_row.addWidget(QLabel("Render mode"))
+        self.tree_render_mode_combo = QComboBox()
+        for value, label in TREE_RENDER_MODE_OPTIONS:
+            self.tree_render_mode_combo.addItem(label, value)
+        mode_idx = self.tree_render_mode_combo.findData("Stylized")
+        self.tree_render_mode_combo.setCurrentIndex(mode_idx if mode_idx >= 0 else 0)
+        tree_mode_row.addWidget(self.tree_render_mode_combo, 1)
+        tree_root.addLayout(tree_mode_row)
         self.tree_variant_list = QListWidget()
         self.tree_variant_list.setMaximumHeight(160 if IS_QGIS4 else 180)
         for idx, name in enumerate(TREE_VARIANT_OPTIONS):
@@ -965,6 +980,10 @@ class PlanX3DCityDialog(QDialog):
                 self.tree_random_variant_count_combo.setCurrentIndex(idx)
         if hasattr(self, "tree_height_random_expr") and "tree_height_random_expr" in data:
             self.tree_height_random_expr.setText(str(data["tree_height_random_expr"] or ""))
+        if hasattr(self, "tree_render_mode_combo") and "tree_render_mode" in data:
+            idx = self.tree_render_mode_combo.findData(str(data["tree_render_mode"] or "Stylized"))
+            if idx >= 0:
+                self.tree_render_mode_combo.setCurrentIndex(idx)
         if hasattr(self, "tree_variant_list") and isinstance(data.get("tree_variants"), list):
             self._set_tree_variants([str(v) for v in data.get("tree_variants", []) if isinstance(v, str)])
 
@@ -1288,6 +1307,9 @@ class PlanX3DCityDialog(QDialog):
             self.tree_random_variant_count_combo.setCurrentIndex(idx if idx >= 0 else 0)
         if hasattr(self, "tree_height_random_expr"):
             self.tree_height_random_expr.clear()
+        if hasattr(self, "tree_render_mode_combo"):
+            idx = self.tree_render_mode_combo.findData("Stylized")
+            self.tree_render_mode_combo.setCurrentIndex(idx if idx >= 0 else 0)
         self._sync_tree_random_controls()
         if hasattr(self, "style_report"):
             self.style_report.setHtml("<p><b>Asset Theme</b>: Modern Urban defaults restored.</p>")
