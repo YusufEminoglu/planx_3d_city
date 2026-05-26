@@ -28,7 +28,7 @@ MODE_RASTER_TEXTURE = "raster_texture"
 PLUGIN_VERSION_FALLBACK = "0.8.22"
 VECTOR_REQUIRED_INPUTS = ()
 VECTOR_RECOMMENDED_INPUTS = ("dem", "roi", "roads", "buildings", "blocks", "parcels")
-RASTER_TEXTURE_REQUIRED_INPUTS = ("dem", "roi", "plan_texture", "roads", "buildings")
+RASTER_TEXTURE_REQUIRED_INPUTS = ("roi", "plan_texture", "roads", "buildings")
 REQUIRED_INPUTS = VECTOR_REQUIRED_INPUTS
 OPTIONAL_INPUTS = ("trees", "hardscape", "sidewalks", "pedestrian_paths", "lights", "benches", "trashbins", "busstops")
 VECTOR_OPTIONAL_INPUTS = VECTOR_RECOMMENDED_INPUTS + OPTIONAL_INPUTS
@@ -355,7 +355,7 @@ def optional_inputs_for_mode(mode: str) -> tuple[str, ...]:
 
 def recommended_inputs_for_mode(mode: str) -> tuple[str, ...]:
     if mode == MODE_RASTER_TEXTURE:
-        return ()
+        return ("dem",)
     return VECTOR_RECOMMENDED_INPUTS
 
 
@@ -389,9 +389,19 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
             dem_path.unlink()
         manifest_inputs.append(_layer_manifest("dem", None, "dem/mydem.tif", True, required_inputs))
     else:
-        _export_dem(dem_layer, dem_path)
-        written.append(str(dem_path))
-        manifest_inputs.append(_layer_manifest("dem", dem_layer, "dem/mydem.tif", False, required_inputs))
+        try:
+            _export_dem(dem_layer, dem_path)
+        except ExportError as exc:
+            # DEM is optional in all modes; keep export alive and let the viewer
+            # fall back to its flat-terrain mode.
+            if dem_path.exists():
+                dem_path.unlink()
+            manifest_inputs.append(_layer_manifest("dem", None, "dem/mydem.tif", True, required_inputs))
+            if feedback:
+                feedback(f"DEM export skipped ({dem_layer.name()}): {exc}")
+        else:
+            written.append(str(dem_path))
+            manifest_inputs.append(_layer_manifest("dem", dem_layer, "dem/mydem.tif", False, required_inputs))
 
     terrain_texture = None
     base_map_texture = None
