@@ -13,6 +13,7 @@ from typing import Optional
 from qgis.PyQt.QtCore import QSize
 from qgis.PyQt.QtGui import QColor
 from qgis.core import (
+    QgsCoordinateTransform,
     QgsCoordinateTransformContext,
     QgsMapRendererParallelJob,
     QgsMapSettings,
@@ -381,6 +382,9 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
     texture_dir.mkdir(parents=True, exist_ok=True)
     written = []
     manifest_inputs = []
+    export_crs = _target_export_crs(layer_map)
+    if feedback and export_crs is not None:
+        feedback(f"Export CRS -> {export_crs.authid() or export_crs.description()}")
 
     dem_path = dem_dir / "mydem.tif"
     dem_layer = layer_map.get("dem")
@@ -436,7 +440,7 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
         if layer is None:
             write_empty_geojson(out_path)
         else:
-            _export_vector(layer, out_path)
+            _export_vector(layer, out_path, export_crs)
         written.append(str(out_path))
         manifest_inputs.append(_layer_manifest(key, layer, f"yerlesim/{filename}", empty, required_inputs))
         if feedback:
@@ -700,7 +704,35 @@ def _layer_manifest(key: str, layer, target: str, empty: bool, required_inputs: 
     return item
 
 
-def _export_vector(layer, out_path: Path) -> None:
+def _target_export_crs(layer_map: dict):
+    """Choose one stable CRS for all vector exports so mixed-CRS projects stay aligned in the web viewer."""
+    candidates = (
+        "dem",
+        "roi",
+        "roads",
+        "buildings",
+        "blocks",
+        "parcels",
+        "trees",
+        "hardscape",
+        "sidewalks",
+        "pedestrian_paths",
+        "lights",
+        "benches",
+        "trashbins",
+        "busstops",
+    )
+    for key in candidates:
+        layer = layer_map.get(key)
+        if layer is None or not hasattr(layer, "crs"):
+            continue
+        crs = layer.crs()
+        if crs and crs.isValid():
+            return crs
+    return None
+
+
+def _export_vector(layer, out_path: Path, target_crs=None) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     if out_path.exists():
         out_path.unlink()
@@ -709,6 +741,9 @@ def _export_vector(layer, out_path: Path) -> None:
     options.driverName = "GeoJSON"
     options.fileEncoding = "UTF-8"
     options.layerName = out_path.stem
+    if target_crs is not None and target_crs.isValid() and hasattr(layer, "crs") and layer.crs().isValid():
+        if layer.crs().authid() != target_crs.authid():
+            options.ct = QgsCoordinateTransform(layer.crs(), target_crs, QgsProject.instance())
     transform_context = QgsProject.instance().transformContext()
     result = QgsVectorFileWriter.writeAsVectorFormatV3(layer, str(out_path), transform_context, options)
 

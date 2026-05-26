@@ -4227,12 +4227,81 @@ function activeTreeVariantsForBuild() {
   return unique.slice(0, Math.max(1, Math.min(count, unique.length)));
 }
 
+function isFiniteCoord(coord) {
+  return Array.isArray(coord) && coord.length >= 2 && Number.isFinite(coord[0]) && Number.isFinite(coord[1]);
+}
+
+function centroidFromCoords(coords) {
+  const pts = (coords || []).filter(isFiniteCoord);
+  if (!pts.length) return null;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const [x, y] of pts) {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) return null;
+  return [(minX + maxX) * 0.5, (minY + maxY) * 0.5];
+}
+
+function representativeTreeCoords(geometry) {
+  if (!geometry || !geometry.type) return [];
+  const c = geometry.coordinates;
+  if (geometry.type === 'Point') return isFiniteCoord(c) ? [c] : [];
+  if (geometry.type === 'MultiPoint') return Array.isArray(c) ? c.filter(isFiniteCoord) : [];
+  if (geometry.type === 'LineString') {
+    if (!Array.isArray(c) || !c.length) return [];
+    const mid = c[Math.floor(c.length / 2)];
+    return isFiniteCoord(mid) ? [mid] : [];
+  }
+  if (geometry.type === 'MultiLineString') {
+    if (!Array.isArray(c) || !c.length) return [];
+    for (const line of c) {
+      if (!Array.isArray(line) || !line.length) continue;
+      const mid = line[Math.floor(line.length / 2)];
+      if (isFiniteCoord(mid)) return [mid];
+    }
+    return [];
+  }
+  if (geometry.type === 'Polygon') {
+    const ring = Array.isArray(c) && c.length ? c[0] : null;
+    const centroid = centroidFromCoords(ring);
+    return centroid ? [centroid] : [];
+  }
+  if (geometry.type === 'MultiPolygon') {
+    if (!Array.isArray(c) || !c.length) return [];
+    for (const poly of c) {
+      const ring = Array.isArray(poly) && poly.length ? poly[0] : null;
+      const centroid = centroidFromCoords(ring);
+      if (centroid) return [centroid];
+    }
+    return [];
+  }
+  if (geometry.type === 'GeometryCollection') {
+    const geoms = Array.isArray(geometry.geometries) ? geometry.geometries : [];
+    for (const g of geoms) {
+      const coords = representativeTreeCoords(g);
+      if (coords.length) return coords;
+    }
+  }
+  return [];
+}
+
 // InstancedMesh trees — dynamic variant buckets (up to 10 presets) with optional randomize + rand(min,max) heights.
 function buildTreeLayer(agaclar) {
   clearGroup(treeGroup);
   if (!agaclar?.features?.length) return;
-  const feats = agaclar.features.filter(f => f.geometry?.type === 'Point');
-  if (!feats.length) return;
+  const treeSamples = [];
+  for (const feat of agaclar.features || []) {
+    const coords = representativeTreeCoords(feat?.geometry);
+    if (!coords.length) continue;
+    for (const coord of coords) treeSamples.push({ feature: feat, coord });
+  }
+  if (!treeSamples.length) {
+    setStatus('Trees layer has no usable coordinates (Point/MultiPoint/Polygon centroid).', true);
+    return;
+  }
   const mappedHeightField = mappedField('tree_height_field');
   const fallbackHeightFields = ['planx_tree_height', 'tree_height', 'height', 'boy', 'agac_boyu', 'ağaç_boyu', 'aÄŸaÃ§_boyu', 'yukseklik', 'yükseklik', 'yÃ¼kseklik'];
   const heightFields = mappedHeightField ? [mappedHeightField, ...fallbackHeightFields] : fallbackHeightFields;
@@ -4244,11 +4313,14 @@ function buildTreeLayer(agaclar) {
 
   const variantsForBuild = randomizeTrees ? treeVariants : treeVariants.slice(0, 1);
   const buckets = variantsForBuild.map(() => []);
-  feats.forEach((f, i) => {
-    const [x, z] = metersToLocal(f.geometry.coordinates[0], f.geometry.coordinates[1]);
+  treeSamples.forEach((entry, i) => {
+    const coord = entry.coord;
+    const feature = entry.feature;
+    if (!isFiniteCoord(coord)) return;
+    const [x, z] = metersToLocal(coord[0], coord[1]);
     const y = terrainLocalYAt(x, z) + LAYER.content;
     const baseRandom = 1 + deterministicUnitHash(x, z, i + 101) * 6;
-    const sourceHeight = parseNumberProp(f.properties || {}, heightFields, NaN);
+    const sourceHeight = parseNumberProp(feature?.properties || {}, heightFields, NaN);
     let treeH = Number.isFinite(sourceHeight) && sourceHeight > 0.5 ? sourceHeight : baseRandom;
     if (randomHeightExpr) {
       const ratio = deterministicUnitHash(x, z, i + 11);
