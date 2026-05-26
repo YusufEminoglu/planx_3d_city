@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.23] - 2026-05-26
+
+- Qt5/Qt6 compatibility maintenance, welcome/dialog stability improvements, and QGIS 3.40+/4 runtime validation.
+
 ## [0.8.22] - 2026-05-26
 
 - Maintenance release: refreshed Plugin Hub package with QGIS 4 welcome dialog fixes.
