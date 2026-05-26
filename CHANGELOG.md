@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.24] - 2026-05-26
+
+- Improved Turkish field-name matching in attribute detection (nüfus, araç, yükseklik, ağaç_boyu, yön) while preserving legacy aliases.
+
 ## [0.8.23] - 2026-05-26
 
 - Qt5/Qt6 compatibility maintenance, welcome/dialog stability improvements, and QGIS 3.40+/4 runtime validation.

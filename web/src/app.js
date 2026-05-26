@@ -3595,8 +3595,8 @@ function estimateBuildingFeatureMetrics(feature) {
   }
   const floorArea = parseNumberProp(props, namesWithMapping('building_floor_area_field', ['toplam_insaat', 'insaat_alani', 'floor_area', 'gross_area']), footprint * levels);
   const dwellings = parseNumberProp(props, namesWithMapping('building_dwelling_field', ['daire', 'daire_sayisi', 'dwelling', 'dwellings']), Math.max(1, Math.round(floorArea / 115)));
-  const population = parseNumberProp(props, namesWithMapping('building_population_field', ['nufus', 'nÃ¼fus', 'population', 'pop']), Math.round(dwellings * 3.1));
-  const vehicles = parseNumberProp(props, namesWithMapping('building_vehicle_field', ['arac', 'araÃ§', 'vehicle', 'cars']), Math.round(dwellings * 0.7));
+  const population = parseNumberProp(props, namesWithMapping('building_population_field', ['nufus', 'nüfus', 'nÃ¼fus', 'population', 'pop']), Math.round(dwellings * 3.1));
+  const vehicles = parseNumberProp(props, namesWithMapping('building_vehicle_field', ['arac', 'araç', 'araÃ§', 'vehicle', 'cars']), Math.round(dwellings * 0.7));
   return { footprint, floorArea, dwellings, population, vehicles };
 }
 
@@ -3750,7 +3750,7 @@ function featureRoadWidth(feature) {
 }
 
 function buildingHeightFromProps(props, levels) {
-  const explicit = parseNumberProp(props || {}, ['planx_height', 'height', 'yukseklik', 'yÃ¼kseklik', 'bina_yuksekligi', 'building_height'], null);
+  const explicit = parseNumberProp(props || {}, ['planx_height', 'height', 'yukseklik', 'yükseklik', 'yÃ¼kseklik', 'bina_yuksekligi', 'building_height'], null);
   if (explicit !== null && explicit > 0) return explicit;
   return levels * settings.floorHeight;
 }
@@ -4094,7 +4094,7 @@ function buildTreeLayer(agaclar) {
   if (!agaclar?.features?.length) return;
   const feats = agaclar.features.filter(f => f.geometry?.type === 'Point');
   if (!feats.length) return;
-  const heightFields = namesWithMapping('tree_height_field', ['planx_tree_height', 'tree_height', 'height', 'boy', 'agac_boyu', 'aÄŸaÃ§_boyu', 'yukseklik', 'yÃ¼kseklik']);
+  const heightFields = namesWithMapping('tree_height_field', ['planx_tree_height', 'tree_height', 'height', 'boy', 'agac_boyu', 'ağaç_boyu', 'aÄŸaÃ§_boyu', 'yukseklik', 'yükseklik', 'yÃ¼kseklik']);
 
   // Group by variant (0,1,2)
   const buckets = [[], [], []];
@@ -4190,7 +4190,7 @@ function furnitureRotationY(feature, x, z, mappedKey) {
   const props = feature?.properties || {};
   const fieldNames = namesWithMapping(mappedKey, [
     'planx_angle', 'planx_rotation', 'angle', 'rotation', 'rot',
-    'heading', 'bearing', 'azimuth', 'direction', 'yon', 'yÃ¶n'
+    'heading', 'bearing', 'azimuth', 'direction', 'yon', 'yön', 'yÃ¶n'
   ]);
   const deg = numericPropFirst(props, fieldNames);
   if (deg !== null) return -THREE.MathUtils.degToRad(deg);
