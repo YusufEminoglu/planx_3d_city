@@ -1934,11 +1934,27 @@ function mergeBounds(a, b) {
 }
 
 const EMPTY_GEOJSON = { type: 'FeatureCollection', features: [] };
+const DATA_FETCH_TIMEOUT_MS = 20000;
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = DATA_FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      throw new Error(`Request timed out: ${url}`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 async function loadGeoJson(path, options = {}) {
   const { required = false, label = path } = options;
   try {
-    const r = await fetch(path);
+    const r = await fetchWithTimeout(path);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const data = await r.json();
     if (!data || !Array.isArray(data.features)) {
@@ -1958,7 +1974,7 @@ async function loadGeoJson(path, options = {}) {
 
 async function loadManifest() {
   try {
-    const r = await fetch('../data/planx_manifest.json', { cache: 'no-store' });
+    const r = await fetchWithTimeout('../data/planx_manifest.json', { cache: 'no-store' });
     if (!r.ok) return null;
     return await r.json();
   } catch (err) {
@@ -2307,7 +2323,7 @@ function alignTerrainTextureCanvas(sourceCanvas, textureBounds) {
 async function loadTerrainTextureFromGeoTiff() {
   const target = projectManifest?.terrainTexture?.target;
   if (!target || !settings.showTerrainTexture) return null;
-  const res = await fetch(`../data/${target}`, { cache: 'no-store' });
+  const res = await fetchWithTimeout(`../data/${target}`, { cache: 'no-store' }, 30000);
   if (!res.ok) throw new Error(`Terrain texture not found: ${target}`);
   const file = await res.arrayBuffer();
   const tiff = await GeoTIFF.fromArrayBuffer(file);
@@ -2407,7 +2423,7 @@ function demHeightMedianAtProjected(x, y, fallback = null, radius = 1) {
 
 async function loadProjectDem() {
   setStatus(t('demLoading'));
-  const res = await fetch('../data/dem/mydem.tif');
+  const res = await fetchWithTimeout('../data/dem/mydem.tif', { cache: 'no-store' }, 30000);
   if (!res.ok) throw new Error('DEM not found');
   const file = await res.arrayBuffer();
   const tiff = await GeoTIFF.fromArrayBuffer(file);
@@ -5615,14 +5631,14 @@ async function rebuildScene() {
     loadingText.innerText = t('sceneDem') + '...';
     setSceneState('sceneDem');
     loadProjectDem()
-      .then(() => rebuildScene())
+      .then(() => rebuildSceneSafe())
       .catch((err) => {
         if (isSceneBuildStale(buildToken)) return;
         const demMissing = String(err?.message || err).includes('DEM not found');
         if (demMissing) console.info('DEM not found; using flat terrain fallback.');
         else console.warn('DEM could not be loaded; using flat terrain fallback:', err);
         activateFlatTerrainFallback(vectorBounds || bounds);
-        rebuildScene();
+        rebuildSceneSafe();
       });
     return;
   }
@@ -5735,6 +5751,19 @@ async function rebuildScene() {
   setSceneState('sceneReady');
 
   hideLoadingOverlay();
+}
+
+function handleSceneError(err) {
+  console.error(err);
+  setStatus(err?.message || t('demFail'));
+  setSceneState(err?.message || 'Scene error', 'warn');
+  hideLoadingOverlay(0);
+}
+
+function rebuildSceneSafe() {
+  return rebuildScene().catch((err) => {
+    handleSceneError(err);
+  });
 }
 
 let globalGui = null;
@@ -6478,13 +6507,15 @@ if (langToggleBtn) {
 // Initialize UI text
 updateHtmlLang();
 
-rebuildScene().then(() => {
+window.addEventListener('error', (event) => {
+  handleSceneError(event?.error || event?.message || new Error('Scene error'));
+});
+window.addEventListener('unhandledrejection', (event) => {
+  handleSceneError(event?.reason || new Error('Unhandled scene promise rejection'));
+});
+
+rebuildSceneSafe().then(() => {
   if (functionGuiRefs) functionGuiRefs.refreshFunctionGui();
-}).catch((e) => {
-  console.error(e);
-  setStatus(e?.message || t('demFail'));
-  setSceneState(e?.message || 'Scene error', 'warn');
-  hideLoadingOverlay(0);
 });
 animate();
 

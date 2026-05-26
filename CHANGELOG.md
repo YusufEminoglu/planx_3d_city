@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.25] - 2026-05-26
+
+- Fixed long-loading startup behavior by adding request timeouts and safer scene-rebuild error handling.
+- Added global runtime error capture so the loading overlay closes with a clear status message instead of hanging.
+- Updated viewer cache-bust query to `app.js?v=0.8.25`.
+- Slimmed Turkish facade assets by removing numbered TR texture files; base `Urban_TR_A/B/C/D` variants remain.
+
 ## [0.8.24] - 2026-05-26
 
 - Improved Turkish field-name matching in attribute detection (nüfus, araç, yükseklik, ağaç_boyu, yön) while preserving legacy aliases.
