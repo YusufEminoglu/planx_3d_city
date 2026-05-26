@@ -109,6 +109,7 @@ Object.assign(i18n.TR, {
   lblRoadColor: 'Yol rengi', lblRoadStyle: 'Yol dokusu', lblPavementStyle: 'Zemin dokusu',
   lblHardscapeStyle: 'Sert zemin dokusu', lblHardscapeHeight: 'Sert zemin yuksekligi',
   lblBuildingMode: 'Bina modu', lblFacadeTextureScale: 'Cephe olcegi', lblTerrainAnalysis: 'Topoğrafya görünümü', lblAssetTheme: 'Asset theme',
+  lblTreeRandomize: 'Agaclari rastgele dagit', lblTreeVariantCount: 'Agac cesit sayisi', lblTreeHeightRandom: 'Agac yukseklik ifadesi',
   lblXyzTiles: 'QGIS basemap altligi', lblXyzUrl: 'XYZ URL sablonu',
   lblFloorHeight: 'Kat yuksekligi', lblRoofShape: 'Cati tipi', lblRoofHeight: 'Cati yuksekligi',
   lblRoofTexture: 'Cati dokusu', lblFunctionStyles: 'Kullanim renkleri ve cepheleri',
@@ -155,6 +156,7 @@ Object.assign(i18n.EN, {
   lblRoadColor: 'Road color', lblRoadStyle: 'Road texture', lblPavementStyle: 'Ground texture',
   lblHardscapeStyle: 'Hardscape texture', lblHardscapeHeight: 'Hardscape height',
   lblBuildingMode: 'Building mode', lblFacadeTextureScale: 'Facade scale', lblTerrainAnalysis: 'Topography view', lblAssetTheme: 'Asset theme',
+  lblTreeRandomize: 'Randomize trees', lblTreeVariantCount: 'Tree variant count', lblTreeHeightRandom: 'Tree height expression',
   lblXyzTiles: 'QGIS basemap texture', lblXyzUrl: 'XYZ URL template',
   lblFloorHeight: 'Floor height', lblRoofShape: 'Roof shape', lblRoofHeight: 'Roof height',
   lblRoofTexture: 'Roof texture', lblFunctionStyles: 'Function colors and facades',
@@ -429,7 +431,7 @@ const LAYER = {
   carExtra:  0.08
 };
 const FACADE_TEXTURE_SCALE_MULTIPLIER = 4.85;
-const SETTINGS_SCHEMA_VERSION = 6;
+const SETTINGS_SCHEMA_VERSION = 7;
 
 // Match the viewer's local X axis to the QGIS map orientation.
 const LOCAL_X_SIGN = -1;
@@ -831,7 +833,7 @@ const assetThemePresets = {
   'Modern Urban': {
     pedestrians: ['Commuter', 'Urban Casual', 'Office', 'Student', 'Evening'],
     cars: ['Graphite', 'Slate', 'Teal', 'White', 'Navy', 'Silver'],
-    trees: ['Street Linden', 'Plane', 'Compact Maple', 'Columnar'],
+    trees: ['Street Linden', 'Plane', 'Compact Maple', 'Columnar', 'Broadleaf', 'Pine', 'Olive', 'Cypress'],
     lights: ['Modern Arc', 'Dual Head', 'Slim Post', 'Bollard Path', 'Classic Post'],
     benches: ['Wood Plank', 'Concrete Slab', 'Curved Metal', 'Slim Urban', 'Stone Seat'],
     bins: ['Square Box', 'Dual Recycle', 'Cylinder', 'Compact', 'Solar Compactor'],
@@ -843,7 +845,7 @@ const assetThemePresets = {
   'Modern Turkish': {
     pedestrians: ['Commuter', 'Urban Casual', 'Office', 'Student', 'Visitor'],
     cars: ['White', 'Graphite', 'Silver', 'Navy', 'Slate', 'Burgundy'],
-    trees: ['Plane', 'Street Linden', 'Compact Maple', 'Columnar', 'Olive'],
+    trees: ['Plane', 'Street Linden', 'Compact Maple', 'Columnar', 'Olive', 'Cypress', 'Jacaranda', 'Pine'],
     lights: ['Modern Arc', 'Slim Post', 'Dual Head', 'Classic Post'],
     benches: ['Wood Plank', 'Concrete Slab', 'Slim Urban', 'Stone Seat'],
     bins: ['Square Box', 'Dual Recycle', 'Cylinder', 'Compact'],
@@ -855,7 +857,7 @@ const assetThemePresets = {
   Mediterranean: {
     pedestrians: ['Casual Linen', 'Warm Neutral', 'Student', 'Visitor'],
     cars: ['Ivory', 'Terracotta', 'Olive', 'Slate', 'Sand'],
-    trees: ['Olive', 'Cypress', 'Plane', 'Palm', 'Jacaranda'],
+    trees: ['Olive', 'Cypress', 'Plane', 'Palm', 'Jacaranda', 'Broadleaf', 'Compact Maple', 'Street Linden'],
     lights: ['Classic Post', 'Slim Post', 'Heritage Lantern', 'Modern Arc'],
     benches: ['Wood Plank', 'Curved Metal', 'Stone Seat', 'Classic Iron'],
     bins: ['Cylinder', 'Square Box', 'Dual Recycle', 'Compact'],
@@ -867,7 +869,7 @@ const assetThemePresets = {
   Campus: {
     pedestrians: ['Student', 'Academic', 'Sport', 'Visitor'],
     cars: ['Slate', 'Navy', 'White', 'Graphite', 'Silver'],
-    trees: ['Plane', 'Pine', 'Compact Maple', 'Street Linden', 'Broadleaf'],
+    trees: ['Plane', 'Pine', 'Compact Maple', 'Street Linden', 'Broadleaf', 'Columnar', 'Olive', 'Cypress'],
     lights: ['Slim Post', 'Campus Twin', 'Modern Arc', 'Dual Head'],
     benches: ['Wood Plank', 'Concrete Slab', 'Slim Urban', 'Eco Timber'],
     bins: ['Dual Recycle', 'Square Box', 'Compact', 'Solar Compactor'],
@@ -879,7 +881,7 @@ const assetThemePresets = {
   Eco: {
     pedestrians: ['Outdoor', 'Casual Green', 'Student', 'Visitor'],
     cars: ['Teal', 'Olive', 'White', 'Slate', 'Moss'],
-    trees: ['Broadleaf', 'Pine', 'Street Linden', 'Compact Maple', 'Olive'],
+    trees: ['Broadleaf', 'Pine', 'Street Linden', 'Compact Maple', 'Olive', 'Jacaranda', 'Cypress', 'Plane'],
     lights: ['Slim Post', 'Bollard Path', 'Modern Arc', 'Classic Post'],
     benches: ['Eco Timber', 'Wood Plank', 'Stone Seat', 'Concrete Slab'],
     bins: ['Dual Recycle', 'Compact', 'Cylinder', 'Solar Compactor'],
@@ -891,7 +893,7 @@ const assetThemePresets = {
   'Dense Urban': {
     pedestrians: ['Commuter', 'Office', 'Evening', 'Urban Casual', 'Visitor'],
     cars: ['Graphite', 'Black', 'Navy', 'White', 'Slate', 'Burgundy'],
-    trees: ['Columnar', 'Compact Maple', 'Street Linden'],
+    trees: ['Columnar', 'Compact Maple', 'Street Linden', 'Plane', 'Broadleaf', 'Pine', 'Olive', 'Cypress'],
     lights: ['Dual Head', 'Modern Arc', 'Slim Post', 'Bollard Path'],
     benches: ['Concrete Slab', 'Curved Metal', 'Slim Urban', 'Stone Seat'],
     bins: ['Square Box', 'Compact', 'Dual Recycle', 'Solar Compactor'],
@@ -903,7 +905,7 @@ const assetThemePresets = {
   'Civic Heritage': {
     pedestrians: ['Visitor', 'Academic', 'Warm Neutral', 'Commuter'],
     cars: ['Graphite', 'Ivory', 'Slate', 'Burgundy', 'Black'],
-    trees: ['Plane', 'Cypress', 'Street Linden', 'Columnar'],
+    trees: ['Plane', 'Cypress', 'Street Linden', 'Columnar', 'Olive', 'Broadleaf', 'Jacaranda', 'Pine'],
     lights: ['Heritage Lantern', 'Classic Post', 'Slim Post', 'Bollard Path'],
     benches: ['Classic Iron', 'Stone Seat', 'Wood Plank', 'Concrete Slab'],
     bins: ['Cylinder', 'Square Box', 'Dual Recycle', 'Compact'],
@@ -915,7 +917,7 @@ const assetThemePresets = {
   'Coastal Light': {
     pedestrians: ['Casual Linen', 'Visitor', 'Student', 'Outdoor'],
     cars: ['White', 'Ivory', 'Teal', 'Sand', 'Slate'],
-    trees: ['Palm', 'Plane', 'Olive', 'Broadleaf'],
+    trees: ['Palm', 'Plane', 'Olive', 'Broadleaf', 'Jacaranda', 'Street Linden', 'Compact Maple', 'Cypress'],
     lights: ['Slim Post', 'Modern Arc', 'Bollard Path', 'Classic Post'],
     benches: ['Wood Plank', 'Eco Timber', 'Stone Seat', 'Slim Urban'],
     bins: ['Cylinder', 'Dual Recycle', 'Compact', 'Square Box'],
@@ -936,6 +938,21 @@ const namedAssetColors = {
   Broadleaf: 0x2f7d32, Pine: 0x1f5f3a, 'Street Linden': 0x3f8f3b, Plane: 0x4b9c45,
   'Compact Maple': 0x5a8f35, Columnar: 0x2c6e3f, Cypress: 0x174d32, Palm: 0x3d8b44,
   Olive: 0x667a2d, Jacaranda: 0x6d5aa8
+};
+
+const TREE_VARIANT_CATALOG = ['Street Linden', 'Plane', 'Compact Maple', 'Columnar', 'Olive', 'Cypress', 'Palm', 'Jacaranda', 'Pine', 'Broadleaf'];
+const TREE_PROFILE_DEFAULT = { shape: 'round', trunkRatio: 0.22, crownWidth: 0.46, crownHeight: 0.72, crownLift: 0.36 };
+const TREE_VARIANT_PROFILES = {
+  'Street Linden': { shape: 'linden', trunkRatio: 0.23, crownWidth: 0.44, crownHeight: 0.74, crownLift: 0.34 },
+  Plane: { shape: 'plane', trunkRatio: 0.21, crownWidth: 0.52, crownHeight: 0.68, crownLift: 0.33 },
+  'Compact Maple': { shape: 'compact', trunkRatio: 0.2, crownWidth: 0.45, crownHeight: 0.69, crownLift: 0.36 },
+  Columnar: { shape: 'columnar', trunkRatio: 0.24, crownWidth: 0.29, crownHeight: 0.92, crownLift: 0.4 },
+  Olive: { shape: 'olive', trunkRatio: 0.23, crownWidth: 0.43, crownHeight: 0.62, crownLift: 0.33 },
+  Cypress: { shape: 'cypress', trunkRatio: 0.26, crownWidth: 0.25, crownHeight: 1.02, crownLift: 0.46 },
+  Palm: { shape: 'palm', trunkRatio: 0.45, crownWidth: 0.35, crownHeight: 0.48, crownLift: 0.55 },
+  Jacaranda: { shape: 'jacaranda', trunkRatio: 0.2, crownWidth: 0.52, crownHeight: 0.7, crownLift: 0.31 },
+  Pine: { shape: 'pine', trunkRatio: 0.28, crownWidth: 0.32, crownHeight: 1.0, crownLift: 0.47 },
+  Broadleaf: { shape: 'broadleaf', trunkRatio: 0.22, crownWidth: 0.5, crownHeight: 0.76, crownLift: 0.34 }
 };
 
 function activeAssetTheme() {
@@ -1416,6 +1433,9 @@ const settings = {
   showBuildings: true,
   facadeTextureScale: FACADE_TEXTURE_SCALE_MULTIPLIER,
   showTrees: true,
+  treeRandomize: true,
+  treeVariantCount: 8,
+  treeHeightRandomExpr: '',
   showFurniture: true,
   showCars: false,
   showRoads: true,
@@ -1467,6 +1487,7 @@ const PERSISTED_SETTING_KEYS = [
   'floorHeight', 'roofTexture', 'roofShape', 'roofHeight', 'roadStyle', 'roadColor', 'roadColorMode', 'roadWidth',
   'showLights', 'lightStyle', 'showBenches', 'benchStyle', 'showBins', 'binStyle', 'showBusStops', 'stopStyle',
   'showIslands', 'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture',
+  'treeRandomize', 'treeVariantCount', 'treeHeightRandomExpr',
   'showCars', 'showRoads', 'showSidewalks', 'showPedestrianPaths', 'showCrosswalks', 'showPedestrians',
   'showWindPlumes', 'windDirectionDeg', 'windPlumeDistance', 'showUrbanComfort',
   'demMeshQuality', 'timeOfDay', 'weather', 'fov', 'walkSpeed',
@@ -1494,6 +1515,9 @@ function loadPersistedSettings() {
       if (!('showIslands' in saved)) settings.showIslands = true;
       if (!('islandTransparency' in saved)) settings.islandTransparency = 0;
       settings.flattenIslands = true;
+      if (!('treeRandomize' in saved)) settings.treeRandomize = true;
+      if (!('treeVariantCount' in saved)) settings.treeVariantCount = 8;
+      if (!('treeHeightRandomExpr' in saved)) settings.treeHeightRandomExpr = '';
     }
   } catch (err) {
     console.warn('Could not restore PlanX viewer settings', err);
@@ -4088,8 +4112,8 @@ function roofMeshFor(shape, footprintPoints, hBase, height, roofShape = settings
   return roof;
 }
 
-// InstancedMesh trees — one draw call per variant (6 total) instead of 2N+ draw calls
-function buildTreeLayer(agaclar) {
+// Legacy tree renderer retained only for regression reference.
+function buildTreeLayerLegacy(agaclar) {
   clearGroup(treeGroup);
   if (!agaclar?.features?.length) return;
   const feats = agaclar.features.filter(f => f.geometry?.type === 'Point');
@@ -4151,6 +4175,140 @@ function buildTreeLayer(agaclar) {
 
     trunkInst.instanceMatrix.needsUpdate = true;
     crownInst.instanceMatrix.needsUpdate = true;
+    treeGroup.add(trunkInst, crownInst);
+  });
+}
+
+function parseRandRangeExpr(expr) {
+  const text = String(expr || '').trim();
+  if (!text) return null;
+  const match = /^rand\s*\(\s*([-+]?\d+(?:[.,]\d+)?)\s*,\s*([-+]?\d+(?:[.,]\d+)?)\s*\)$/i.exec(text);
+  if (!match) return null;
+  let min = Number(match[1].replace(',', '.'));
+  let max = Number(match[2].replace(',', '.'));
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+  if (max < min) [min, max] = [max, min];
+  return { min, max };
+}
+
+function deterministicUnitHash(x, z, salt = 0) {
+  const raw = Math.sin(x * 12.9898 + z * 78.233 + salt * 37.719) * 43758.5453123;
+  return raw - Math.floor(raw);
+}
+
+function treeCrownGeometry(shape) {
+  switch (shape) {
+    case 'linden': return new THREE.SphereGeometry(1, 8, 6);
+    case 'plane': return new THREE.DodecahedronGeometry(1, 1);
+    case 'compact': return new THREE.IcosahedronGeometry(1, 1);
+    case 'columnar': return new THREE.CylinderGeometry(0.62, 0.78, 2.1, 10);
+    case 'olive': return new THREE.SphereGeometry(1, 7, 5);
+    case 'cypress': return new THREE.ConeGeometry(1, 2.8, 10);
+    case 'palm': return new THREE.ConeGeometry(1, 1.2, 6);
+    case 'jacaranda': return new THREE.DodecahedronGeometry(1, 0);
+    case 'pine': return new THREE.ConeGeometry(1, 2.5, 9);
+    case 'broadleaf': return new THREE.SphereGeometry(1, 10, 7);
+    default: return new THREE.SphereGeometry(1, 8, 6);
+  }
+}
+
+function activeTreeVariantsForBuild() {
+  const fromTheme = assetPoolVariants('trees');
+  const unique = [];
+  const addUnique = (name) => {
+    const clean = String(name || '').trim();
+    if (clean && !unique.includes(clean)) unique.push(clean);
+  };
+  fromTheme.forEach(addUnique);
+  TREE_VARIANT_CATALOG.forEach(addUnique);
+  let count = Math.round(Number(settings.treeVariantCount) || 8);
+  if (!Number.isFinite(count)) count = 8;
+  count = Math.max(1, Math.min(TREE_VARIANT_CATALOG.length, count));
+  return unique.slice(0, Math.max(1, Math.min(count, unique.length)));
+}
+
+// InstancedMesh trees — dynamic variant buckets (up to 10 presets) with optional randomize + rand(min,max) heights.
+function buildTreeLayer(agaclar) {
+  clearGroup(treeGroup);
+  if (!agaclar?.features?.length) return;
+  const feats = agaclar.features.filter(f => f.geometry?.type === 'Point');
+  if (!feats.length) return;
+  const mappedHeightField = mappedField('tree_height_field');
+  const fallbackHeightFields = ['planx_tree_height', 'tree_height', 'height', 'boy', 'agac_boyu', 'ağaç_boyu', 'aÄŸaÃ§_boyu', 'yukseklik', 'yükseklik', 'yÃ¼kseklik'];
+  const heightFields = mappedHeightField ? [mappedHeightField, ...fallbackHeightFields] : fallbackHeightFields;
+  const randomHeightExpr = parseRandRangeExpr(settings.treeHeightRandomExpr);
+  const randomizeTrees = !!settings.treeRandomize;
+  const mustUseDefaultHeightRandom = !mappedHeightField && !randomHeightExpr;
+  const treeVariants = activeTreeVariantsForBuild();
+  if (!treeVariants.length) return;
+
+  const variantsForBuild = randomizeTrees ? treeVariants : treeVariants.slice(0, 1);
+  const buckets = variantsForBuild.map(() => []);
+  feats.forEach((f, i) => {
+    const [x, z] = metersToLocal(f.geometry.coordinates[0], f.geometry.coordinates[1]);
+    const y = terrainLocalYAt(x, z) + LAYER.content;
+    const baseRandom = 1 + deterministicUnitHash(x, z, i + 101) * 6;
+    const sourceHeight = parseNumberProp(f.properties || {}, heightFields, NaN);
+    let treeH = Number.isFinite(sourceHeight) && sourceHeight > 0.5 ? sourceHeight : baseRandom;
+    if (randomHeightExpr) {
+      const ratio = deterministicUnitHash(x, z, i + 11);
+      treeH = randomHeightExpr.min + ratio * (randomHeightExpr.max - randomHeightExpr.min);
+    } else if (mustUseDefaultHeightRandom) {
+      treeH = baseRandom;
+    }
+    treeH = Math.max(0.8, treeH);
+    const variantIndex = randomizeTrees
+      ? Math.floor(deterministicUnitHash(x, z, i + 5) * variantsForBuild.length) % variantsForBuild.length
+      : i % variantsForBuild.length;
+    buckets[variantIndex].push({ x, y, z, h: treeH });
+  });
+
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3a2a, roughness: 0.95 });
+  const trunkGeo = new THREE.CylinderGeometry(0.1, 0.18, 1, 6);
+  const dummy = new THREE.Object3D();
+
+  buckets.forEach((trees, vi) => {
+    if (!trees.length) return;
+    const variantName = variantsForBuild[vi] || TREE_VARIANT_CATALOG[0];
+    const profile = TREE_VARIANT_PROFILES[variantName] || TREE_PROFILE_DEFAULT;
+    const crownGeo = treeCrownGeometry(profile.shape);
+    const leafMat = new THREE.MeshStandardMaterial({
+      color: assetColor(variantName, 0x3b6e2e),
+      roughness: profile.shape === 'columnar' || profile.shape === 'cypress' ? 0.86 : 0.9
+    });
+    const trunkInst = new THREE.InstancedMesh(trunkGeo, trunkMat, trees.length);
+    trunkInst.frustumCulled = false;
+    trunkInst.castShadow = true;
+    const crownInst = new THREE.InstancedMesh(crownGeo, leafMat, trees.length);
+    crownInst.frustumCulled = false;
+    crownInst.castShadow = true;
+    crownInst.userData.planxTreeVariant = variantName;
+
+    trees.forEach(({ x, y, z, h }, idx) => {
+      const trunkH = Math.max(1.1, h * profile.trunkRatio);
+      const crownH = Math.max(1.4, h - trunkH);
+      const rot = ((x * 13.7 + z * 7.3) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+
+      dummy.position.set(x, y + trunkH * 0.5, z);
+      dummy.rotation.set(0, rot, 0);
+      dummy.scale.set(1, trunkH, 1);
+      dummy.updateMatrix();
+      trunkInst.setMatrixAt(idx, dummy.matrix);
+
+      const crownRadius = crownH * profile.crownWidth;
+      const crownVertical = crownH * profile.crownHeight;
+      const crownY = y + trunkH + crownH * profile.crownLift;
+      dummy.position.set(x, crownY, z);
+      dummy.rotation.set(0, rot, 0);
+      dummy.scale.set(crownRadius, crownVertical, crownRadius);
+      dummy.updateMatrix();
+      crownInst.setMatrixAt(idx, dummy.matrix);
+    });
+
+    trunkInst.instanceMatrix.needsUpdate = true;
+    crownInst.instanceMatrix.needsUpdate = true;
+    trunkInst.computeBoundingSphere();
+    crownInst.computeBoundingSphere();
     treeGroup.add(trunkInst, crownInst);
   });
 }
@@ -6570,6 +6728,7 @@ function populateDockSelects() {
     roadStyle: Object.keys(textureSets.road),
     roadColorMode: ['Default', 'Amenity distance', 'Access / traffic'],
     assetTheme: Object.keys(assetThemePresets),
+    treeVariantCount: Array.from({ length: TREE_VARIANT_CATALOG.length }, (_item, idx) => String(idx + 1)),
     lightStyle: uniqueAssetVariants('lights', ['Modern Arc', 'Classic Post', 'Dual Head', 'Slim Post']),
     benchStyle: uniqueAssetVariants('benches', ['Wood Plank', 'Concrete Slab', 'Curved Metal']),
     binStyle: uniqueAssetVariants('bins', ['Square Box', 'Cylinder', 'Dual Recycle']),

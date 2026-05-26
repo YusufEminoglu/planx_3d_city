@@ -31,6 +31,7 @@ from qgis.PyQt.QtWidgets import (
     QWidget,
 )
 from qgis.core import (
+    Qgis,
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
     QgsMapLayerProxyModel,
@@ -116,6 +117,22 @@ ASSET_POOL_CATEGORIES = (
     ("paving", "Paving"),
 )
 
+TREE_VARIANT_OPTIONS = (
+    "Street Linden",
+    "Plane",
+    "Compact Maple",
+    "Columnar",
+    "Olive",
+    "Cypress",
+    "Palm",
+    "Jacaranda",
+    "Pine",
+    "Broadleaf",
+)
+TREE_VARIANT_DEFAULT_COUNT = 8
+TREE_VARIANT_MIN_COUNT = 1
+TREE_VARIANT_MAX_COUNT = len(TREE_VARIANT_OPTIONS)
+
 AUTO_MATCH_ALIASES = {
     "dem": ("dem", "mydem", "elevation", "yukseklik", "yukseklik modeli"),
     "plan_texture": ("plan", "siteplan", "yerlesim plani", "nazim", "uygulama", "texture", "pafta"),
@@ -136,6 +153,27 @@ AUTO_MATCH_ALIASES = {
 }
 
 
+def _is_qgis4() -> bool:
+    return int(getattr(Qgis, "QGIS_VERSION_INT", 0)) >= 40000
+
+
+IS_QGIS4 = _is_qgis4()
+DIALOG_DEFAULT_SIZE = (960, 700) if IS_QGIS4 else (980, 720)
+NAV_WIDTH = 160 if IS_QGIS4 else 170
+PAGE_MIN_HEIGHT = 360 if IS_QGIS4 else 420
+GUIDE_SUMMARY_MIN_HEIGHT = 200 if IS_QGIS4 else 220
+INPUT_LABEL_MIN_WIDTH = 216 if IS_QGIS4 else 240
+DIALOG_ACCEPTED = int(getattr(getattr(QDialog, "DialogCode", QDialog), "Accepted", getattr(QDialog, "Accepted", 1)))
+CHECKED_STATE = getattr(getattr(Qt, "CheckState", Qt), "Checked", getattr(Qt, "Checked", 2))
+UNCHECKED_STATE = getattr(getattr(Qt, "CheckState", Qt), "Unchecked", getattr(Qt, "Unchecked", 0))
+ITEM_FLAG_ENABLED = getattr(getattr(Qt, "ItemFlag", Qt), "ItemIsEnabled", getattr(Qt, "ItemIsEnabled", 32))
+ITEM_FLAG_USER_CHECKABLE = getattr(
+    getattr(Qt, "ItemFlag", Qt),
+    "ItemIsUserCheckable",
+    getattr(Qt, "ItemIsUserCheckable", 16),
+)
+
+
 class PlanX3DCityDialog(QDialog):
     exportRequested = pyqtSignal(dict)
     stopServerRequested = pyqtSignal()
@@ -152,7 +190,7 @@ class PlanX3DCityDialog(QDialog):
         self.field_mapping_combos = {}
         self.last_url = ""
         self.setWindowTitle("PlanX 3D City Publisher")
-        self.resize(980, 720)
+        self.resize(*DIALOG_DEFAULT_SIZE)
         self._build_ui()
         self._refresh_report()
 
@@ -180,6 +218,17 @@ class PlanX3DCityDialog(QDialog):
             asset_pool_counts[key] = int(combo.currentData() or 4)
         if asset_pool_counts:
             payload["asset_pool_counts"] = asset_pool_counts
+        if hasattr(self, "tree_randomize_check"):
+            payload["tree_randomize_enabled"] = bool(self.tree_randomize_check.isChecked())
+        if hasattr(self, "tree_random_variant_count_combo"):
+            try:
+                payload["tree_random_variant_count"] = int(self.tree_random_variant_count_combo.currentData() or TREE_VARIANT_DEFAULT_COUNT)
+            except (TypeError, ValueError):
+                payload["tree_random_variant_count"] = TREE_VARIANT_DEFAULT_COUNT
+        if hasattr(self, "tree_height_random_expr"):
+            payload["tree_height_random_expr"] = self.tree_height_random_expr.text().strip()
+        if hasattr(self, "tree_variant_list"):
+            payload["tree_variants"] = self._selected_tree_variants()
         return payload
 
     def set_status(self, text: str, error: bool = False) -> None:
@@ -226,6 +275,9 @@ class PlanX3DCityDialog(QDialog):
         self.set_status(f"Portable viewer ZIP created: {zip_path}")
 
     def _build_ui(self) -> None:
+        hero_title_size = 21 if IS_QGIS4 else 22
+        group_radius = 7 if IS_QGIS4 else 8
+        nav_item_padding = 10 if IS_QGIS4 else 12
         self.setStyleSheet("""
             QDialog { background: #f4f7fb; color: #243044; }
             QListWidget {
@@ -236,11 +288,11 @@ class PlanX3DCityDialog(QDialog):
                 padding: 8px;
                 font-weight: 600;
             }
-            QListWidget::item { padding: 12px 10px; border-radius: 7px; }
+            QListWidget::item { padding: %(nav_item_padding)dpx 10px; border-radius: 7px; }
             QListWidget::item:selected { background: #0f766e; color: white; }
             QGroupBox {
                 border: 1px solid #d8e0ea;
-                border-radius: 8px;
+                border-radius: %(group_radius)dpx;
                 margin-top: 12px;
                 padding: 12px 10px 10px 10px;
                 background: white;
@@ -248,7 +300,7 @@ class PlanX3DCityDialog(QDialog):
             }
             QGroupBox::title { subcontrol-origin: margin; left: 12px; padding: 0 6px; }
             QLabel { color: #334155; }
-            QLabel#heroTitle { font-size: 22px; font-weight: 800; color: #12343b; }
+            QLabel#heroTitle { font-size: %(hero_title_size)dpx; font-weight: 800; color: #12343b; }
             QLabel#heroSub { color: #64748b; }
             QLabel#statusLabel {
                 background: #e9f7f3;
@@ -285,21 +337,28 @@ class PlanX3DCityDialog(QDialog):
             QPushButton#primaryButton:hover { background: #115e59; }
             QTextBrowser {
                 border: 1px solid #d8e0ea;
-                border-radius: 8px;
+                border-radius: %(group_radius)dpx;
                 background: white;
                 padding: 10px;
             }
-        """)
+        """ % {
+            "hero_title_size": hero_title_size,
+            "group_radius": group_radius,
+            "nav_item_padding": nav_item_padding,
+        })
 
         shell = QHBoxLayout(self)
+        shell.setContentsMargins(8, 8, 8, 8)
+        shell.setSpacing(10)
         self.nav = QListWidget()
-        self.nav.setFixedWidth(170)
+        self.nav.setFixedWidth(NAV_WIDTH)
         for label in ("0 Guide", "1 Data", "2 Check", "3 Style", "4 Publish"):
             QListWidgetItem(label, self.nav)
         self.nav.setCurrentRow(0)
         shell.addWidget(self.nav)
 
         content = QVBoxLayout()
+        content.setSpacing(8)
         hero = QVBoxLayout()
         title = QLabel("PlanX 3D City Publisher")
         title.setObjectName("heroTitle")
@@ -341,7 +400,7 @@ class PlanX3DCityDialog(QDialog):
         scroll.setWidget(page)
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setMinimumHeight(420)
+        scroll.setMinimumHeight(PAGE_MIN_HEIGHT)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         return scroll
 
@@ -373,7 +432,7 @@ class PlanX3DCityDialog(QDialog):
             "<p><b>Recommended reading order:</b> quick start, data contracts, terrain strategy, "
             "style controls, publish workflow, then troubleshooting.</p>"
         )
-        summary.setMinimumHeight(220)
+        summary.setMinimumHeight(GUIDE_SUMMARY_MIN_HEIGHT)
         self.open_guide_button = QPushButton("Open full HTML guide")
         self.open_guide_button.setObjectName("primaryButton")
         self.open_guide_button.clicked.connect(self._open_html_guide)
@@ -530,7 +589,7 @@ class PlanX3DCityDialog(QDialog):
     def _add_layer_row(self, grid: QGridLayout, row: int, key: str, required: bool) -> None:
         role = self._role_for_key(key, self._current_mode() if hasattr(self, "mode_combo") else MODE_VECTOR)
         label = QLabel(self._input_label_html(key, role))
-        label.setMinimumWidth(240)
+        label.setMinimumWidth(INPUT_LABEL_MIN_WIDTH)
         label.setWordWrap(True)
         box = QgsMapLayerComboBox()
         box.setAllowEmptyLayer(True)
@@ -610,13 +669,58 @@ class PlanX3DCityDialog(QDialog):
         self.asset_pool_count_combos = {}
         for row, (key, label) in enumerate(ASSET_POOL_CATEGORIES):
             combo = QComboBox()
-            for count in (3, 4, 5):
+            pool_values = range(1, TREE_VARIANT_MAX_COUNT + 1) if key == "trees" else (3, 4, 5)
+            for count in pool_values:
                 combo.addItem(str(count), count)
-            combo.setCurrentIndex(1)
+            if key == "trees":
+                idx = combo.findData(TREE_VARIANT_DEFAULT_COUNT)
+                combo.setCurrentIndex(idx if idx >= 0 else combo.count() - 1)
+            else:
+                combo.setCurrentIndex(1)
             self.asset_pool_count_combos[key] = combo
             pool_grid.addWidget(QLabel(label), row // 2, (row % 2) * 2)
             pool_grid.addWidget(combo, row // 2, (row % 2) * 2 + 1)
         asset_root.addLayout(pool_grid)
+
+        tree_group = QGroupBox("Tree variants / randomization")
+        tree_root = QVBoxLayout(tree_group)
+        tree_help = QLabel(
+            "Select tree types to include in the export. Randomization can mix multiple selected types, and "
+            "height can be randomized with an expression like rand(1,7)."
+        )
+        tree_help.setWordWrap(True)
+        tree_root.addWidget(tree_help)
+        self.tree_variant_list = QListWidget()
+        self.tree_variant_list.setMaximumHeight(160 if IS_QGIS4 else 180)
+        for idx, name in enumerate(TREE_VARIANT_OPTIONS):
+            item = QListWidgetItem(name)
+            item.setFlags(item.flags() | ITEM_FLAG_ENABLED | ITEM_FLAG_USER_CHECKABLE)
+            item.setCheckState(CHECKED_STATE if idx < TREE_VARIANT_DEFAULT_COUNT else UNCHECKED_STATE)
+            self.tree_variant_list.addItem(item)
+        tree_root.addWidget(self.tree_variant_list)
+
+        tree_random_row = QHBoxLayout()
+        self.tree_randomize_check = QCheckBox("Randomize trees")
+        self.tree_randomize_check.setChecked(True)
+        self.tree_random_variant_count_combo = QComboBox()
+        for count in range(TREE_VARIANT_MIN_COUNT, TREE_VARIANT_MAX_COUNT + 1):
+            self.tree_random_variant_count_combo.addItem(str(count), count)
+        random_count_index = self.tree_random_variant_count_combo.findData(TREE_VARIANT_DEFAULT_COUNT)
+        self.tree_random_variant_count_combo.setCurrentIndex(random_count_index if random_count_index >= 0 else 0)
+        tree_random_row.addWidget(self.tree_randomize_check)
+        tree_random_row.addWidget(QLabel("Variant count"))
+        tree_random_row.addWidget(self.tree_random_variant_count_combo)
+        tree_random_row.addStretch(1)
+        tree_root.addLayout(tree_random_row)
+
+        tree_height_row = QFormLayout()
+        self.tree_height_random_expr = QLineEdit()
+        self.tree_height_random_expr.setPlaceholderText("rand(1,7)")
+        self.tree_height_random_expr.setToolTip("Examples: rand(1,7), rand(2.5,9)")
+        tree_height_row.addRow("Height randomize", self.tree_height_random_expr)
+        tree_root.addLayout(tree_height_row)
+        asset_root.addWidget(tree_group)
+
         root.addWidget(asset_group)
 
         terrain_group = QGroupBox("Terrain shaping / Arazi sekillendirme")
@@ -682,6 +786,10 @@ class PlanX3DCityDialog(QDialog):
         self.prepare_block_fields_btn.clicked.connect(self._prepare_block_fields)
         self.prepare_building_fields_btn.clicked.connect(self._prepare_building_fields)
         self.asset_theme_reset_btn.clicked.connect(self._reset_asset_theme_defaults)
+        self.tree_randomize_check.toggled.connect(self._sync_tree_random_controls)
+        self.tree_variant_list.itemChanged.connect(lambda _item=None: self._sync_tree_random_controls())
+        self.tree_random_variant_count_combo.currentIndexChanged.connect(lambda _idx=None: self._sync_tree_random_controls())
+        self._sync_tree_random_controls()
         self.apply_blocks_btn.clicked.connect(self._apply_block_style)
         self.apply_buildings_btn.clicked.connect(self._apply_building_style)
         self.color_btn.clicked.connect(lambda: self._pick_color("color"))
@@ -845,6 +953,20 @@ class PlanX3DCityDialog(QDialog):
             idx = self.basemap_size_combo.findData(int(data["basemap_export_size"]))
             if idx >= 0:
                 self.basemap_size_combo.setCurrentIndex(idx)
+        if hasattr(self, "tree_randomize_check") and "tree_randomize_enabled" in data:
+            self.tree_randomize_check.setChecked(bool(data["tree_randomize_enabled"]))
+        if hasattr(self, "tree_random_variant_count_combo") and "tree_random_variant_count" in data:
+            try:
+                count = int(data["tree_random_variant_count"])
+            except (TypeError, ValueError):
+                count = TREE_VARIANT_DEFAULT_COUNT
+            idx = self.tree_random_variant_count_combo.findData(count)
+            if idx >= 0:
+                self.tree_random_variant_count_combo.setCurrentIndex(idx)
+        if hasattr(self, "tree_height_random_expr") and "tree_height_random_expr" in data:
+            self.tree_height_random_expr.setText(str(data["tree_height_random_expr"] or ""))
+        if hasattr(self, "tree_variant_list") and isinstance(data.get("tree_variants"), list):
+            self._set_tree_variants([str(v) for v in data.get("tree_variants", []) if isinstance(v, str)])
 
         self._refresh_report()
         summary = f"Preset loaded ({len(matched)} layers matched"
@@ -950,7 +1072,7 @@ class PlanX3DCityDialog(QDialog):
 
         canvas_btn.clicked.connect(_fill_from_canvas)
 
-        if dlg.exec() != QDialog.Accepted:
+        if dlg.exec() != DIALOG_ACCEPTED:
             return None
         try:
             return (
@@ -1154,9 +1276,19 @@ class PlanX3DCityDialog(QDialog):
         if hasattr(self, "asset_theme_combo"):
             idx = self.asset_theme_combo.findData("Modern Urban")
             self.asset_theme_combo.setCurrentIndex(idx if idx >= 0 else 0)
-        for combo in getattr(self, "asset_pool_count_combos", {}).values():
-            idx = combo.findData(4)
+        for key, combo in getattr(self, "asset_pool_count_combos", {}).items():
+            default_count = TREE_VARIANT_DEFAULT_COUNT if key == "trees" else 4
+            idx = combo.findData(default_count)
             combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._set_tree_variants(list(TREE_VARIANT_OPTIONS[:TREE_VARIANT_DEFAULT_COUNT]))
+        if hasattr(self, "tree_randomize_check"):
+            self.tree_randomize_check.setChecked(True)
+        if hasattr(self, "tree_random_variant_count_combo"):
+            idx = self.tree_random_variant_count_combo.findData(TREE_VARIANT_DEFAULT_COUNT)
+            self.tree_random_variant_count_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        if hasattr(self, "tree_height_random_expr"):
+            self.tree_height_random_expr.clear()
+        self._sync_tree_random_controls()
         if hasattr(self, "style_report"):
             self.style_report.setHtml("<p><b>Asset Theme</b>: Modern Urban defaults restored.</p>")
 
@@ -1198,6 +1330,57 @@ class PlanX3DCityDialog(QDialog):
         else:
             self.color_value = value
             self.color_btn.setText(value)
+
+    def _selected_tree_variants(self) -> list[str]:
+        if not hasattr(self, "tree_variant_list"):
+            return list(TREE_VARIANT_OPTIONS[:TREE_VARIANT_DEFAULT_COUNT])
+        selected: list[str] = []
+        for i in range(self.tree_variant_list.count()):
+            item = self.tree_variant_list.item(i)
+            if item and item.checkState() == CHECKED_STATE:
+                selected.append(item.text())
+        return selected
+
+    def _set_tree_variants(self, values: list[str]) -> None:
+        if not hasattr(self, "tree_variant_list"):
+            return
+        chosen = {str(v) for v in values}
+        self.tree_variant_list.blockSignals(True)
+        try:
+            for i in range(self.tree_variant_list.count()):
+                item = self.tree_variant_list.item(i)
+                if not item:
+                    continue
+                item.setCheckState(CHECKED_STATE if item.text() in chosen else UNCHECKED_STATE)
+        finally:
+            self.tree_variant_list.blockSignals(False)
+        self._sync_tree_random_controls()
+
+    def _sync_tree_random_controls(self) -> None:
+        if not hasattr(self, "tree_random_variant_count_combo"):
+            return
+        selected_count = len(self._selected_tree_variants())
+        if selected_count <= 0 and hasattr(self, "tree_variant_list") and self.tree_variant_list.count() > 0:
+            first = self.tree_variant_list.item(0)
+            if first:
+                first.setCheckState(CHECKED_STATE)
+            selected_count = 1
+        elif selected_count <= 0:
+            selected_count = TREE_VARIANT_MIN_COUNT
+        target = self.tree_random_variant_count_combo.currentData()
+        try:
+            target_count = int(target)
+        except (TypeError, ValueError):
+            target_count = TREE_VARIANT_DEFAULT_COUNT
+        target_count = max(TREE_VARIANT_MIN_COUNT, min(selected_count, target_count))
+        idx = self.tree_random_variant_count_combo.findData(target_count)
+        if idx >= 0 and idx != self.tree_random_variant_count_combo.currentIndex():
+            self.tree_random_variant_count_combo.blockSignals(True)
+            self.tree_random_variant_count_combo.setCurrentIndex(idx)
+            self.tree_random_variant_count_combo.blockSignals(False)
+        self.tree_random_variant_count_combo.setEnabled(
+            bool(getattr(self, "tree_randomize_check", None) and self.tree_randomize_check.isChecked())
+        )
 
     def _style_message(self, label: str, added: list[str]) -> None:
         if added:

@@ -305,6 +305,9 @@ ul {
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     padding: 12px;
+    max-height: calc(100vh - 108px);
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .dock-panel.hidden {
@@ -1050,6 +1053,7 @@ ul {
         left: 12px;
         right: 12px;
         width: auto;
+        max-height: min(62vh, calc(100vh - 118px));
     }
     #recording-container {
         top: 50px;

@@ -34,11 +34,23 @@ OPTIONAL_INPUTS = ("trees", "hardscape", "sidewalks", "pedestrian_paths", "light
 VECTOR_OPTIONAL_INPUTS = VECTOR_RECOMMENDED_INPUTS + OPTIONAL_INPUTS
 ASSET_THEME_DEFAULT = "Modern Urban"
 ASSET_CATEGORIES = ("pedestrians", "cars", "trees", "lights", "benches", "bins", "busstops", "facades", "roofs", "paving")
+TREE_VARIANT_CATALOG = (
+    "Street Linden",
+    "Plane",
+    "Compact Maple",
+    "Columnar",
+    "Olive",
+    "Cypress",
+    "Palm",
+    "Jacaranda",
+    "Pine",
+    "Broadleaf",
+)
 ASSET_THEME_PRESETS = {
     "Modern Urban": {
         "pedestrians": ["Commuter", "Urban Casual", "Office", "Student", "Evening"],
         "cars": ["Graphite", "Slate", "Teal", "White", "Navy", "Silver"],
-        "trees": ["Street Linden", "Plane", "Compact Maple", "Columnar"],
+        "trees": ["Street Linden", "Plane", "Compact Maple", "Columnar", "Broadleaf", "Pine", "Olive", "Cypress"],
         "lights": ["Modern Arc", "Dual Head", "Slim Post", "Bollard Path", "Classic Post"],
         "benches": ["Wood Plank", "Concrete Slab", "Curved Metal", "Slim Urban", "Stone Seat"],
         "bins": ["Square Box", "Dual Recycle", "Cylinder", "Compact", "Solar Compactor"],
@@ -50,7 +62,7 @@ ASSET_THEME_PRESETS = {
     "Modern Turkish": {
         "pedestrians": ["Commuter", "Urban Casual", "Office", "Student", "Visitor"],
         "cars": ["White", "Graphite", "Silver", "Navy", "Slate", "Burgundy"],
-        "trees": ["Plane", "Street Linden", "Compact Maple", "Columnar", "Olive"],
+        "trees": ["Plane", "Street Linden", "Compact Maple", "Columnar", "Olive", "Cypress", "Jacaranda", "Pine"],
         "lights": ["Modern Arc", "Slim Post", "Dual Head", "Classic Post"],
         "benches": ["Wood Plank", "Concrete Slab", "Slim Urban", "Stone Seat"],
         "bins": ["Square Box", "Dual Recycle", "Cylinder", "Compact"],
@@ -62,7 +74,7 @@ ASSET_THEME_PRESETS = {
     "Mediterranean": {
         "pedestrians": ["Casual Linen", "Warm Neutral", "Student", "Visitor"],
         "cars": ["Ivory", "Terracotta", "Olive", "Slate", "Sand"],
-        "trees": ["Olive", "Cypress", "Plane", "Palm", "Jacaranda"],
+        "trees": ["Olive", "Cypress", "Plane", "Palm", "Jacaranda", "Broadleaf", "Compact Maple", "Street Linden"],
         "lights": ["Classic Post", "Slim Post", "Heritage Lantern", "Modern Arc"],
         "benches": ["Wood Plank", "Curved Metal", "Stone Seat", "Classic Iron"],
         "bins": ["Cylinder", "Square Box", "Dual Recycle", "Compact"],
@@ -74,7 +86,7 @@ ASSET_THEME_PRESETS = {
     "Campus": {
         "pedestrians": ["Student", "Academic", "Sport", "Visitor"],
         "cars": ["Slate", "Navy", "White", "Graphite", "Silver"],
-        "trees": ["Plane", "Pine", "Compact Maple", "Street Linden", "Broadleaf"],
+        "trees": ["Plane", "Pine", "Compact Maple", "Street Linden", "Broadleaf", "Columnar", "Olive", "Cypress"],
         "lights": ["Slim Post", "Campus Twin", "Modern Arc", "Dual Head"],
         "benches": ["Wood Plank", "Concrete Slab", "Slim Urban", "Eco Timber"],
         "bins": ["Dual Recycle", "Square Box", "Compact", "Solar Compactor"],
@@ -86,7 +98,7 @@ ASSET_THEME_PRESETS = {
     "Eco": {
         "pedestrians": ["Outdoor", "Casual Green", "Student", "Visitor"],
         "cars": ["Teal", "Olive", "White", "Slate", "Moss"],
-        "trees": ["Broadleaf", "Pine", "Street Linden", "Compact Maple", "Olive"],
+        "trees": ["Broadleaf", "Pine", "Street Linden", "Compact Maple", "Olive", "Jacaranda", "Cypress", "Plane"],
         "lights": ["Slim Post", "Bollard Path", "Modern Arc", "Classic Post"],
         "benches": ["Eco Timber", "Wood Plank", "Stone Seat", "Concrete Slab"],
         "bins": ["Dual Recycle", "Compact", "Cylinder", "Solar Compactor"],
@@ -98,7 +110,7 @@ ASSET_THEME_PRESETS = {
     "Dense Urban": {
         "pedestrians": ["Commuter", "Office", "Evening", "Urban Casual", "Visitor"],
         "cars": ["Graphite", "Black", "Navy", "White", "Slate", "Burgundy"],
-        "trees": ["Columnar", "Compact Maple", "Street Linden"],
+        "trees": ["Columnar", "Compact Maple", "Street Linden", "Plane", "Broadleaf", "Pine", "Olive", "Cypress"],
         "lights": ["Dual Head", "Modern Arc", "Slim Post", "Bollard Path"],
         "benches": ["Concrete Slab", "Curved Metal", "Slim Urban", "Stone Seat"],
         "bins": ["Square Box", "Compact", "Dual Recycle", "Solar Compactor"],
@@ -110,7 +122,7 @@ ASSET_THEME_PRESETS = {
     "Civic Heritage": {
         "pedestrians": ["Visitor", "Academic", "Warm Neutral", "Commuter"],
         "cars": ["Graphite", "Ivory", "Slate", "Burgundy", "Black"],
-        "trees": ["Plane", "Cypress", "Street Linden", "Columnar"],
+        "trees": ["Plane", "Cypress", "Street Linden", "Columnar", "Olive", "Broadleaf", "Jacaranda", "Pine"],
         "lights": ["Heritage Lantern", "Classic Post", "Slim Post", "Bollard Path"],
         "benches": ["Classic Iron", "Stone Seat", "Wood Plank", "Concrete Slab"],
         "bins": ["Cylinder", "Square Box", "Dual Recycle", "Compact"],
@@ -122,7 +134,7 @@ ASSET_THEME_PRESETS = {
     "Coastal Light": {
         "pedestrians": ["Casual Linen", "Visitor", "Student", "Outdoor"],
         "cars": ["White", "Ivory", "Teal", "Sand", "Slate"],
-        "trees": ["Palm", "Plane", "Olive", "Broadleaf"],
+        "trees": ["Palm", "Plane", "Olive", "Broadleaf", "Jacaranda", "Street Linden", "Compact Maple", "Cypress"],
         "lights": ["Slim Post", "Modern Arc", "Bollard Path", "Classic Post"],
         "benches": ["Wood Plank", "Eco Timber", "Stone Seat", "Slim Urban"],
         "bins": ["Cylinder", "Dual Recycle", "Compact", "Square Box"],
@@ -543,6 +555,13 @@ def _viewer_defaults_manifest(layer_map: dict) -> dict:
     latitude = layer_map.get("latitude")
     if latitude is None:
         latitude = _derive_latitude_from_dem(layer_map.get("dem"))
+    tree_count_raw = layer_map.get("tree_random_variant_count", (layer_map.get("asset_pool_counts") or {}).get("trees", 8))
+    try:
+        tree_variant_count = int(tree_count_raw)
+    except (TypeError, ValueError):
+        tree_variant_count = 8
+    tree_variant_count = max(1, min(len(TREE_VARIANT_CATALOG), tree_variant_count))
+    tree_expr = str(layer_map.get("tree_height_random_expr") or "").strip()
     return {
         "showTerrainSides": True,
         "terrainSideDrop": 5.0,
@@ -562,6 +581,9 @@ def _viewer_defaults_manifest(layer_map: dict) -> dict:
         "islandTransparency": 0.0,
         "latitude": float(latitude) if latitude is not None else 39.0,
         "dayOfYear": int(layer_map.get("day_of_year") or 172),
+        "treeRandomize": bool(layer_map.get("tree_randomize_enabled", True)),
+        "treeVariantCount": tree_variant_count,
+        "treeHeightRandomExpr": tree_expr,
     }
 
 
@@ -597,18 +619,40 @@ def _asset_theme_manifest(layer_map: dict) -> tuple[str, dict, dict]:
         theme = ASSET_THEME_DEFAULT
     counts = layer_map.get("asset_pool_counts") or {}
     preset = ASSET_THEME_PRESETS[theme]
+    tree_override = []
+    for value in layer_map.get("tree_variants") or []:
+        name = str(value or "").strip()
+        if name and name in TREE_VARIANT_CATALOG and name not in tree_override:
+            tree_override.append(name)
+    tree_default = list(TREE_VARIANT_CATALOG[:8])
+    tree_requested_count_raw = layer_map.get("tree_random_variant_count", counts.get("trees", 8))
+    try:
+        tree_requested_count = int(tree_requested_count_raw)
+    except (TypeError, ValueError):
+        tree_requested_count = 8
+    tree_requested_count = max(1, min(len(TREE_VARIANT_CATALOG), tree_requested_count))
     pools = {}
     for category in ASSET_CATEGORIES:
-        try:
-            count = int(counts.get(category, 4))
-        except (TypeError, ValueError):
-            count = 4
-        count = max(3, min(5, count))
-        variants = list(preset.get(category) or ASSET_THEME_PRESETS[ASSET_THEME_DEFAULT].get(category) or [])
-        pools[category] = {
-            "count": count,
-            "variants": variants[:count],
-        }
+        if category == "trees":
+            variants = list(tree_override or preset.get(category) or ASSET_THEME_PRESETS[ASSET_THEME_DEFAULT].get(category) or tree_default)
+            if not variants:
+                variants = tree_default
+            count = min(tree_requested_count, len(variants))
+            pools[category] = {
+                "count": count,
+                "variants": variants,
+            }
+        else:
+            try:
+                count = int(counts.get(category, 4))
+            except (TypeError, ValueError):
+                count = 4
+            count = max(3, min(5, count))
+            variants = list(preset.get(category) or ASSET_THEME_PRESETS[ASSET_THEME_DEFAULT].get(category) or [])
+            pools[category] = {
+                "count": count,
+                "variants": variants[:count],
+            }
     pedestrian_style = {
         "model": "procedural-low-poly",
         "limbs": True,
