@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.21] - 2026-05-26
+
+- Fix QGIS 4 welcome dialog text-format and text-selection flags.
+
+## [0.8.20] - 2026-05-26
+
+- Fix QGIS 4 / Qt6 dialog frame enum compatibility.
+
 All notable changes to **PlanX 3D City Viewer** are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · versioning: [SemVer](https://semver.org/).
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 import unicodedata
 
-from qgis.PyQt.QtCore import QDateTime, QUrl, pyqtSignal
+from qgis.PyQt.QtCore import QDateTime, Qt, QUrl, pyqtSignal
 from qgis.PyQt.QtGui import QColor, QDesktopServices
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
@@ -15,6 +15,7 @@ from qgis.PyQt.QtWidgets import (
     QApplication,
     QDoubleSpinBox,
     QFormLayout,
+    QFrame,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
@@ -190,7 +191,9 @@ class PlanX3DCityDialog(QDialog):
     def set_publish_summary(self, url: str, written: list[str], empty_optionals: list[str]) -> None:
         self.last_url = url
         self.url_label.setText(url or "-")
-        self.url_label.setTextInteractionFlags(self.url_label.textInteractionFlags() | 1)
+        self.url_label.setTextInteractionFlags(
+            self.url_label.textInteractionFlags() | Qt.TextInteractionFlag.TextSelectableByMouse
+        )
         self.publish_time_label.setText(QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm:ss"))
         self.files_label.setText(str(len(written)))
         self.empty_label.setText(", ".join(empty_optionals) if empty_optionals else "None")
@@ -337,9 +340,9 @@ class PlanX3DCityDialog(QDialog):
         scroll = QScrollArea()
         scroll.setWidget(page)
         scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QScrollArea.NoFrame)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setMinimumHeight(420)
-        scroll.setHorizontalScrollBarPolicy(1)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         return scroll
 
     def _guide_path(self) -> str:
@@ -1365,7 +1368,7 @@ class PlanXWelcomeDialog(QDialog):
             "</ul>"
         )
         intro.setWordWrap(True)
-        intro.setTextFormat(2)  # Qt.RichText
+        intro.setTextFormat(Qt.TextFormat.RichText)
         root.addWidget(intro, 1)
 
         btn_row = QHBoxLayout()
