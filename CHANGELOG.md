@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.22] - 2026-05-26
+
+- Maintenance release: refreshed Plugin Hub package with QGIS 4 welcome dialog fixes.
+
 ## [0.8.21] - 2026-05-26
 
 - Fix QGIS 4 welcome dialog text-format and text-selection flags.
