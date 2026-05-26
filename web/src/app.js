@@ -4272,6 +4272,12 @@ function treeCrownGeometry(shape, realisticMode = false) {
   }
 }
 
+function crownGeometryMinY(geometry, fallback = -1) {
+  if (!geometry) return fallback;
+  if (!geometry.boundingBox) geometry.computeBoundingBox();
+  return Number.isFinite(geometry.boundingBox?.min?.y) ? geometry.boundingBox.min.y : fallback;
+}
+
 function activeTreeVariantsForBuild() {
   const fromTheme = assetPoolVariants('trees');
   const unique = [];
@@ -4405,6 +4411,7 @@ function buildTreeLayer(agaclar) {
     const variantName = variantsForBuild[vi] || TREE_VARIANT_CATALOG[0];
     const profile = TREE_VARIANT_PROFILES[variantName] || TREE_PROFILE_DEFAULT;
     const crownGeo = treeCrownGeometry(profile.shape, realisticTrees);
+    const crownMinY = crownGeometryMinY(crownGeo, -1);
     const leafMat = treeLeafMaterial(variantName, profile, realisticTrees);
     const trunkInst = new THREE.InstancedMesh(trunkGeo, trunkMat, trees.length);
     trunkInst.frustumCulled = false;
@@ -4437,7 +4444,10 @@ function buildTreeLayer(agaclar) {
       const crownRadius = crownH * profile.crownWidth;
       const crownVertical = crownH * profile.crownHeight;
       const crownEmbed = Number.isFinite(profile.crownEmbed) ? profile.crownEmbed : 0.08;
-      const crownY = y + trunkH + crownVertical * 0.5 - crownH * crownEmbed;
+      const coneLike = profile.shape === 'cypress' || profile.shape === 'pine' || profile.shape === 'palm';
+      const crownY = coneLike
+        ? (y + trunkH - crownH * crownEmbed - crownMinY * crownVertical)
+        : (y + trunkH + crownVertical * 0.5 - crownH * crownEmbed);
       dummy.position.set(x, crownY, z);
       dummy.rotation.set(0, rot, 0);
       dummy.scale.set(crownRadius, crownVertical, crownRadius);

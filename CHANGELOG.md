@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.8.26] - 2026-05-26
+
+- Fixed conical tree variants (Cypress/Pine/Palm) sinking below terrain by correcting crown Y anchoring against geometry bounds.
+- Updated viewer cache-bust query to `app.js?v=0.8.26`.
+
 ## [0.8.25] - 2026-05-26
 
 - Fixed long-loading startup behavior by adding request timeouts and safer scene-rebuild error handling.
