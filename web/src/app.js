@@ -821,14 +821,10 @@ const textureSets = {
 };
 
 const TURKISH_FACADE_TYPES = ['A', 'B', 'C', 'D'];
-const TURKISH_FACADE_MAX_FLOORS = 10;
 const TURKISH_FACADE_BASE_KEYS = TURKISH_FACADE_TYPES.map((type) => `Urban_TR_${type}`);
 for (const type of TURKISH_FACADE_TYPES) {
   const baseKey = `Urban_TR_${type}`;
   textureSets.facade[baseKey] = baseKey;
-  for (let floors = 1; floors <= TURKISH_FACADE_MAX_FLOORS; floors++) {
-    textureSets.facade[`${baseKey}_${floors}`] = `assets/facade_urban_tr_${type.toLowerCase()}_${floors}.png`;
-  }
 }
 
 const assetThemePresets = {
@@ -1011,30 +1007,18 @@ function turkishFacadeMatch(key) {
   return /^Urban_TR_([A-D])(?:_(\d{1,2}))?$/i.exec(String(key || ''));
 }
 
-function facadeFloorVariantCount(levels) {
-  const n = Math.round(Number(levels) || 1);
-  return Math.max(1, Math.min(TURKISH_FACADE_MAX_FLOORS, n));
-}
-
-function resolveFacadeForLevels(key, levels) {
+function resolveFacadeForLevels(key, _levels) {
   const match = turkishFacadeMatch(key);
   if (!match) return key;
   const type = match[1].toUpperCase();
-  return `Urban_TR_${type}_${facadeFloorVariantCount(levels)}`;
+  return `Urban_TR_${type}`;
 }
 
 function isTurkishFacadeFamily(key) {
   return !!turkishFacadeMatch(key);
 }
 
-function isTurkishFloorFacade(key) {
-  const match = turkishFacadeMatch(key);
-  return !!(match && match[2]);
-}
-
-function facadeTextureFloorRows(key, fallback = 10) {
-  const match = turkishFacadeMatch(key);
-  if (match && match[2]) return Math.max(1, Math.min(TURKISH_FACADE_MAX_FLOORS, Number(match[2]) || fallback));
+function facadeTextureFloorRows(_key, fallback = 10) {
   return fallback;
 }
 
@@ -4933,12 +4917,9 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
         if (base) {
           const recipe = (typeof FACADE_RECIPES !== 'undefined') ? FACADE_RECIPES[featureFacade] : null;
           const textureFloorRows = facadeTextureFloorRows(featureFacade, recipe?.floorRows || 10);
-          const repeatV = isTurkishFloorFacade(featureFacade)
-            ? Math.max(0.01, Math.min(1.0, 1 / Math.max(1, height)))
-            : Math.max(0.025, Math.min(3.0, levels / textureFloorRows / facadeScaleMultiplier));
+          const repeatV = Math.max(0.025, Math.min(3.0, levels / textureFloorRows / facadeScaleMultiplier));
           const t = base.clone();
           t.repeat.set(0.5 / facadeScaleMultiplier, repeatV);
-          if (isTurkishFloorFacade(featureFacade)) t.offset.y = -repeatV;
           t.needsUpdate = true;
           facadeScaleCache[texKey] = t;
         }
