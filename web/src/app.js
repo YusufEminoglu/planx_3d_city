@@ -433,7 +433,7 @@ const LAYER = {
   carExtra:  0.08
 };
 const FACADE_TEXTURE_SCALE_MULTIPLIER = 4.85;
-const SETTINGS_SCHEMA_VERSION = 8;
+const SETTINGS_SCHEMA_VERSION = 9;
 
 // Match the viewer's local X axis to the QGIS map orientation.
 const LOCAL_X_SIGN = -1;
@@ -820,11 +820,19 @@ const textureSets = {
   }
 };
 
-const TURKISH_FACADE_TYPES = ['A', 'B', 'C', 'D'];
+const TURKISH_FACADE_TYPES = ['A', 'B', 'C', 'D', 'E', 'F'];
 const TURKISH_FACADE_BASE_KEYS = TURKISH_FACADE_TYPES.map((type) => `Urban_TR_${type}`);
+const TURKISH_FACADE_ASSETS = {
+  A: 'assets/facade_tr_a.png',
+  B: 'assets/facade_tr_b.png',
+  C: 'assets/facade_tr_c.png',
+  D: 'assets/facade_tr_d.png',
+  E: 'assets/facade_tr_e.png',
+  F: 'assets/facade_tr_f.png'
+};
 for (const type of TURKISH_FACADE_TYPES) {
   const baseKey = `Urban_TR_${type}`;
-  textureSets.facade[baseKey] = baseKey;
+  textureSets.facade[baseKey] = TURKISH_FACADE_ASSETS[type];
 }
 
 const assetThemePresets = {
@@ -1004,12 +1012,27 @@ function uniqueAssetVariants(category, fallback = []) {
 }
 
 function turkishFacadeMatch(key) {
-  return /^Urban_TR_([A-D])(?:_(\d{1,2}))?$/i.exec(String(key || ''));
+  return /^Urban_TR_([A-F])(?:_(\d{1,2}))?$/i.exec(String(key || ''));
+}
+
+function normalizeFacadeKey(key) {
+  const raw = String(key || '').trim();
+  if (!raw) return 'UrbanA';
+  const exact = Object.keys(textureSets.facade).find((name) => name.toLowerCase() === raw.toLowerCase());
+  if (exact) return exact;
+  const tr = turkishFacadeMatch(raw);
+  if (tr) {
+    const normalized = `Urban_TR_${tr[1].toUpperCase()}`;
+    if (Object.prototype.hasOwnProperty.call(textureSets.facade, normalized)) return normalized;
+  }
+  // Legacy fallback: keep the scene drawable even when stored facade keys are stale.
+  return 'UrbanA';
 }
 
 function resolveFacadeForLevels(key, _levels) {
-  const match = turkishFacadeMatch(key);
-  if (!match) return key;
+  const normalized = normalizeFacadeKey(key);
+  const match = turkishFacadeMatch(normalized);
+  if (!match) return normalized;
   const type = match[1].toUpperCase();
   return `Urban_TR_${type}`;
 }
@@ -1507,7 +1530,14 @@ function loadPersistedSettings() {
       if (!('treeRandomize' in saved)) settings.treeRandomize = true;
       if (!('treeVariantCount' in saved)) settings.treeVariantCount = 8;
       if (!('treeHeightRandomExpr' in saved)) settings.treeHeightRandomExpr = '';
+      if (schemaVersion < 9) {
+        settings.showIslands = true;
+        settings.islandTransparency = 0;
+        settings.buildingMode = 'Extruded + roof';
+      }
     }
+    settings.roofShape = roofShapeValue(settings.roofShape, 'Pyramid');
+    settings.roofTexture = presetValue(settings.roofTexture, textureSets.roof, 'RoofA');
   } catch (err) {
     console.warn('Could not restore PlanX viewer settings', err);
   }
@@ -2003,6 +2033,11 @@ function applyManifestDefaults() {
         if (!('islandTransparency' in persisted)) settings.islandTransparency = 0;
         if (!('showPedestrianPaths' in persisted)) settings.showPedestrianPaths = true;
         settings.flattenIslands = true;
+        if (schemaVersion < 9) {
+          settings.showIslands = true;
+          settings.islandTransparency = 0;
+          settings.buildingMode = 'Extruded + roof';
+        }
       }
       if (!persisted.assetTheme && projectManifest.assetTheme) settings.assetTheme = projectManifest.assetTheme;
     } catch (_err) {
@@ -4111,8 +4146,14 @@ function roofMeshFor(shape, footprintPoints, hBase, height, roofShape = settings
   const minY = roofGeo.boundingBox ? roofGeo.boundingBox.min.y : 0;
   if (minY !== 0) roofGeo.translate(0, -minY, 0);
 
-  const roof = new THREE.Mesh(roofGeo, new THREE.MeshStandardMaterial({ color: 0xc8b089, roughness: 0.85 }));
-  roof.position.y = hBase + height + 0.02;
+  const roof = new THREE.Mesh(roofGeo, new THREE.MeshStandardMaterial({
+    color: 0xc8b089,
+    roughness: 0.85,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2
+  }));
+  roof.position.y = hBase + height + 0.03;
   roof.castShadow = true;
   return roof;
 }
@@ -4853,6 +4894,7 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
     const fn = functions[i];
     if (!functionColorState[fn]) functionColorState[fn] = getSemanticColor(fn) || defaultFuncColors[i % defaultFuncColors.length];
     if (!functionFacadeState[fn]) functionFacadeState[fn] = facadeOptions[i % facadeOptions.length];
+    functionFacadeState[fn] = normalizeFacadeKey(functionFacadeState[fn]);
   }
 
   const roofTex = createRoofPresetTexture(settings.roofTexture);
@@ -4860,7 +4902,7 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
   const facadeCache = {};
   const facadeScaleMultiplier = Math.max(1, Math.min(8, Number(settings.facadeTextureScale) || FACADE_TEXTURE_SCALE_MULTIPLIER));
   for (const fn of functions) {
-    const key = functionFacadeState[fn];
+    const key = normalizeFacadeKey(functionFacadeState[fn]);
     if (isTurkishFacadeFamily(key)) continue;
     if (!facadeCache[key]) {
       facadeCache[key] = await textureFromSet('facade', key, 0.55 / facadeScaleMultiplier, 0.55 / facadeScaleMultiplier);
@@ -4876,7 +4918,8 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
     const levels = parseLevel(f.properties?.katadedi);
     const height = buildingHeightFromProps(props, levels);
     const featureColor = normalizeHexColor(propFirst(props, ['planx_color', 'planx_renk', 'color', 'renk']), functionColorState[fn]);
-    const selectedFacade = presetValue(propFirst(props, ['planx_facade', 'planx_texture', 'facade', 'cephe', 'doku']), textureSets.facade, functionFacadeState[fn]);
+    const selectedFacadeRaw = presetValue(propFirst(props, ['planx_facade', 'planx_texture', 'facade', 'cephe', 'doku']), textureSets.facade, functionFacadeState[fn]);
+    const selectedFacade = normalizeFacadeKey(selectedFacadeRaw);
     const featureFacade = resolveFacadeForLevels(selectedFacade, levels);
     const featureRoofTexture = presetValue(propFirst(props, ['planx_roof_texture', 'roof_texture', 'cati_doku', 'cati_texture']), textureSets.roof, settings.roofTexture);
     const featureRoofShape = roofShapeValue(propFirst(props, ['planx_roof_shape', 'roof_shape', 'cati_tipi']), settings.roofShape);
@@ -4965,7 +5008,8 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
         emissiveIntensity: isNight ? (Math.random() * 0.8 + 0.2) : 0
       });
 
-      const b = new THREE.Mesh(extrude, [matRoof, matWall]);
+      const useSeparateRoofMesh = settings.buildingMode === 'Extruded + roof';
+      const b = new THREE.Mesh(extrude, useSeparateRoofMesh ? [matWall, matWall] : [matRoof, matWall]);
       b.position.y = baseY;
       b.castShadow = true;
       b.receiveShadow = true;
@@ -4980,7 +5024,7 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
       if (isSceneBuildStale(buildToken)) return;
       buildingGroup.add(b);
 
-      if (settings.buildingMode === 'Extruded + roof') {
+      if (useSeparateRoofMesh) {
         const roof = roofMeshFor(shape, footprint, baseY, height, featureRoofShape);
         roof.material.map = featureRoofTex;
         roof.material.color = new THREE.Color(featureRoofColor);

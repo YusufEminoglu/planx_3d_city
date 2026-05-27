@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.27] - 2026-05-27
+
+- Fixed regressions after recent updates: building roof presentation, block/island visibility recovery, and facade key normalization for stale saved settings.
+- Replaced Turkish facade set with six realistic PNG facade textures (`Urban_TR_A` ... `Urban_TR_F`) generated with AI image creation workflow.
+- Added compatibility handling for legacy `Urban_TR_*_<kat>` keys so old saved projects resolve to new TR facade images.
+- Updated viewer cache-bust query to `app.js?v=0.8.27`.
+
 ## [0.8.26] - 2026-05-26
 
 - Fixed conical tree variants (Cypress/Pine/Palm) sinking below terrain by correcting crown Y anchoring against geometry bounds.
