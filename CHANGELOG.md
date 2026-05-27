@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.8.28] - 2026-05-27
+
+- Reworked roof handling: removed legacy Cone/Prism options, added robust Flat/Pyramid/Hip/Gable/Shed roof shapes, and separated facade materials from roof/cap rendering in Extruded + roof mode.
+- Added per-function building style cards in the Style dock: each land-use/function can now control facade color, facade type, roof shape, roof texture, roof height, facade scale, and floor height independently.
+- Persisted per-function building styles in viewer local storage and added cache-busting for both app.js and style.css.
+
 ## [0.8.27] - 2026-05-27
 
 - Fixed regressions after recent updates: building roof presentation, block/island visibility recovery, and facade key normalization for stale saved settings.

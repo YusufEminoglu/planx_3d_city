@@ -755,6 +755,9 @@ function updateScaleBar() {
 }
 const functionColorState = {};
 const functionFacadeState = {};
+const functionBuildingStyleState = {};
+const FUNCTION_STYLE_STORAGE_KEY = 'planx_3d_city_function_styles';
+const ROOF_SHAPE_OPTIONS = ['Flat', 'Pyramid', 'Hip', 'Gable', 'Shed'];
 
 const textureSets = {
   pavement: {
@@ -990,8 +993,11 @@ function applyThemeDefaultsToSettings(resetFunctionFacades = true) {
   if (resetFunctionFacades) {
     const facades = assetPoolVariants('facades').filter((value) => Object.prototype.hasOwnProperty.call(textureSets.facade, value));
     Object.keys(functionFacadeState).forEach((key, index) => {
-      functionFacadeState[key] = facades[index % Math.max(1, facades.length)] || functionFacadeState[key];
+      const facade = normalizeFacadeKey(facades[index % Math.max(1, facades.length)] || functionFacadeState[key]);
+      functionFacadeState[key] = facade;
+      if (functionBuildingStyleState[key]) functionBuildingStyleState[key].facade = facade;
     });
+    saveFunctionBuildingStyles();
   }
 }
 
@@ -1353,10 +1359,11 @@ function presetValue(value, presetMap, fallback) {
 }
 
 function roofShapeValue(value, fallback) {
-  const allowed = ['Flat', 'Pyramid', 'Gable', 'Cone', 'Prism'];
   if (value === null || value === undefined) return fallback;
   const raw = String(value).trim();
-  return allowed.find((key) => key.toLowerCase() === raw.toLowerCase()) || fallback;
+  const legacy = { Cone: 'Pyramid', Prism: 'Hip' };
+  const candidate = legacy[raw] || raw;
+  return ROOF_SHAPE_OPTIONS.find((key) => key.toLowerCase() === candidate.toLowerCase()) || fallback;
 }
 
 function parseNumberProp(props, names, fallback = null) {
@@ -1543,6 +1550,68 @@ function loadPersistedSettings() {
   }
 }
 
+function defaultFunctionBuildingStyle(fn, index = 0) {
+  const facadeOptions = uniqueAssetVariants('facades', Object.keys(textureSets.facade))
+    .filter((name) => Object.prototype.hasOwnProperty.call(textureSets.facade, name));
+  return {
+    color: getSemanticColor(fn) || ['#f1f5f9', '#dbeafe', '#fee2e2', '#dcfce7', '#fef3c7', '#ede9fe'][index % 6],
+    facade: normalizeFacadeKey(facadeOptions[index % Math.max(1, facadeOptions.length)] || 'UrbanA'),
+    facadeScale: settings.facadeTextureScale,
+    floorHeight: settings.floorHeight,
+    roofShape: roofShapeValue(settings.roofShape, 'Pyramid'),
+    roofHeight: settings.roofHeight,
+    roofTexture: presetValue(settings.roofTexture, textureSets.roof, 'RoofA')
+  };
+}
+
+function sanitizeFunctionBuildingStyle(style, fallback) {
+  const base = { ...fallback, ...(style || {}) };
+  return {
+    color: normalizeHexColor(base.color, fallback.color),
+    facade: normalizeFacadeKey(base.facade || fallback.facade),
+    facadeScale: Math.max(1, Math.min(8, Number(base.facadeScale) || fallback.facadeScale)),
+    floorHeight: Math.max(2.4, Math.min(6, Number(base.floorHeight) || fallback.floorHeight)),
+    roofShape: roofShapeValue(base.roofShape, fallback.roofShape),
+    roofHeight: Math.max(0, Math.min(8, Number(base.roofHeight) || fallback.roofHeight)),
+    roofTexture: presetValue(base.roofTexture, textureSets.roof, fallback.roofTexture)
+  };
+}
+
+function ensureFunctionBuildingStyle(fn, index = 0) {
+  const fallback = defaultFunctionBuildingStyle(fn, index);
+  functionBuildingStyleState[fn] = sanitizeFunctionBuildingStyle(functionBuildingStyleState[fn], fallback);
+  functionColorState[fn] = functionBuildingStyleState[fn].color;
+  functionFacadeState[fn] = functionBuildingStyleState[fn].facade;
+  return functionBuildingStyleState[fn];
+}
+
+function syncLegacyFunctionStyle(fn) {
+  if (!functionBuildingStyleState[fn]) return;
+  functionBuildingStyleState[fn].color = functionColorState[fn] || functionBuildingStyleState[fn].color;
+  functionBuildingStyleState[fn].facade = normalizeFacadeKey(functionFacadeState[fn] || functionBuildingStyleState[fn].facade);
+}
+
+function loadFunctionBuildingStyles() {
+  try {
+    const raw = localStorage.getItem(FUNCTION_STYLE_STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    Object.entries(parsed || {}).forEach(([key, value]) => {
+      functionBuildingStyleState[key] = value;
+    });
+  } catch (err) {
+    console.warn('Could not restore function building styles', err);
+  }
+}
+
+function saveFunctionBuildingStyles() {
+  try {
+    localStorage.setItem(FUNCTION_STYLE_STORAGE_KEY, JSON.stringify(functionBuildingStyleState));
+  } catch (err) {
+    console.warn('Could not save function building styles', err);
+  }
+}
+
 function savePersistedSettings() {
   try {
     const payload = {};
@@ -1555,6 +1624,7 @@ function savePersistedSettings() {
 }
 
 loadPersistedSettings();
+loadFunctionBuildingStyles();
 
 const tourState = {
   keyframes: [],
@@ -3813,10 +3883,10 @@ function featureRoadWidth(feature) {
   return Math.max(5, Math.min(20, settings.roadWidth));
 }
 
-function buildingHeightFromProps(props, levels) {
+function buildingHeightFromProps(props, levels, floorHeight = settings.floorHeight) {
   const explicit = parseNumberProp(props || {}, ['planx_height', 'height', 'yukseklik', 'yükseklik', 'yÃ¼kseklik', 'bina_yuksekligi', 'building_height'], null);
   if (explicit !== null && explicit > 0) return explicit;
-  return levels * settings.floorHeight;
+  return levels * Math.max(2.4, Math.min(6, Number(floorHeight) || settings.floorHeight));
 }
 
 function isOdorOrEmissionSource(feature) {
@@ -4082,64 +4152,89 @@ function polygonCentroid(points) {
   return new THREE.Vector3(cx * k, 0, cz * k);
 }
 
-function roofMeshFor(shape, footprintPoints, hBase, height, roofShape = settings.roofShape, roofHeight = settings.roofHeight) {
-  const bb = new THREE.Box3().setFromPoints(footprintPoints);
-  const size = new THREE.Vector3();
-  bb.getSize(size);
-  const minDim = Math.max(0.6, Math.min(size.x, size.z));
-  const rh = Math.max(0.5, roofHeight);
-
-  const ring = footprintPoints.filter((_, i) => i === 0 || footprintPoints[i - 1].distanceTo(footprintPoints[i]) > 1e-6);
-  let roofGeo;
-  if (roofShape === 'Pyramid' && ring.length >= 3) {
-    const center = polygonCentroid(ring);
-    const apexY = rh;
-    const verts = [];
-    const uvs = [];
-    const bb2 = new THREE.Box2();
-    ring.forEach((p) => bb2.expandByPoint(new THREE.Vector2(p.x, p.z)));
-    const sx = Math.max(1e-6, bb2.max.x - bb2.min.x);
-    const sz = Math.max(1e-6, bb2.max.y - bb2.min.y);
-    const uvFor = (x, z) => [(x - bb2.min.x) / sx, (z - bb2.min.y) / sz];
-
-    for (let i = 0; i < ring.length; i++) {
-      const a = ring[i];
-      const b = ring[(i + 1) % ring.length];
-      verts.push(a.x, 0, a.z, b.x, 0, b.z, center.x, apexY, center.z);
-      const ua = uvFor(a.x, a.z);
-      const ub = uvFor(b.x, b.z);
-      const uc = uvFor(center.x, center.z);
-      uvs.push(ua[0], ua[1], ub[0], ub[1], uc[0], uc[1]);
+function roofGeometryFromTriangles(points, faces) {
+  const verts = [];
+  const uvs = [];
+  const bb = new THREE.Box2();
+  points.forEach((p) => bb.expandByPoint(new THREE.Vector2(p.x, p.z)));
+  const sx = Math.max(1e-6, bb.max.x - bb.min.x);
+  const sz = Math.max(1e-6, bb.max.y - bb.min.y);
+  const pushVertex = (p) => {
+    verts.push(p.x, p.y, p.z);
+    uvs.push((p.x - bb.min.x) / sx, (p.z - bb.min.y) / sz);
+  };
+  faces.forEach((face) => {
+    if (face.length === 3) {
+      face.forEach(pushVertex);
+    } else if (face.length === 4) {
+      pushVertex(face[0]); pushVertex(face[1]); pushVertex(face[2]);
+      pushVertex(face[0]); pushVertex(face[2]); pushVertex(face[3]);
     }
-    roofGeo = new THREE.BufferGeometry();
-    roofGeo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-    roofGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-    roofGeo.computeVertexNormals();
-  } else
-  if (roofShape === 'Flat') {
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+function roofMeshFor(shape, footprintPoints, hBase, height, roofShape = settings.roofShape, roofHeight = settings.roofHeight) {
+  const ring = footprintPoints.filter((_, i) => i === 0 || footprintPoints[i - 1].distanceTo(footprintPoints[i]) > 1e-6);
+  const safeShape = roofShapeValue(roofShape, 'Pyramid');
+  const rh = Math.max(0, Number(roofHeight) || 0);
+  let roofGeo;
+
+  if (safeShape === 'Flat' || rh <= 0.05 || ring.length < 3) {
     roofGeo = new THREE.ShapeGeometry(shape);
     roofGeo.rotateX(Math.PI / 2);
+  } else if (safeShape === 'Pyramid') {
+    const center = polygonCentroid(ring);
+    center.y = rh;
+    const faces = ring.map((a, i) => [a, ring[(i + 1) % ring.length], center]);
+    roofGeo = roofGeometryFromTriangles(ring.concat([center]), faces);
   } else {
-    let extrudeOpts;
-    const sD = minDim;
-    if (roofShape === 'Gable') {
-      // Sharp ridge: bevelSize nearly half the building width, sharp bevelSegments=1
-      extrudeOpts = { depth: 0.02, bevelEnabled: true, bevelSegments: 1, steps: 1,
-        bevelSize: sD * 0.46, bevelThickness: rh };
-    } else if (roofShape === 'Cone') {
-      // Round cone: many bevel segments for smooth taper
-      extrudeOpts = { depth: 0.02, bevelEnabled: true, bevelSegments: 7, steps: 1,
-        bevelSize: sD * 0.43, bevelThickness: rh * 0.9 };
-    } else if (roofShape === 'Prism') {
-      // Shed/hip: moderate inset, flat-ish peak
-      extrudeOpts = { depth: rh * 0.3, bevelEnabled: true, bevelSegments: 2, steps: 1,
-        bevelSize: sD * 0.28, bevelThickness: rh * 0.7 };
+    const bb = new THREE.Box3().setFromPoints(ring);
+    const minX = bb.min.x;
+    const maxX = bb.max.x;
+    const minZ = bb.min.z;
+    const maxZ = bb.max.z;
+    const midX = (minX + maxX) * 0.5;
+    const midZ = (minZ + maxZ) * 0.5;
+    const width = Math.max(0.1, maxX - minX);
+    const depth = Math.max(0.1, maxZ - minZ);
+    const c1 = new THREE.Vector3(minX, 0, minZ);
+    const c2 = new THREE.Vector3(maxX, 0, minZ);
+    const c3 = new THREE.Vector3(maxX, 0, maxZ);
+    const c4 = new THREE.Vector3(minX, 0, maxZ);
+    let points;
+    let faces;
+    if (safeShape === 'Gable') {
+      if (width >= depth) {
+        const r1 = new THREE.Vector3(minX, rh, midZ);
+        const r2 = new THREE.Vector3(maxX, rh, midZ);
+        points = [c1, c2, c3, c4, r1, r2];
+        faces = [[c1, c2, r2, r1], [c4, r1, r2, c3], [c1, r1, c4], [c2, c3, r2]];
+      } else {
+        const r1 = new THREE.Vector3(midX, rh, minZ);
+        const r2 = new THREE.Vector3(midX, rh, maxZ);
+        points = [c1, c2, c3, c4, r1, r2];
+        faces = [[c1, r1, r2, c4], [c2, c3, r2, r1], [c1, c2, r1], [c4, r2, c3]];
+      }
+    } else if (safeShape === 'Shed') {
+      const high = new THREE.Vector3(maxX, rh, maxZ);
+      const high2 = new THREE.Vector3(maxX, rh, minZ);
+      points = [c1, c2, c3, c4, high, high2];
+      faces = [[c1, high2, high, c4], [c1, c2, high2], [c4, high, c3], [c2, c3, high, high2]];
     } else {
-      extrudeOpts = { depth: 0.02, bevelEnabled: true, bevelSegments: 2, steps: 1,
-        bevelSize: sD * 0.35, bevelThickness: rh * 0.8 };
+      const inset = 0.22;
+      const t1 = new THREE.Vector3(minX + width * inset, rh, minZ + depth * inset);
+      const t2 = new THREE.Vector3(maxX - width * inset, rh, minZ + depth * inset);
+      const t3 = new THREE.Vector3(maxX - width * inset, rh, maxZ - depth * inset);
+      const t4 = new THREE.Vector3(minX + width * inset, rh, maxZ - depth * inset);
+      points = [c1, c2, c3, c4, t1, t2, t3, t4];
+      faces = [[c1, c2, t2, t1], [c2, c3, t3, t2], [c3, c4, t4, t3], [c4, c1, t1, t4], [t1, t2, t3, t4]];
     }
-    roofGeo = new THREE.ExtrudeGeometry(shape, extrudeOpts);
-    roofGeo.rotateX(Math.PI / 2);
+    roofGeo = roofGeometryFromTriangles(points, faces);
   }
 
   roofGeo.computeBoundingBox();
@@ -4153,8 +4248,9 @@ function roofMeshFor(shape, footprintPoints, hBase, height, roofShape = settings
     polygonOffsetFactor: -2,
     polygonOffsetUnits: -2
   }));
-  roof.position.y = hBase + height + 0.03;
+  roof.position.y = hBase + height + 0.04;
   roof.castShadow = true;
+  roof.renderOrder = 36;
   return roof;
 }
 
@@ -4885,27 +4981,23 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
   buildingFunctionMaterials.clear();
   if (!yapilar?.features?.length) return;
 
-  const defaultFuncColors = ['#f1f5f9', '#dbeafe', '#fee2e2', '#dcfce7', '#fef3c7', '#ede9fe'];
-  const facadeOptions = uniqueAssetVariants('facades', Object.keys(textureSets.facade))
-    .filter((name) => Object.prototype.hasOwnProperty.call(textureSets.facade, name));
   const functions = [...new Set(yapilar.features.map((f) => String(buildingFunctionValue(f.properties || {}))))];
 
   for (let i = 0; i < functions.length; i++) {
     const fn = functions[i];
-    if (!functionColorState[fn]) functionColorState[fn] = getSemanticColor(fn) || defaultFuncColors[i % defaultFuncColors.length];
-    if (!functionFacadeState[fn]) functionFacadeState[fn] = facadeOptions[i % facadeOptions.length];
-    functionFacadeState[fn] = normalizeFacadeKey(functionFacadeState[fn]);
+    ensureFunctionBuildingStyle(fn, i);
   }
 
   const roofTex = createRoofPresetTexture(settings.roofTexture);
   const roofTextureCache = { [settings.roofTexture]: roofTex };
   const facadeCache = {};
-  const facadeScaleMultiplier = Math.max(1, Math.min(8, Number(settings.facadeTextureScale) || FACADE_TEXTURE_SCALE_MULTIPLIER));
   for (const fn of functions) {
-    const key = normalizeFacadeKey(functionFacadeState[fn]);
+    const style = ensureFunctionBuildingStyle(fn, functions.indexOf(fn));
+    const key = normalizeFacadeKey(style.facade);
     if (isTurkishFacadeFamily(key)) continue;
     if (!facadeCache[key]) {
-      facadeCache[key] = await textureFromSet('facade', key, 0.55 / facadeScaleMultiplier, 0.55 / facadeScaleMultiplier);
+      const scale = Math.max(1, Math.min(8, Number(style.facadeScale) || FACADE_TEXTURE_SCALE_MULTIPLIER));
+      facadeCache[key] = await textureFromSet('facade', key, 0.55 / scale, 0.55 / scale);
       if (isSceneBuildStale(buildToken)) return;
     }
   }
@@ -4915,14 +5007,19 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
   for (const f of yapilar.features) {
     const props = f.properties || {};
     const fn = String(buildingFunctionValue(props));
+    const fnIndex = Math.max(0, functions.indexOf(fn));
+    const fnStyle = ensureFunctionBuildingStyle(fn, fnIndex);
     const levels = parseLevel(f.properties?.katadedi);
-    const height = buildingHeightFromProps(props, levels);
-    const featureColor = normalizeHexColor(propFirst(props, ['planx_color', 'planx_renk', 'color', 'renk']), functionColorState[fn]);
-    const selectedFacadeRaw = presetValue(propFirst(props, ['planx_facade', 'planx_texture', 'facade', 'cephe', 'doku']), textureSets.facade, functionFacadeState[fn]);
+    const featureFloorHeight = parseNumberProp(props, ['planx_floor_height', 'floor_height', 'kat_yuksekligi', 'kat_yüksekliği'], fnStyle.floorHeight);
+    const height = buildingHeightFromProps(props, levels, featureFloorHeight);
+    const featureColor = normalizeHexColor(propFirst(props, ['planx_color', 'planx_renk', 'color', 'renk']), fnStyle.color);
+    const selectedFacadeRaw = presetValue(propFirst(props, ['planx_facade', 'planx_texture', 'facade', 'cephe', 'doku']), textureSets.facade, fnStyle.facade);
     const selectedFacade = normalizeFacadeKey(selectedFacadeRaw);
     const featureFacade = resolveFacadeForLevels(selectedFacade, levels);
-    const featureRoofTexture = presetValue(propFirst(props, ['planx_roof_texture', 'roof_texture', 'cati_doku', 'cati_texture']), textureSets.roof, settings.roofTexture);
-    const featureRoofShape = roofShapeValue(propFirst(props, ['planx_roof_shape', 'roof_shape', 'cati_tipi']), settings.roofShape);
+    const featureFacadeScale = Math.max(1, Math.min(8, parseNumberProp(props, ['planx_facade_scale', 'facade_scale', 'cephe_olcegi'], fnStyle.facadeScale)));
+    const featureRoofTexture = presetValue(propFirst(props, ['planx_roof_texture', 'roof_texture', 'cati_doku', 'cati_texture']), textureSets.roof, fnStyle.roofTexture);
+    const featureRoofShape = roofShapeValue(propFirst(props, ['planx_roof_shape', 'roof_shape', 'cati_tipi']), fnStyle.roofShape);
+    const featureRoofHeight = parseNumberProp(props, ['planx_roof_height', 'roof_height', 'cati_yuksekligi', 'çatı_yüksekliği'], fnStyle.roofHeight);
     const featureRoofColor = normalizeHexColor(propFirst(props, ['planx_roof_color', 'roof_color', 'cati_renk']), '#ffffff');
 
     for (const poly of getPolygonRings(f.geometry)) {
@@ -4977,18 +5074,18 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
       // 4 floor rows on the procedural facade instead of squashing the whole
       // pattern into ~1.3 rows.
       if (!facadeCache[featureFacade]) {
-        facadeCache[featureFacade] = await textureFromSet('facade', featureFacade, 0.5 / facadeScaleMultiplier, 0.5 / facadeScaleMultiplier);
+        facadeCache[featureFacade] = await textureFromSet('facade', featureFacade, 0.5 / featureFacadeScale, 0.5 / featureFacadeScale);
         if (isSceneBuildStale(buildToken)) return;
       }
-      const texKey = `${featureFacade}_${levels}_${height.toFixed(2)}`;
+      const texKey = `${featureFacade}_${levels}_${height.toFixed(2)}_${featureFacadeScale.toFixed(2)}`;
       if (!facadeScaleCache[texKey]) {
         const base = facadeCache[featureFacade];
         if (base) {
           const recipe = (typeof FACADE_RECIPES !== 'undefined') ? FACADE_RECIPES[featureFacade] : null;
           const textureFloorRows = facadeTextureFloorRows(featureFacade, recipe?.floorRows || 10);
-          const repeatV = Math.max(0.025, Math.min(3.0, levels / textureFloorRows / facadeScaleMultiplier));
+          const repeatV = Math.max(0.025, Math.min(3.0, levels / textureFloorRows / featureFacadeScale));
           const t = base.clone();
-          t.repeat.set(0.5 / facadeScaleMultiplier, repeatV);
+          t.repeat.set(0.5 / featureFacadeScale, repeatV);
           t.needsUpdate = true;
           facadeScaleCache[texKey] = t;
         }
@@ -5000,6 +5097,7 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
       const featureRoofTex = roofTextureCache[featureRoofTexture];
       const isNight = (_solarCache.elevationDeg ?? 30) < -3;
       const matRoof = new THREE.MeshStandardMaterial({ map: featureRoofTex, color: new THREE.Color(featureRoofColor), roughness: 0.85 });
+      const matHiddenCap = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
       const matWall = new THREE.MeshStandardMaterial({ 
         map: facadeTex, 
         color: new THREE.Color(featureColor), 
@@ -5009,7 +5107,7 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
       });
 
       const useSeparateRoofMesh = settings.buildingMode === 'Extruded + roof';
-      const b = new THREE.Mesh(extrude, useSeparateRoofMesh ? [matWall, matWall] : [matRoof, matWall]);
+      const b = new THREE.Mesh(extrude, useSeparateRoofMesh ? [matHiddenCap, matWall] : [matRoof, matWall]);
       b.position.y = baseY;
       b.castShadow = true;
       b.receiveShadow = true;
@@ -5025,7 +5123,7 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
       buildingGroup.add(b);
 
       if (useSeparateRoofMesh) {
-        const roof = roofMeshFor(shape, footprint, baseY, height, featureRoofShape);
+        const roof = roofMeshFor(shape, footprint, baseY, height, featureRoofShape, featureRoofHeight);
         roof.material.map = featureRoofTex;
         roof.material.color = new THREE.Color(featureRoofColor);
         roof.material.needsUpdate = true;
@@ -5983,7 +6081,7 @@ function addGui() {
   bld.add(settings, 'buildingMode', ['Footprint only', 'Extruded', 'Extruded + roof']).name('Building mode').onChange(rebuildScene);
   bld.add(settings, 'facadeTextureScale', 1.0, 8.0, 0.05).name('Facade scale').onChange(rebuildScene);
   bld.add(settings, 'floorHeight', 2.5, 5.0, 0.05).name(t('floorH')).onChange(rebuildScene);
-  bld.add(settings, 'roofShape', ['Flat', 'Pyramid', 'Gable', 'Cone', 'Prism']).name(t('roofShape')).onChange(rebuildScene);
+  bld.add(settings, 'roofShape', ROOF_SHAPE_OPTIONS).name(t('roofShape')).onChange(rebuildScene);
   bld.add(settings, 'roofHeight', 0.5, 6.0, 0.1).name(t('roofH')).onChange(rebuildScene);
   bld.add(settings, 'roofTexture', Object.keys(textureSets.roof)).name(t('roofTex')).onChange(rebuildScene);
 
@@ -6024,8 +6122,17 @@ function addGui() {
     while (facade.controllers.length) facade.controllers[0].destroy();
     const keys = Object.keys(functionColorState);
     keys.forEach((k) => {
-      style.addColor(functionColorState, k).name(k.slice(0, 16)).onFinishChange(rebuildScene);
-      facade.add(functionFacadeState, k, uniqueAssetVariants('facades', Object.keys(textureSets.facade)).filter((value) => Object.prototype.hasOwnProperty.call(textureSets.facade, value))).name(k.slice(0, 16)).onFinishChange(rebuildScene);
+      ensureFunctionBuildingStyle(k);
+      style.addColor(functionColorState, k).name(k.slice(0, 16)).onFinishChange(() => {
+        syncLegacyFunctionStyle(k);
+        saveFunctionBuildingStyles();
+        rebuildScene();
+      });
+      facade.add(functionFacadeState, k, uniqueAssetVariants('facades', Object.keys(textureSets.facade)).filter((value) => Object.prototype.hasOwnProperty.call(textureSets.facade, value))).name(k.slice(0, 16)).onFinishChange(() => {
+        syncLegacyFunctionStyle(k);
+        saveFunctionBuildingStyles();
+        rebuildScene();
+      });
     });
   };
 
@@ -6941,7 +7048,7 @@ function initTourUi() {
 function populateDockSelects() {
   const selectOptions = {
     islandTexture: Object.keys(textureSets.island),
-    roofShape: ['Flat', 'Pyramid', 'Gable', 'Cone', 'Prism'],
+    roofShape: ROOF_SHAPE_OPTIONS,
     roofTexture: Object.keys(textureSets.roof),
     pavementStyle: Object.keys(textureSets.pavement),
     terrainAnalysisMode: ['Texture', 'Elevation tint', 'Slope tint'],
@@ -6974,6 +7081,12 @@ function updateDockControls() {
   });
 }
 
+let functionStyleRebuildTimer = null;
+function requestFunctionStyleRebuild() {
+  window.clearTimeout(functionStyleRebuildTimer);
+  functionStyleRebuildTimer = window.setTimeout(() => rebuildScene(), 140);
+}
+
 function renderFunctionStyleDock() {
   const host = document.getElementById('function-style-controls');
   if (!host) return;
@@ -6983,35 +7096,124 @@ function renderFunctionStyleDock() {
     return;
   }
   host.innerHTML = '';
-  keys.forEach((key) => {
-    const row = document.createElement('div');
-    row.className = 'function-style-row';
-    const name = document.createElement('span');
-    name.textContent = key.slice(0, 18);
+  const facadeOptions = uniqueAssetVariants('facades', Object.keys(textureSets.facade))
+    .filter((value) => Object.prototype.hasOwnProperty.call(textureSets.facade, value));
+  const roofOptions = Object.keys(textureSets.roof);
+  const makeSelect = (options, value) => {
+    const select = document.createElement('select');
+    options.forEach((item) => {
+      const opt = document.createElement('option');
+      opt.value = item;
+      opt.textContent = item;
+      select.appendChild(opt);
+    });
+    select.value = value;
+    return select;
+  };
+  const makeRange = (min, max, step, value) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'function-style-range';
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.min = min;
+    input.max = max;
+    input.step = step;
+    input.value = value;
+    const out = document.createElement('output');
+    out.value = String(value);
+    out.textContent = String(value);
+    wrap.append(input, out);
+    return { wrap, input, out };
+  };
+  const makeField = (labelText, control) => {
+    const label = document.createElement('label');
+    label.className = 'function-style-field';
+    const span = document.createElement('span');
+    span.textContent = labelText;
+    label.append(span, control);
+    return label;
+  };
+  keys.forEach((key, index) => {
+    const style = ensureFunctionBuildingStyle(key, index);
+    const card = document.createElement('div');
+    card.className = 'function-style-card';
+
+    const header = document.createElement('div');
+    header.className = 'function-style-header';
+    const name = document.createElement('strong');
+    name.textContent = key;
+    name.title = key;
     const color = document.createElement('input');
     color.type = 'color';
-    color.value = functionColorState[key] || '#f1f5f9';
-    color.title = key;
+    color.value = style.color;
+    color.title = 'Facade color';
     color.addEventListener('input', () => {
+      style.color = color.value;
       functionColorState[key] = color.value;
-      rebuildScene();
+      saveFunctionBuildingStyles();
+      requestFunctionStyleRebuild();
     });
-    const facade = document.createElement('select');
-    uniqueAssetVariants('facades', Object.keys(textureSets.facade))
-      .filter((value) => Object.prototype.hasOwnProperty.call(textureSets.facade, value))
-      .forEach((value) => {
-      const opt = document.createElement('option');
-      opt.value = value;
-      opt.textContent = value;
-      facade.appendChild(opt);
-    });
-    facade.value = functionFacadeState[key] || Object.keys(textureSets.facade)[0];
+    header.append(name, color);
+
+    const grid = document.createElement('div');
+    grid.className = 'function-style-grid';
+
+    const facade = makeSelect(facadeOptions, style.facade);
     facade.addEventListener('change', () => {
-      functionFacadeState[key] = facade.value;
+      style.facade = normalizeFacadeKey(facade.value);
+      functionFacadeState[key] = style.facade;
+      saveFunctionBuildingStyles();
       rebuildScene();
     });
-    row.append(name, color, facade);
-    host.appendChild(row);
+
+    const roofShape = makeSelect(ROOF_SHAPE_OPTIONS, style.roofShape);
+    roofShape.addEventListener('change', () => {
+      style.roofShape = roofShapeValue(roofShape.value, 'Pyramid');
+      saveFunctionBuildingStyles();
+      rebuildScene();
+    });
+
+    const roofTexture = makeSelect(roofOptions, style.roofTexture);
+    roofTexture.addEventListener('change', () => {
+      style.roofTexture = presetValue(roofTexture.value, textureSets.roof, 'RoofA');
+      saveFunctionBuildingStyles();
+      rebuildScene();
+    });
+
+    const roofHeight = makeRange(0, 8, 0.1, style.roofHeight);
+    roofHeight.input.addEventListener('input', () => {
+      style.roofHeight = Number(roofHeight.input.value);
+      roofHeight.out.textContent = style.roofHeight.toFixed(1);
+      saveFunctionBuildingStyles();
+      requestFunctionStyleRebuild();
+    });
+
+    const facadeScale = makeRange(1, 8, 0.05, style.facadeScale);
+    facadeScale.input.addEventListener('input', () => {
+      style.facadeScale = Number(facadeScale.input.value);
+      facadeScale.out.textContent = style.facadeScale.toFixed(2);
+      saveFunctionBuildingStyles();
+      requestFunctionStyleRebuild();
+    });
+
+    const floorHeight = makeRange(2.4, 6, 0.05, style.floorHeight);
+    floorHeight.input.addEventListener('input', () => {
+      style.floorHeight = Number(floorHeight.input.value);
+      floorHeight.out.textContent = style.floorHeight.toFixed(2);
+      saveFunctionBuildingStyles();
+      requestFunctionStyleRebuild();
+    });
+
+    grid.append(
+      makeField('Facade', facade),
+      makeField('Roof shape', roofShape),
+      makeField('Roof texture', roofTexture),
+      makeField('Roof height', roofHeight.wrap),
+      makeField('Facade scale', facadeScale.wrap),
+      makeField('Floor height', floorHeight.wrap)
+    );
+    card.append(header, grid);
+    host.appendChild(card);
   });
 }
 

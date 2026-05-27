@@ -314,6 +314,10 @@ ul {
     display: none;
 }
 
+#style-dock {
+    width: min(560px, calc(100vw - 48px));
+}
+
 .dock-head {
     display: flex;
     justify-content: space-between;
@@ -362,7 +366,7 @@ ul {
 
 .function-style-controls {
     display: grid;
-    gap: 7px;
+    gap: 10px;
 }
 
 .function-style-row {
@@ -378,6 +382,74 @@ ul {
     white-space: nowrap;
     color: rgba(241,245,249,0.88);
     font-size: 0.74rem;
+}
+
+.function-style-card {
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 8px;
+    padding: 9px;
+    background: rgba(15, 23, 42, 0.36);
+}
+
+.function-style-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 34px;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.function-style-header strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.78rem;
+    color: rgba(248,250,252,0.94);
+}
+
+.function-style-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px 10px;
+}
+
+.function-style-field {
+    display: grid !important;
+    grid-template-columns: minmax(74px, 0.8fr) minmax(0, 1.2fr);
+    align-items: center;
+    gap: 8px !important;
+    padding: 0 !important;
+    border-top: 0 !important;
+}
+
+.function-style-field span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.69rem;
+    color: rgba(203,213,225,0.95);
+}
+
+.function-style-field select,
+.function-style-field input[type="range"] {
+    width: 100%;
+    min-width: 0;
+}
+
+.function-style-range {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 36px;
+    align-items: center;
+    gap: 6px;
+}
+
+.function-style-range output {
+    font-size: 0.67rem;
+    color: rgba(226,232,240,0.86);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
 }
 
 .dock-actions {
@@ -1054,6 +1126,9 @@ ul {
         right: 12px;
         width: auto;
         max-height: min(62vh, calc(100vh - 118px));
+    }
+    .function-style-grid {
+        grid-template-columns: 1fr;
     }
     #recording-container {
         top: 50px;
