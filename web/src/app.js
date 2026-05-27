@@ -4152,6 +4152,103 @@ function polygonCentroid(points) {
   return new THREE.Vector3(cx * k, 0, cz * k);
 }
 
+function convexHull2D(points) {
+  const ps = points.map((p) => ({ x: p.x, z: p.z }))
+    .sort((a, b) => (a.x - b.x) || (a.z - b.z));
+  if (ps.length < 3) return ps;
+  const cross = (o, a, b) => (a.x - o.x) * (b.z - o.z) - (a.z - o.z) * (b.x - o.x);
+  const lower = [];
+  for (const p of ps) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop();
+    lower.push(p);
+  }
+  const upper = [];
+  for (let i = ps.length - 1; i >= 0; i--) {
+    const p = ps[i];
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop();
+    upper.push(p);
+  }
+  lower.pop();
+  upper.pop();
+  return lower.concat(upper);
+}
+
+// Minimum-area oriented bounding rectangle of a footprint ring in the X-Z plane.
+// Aligns the box to a footprint edge instead of the world axes, so pitched roofs
+// follow the building's real orientation/size rather than its axis-aligned bbox.
+function orientedRoofBox(ring) {
+  const hull = convexHull2D(ring);
+  let best = null;
+  if (hull.length >= 3) {
+    for (let i = 0; i < hull.length; i++) {
+      const a = hull[i];
+      const b = hull[(i + 1) % hull.length];
+      const len = Math.hypot(b.x - a.x, b.z - a.z) || 1;
+      const ux = (b.x - a.x) / len;
+      const uz = (b.z - a.z) / len;
+      let uMin = Infinity, uMax = -Infinity, vMin = Infinity, vMax = -Infinity;
+      for (const p of hull) {
+        const u = p.x * ux + p.z * uz;
+        const v = -p.x * uz + p.z * ux;
+        if (u < uMin) uMin = u;
+        if (u > uMax) uMax = u;
+        if (v < vMin) vMin = v;
+        if (v > vMax) vMax = v;
+      }
+      const area = (uMax - uMin) * (vMax - vMin);
+      if (!best || area < best.area) best = { area, ux, uz, uMin, uMax, vMin, vMax };
+    }
+  }
+  if (!best) {
+    const bb = new THREE.Box3().setFromPoints(ring);
+    best = { ux: 1, uz: 0, uMin: bb.min.x, uMax: bb.max.x, vMin: bb.min.z, vMax: bb.max.z };
+  }
+  return best;
+}
+
+// Offset a footprint ring outward by `dist` (miter join) so a roof can keep a
+// small eave that follows the polygon shape. Winding-agnostic: keeps whichever
+// direction grows the area. Sharp corners are clamped to avoid long spikes.
+function offsetRingOutward(ring, dist) {
+  const n = ring.length;
+  if (n < 3 || dist <= 1e-6) return ring.map((p) => p.clone());
+  const area = (pts) => {
+    let s = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i];
+      const b = pts[(i + 1) % pts.length];
+      s += a.x * b.z - b.x * a.z;
+    }
+    return Math.abs(s);
+  };
+  const build = (sign) => {
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const prev = ring[(i - 1 + n) % n];
+      const cur = ring[i];
+      const next = ring[(i + 1) % n];
+      const l1 = Math.hypot(cur.x - prev.x, cur.z - prev.z) || 1;
+      const l2 = Math.hypot(next.x - cur.x, next.z - cur.z) || 1;
+      const n1x = -(cur.z - prev.z) / l1;
+      const n1z = (cur.x - prev.x) / l1;
+      const n2x = -(next.z - cur.z) / l2;
+      const n2z = (next.x - cur.x) / l2;
+      let mx = (n1x + n2x) * sign;
+      let mz = (n1z + n2z) * sign;
+      const ml = Math.hypot(mx, mz) || 1;
+      mx /= ml;
+      mz /= ml;
+      let cos = Math.abs(mx * n1x + mz * n1z);
+      if (cos < 0.3) cos = 0.3;
+      const s = dist / cos;
+      out.push(new THREE.Vector3(cur.x + mx * s, 0, cur.z + mz * s));
+    }
+    return out;
+  };
+  const plus = build(1);
+  return area(plus) >= area(ring) ? plus : build(-1);
+}
+
 function roofGeometryFromTriangles(points, faces) {
   const verts = [];
   const uvs = [];
@@ -4193,48 +4290,100 @@ function roofMeshFor(shape, footprintPoints, hBase, height, roofShape = settings
     const faces = ring.map((a, i) => [a, ring[(i + 1) % ring.length], center]);
     roofGeo = roofGeometryFromTriangles(ring.concat([center]), faces);
   } else {
-    const bb = new THREE.Box3().setFromPoints(ring);
-    const minX = bb.min.x;
-    const maxX = bb.max.x;
-    const minZ = bb.min.z;
-    const maxZ = bb.max.z;
-    const midX = (minX + maxX) * 0.5;
-    const midZ = (minZ + maxZ) * 0.5;
-    const width = Math.max(0.1, maxX - minX);
-    const depth = Math.max(0.1, maxZ - minZ);
-    const c1 = new THREE.Vector3(minX, 0, minZ);
-    const c2 = new THREE.Vector3(maxX, 0, minZ);
-    const c3 = new THREE.Vector3(maxX, 0, maxZ);
-    const c4 = new THREE.Vector3(minX, 0, maxZ);
-    let points;
-    let faces;
-    if (safeShape === 'Gable') {
-      if (width >= depth) {
-        const r1 = new THREE.Vector3(minX, rh, midZ);
-        const r2 = new THREE.Vector3(maxX, rh, midZ);
-        points = [c1, c2, c3, c4, r1, r2];
-        faces = [[c1, c2, r2, r1], [c4, r1, r2, c3], [c1, r1, c4], [c2, c3, r2]];
-      } else {
-        const r1 = new THREE.Vector3(midX, rh, minZ);
-        const r2 = new THREE.Vector3(midX, rh, maxZ);
-        points = [c1, c2, c3, c4, r1, r2];
-        faces = [[c1, r1, r2, c4], [c2, c3, r2, r1], [c1, c2, r1], [c4, r2, c3]];
-      }
-    } else if (safeShape === 'Shed') {
-      const high = new THREE.Vector3(maxX, rh, maxZ);
-      const high2 = new THREE.Vector3(maxX, rh, minZ);
-      points = [c1, c2, c3, c4, high, high2];
-      faces = [[c1, high2, high, c4], [c1, c2, high2], [c4, high, c3], [c2, c3, high, high2]];
-    } else {
-      const inset = 0.22;
-      const t1 = new THREE.Vector3(minX + width * inset, rh, minZ + depth * inset);
-      const t2 = new THREE.Vector3(maxX - width * inset, rh, minZ + depth * inset);
-      const t3 = new THREE.Vector3(maxX - width * inset, rh, maxZ - depth * inset);
-      const t4 = new THREE.Vector3(minX + width * inset, rh, maxZ - depth * inset);
-      points = [c1, c2, c3, c4, t1, t2, t3, t4];
-      faces = [[c1, c2, t2, t1], [c2, c3, t3, t2], [c3, c4, t4, t3], [c4, c1, t1, t4], [t1, t2, t3, t4]];
+    // Footprint-following roofs (like Pyramid): eaves are the real polygon edges,
+    // not a bounding box. Orientation/ridge axis comes from the OBB; the eave is
+    // the footprint offset outward by a small amount.
+    const box = orientedRoofBox(ring);
+    let ax = box.ux;
+    let az = box.uz;
+    let bx = -box.uz;
+    let bz = box.ux;
+    const c0 = polygonCentroid(ring);
+    let a0Half = 0;
+    let b0Half = 0;
+    for (const p of ring) {
+      const da = Math.abs((p.x - c0.x) * ax + (p.z - c0.z) * az);
+      const db = Math.abs((p.x - c0.x) * bx + (p.z - c0.z) * bz);
+      if (da > a0Half) a0Half = da;
+      if (db > b0Half) b0Half = db;
     }
-    roofGeo = roofGeometryFromTriangles(points, faces);
+    const eave = Math.min(0.3, 0.2 * Math.min(a0Half, b0Half));
+    const eaveRing = offsetRingOutward(ring, eave);
+
+    const C = polygonCentroid(eaveRing);
+    let aHalf = 0;
+    let bHalf = 0;
+    for (const p of eaveRing) {
+      const da = Math.abs((p.x - C.x) * ax + (p.z - C.z) * az);
+      const db = Math.abs((p.x - C.x) * bx + (p.z - C.z) * bz);
+      if (da > aHalf) aHalf = da;
+      if (db > bHalf) bHalf = db;
+    }
+    // Ridge runs along the longer axis.
+    if (bHalf > aHalf) {
+      let t;
+      t = ax; ax = bx; bx = t;
+      t = az; az = bz; bz = t;
+      t = aHalf; aHalf = bHalf; bHalf = t;
+    }
+
+    if (safeShape === 'Shed') {
+      // Single tilted plane over the real footprint (low at -b, high at +b),
+      // plus vertical skirt faces so the raised sides are not left open.
+      const span = Math.max(0.1, 2 * bHalf);
+      const shedH = (px, pz) => rh * Math.max(0, Math.min(1, ((px - C.x) * bx + (pz - C.z) * bz + bHalf) / span));
+      const ring2 = eaveRing.slice();
+      const contour = ring2.map((p) => new THREE.Vector2(p.x, p.z));
+      if (THREE.ShapeUtils.isClockWise(contour)) { ring2.reverse(); contour.reverse(); }
+      const top = ring2.map((p) => new THREE.Vector3(p.x, shedH(p.x, p.z), p.z));
+      const points = [];
+      const faces = [];
+      for (const tri of THREE.ShapeUtils.triangulateShape(contour, [])) {
+        points.push(top[tri[0]], top[tri[1]], top[tri[2]]);
+        faces.push([top[tri[0]], top[tri[1]], top[tri[2]]]);
+      }
+      for (let i = 0; i < ring2.length; i++) {
+        const p = ring2[i];
+        const q = ring2[(i + 1) % ring2.length];
+        const hp = shedH(p.x, p.z);
+        const hq = shedH(q.x, q.z);
+        if (Math.max(hp, hq) < 1e-4) continue;
+        const pBase = new THREE.Vector3(p.x, 0, p.z);
+        const qBase = new THREE.Vector3(q.x, 0, q.z);
+        const qTop = new THREE.Vector3(q.x, hq, q.z);
+        const pTop = new THREE.Vector3(p.x, hp, p.z);
+        points.push(pBase, qBase, qTop, pTop);
+        faces.push([pBase, qBase, qTop, pTop]);
+      }
+      roofGeo = roofGeometryFromTriangles(points, faces);
+    } else {
+      // Gable / Hip: loft the footprint outline up to a ridge line at height rh.
+      // Gable -> ridge spans the full length (vertical gable ends).
+      // Hip   -> ridge inset from each end by the half-width (sloped hip ends).
+      const ridgeHalf = safeShape === 'Gable' ? aHalf : Math.max(0, aHalf - bHalf);
+      const ridgeOf = (p) => {
+        let pa = (p.x - C.x) * ax + (p.z - C.z) * az;
+        pa = Math.max(-ridgeHalf, Math.min(ridgeHalf, pa));
+        return new THREE.Vector3(C.x + ax * pa, rh, C.z + az * pa);
+      };
+      const points = [];
+      const faces = [];
+      for (let i = 0; i < eaveRing.length; i++) {
+        const a = eaveRing[i];
+        const b = eaveRing[(i + 1) % eaveRing.length];
+        const a0 = new THREE.Vector3(a.x, 0, a.z);
+        const b0 = new THREE.Vector3(b.x, 0, b.z);
+        const ra = ridgeOf(a);
+        const rb = ridgeOf(b);
+        points.push(a0, b0, ra, rb);
+        if (ra.distanceTo(rb) < 1e-6) {
+          faces.push([a0, b0, ra]);
+        } else {
+          faces.push([a0, b0, rb, ra]);
+        }
+      }
+      roofGeo = roofGeometryFromTriangles(points, faces);
+    }
   }
 
   roofGeo.computeBoundingBox();
@@ -4244,6 +4393,7 @@ function roofMeshFor(shape, footprintPoints, hBase, height, roofShape = settings
   const roof = new THREE.Mesh(roofGeo, new THREE.MeshStandardMaterial({
     color: 0xc8b089,
     roughness: 0.85,
+    side: THREE.DoubleSide,
     polygonOffset: true,
     polygonOffsetFactor: -2,
     polygonOffsetUnits: -2
@@ -5096,12 +5246,13 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
       }
       const featureRoofTex = roofTextureCache[featureRoofTexture];
       const isNight = (_solarCache.elevationDeg ?? 30) < -3;
-      const matRoof = new THREE.MeshStandardMaterial({ map: featureRoofTex, color: new THREE.Color(featureRoofColor), roughness: 0.85 });
+      const matRoof = new THREE.MeshStandardMaterial({ map: featureRoofTex, color: new THREE.Color(featureRoofColor), roughness: 0.85, side: THREE.DoubleSide });
       const matHiddenCap = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
-      const matWall = new THREE.MeshStandardMaterial({ 
-        map: facadeTex, 
-        color: new THREE.Color(featureColor), 
+      const matWall = new THREE.MeshStandardMaterial({
+        map: facadeTex,
+        color: new THREE.Color(featureColor),
         roughness: 0.72,
+        side: THREE.DoubleSide,
         emissive: isNight ? new THREE.Color(0x333322) : new THREE.Color(0x000000),
         emissiveIntensity: isNight ? (Math.random() * 0.8 + 0.2) : 0
       });

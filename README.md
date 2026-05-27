@@ -13,6 +13,12 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 
 ## Latest Release Notes
 
+### 0.8.29
+
+- Fixed roofs and walls that could turn invisible from some camera angles (and flip while orbiting); building wall and roof materials are now double-sided.
+- Gable, Shed, and Hip roofs now follow the real building footprint and orientation instead of an axis-aligned bounding box, are centered on the footprint, and keep a small (<= 0.30 m) eave.
+- Shed roofs now close their raised sides instead of leaving them open.
+
 ### 0.8.18
 
 - Fixes exported sidewalk polygon visibility and gives sidewalks a dedicated elevation layer above roads.
@@ -288,7 +294,7 @@ Blocks:
 Buildings:
 
 - `planx_facade`: `UrbanA`, `UrbanB`, `UrbanC`, `UrbanD`
-- `planx_roof_shape`: `Flat`, `Pyramid`, `Gable`, `Cone`, `Prism`
+- `planx_roof_shape`: `Flat`, `Pyramid`, `Gable`, `Shed`, `Hip`
 - `planx_roof_texture`: `RoofA`, `GermanTile`, `TurkishTile`, `USShingle`
 - `planx_roof_color`: Hex color
 

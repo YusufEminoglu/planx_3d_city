@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.29] - 2026-05-27
+
+- Fixed roofs and walls turning invisible (fully transparent) from some camera angles and flipping as the scene was orbited: building wall, roof-cap, and pitched-roof materials are now double-sided, so faces render regardless of polygon winding direction.
+- Reworked Gable, Shed, and Hip roofs to follow the real building footprint and its orientation instead of an axis-aligned bounding box. The ridge aligns to the footprint's long axis, the roof is centered on the footprint centroid, and a small eave (default capped at 0.30 m) follows the polygon outline.
+- Gable and Hip are now built by lofting the footprint outline up to a ridge line (Gable: full-length ridge with vertical gable ends; Hip: ridge inset from the ends with sloped hips); near-square footprints collapse to a centered apex like Pyramid.
+- Shed is now a single tilted plane over the real footprint with vertical skirt faces, so the raised sides are no longer left open.
+- Updated the viewer module cache key to app.js?v=0.8.29.
+
 ## [0.8.28] - 2026-05-27
 
 - Reworked roof handling: removed legacy Cone/Prism options, added robust Flat/Pyramid/Hip/Gable/Shed roof shapes, and separated facade materials from roof/cap rendering in Extruded + roof mode.
