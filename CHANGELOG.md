@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.37] - 2026-05-29
+
+- Fix syntax error in buildBuildingLayer and enhance blockCategoryStyleState robustness
+
 ## [0.8.36] - 2026-05-29
 
 - Force browser cache-bypass update for app.js by bumping script tag to v0.8.36

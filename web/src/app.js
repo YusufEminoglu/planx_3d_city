@@ -3723,11 +3723,11 @@ function defaultBlockCategoryStyle(cat, index = 0) {
 }
 
 function ensureBlockCategoryStyle(cat, index = 0) {
-  if (!blockCategoryStyleState[cat]) {
+  if (!blockCategoryStyleState[cat] || !blockCategoryStyleState[cat].color || !blockCategoryStyleState[cat].texture) {
     const fallback = defaultBlockCategoryStyle(cat, index);
     blockCategoryStyleState[cat] = {
-      color: fallback.color,
-      texture: fallback.texture
+      color: blockCategoryStyleState[cat]?.color || fallback.color,
+      texture: blockCategoryStyleState[cat]?.texture || fallback.texture
     };
   }
   blockCategoryColorState[cat] = blockCategoryStyleState[cat].color;
@@ -5965,6 +5965,7 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
       }
     }
   }
+}
 function buildZoningEnvelopesLayer(yapilar) {
   clearGroup(zoningGroup);
   if (!settings.showZoningEnvelopes || !yapilar?.features?.length) return;
