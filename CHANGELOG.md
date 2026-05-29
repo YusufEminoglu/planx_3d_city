@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.32] - 2026-05-29
+
+- Fix KeyError fences in QGIS UI dialogue
+
 ## [0.8.31] - 2026-05-29
 
 - Add advanced CityEngine procedural setbacks, floor slabs, road markings, and 3D zoning envelope compliance visualizer

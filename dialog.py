@@ -1450,6 +1450,8 @@ class PlanX3DCityDialog(QDialog):
             "benches": "Bench points. / Bank noktalari.",
             "trashbins": "Trash-bin points. / Cop kutusu noktalari.",
             "busstops": "Bus-stop points. / Otobus duragi noktalari.",
+            "fences": "Fence or boundary wall polygons. / Cit veya bahce/sinir duvari poligonlari.",
+            "waterlines": "Water lines or streams. / Akarsu veya su hatlari.",
         }
         if role == "required":
             mark = " <span style='color:#b91c1c'>*</span>"
