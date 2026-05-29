@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.33] - 2026-05-29
+
+- Fix app.js loading reference error, floor slab offset coordinates, and update index.html script cache query
+
 ## [0.8.32] - 2026-05-29
 
 - Fix KeyError fences in QGIS UI dialogue

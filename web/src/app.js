@@ -5738,6 +5738,20 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
         facadeCache[featureFacade] = await textureFromSet('facade', featureFacade, 0.5 / featureFacadeScale, 0.5 / featureFacadeScale);
         if (isSceneBuildStale(buildToken)) return;
       }
+      const texKey = `${featureFacade}_${levels}_${height.toFixed(2)}_${featureFacadeScale.toFixed(2)}`;
+      if (!facadeScaleCache[texKey]) {
+        const base = facadeCache[featureFacade];
+        if (base) {
+          const recipe = (typeof FACADE_RECIPES !== 'undefined') ? FACADE_RECIPES[featureFacade] : null;
+          const textureFloorRows = facadeTextureFloorRows(featureFacade, recipe?.floorRows || 10);
+          const repeatV = Math.max(0.025, Math.min(3.0, levels / textureFloorRows / featureFacadeScale));
+          const t = base.clone();
+          t.repeat.set(0.5 / featureFacadeScale, repeatV);
+          t.needsUpdate = true;
+          facadeScaleCache[texKey] = t;
+        }
+      }
+      const facadeTex = facadeScaleCache[texKey] || facadeCache[featureFacade];
       if (!roofTextureCache[featureRoofTexture]) {
         roofTextureCache[featureRoofTexture] = createRoofPresetTexture(featureRoofTexture);
       }
@@ -5880,8 +5894,8 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
 
         for (let i = 1; i < levels; i++) {
           const slabY = baseY + i * featureFloorHeight;
-          const currentShapePoly = (i === 1 && podiumHeight > 0) ? poly : (podiumHeight > 0 ? [finalTowerFootprint.map(pt => [pt.x, pt.z])] : poly);
-          const outsetShape = shapeFromInsetPolygon(currentShapePoly, -settings.ledgeProjection);
+          const slabSetback = ((i === 1 && podiumHeight > 0) ? 0 : (podiumHeight > 0 ? settings.buildingSetback : 0)) - settings.ledgeProjection;
+          const outsetShape = shapeFromInsetPolygon(poly, slabSetback);
           if (outsetShape) {
             const slabGeom = new THREE.ExtrudeGeometry(outsetShape, { depth: slabThickness, bevelEnabled: false });
             slabGeom.rotateX(Math.PI / 2);
