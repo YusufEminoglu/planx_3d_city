@@ -3154,10 +3154,17 @@ function shapeFromLocalPolygon(poly) {
 }
 
 function offsetRing(ring, distance, isHole) {
-  const pts = ring.map(pt => {
+  if (!ring || !Array.isArray(ring)) return null;
+  const pts = [];
+  for (const pt of ring) {
+    if (!pt || pt.length < 2) continue;
     const [x, z] = metersToLocal(pt[0], pt[1]);
-    return new THREE.Vector2(x, z);
-  });
+    if (!Number.isFinite(x) || !Number.isFinite(z)) continue;
+    const v = new THREE.Vector2(x, z);
+    if (pts.length === 0 || pts[pts.length - 1].distanceTo(v) > 0.001) {
+      pts.push(v);
+    }
+  }
   if (pts.length > 2 && pts[0].distanceTo(pts[pts.length - 1]) < 0.001) {
     pts.pop();
   }
@@ -3176,11 +3183,27 @@ function offsetRing(ring, distance, isHole) {
     const prev = pts[(i - 1 + n) % n];
     const curr = pts[i];
     const next = pts[(i + 1) % n];
-    const d1 = new THREE.Vector2().subVectors(curr, prev).normalize();
-    const d2 = new THREE.Vector2().subVectors(next, curr).normalize();
+    
+    const len1 = curr.distanceTo(prev);
+    const len2 = next.distanceTo(curr);
+    if (len1 < 0.001 || len2 < 0.001) {
+      newPts.push(new THREE.Vector2(curr.x, curr.y));
+      continue;
+    }
+    
+    const d1 = new THREE.Vector2().subVectors(curr, prev).divideScalar(len1);
+    const d2 = new THREE.Vector2().subVectors(next, curr).divideScalar(len2);
     const n1 = new THREE.Vector2(-d1.y, d1.x);
     const n2 = new THREE.Vector2(-d2.y, d2.x);
-    const bisector = new THREE.Vector2().addVectors(n1, n2).normalize();
+    
+    const sum = new THREE.Vector2().addVectors(n1, n2);
+    let bisector;
+    if (sum.lengthSq() < 0.0001) {
+      bisector = new THREE.Vector2(n1.x, n1.y);
+    } else {
+      bisector = sum.normalize();
+    }
+    
     const cosHalf = bisector.dot(n1);
     const scale = cosHalf > 0.1 ? 1 / cosHalf : 1.0;
     const offset = new THREE.Vector2().addScaledVector(bisector, distance * scale * dirSign).add(curr);
@@ -3190,9 +3213,13 @@ function offsetRing(ring, distance, isHole) {
 }
 
 function shapeFromInsetPolygon(poly, distance) {
+  if (!poly || !poly.length) return null;
   if (distance <= 0) return shapeFromLocalPolygon(poly);
   const outerLocal = offsetRing(poly[0], distance, false);
   if (!outerLocal || outerLocal.length < 3) return null;
+  const hasNan = outerLocal.some(pt => !Number.isFinite(pt.x) || !Number.isFinite(pt.y));
+  if (hasNan) return null;
+  
   let area = 0;
   const n = outerLocal.length;
   for (let i = 0; i < n; i++) {
@@ -3212,6 +3239,9 @@ function shapeFromInsetPolygon(poly, distance) {
     if (!ring || ring.length < 3) continue;
     const holeLocal = offsetRing(ring, distance, true);
     if (!holeLocal || holeLocal.length < 3) continue;
+    const holeHasNan = holeLocal.some(pt => !Number.isFinite(pt.x) || !Number.isFinite(pt.y));
+    if (holeHasNan) continue;
+    
     const path = new THREE.Path();
     holeLocal.forEach((pt, i) => {
       if (i === 0) path.moveTo(pt.x, pt.y); else path.lineTo(pt.x, pt.y);
@@ -3936,11 +3966,15 @@ function buildFencesLayer(fences) {
       const outer = poly[0];
       if (!outer || outer.length < 3) continue;
       
-      const pts = outer.map(pt => {
+      const pts = [];
+      for (const pt of outer) {
+        if (!pt || pt.length < 2) continue;
         const [x, z] = metersToLocal(pt[0], pt[1]);
+        if (!Number.isFinite(x) || !Number.isFinite(z)) continue;
         const y = terrainLocalYAt(x, z) + LAYER.island;
-        return new THREE.Vector3(x, y, z);
-      });
+        pts.push(new THREE.Vector3(x, y, z));
+      }
+      if (pts.length < 3) continue;
       
       for (let i = 0; i < pts.length; i++) {
         const A = pts[i];
@@ -4010,11 +4044,15 @@ function buildWaterlinesLayer(waterlines) {
     for (const coords of lines) {
       if (coords.length < 2) continue;
 
-      const pts = coords.map(pt => {
+      const pts = [];
+      for (const pt of coords) {
+        if (!pt || pt.length < 2) continue;
         const [x, z] = metersToLocal(pt[0], pt[1]);
+        if (!Number.isFinite(x) || !Number.isFinite(z)) continue;
         const y = terrainLocalYAt(x, z) + LAYER.waterline;
-        return new THREE.Vector3(x, y, z);
-      });
+        pts.push(new THREE.Vector3(x, y, z));
+      }
+      if (pts.length < 2) continue;
 
       for (let i = 0; i < pts.length - 1; i++) {
         const A = pts[i];

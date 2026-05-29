@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.34] - 2026-05-29
+
+- Fix geometry setback and NaN coordinate checks to resolve loading hang on degenerate datasets
+
 ## [0.8.33] - 2026-05-29
 
 - Fix app.js loading reference error, floor slab offset coordinates, and update index.html script cache query
