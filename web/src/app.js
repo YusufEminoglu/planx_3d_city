@@ -3539,21 +3539,18 @@ function terrainLocalYAt(localX, localZ) {
       if (localX < cache.bbox.minX - t || localX > cache.bbox.maxX + t) continue;
       if (localZ < cache.bbox.minZ - t || localZ > cache.bbox.maxZ + t) continue;
       if (pointInLocalPolys(localX, localZ, cache.localRings)) {
-        _lastTerrainY = cache.plateauY;
         return cache.plateauY;
       }
     }
   }
   const cachedY = terrainSurfaceCacheYAt(localX, localZ);
   if (cachedY !== null) {
-    _lastTerrainY = cachedY;
     return cachedY;
   }
   if (!demSampler || demSampler.flat) return _lastTerrainY;
   const [wx, wy] = localToMeters(localX, localZ);
   const z = robustTerrainHeightAtProjected(wx, wy, null);
   if (z !== null) {
-    _lastTerrainY = z;
     return z;
   }
   return _lastTerrainY;
@@ -4248,10 +4245,12 @@ async function buildHardscapeLayer(hardscape, buildToken = sceneBuildToken) {
       for (let vi = 0; vi < pos.count; vi++) {
         const vx = pos.getX(vi);
         const vz = pos.getZ(vi);
-        const isTop = pos.getY(vi) > -0.5;
+        const origY = pos.getY(vi);
+        const t = (origY - (-1)) / 1;
+        const clampedT = Math.max(0, Math.min(1, t));
+        const offset = clampedT * settings.hardscapeHeight;
         const baseDem = terrainLocalYAt(vx, vz);
-        const yVal = isTop ? (baseDem + LAYER.hardscape + settings.hardscapeHeight) : (baseDem + LAYER.hardscape);
-        pos.setY(vi, yVal);
+        pos.setY(vi, baseDem + LAYER.hardscape + offset);
       }
       pos.needsUpdate = true;
       g.computeVertexNormals();
@@ -6171,7 +6170,7 @@ async function buildRoadsAndTraffic(yollar, buildToken = sceneBuildToken) {
     mesh.renderOrder = 30;
     roadGroup.add(mesh);
 
-    // Procedural Road Markings (CityEngine Style)
+    // Procedural Road Markings
     if (settings.showRoadMarkings && settings.showRoads) {
       const roadLenMark = xzCurve.getLength();
       
@@ -6399,20 +6398,21 @@ function buildSidewalkPolygonLayer(sidewalks, buildToken = sceneBuildToken) {
     for (const poly of getPolygonRings(f.geometry)) {
       const outer = poly[0];
       if (!outer || outer.length < 3) continue;
-      const shape = new THREE.Shape();
-      outer.forEach((c, i) => {
-        const [x, z] = metersToLocal(c[0], c[1]);
-        if (i === 0) shape.moveTo(x, z); else shape.lineTo(x, z);
-      });
+      const shape = shapeFromLocalPolygon(poly);
+      if (!shape) continue;
       const g = new THREE.ExtrudeGeometry(shape, { depth: 0.18, bevelEnabled: false });
       g.rotateX(Math.PI / 2);
+      if (isSceneBuildStale(buildToken)) return;
       const pos = g.attributes.position;
       for (let vi = 0; vi < pos.count; vi++) {
         const vx = pos.getX(vi);
         const vz = pos.getZ(vi);
-        const isTop = pos.getY(vi) > -0.09;
+        const origY = pos.getY(vi);
+        const t = (origY - (-0.18)) / 0.18;
+        const clampedT = Math.max(0, Math.min(1, t));
+        const offset = -0.08 + clampedT * (0.05 - (-0.08));
         const baseDem = terrainLocalYAt(vx, vz);
-        pos.setY(vi, baseDem + LAYER.sidewalk + (isTop ? 0.05 : -0.08));
+        pos.setY(vi, baseDem + LAYER.sidewalk + offset);
       }
       pos.needsUpdate = true;
       g.computeVertexNormals();
@@ -6584,8 +6584,11 @@ function buildPedestrianPathLayer(paths = EMPTY_GEOJSON, buildToken = sceneBuild
         for (let vi = 0; vi < pos.count; vi++) {
           const vx = pos.getX(vi);
           const vz = pos.getZ(vi);
-          const isTop = pos.getY(vi) > -0.04;
-          pos.setY(vi, terrainLocalYAt(vx, vz) + LAYER.path + (isTop ? 0.06 : -0.02));
+          const origY = pos.getY(vi);
+          const t = (origY - (-0.08)) / 0.08;
+          const clampedT = Math.max(0, Math.min(1, t));
+          const offset = -0.02 + clampedT * (0.06 - (-0.02));
+          pos.setY(vi, terrainLocalYAt(vx, vz) + LAYER.path + offset);
         }
         pos.needsUpdate = true;
         geo.computeVertexNormals();

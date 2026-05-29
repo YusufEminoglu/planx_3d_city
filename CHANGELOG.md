@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.38] - 2026-05-29
+
+- Exclude .zipignore from packaging, fix sidewalk Z-value draping, and remove CityEngine brand references
+
 ## [0.8.37] - 2026-05-29
 
 - Fix syntax error in buildBuildingLayer and enhance blockCategoryStyleState robustness
@@ -26,7 +30,7 @@
 
 ## [0.8.31] - 2026-05-29
 
-- Add advanced CityEngine procedural setbacks, floor slabs, road markings, and 3D zoning envelope compliance visualizer
+- Add advanced procedural setbacks, floor slabs, road markings, and 3D zoning envelope compliance visualizer
 
 ## [0.8.30] - 2026-05-29
 
