@@ -774,6 +774,11 @@ const functionColorState = {};
 const functionFacadeState = {};
 const functionBuildingStyleState = {};
 const FUNCTION_STYLE_STORAGE_KEY = 'planx_3d_city_function_styles';
+
+const blockCategoryStyleState = {};
+const blockCategoryColorState = {};
+const blockCategoryTextureState = {};
+const BLOCK_STYLE_STORAGE_KEY = 'planx_3d_city_block_styles';
 const ROOF_SHAPE_OPTIONS = ['Flat', 'Pyramid', 'Hip', 'Gable', 'Shed'];
 
 const textureSets = {
@@ -3678,10 +3683,7 @@ function subdivideShapeGeometry(geometry, maxEdgeLen) {
 }
 
 // --- Block Category Styling Infrastructure ---
-const blockCategoryStyleState = {};
-const blockCategoryColorState = {};
-const blockCategoryTextureState = {};
-const BLOCK_STYLE_STORAGE_KEY = 'planx_3d_city_block_styles';
+
 
 function blockCategoryValue(properties) {
   const field = projectManifest?.fieldMappings?.block_category_field;

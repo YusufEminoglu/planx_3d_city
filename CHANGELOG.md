@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.35] - 2026-05-29
+
+- Fix TDZ ReferenceError (cannot access BLOCK_STYLE_STORAGE_KEY before initialization)
+
 ## [0.8.34] - 2026-05-29
 
 - Fix geometry setback and NaN coordinate checks to resolve loading hang on degenerate datasets
