@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.30] - 2026-05-29
+
+- Add dynamic block category styling, fences layer, and linear waterlines streams
+
 ## [0.8.29] - 2026-05-27
 
 - Fixed roofs and walls turning invisible (fully transparent) from some camera angles and flipping as the scene was orbited: building wall, roof-cap, and pitched-roof materials are now double-sided, so faces render regardless of polygon winding direction.
