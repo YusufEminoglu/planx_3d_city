@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.36] - 2026-05-29
+
+- Force browser cache-bypass update for app.js by bumping script tag to v0.8.36
+
 ## [0.8.35] - 2026-05-29
 
 - Fix TDZ ReferenceError (cannot access BLOCK_STYLE_STORAGE_KEY before initialization)
