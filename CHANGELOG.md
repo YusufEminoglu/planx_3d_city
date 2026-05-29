@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.31] - 2026-05-29
+
+- Add advanced CityEngine procedural setbacks, floor slabs, road markings, and 3D zoning envelope compliance visualizer
+
 ## [0.8.30] - 2026-05-29
 
 - Add dynamic block category styling, fences layer, and linear waterlines streams

@@ -189,6 +189,12 @@
         <label><span data-i18n="lblRoofShape">Roof shape</span> <select data-setting="roofShape"></select></label>
         <label><span data-i18n="lblRoofHeight">Roof height</span> <input type="range" min="0.5" max="6" step="0.1" data-setting="roofHeight"></label>
         <label><span data-i18n="lblRoofTexture">Roof texture</span> <select data-setting="roofTexture"></select></label>
+        <div class="dock-subtitle">Procedural Rules (CityEngine)</div>
+        <label><input type="checkbox" data-setting="showRoadMarkings"> <span>Show Road Markings</span></label>
+        <label><input type="checkbox" data-setting="showLedges"> <span>Facade Ledges / Slabs</span></label>
+        <label><input type="checkbox" data-setting="showStorefronts"> <span>Ground Storefronts</span></label>
+        <label><span>Building Setback (m)</span> <input type="range" min="0" max="5.0" step="0.1" data-setting="buildingSetback"></label>
+        <label><span>Ledge Projection (m)</span> <input type="range" min="0.05" max="0.6" step="0.05" data-setting="ledgeProjection"></label>
         <div class="dock-subtitle" data-i18n="lblBlockStyles">Block Categories</div>
         <div id="block-style-controls" class="block-style-controls"></div>
         <div class="dock-subtitle" data-i18n="lblFunctionStyles">Function colors and facades</div>
@@ -240,7 +246,11 @@
         <label><span data-i18n="lblPlumeDistance">Impact distance</span> <input type="range" min="40" max="600" step="10" data-setting="windPlumeDistance"></label>
         <label><span data-i18n="lblSolarReview">Solar review</span> <input type="range" min="0" max="24" step="0.1" data-setting="timeOfDay"></label>
         <label><input type="checkbox" data-setting="showUrbanComfort"> <span data-i18n="lblUrbanComfort">Urban comfort screening</span></label>
-
+        <div class="dock-subtitle">Zoning & FAR Rules</div>
+        <label><input type="checkbox" data-setting="showZoningEnvelopes"> <span>Show Zoning Envelopes</span></label>
+        <label><input type="checkbox" data-setting="highlightViolations"> <span>Highlight Violations</span></label>
+        <label><span>Zoning Setback (m)</span> <input type="range" min="0" max="10.0" step="0.5" data-setting="zoningSetback"></label>
+        <label><span>Max Height Allowed (m)</span> <input type="range" min="10" max="150" step="5" data-setting="zoningMaxHeight"></label>
         <div class="dock-section">
             <p class="dock-section-title" data-i18n="shadowStudyTitle">Shadow study</p>
             <p class="dock-note" data-i18n="shadowStudyNote">Jump to solstices &amp; equinoxes, then play the day to see how shadows move.</p>

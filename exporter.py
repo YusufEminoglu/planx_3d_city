@@ -608,6 +608,15 @@ def _viewer_defaults_manifest(layer_map: dict) -> dict:
         "treeRandomize": bool(layer_map.get("tree_randomize_enabled", True)),
         "treeVariantCount": tree_variant_count,
         "treeHeightRandomExpr": tree_expr,
+        "showRoadMarkings": True,
+        "showLedges": True,
+        "showStorefronts": True,
+        "buildingSetback": 1.2,
+        "ledgeProjection": 0.15,
+        "showZoningEnvelopes": False,
+        "highlightViolations": True,
+        "zoningSetback": 3.0,
+        "zoningMaxHeight": 40.0,
     }
 
 

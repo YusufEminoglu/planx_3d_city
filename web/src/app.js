@@ -414,6 +414,7 @@ let windPlumeGroup = new THREE.Group();
 let roiBoundaryGroup = new THREE.Group();
 let fenceGroup = new THREE.Group();
 let waterlineGroup = new THREE.Group();
+let zoningGroup = new THREE.Group();
 world.add(islandGroup);
 world.add(parcelGroup);
 world.add(hardscapeGroup);
@@ -431,6 +432,7 @@ world.add(pedestrianGroup);
 world.add(roiBoundaryGroup);
 world.add(fenceGroup);
 world.add(waterlineGroup);
+world.add(zoningGroup);
 
 /* Layer Elevation Hierarchy
  * DEM < islands < block paths < buildings/trees < parcels < hardscape slab < roads < sidewalks < cars.
@@ -1514,7 +1516,16 @@ const settings = {
   fenceTexture: 'wall',
   fenceColor: '#a1a1aa',
   showWaterlines: true,
-  waterlineWidth: 3.0
+  waterlineWidth: 3.0,
+  showRoadMarkings: true,
+  showLedges: true,
+  showStorefronts: true,
+  buildingSetback: 1.2,
+  ledgeProjection: 0.15,
+  showZoningEnvelopes: false,
+  highlightViolations: true,
+  zoningSetback: 3.0,
+  zoningMaxHeight: 40.0
 };
 
 const PERSISTED_SETTING_KEYS = [
@@ -1537,7 +1548,9 @@ const PERSISTED_SETTING_KEYS = [
   'parkColor', 'parkTexture', 'sportColor',
   'terrainTileMeters',
   'showFences', 'fenceHeight', 'fenceThickness', 'fenceTexture', 'fenceColor',
-  'showWaterlines', 'waterlineWidth'
+  'showWaterlines', 'waterlineWidth',
+  'showRoadMarkings', 'showLedges', 'showStorefronts', 'buildingSetback', 'ledgeProjection',
+  'showZoningEnvelopes', 'highlightViolations', 'zoningSetback', 'zoningMaxHeight'
 ];
 
 function loadPersistedSettings() {
@@ -3134,6 +3147,74 @@ function shapeFromLocalPolygon(poly) {
     ring.forEach((c, i) => {
       const [x, z] = metersToLocal(c[0], c[1]);
       if (i === 0) path.moveTo(x, z); else path.lineTo(x, z);
+    });
+    shape.holes.push(path);
+  }
+  return shape;
+}
+
+function offsetRing(ring, distance, isHole) {
+  const pts = ring.map(pt => {
+    const [x, z] = metersToLocal(pt[0], pt[1]);
+    return new THREE.Vector2(x, z);
+  });
+  if (pts.length > 2 && pts[0].distanceTo(pts[pts.length - 1]) < 0.001) {
+    pts.pop();
+  }
+  const n = pts.length;
+  if (n < 3) return null;
+  let area = 0;
+  for (let i = 0; i < n; i++) {
+    const p1 = pts[i];
+    const p2 = pts[(i + 1) % n];
+    area += (p1.x * p2.y - p2.x * p1.y);
+  }
+  const ccw = area > 0;
+  const dirSign = (ccw !== isHole) ? 1 : -1;
+  const newPts = [];
+  for (let i = 0; i < n; i++) {
+    const prev = pts[(i - 1 + n) % n];
+    const curr = pts[i];
+    const next = pts[(i + 1) % n];
+    const d1 = new THREE.Vector2().subVectors(curr, prev).normalize();
+    const d2 = new THREE.Vector2().subVectors(next, curr).normalize();
+    const n1 = new THREE.Vector2(-d1.y, d1.x);
+    const n2 = new THREE.Vector2(-d2.y, d2.x);
+    const bisector = new THREE.Vector2().addVectors(n1, n2).normalize();
+    const cosHalf = bisector.dot(n1);
+    const scale = cosHalf > 0.1 ? 1 / cosHalf : 1.0;
+    const offset = new THREE.Vector2().addScaledVector(bisector, distance * scale * dirSign).add(curr);
+    newPts.push(offset);
+  }
+  return newPts;
+}
+
+function shapeFromInsetPolygon(poly, distance) {
+  if (distance <= 0) return shapeFromLocalPolygon(poly);
+  const outerLocal = offsetRing(poly[0], distance, false);
+  if (!outerLocal || outerLocal.length < 3) return null;
+  let area = 0;
+  const n = outerLocal.length;
+  for (let i = 0; i < n; i++) {
+    const p1 = outerLocal[i];
+    const p2 = outerLocal[(i + 1) % n];
+    area += (p1.x * p2.y - p2.x * p1.y);
+  }
+  if (Math.abs(area) < 5.0) {
+    return shapeFromLocalPolygon(poly);
+  }
+  const shape = new THREE.Shape();
+  outerLocal.forEach((pt, i) => {
+    if (i === 0) shape.moveTo(pt.x, pt.y); else shape.lineTo(pt.x, pt.y);
+  });
+  for (let h = 1; h < poly.length; h++) {
+    const ring = poly[h];
+    if (!ring || ring.length < 3) continue;
+    const holeLocal = offsetRing(ring, distance, true);
+    if (!holeLocal || holeLocal.length < 3) continue;
+    const path = new THREE.Path();
+    holeLocal.forEach((pt, i) => {
+      if (i === 0) path.moveTo(pt.x, pt.y); else path.lineTo(pt.x, pt.y);
     });
     shape.holes.push(path);
   }
@@ -5653,35 +5734,10 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
         continue;
       }
 
-      const extrude = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false });
-      extrude.rotateX(Math.PI / 2);
-      extrude.computeBoundingBox();
-      const minY = extrude.boundingBox ? extrude.boundingBox.min.y : 0;
-      if (minY !== 0) extrude.translate(0, -minY, 0);
-
-      // Clone texture per (facade_type, floor_count) so the texture's floor
-      // grid lines up with the actual number of building levels. The vertical
-      // repeat equals levels / texture_floor_rows so a 4-storey building shows
-      // 4 floor rows on the procedural facade instead of squashing the whole
-      // pattern into ~1.3 rows.
       if (!facadeCache[featureFacade]) {
         facadeCache[featureFacade] = await textureFromSet('facade', featureFacade, 0.5 / featureFacadeScale, 0.5 / featureFacadeScale);
         if (isSceneBuildStale(buildToken)) return;
       }
-      const texKey = `${featureFacade}_${levels}_${height.toFixed(2)}_${featureFacadeScale.toFixed(2)}`;
-      if (!facadeScaleCache[texKey]) {
-        const base = facadeCache[featureFacade];
-        if (base) {
-          const recipe = (typeof FACADE_RECIPES !== 'undefined') ? FACADE_RECIPES[featureFacade] : null;
-          const textureFloorRows = facadeTextureFloorRows(featureFacade, recipe?.floorRows || 10);
-          const repeatV = Math.max(0.025, Math.min(3.0, levels / textureFloorRows / featureFacadeScale));
-          const t = base.clone();
-          t.repeat.set(0.5 / featureFacadeScale, repeatV);
-          t.needsUpdate = true;
-          facadeScaleCache[texKey] = t;
-        }
-      }
-      const facadeTex = facadeScaleCache[texKey] || facadeCache[featureFacade];
       if (!roofTextureCache[featureRoofTexture]) {
         roofTextureCache[featureRoofTexture] = createRoofPresetTexture(featureRoofTexture);
       }
@@ -5699,11 +5755,11 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
       });
 
       const useSeparateRoofMesh = settings.buildingMode === 'Extruded + roof';
-      const b = new THREE.Mesh(extrude, useSeparateRoofMesh ? [matHiddenCap, matWall] : [matRoof, matWall]);
-      b.position.y = baseY;
-      b.castShadow = true;
-      b.receiveShadow = true;
-      b.userData = {
+      
+      const podiumHeight = (levels > 2 && settings.buildingSetback > 0) ? featureFloorHeight : 0;
+      let finalTowerShape = shape;
+      let finalTowerFootprint = footprint;
+      const buildingData = {
         ...(f.properties || {}),
         planx_calc_footprint_area: footprintArea,
         planx_calc_floor_area: floorArea,
@@ -5711,19 +5767,209 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
         planx_calc_population: population,
         planx_calc_vehicles: vehicles
       };
-      if (isSceneBuildStale(buildToken)) return;
-      buildingGroup.add(b);
 
+      if (podiumHeight > 0) {
+        // 1. Podium (Ground floor)
+        const podiumExtrude = new THREE.ExtrudeGeometry(shape, { depth: podiumHeight, bevelEnabled: false });
+        podiumExtrude.rotateX(Math.PI / 2);
+        podiumExtrude.computeBoundingBox();
+        const minPodY = podiumExtrude.boundingBox ? podiumExtrude.boundingBox.min.y : 0;
+        if (minPodY !== 0) podiumExtrude.translate(0, -minPodY, 0);
+
+        let podiumFacadeTex = facadeTex;
+        if (settings.showStorefronts) {
+          const storefrontFacade = resolveFacadeForLevels(selectedFacade, 1);
+          if (!facadeCache[storefrontFacade]) {
+            facadeCache[storefrontFacade] = await textureFromSet('facade', storefrontFacade, 0.5 / featureFacadeScale, 0.5 / featureFacadeScale);
+          }
+          podiumFacadeTex = facadeCache[storefrontFacade] || facadeTex;
+        }
+
+        const matPodiumWall = new THREE.MeshStandardMaterial({
+          map: podiumFacadeTex,
+          color: new THREE.Color(featureColor),
+          roughness: 0.72,
+          side: THREE.DoubleSide,
+          emissive: isNight ? new THREE.Color(0x333322) : new THREE.Color(0x000000),
+          emissiveIntensity: isNight ? (Math.random() * 0.8 + 0.2) : 0
+        });
+
+        const podMesh = new THREE.Mesh(podiumExtrude, [matHiddenCap, matPodiumWall]);
+        podMesh.position.y = baseY;
+        podMesh.castShadow = true;
+        podMesh.receiveShadow = true;
+        podMesh.userData = buildingData;
+        if (isSceneBuildStale(buildToken)) return;
+        buildingGroup.add(podMesh);
+
+        // 2. Setback Tower
+        const inset = shapeFromInsetPolygon(poly, settings.buildingSetback);
+        if (inset) {
+          finalTowerShape = inset;
+          const outerInset = offsetRing(poly[0], settings.buildingSetback, false);
+          if (outerInset && outerInset.length >= 3) {
+            finalTowerFootprint = outerInset.map(pt => new THREE.Vector3(pt.x, 0, pt.y));
+          }
+        }
+
+        const towerHeight = height - podiumHeight;
+        const towerExtrude = new THREE.ExtrudeGeometry(finalTowerShape, { depth: towerHeight, bevelEnabled: false });
+        towerExtrude.rotateX(Math.PI / 2);
+        towerExtrude.computeBoundingBox();
+        const minTowY = towerExtrude.boundingBox ? towerExtrude.boundingBox.min.y : 0;
+        if (minTowY !== 0) towerExtrude.translate(0, -minTowY, 0);
+
+        const towerLevels = Math.max(1, levels - 1);
+        const towTexKey = `${featureFacade}_${towerLevels}_${towerHeight.toFixed(2)}_${featureFacadeScale.toFixed(2)}`;
+        if (!facadeScaleCache[towTexKey]) {
+          const base = facadeCache[featureFacade];
+          if (base) {
+            const recipe = (typeof FACADE_RECIPES !== 'undefined') ? FACADE_RECIPES[featureFacade] : null;
+            const textureFloorRows = facadeTextureFloorRows(featureFacade, recipe?.floorRows || 10);
+            const repeatV = Math.max(0.025, Math.min(3.0, towerLevels / textureFloorRows / featureFacadeScale));
+            const t = base.clone();
+            t.repeat.set(0.5 / featureFacadeScale, repeatV);
+            t.needsUpdate = true;
+            facadeScaleCache[towTexKey] = t;
+          }
+        }
+        const towerFacadeTex = facadeScaleCache[towTexKey] || facadeTex;
+
+        const matTowerWall = new THREE.MeshStandardMaterial({
+          map: towerFacadeTex,
+          color: new THREE.Color(featureColor),
+          roughness: 0.72,
+          side: THREE.DoubleSide,
+          emissive: isNight ? new THREE.Color(0x333322) : new THREE.Color(0x000000),
+          emissiveIntensity: isNight ? (Math.random() * 0.8 + 0.2) : 0
+        });
+
+        const b = new THREE.Mesh(towerExtrude, useSeparateRoofMesh ? [matHiddenCap, matTowerWall] : [matRoof, matTowerWall]);
+        b.position.y = baseY + podiumHeight;
+        b.castShadow = true;
+        b.receiveShadow = true;
+        b.userData = buildingData;
+        if (isSceneBuildStale(buildToken)) return;
+        buildingGroup.add(b);
+
+      } else {
+        // Normal Extrusion (Single volume)
+        const extrude = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false });
+        extrude.rotateX(Math.PI / 2);
+        extrude.computeBoundingBox();
+        const minY = extrude.boundingBox ? extrude.boundingBox.min.y : 0;
+        if (minY !== 0) extrude.translate(0, -minY, 0);
+
+        const b = new THREE.Mesh(extrude, useSeparateRoofMesh ? [matHiddenCap, matWall] : [matRoof, matWall]);
+        b.position.y = baseY;
+        b.castShadow = true;
+        b.receiveShadow = true;
+        b.userData = buildingData;
+        if (isSceneBuildStale(buildToken)) return;
+        buildingGroup.add(b);
+      }
+
+      // 3. Facade Ledges/Slabs
+      if (settings.showLedges && levels > 1) {
+        const slabThickness = 0.12;
+        const slabMat = new THREE.MeshStandardMaterial({
+          color: 0xe2e8f0,
+          roughness: 0.85,
+          side: THREE.DoubleSide
+        });
+
+        for (let i = 1; i < levels; i++) {
+          const slabY = baseY + i * featureFloorHeight;
+          const currentShapePoly = (i === 1 && podiumHeight > 0) ? poly : (podiumHeight > 0 ? [finalTowerFootprint.map(pt => [pt.x, pt.z])] : poly);
+          const outsetShape = shapeFromInsetPolygon(currentShapePoly, -settings.ledgeProjection);
+          if (outsetShape) {
+            const slabGeom = new THREE.ExtrudeGeometry(outsetShape, { depth: slabThickness, bevelEnabled: false });
+            slabGeom.rotateX(Math.PI / 2);
+            slabGeom.computeBoundingBox();
+            const minSlabY = slabGeom.boundingBox ? slabGeom.boundingBox.min.y : 0;
+            if (minSlabY !== 0) slabGeom.translate(0, -minSlabY, 0);
+
+            const slabMesh = new THREE.Mesh(slabGeom, slabMat);
+            slabMesh.position.y = slabY - slabThickness / 2;
+            slabMesh.castShadow = true;
+            slabMesh.receiveShadow = true;
+            if (isSceneBuildStale(buildToken)) return;
+            buildingGroup.add(slabMesh);
+          }
+        }
+      }
+
+      // 4. Roof Geometry
       if (useSeparateRoofMesh) {
-        const roof = roofMeshFor(shape, footprint, baseY, height, featureRoofShape, featureRoofHeight);
+        const roof = roofMeshFor(finalTowerShape, finalTowerFootprint, baseY + podiumHeight, height - podiumHeight, featureRoofShape, featureRoofHeight);
         roof.material.map = featureRoofTex;
         roof.material.color = new THREE.Color(featureRoofColor);
         roof.material.needsUpdate = true;
-        roof.userData = b.userData;
+        roof.userData = buildingData;
         if (isSceneBuildStale(buildToken)) return;
         buildingGroup.add(roof);
       }
     }
+  }
+function buildZoningEnvelopesLayer(yapilar) {
+  clearGroup(zoningGroup);
+  if (!settings.showZoningEnvelopes || !yapilar?.features?.length) return;
+
+  const zoningHeight = settings.zoningMaxHeight;
+  const zoningSetbackVal = settings.zoningSetback;
+  const highlight = settings.highlightViolations;
+
+  for (const f of yapilar.features) {
+    const props = f.properties || {};
+    const levels = parseLevel(props.katadedi);
+    const fn = String(buildingFunctionValue(props));
+    const fnIndex = Math.max(0, Object.keys(functionColorState).indexOf(fn));
+    const fnStyle = ensureFunctionBuildingStyle(fn, fnIndex);
+    const featureFloorHeight = parseNumberProp(props, ['planx_floor_height', 'floor_height', 'kat_yuksekligi', 'kat_yüksekliği'], fnStyle.floorHeight);
+    const height = buildingHeightFromProps(props, levels, featureFloorHeight);
+
+    const poly = getPolygonRings(f.geometry);
+    const outer = poly?.[0];
+    if (!outer || outer.length < 3) continue;
+
+    const baseY = buildingBaseYForOuterRing(outer);
+
+    const zoningShape = shapeFromInsetPolygon(poly, zoningSetbackVal);
+    if (!zoningShape) continue;
+
+    const extrude = new THREE.ExtrudeGeometry(zoningShape, { depth: zoningHeight, bevelEnabled: false });
+    extrude.rotateX(Math.PI / 2);
+    extrude.computeBoundingBox();
+    const minY = extrude.boundingBox ? extrude.boundingBox.min.y : 0;
+    if (minY !== 0) extrude.translate(0, -minY, 0);
+
+    const heightViolation = height > zoningHeight;
+    const setbackViolation = zoningSetbackVal > 0 && settings.buildingSetback < zoningSetbackVal && levels > 2;
+    const violated = highlight && (heightViolation || setbackViolation);
+
+    const envelopeColor = violated ? 0xef4444 : 0x10b981;
+
+    const matFilled = new THREE.MeshBasicMaterial({
+      color: envelopeColor,
+      transparent: true,
+      opacity: 0.08,
+      side: THREE.DoubleSide,
+      depthWrite: false
+    });
+
+    const envelopeMesh = new THREE.Mesh(extrude, matFilled);
+    envelopeMesh.position.y = baseY;
+
+    const edges = new THREE.EdgesGeometry(extrude);
+    const lineMat = new THREE.LineBasicMaterial({
+      color: envelopeColor,
+      transparent: true,
+      opacity: 0.6
+    });
+    const wireframe = new THREE.LineSegments(edges, lineMat);
+    envelopeMesh.add(wireframe);
+
+    zoningGroup.add(envelopeMesh);
   }
 }
 
@@ -5869,6 +6115,128 @@ async function buildRoadsAndTraffic(yollar, buildToken = sceneBuildToken) {
     mesh.receiveShadow = true;
     mesh.renderOrder = 30;
     roadGroup.add(mesh);
+
+    // Procedural Road Markings (CityEngine Style)
+    if (settings.showRoadMarkings && settings.showRoads) {
+      const roadLenMark = xzCurve.getLength();
+      
+      const markingMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.9,
+        polygonOffset: true,
+        polygonOffsetFactor: -5,
+        polygonOffsetUnits: -5
+      });
+      
+      if (!buildRoadsAndTraffic.dashedTex) {
+        const markCanvas = document.createElement('canvas');
+        markCanvas.width = 16; markCanvas.height = 64;
+        const markCtx = markCanvas.getContext('2d');
+        markCtx.fillStyle = 'rgba(0,0,0,0)';
+        markCtx.fillRect(0, 0, 16, 64);
+        markCtx.fillStyle = '#ffffff';
+        markCtx.fillRect(6, 0, 4, 32);
+        const t = new THREE.CanvasTexture(markCanvas);
+        t.wrapS = THREE.RepeatWrapping;
+        t.wrapT = THREE.RepeatWrapping;
+        t.repeat.set(1, 1);
+        buildRoadsAndTraffic.dashedTex = t;
+      }
+
+      const dashedMarkingMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        map: buildRoadsAndTraffic.dashedTex,
+        transparent: true,
+        roughness: 0.9,
+        polygonOffset: true,
+        polygonOffsetFactor: -5,
+        polygonOffsetUnits: -5
+      });
+
+      // 1. Center Dashed Line
+      if (featureWidth >= 5.0) {
+        const centerPos = [];
+        const centerUvs = [];
+        const centerInd = [];
+        const mHalf = 0.06;
+        
+        for (let i = 0; i < centers.length; i++) {
+          const p = centers[i];
+          const tangent = curve.getTangent(i / (centers.length - 1));
+          const norm = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize().multiplyScalar(mHalf);
+          
+          centerPos.push(p.x + norm.x, p.y + 0.012, p.z + norm.z);
+          centerPos.push(p.x - norm.x, p.y + 0.012, p.z - norm.z);
+          
+          const distRatio = (i / (centers.length - 1)) * roadLenMark;
+          centerUvs.push(0, distRatio / 4.0);
+          centerUvs.push(1, distRatio / 4.0);
+        }
+        for (let i = 0; i < centers.length - 1; i++) {
+          const a = i * 2;
+          const b = a + 1;
+          const c = a + 2;
+          const d = a + 3;
+          centerInd.push(a, c, b, c, d, b);
+        }
+        const centerGeo = new THREE.BufferGeometry();
+        centerGeo.setAttribute('position', new THREE.Float32BufferAttribute(centerPos, 3));
+        centerGeo.setAttribute('uv', new THREE.Float32BufferAttribute(centerUvs, 2));
+        centerGeo.setIndex(centerInd);
+        centerGeo.computeVertexNormals();
+        
+        const centerMesh = new THREE.Mesh(centerGeo, dashedMarkingMat);
+        centerMesh.renderOrder = 31;
+        roadGroup.add(centerMesh);
+      }
+
+      // 2. Outer Shoulder Lines
+      if (featureWidth >= 6.0) {
+        const shoulderOffset = (featureWidth / 2) - 0.25;
+        const sHalf = 0.04;
+        
+        const leftShoulderPos = [];
+        const rightShoulderPos = [];
+        const shInd = [];
+        
+        for (let i = 0; i < centers.length; i++) {
+          const p = centers[i];
+          const tangent = curve.getTangent(i / (centers.length - 1));
+          const norm = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+          
+          const lp = new THREE.Vector3().addScaledVector(norm, shoulderOffset).add(p);
+          leftShoulderPos.push(lp.x + norm.x * sHalf, lp.y + 0.012, lp.z + norm.z * sHalf);
+          leftShoulderPos.push(lp.x - norm.x * sHalf, lp.y + 0.012, lp.z - norm.z * sHalf);
+          
+          const rp = new THREE.Vector3().addScaledVector(norm, -shoulderOffset).add(p);
+          rightShoulderPos.push(rp.x + norm.x * sHalf, rp.y + 0.012, rp.z + norm.z * sHalf);
+          rightShoulderPos.push(rp.x - norm.x * sHalf, rp.y + 0.012, rp.z - norm.z * sHalf);
+        }
+        for (let i = 0; i < centers.length - 1; i++) {
+          const a = i * 2;
+          const b = a + 1;
+          const c = a + 2;
+          const d = a + 3;
+          shInd.push(a, c, b, c, d, b);
+        }
+        
+        const leftGeo = new THREE.BufferGeometry();
+        leftGeo.setAttribute('position', new THREE.Float32BufferAttribute(leftShoulderPos, 3));
+        leftGeo.setIndex(shInd);
+        leftGeo.computeVertexNormals();
+        const leftMesh = new THREE.Mesh(leftGeo, markingMat);
+        leftMesh.renderOrder = 31;
+        roadGroup.add(leftMesh);
+        
+        const rightGeo = new THREE.BufferGeometry();
+        rightGeo.setAttribute('position', new THREE.Float32BufferAttribute(rightShoulderPos, 3));
+        rightGeo.setIndex(shInd);
+        rightGeo.computeVertexNormals();
+        const rightMesh = new THREE.Mesh(rightGeo, markingMat);
+        rightMesh.renderOrder = 31;
+        roadGroup.add(rightMesh);
+      }
+    }
   }
 
   if (settings.showCars && vehicleRoadCurves.length > 0) {
@@ -6471,6 +6839,12 @@ async function rebuildScene() {
     await runLayerBuild('Buildings', () => buildBuildingLayer(yapilar, buildToken), () => clearGroup(buildingGroup));
   } else {
     clearGroup(buildingGroup);
+  }
+  if (isSceneBuildStale(buildToken)) return;
+  if (settings.showZoningEnvelopes && settings.showBuildings && yapilar) {
+    await runLayerBuild('Zoning Envelopes', () => buildZoningEnvelopesLayer(yapilar), () => clearGroup(zoningGroup));
+  } else {
+    clearGroup(zoningGroup);
   }
   if (isSceneBuildStale(buildToken)) return;
   await runLayerBuild('Roads', () => buildRoadsAndTraffic(yollar, buildToken), () => { clearGroup(roadGroup); clearGroup(carGroup); clearGroup(pedestrianGroup); });
@@ -7845,7 +8219,7 @@ function applyDockSetting(key, value, inputType) {
     settings[key] = value;
   }
   if (inputType === 'checkbox' && value === false) {
-    if (key === 'showBuildings') clearGroup(buildingGroup);
+    if (key === 'showBuildings') { clearGroup(buildingGroup); clearGroup(zoningGroup); }
     else if (key === 'showIslands') clearGroup(islandGroup);
     else if (key === 'showParcels') clearGroup(parcelGroup);
     else if (key === 'showHardscape') clearGroup(hardscapeGroup);
@@ -7859,6 +8233,7 @@ function applyDockSetting(key, value, inputType) {
     else if (key === 'showPedestrians') clearGroup(pedestrianGroup);
     else if (key === 'showFences') clearGroup(fenceGroup);
     else if (key === 'showWaterlines') clearGroup(waterlineGroup);
+    else if (key === 'showZoningEnvelopes') clearGroup(zoningGroup);
   }
   if (key === 'assetTheme') {
     applyThemeDefaultsToSettings(true);
