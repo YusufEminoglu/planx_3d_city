@@ -35,6 +35,7 @@
         <button id="style-toggle" class="panel-btn style-btn" data-dock-target="style-dock" title="Style dock" data-i18n-title="dockTitleStyle">◩</button>
         <button id="mobility-toggle" class="panel-btn mobility-btn" data-dock-target="mobility-dock" title="Mobility dock" data-i18n-title="dockTitleMobility">⇄</button>
         <button id="furniture-toggle" class="panel-btn furniture-btn" data-dock-target="furniture-dock" title="Street furniture dock" data-i18n-title="dockTitleFurniture">⌂</button>
+        <button id="fences-toggle" class="panel-btn fences-btn" data-dock-target="fences-dock" title="Fences dock" data-i18n-title="dockTitleFences">⌗</button>
         <button id="analysis-toggle" class="panel-btn analysis-btn" data-dock-target="analysis-dock" title="Analysis dock" data-i18n-title="dockTitleAnalysis">⌁</button>
         <button id="narrative-toggle" class="panel-btn narrative-btn" data-dock-target="narrative-dock" title="Narrative Studio" data-i18n-title="dockTitleNarrative">▶</button>
         <button id="advanced-toggle" class="panel-btn advanced-btn" title="Advanced controls" data-i18n-title="dockTitleAdvanced">⚙</button>
@@ -103,11 +104,13 @@
     </div>
 
     <aside class="dock-panel hidden" id="layer-dock">
-        <div class="dock-head"><span data-i18n="dockLayers">Layers</span><button class="dock-close" data-close="layer-dock">x</button></div>
+        <div class="dock-head"><span data-i18n="dockLayers">Layers</span>        <button class="dock-close" data-close="layer-dock">x</button></div>
         <label><input type="checkbox" data-setting="showXyzTiles"> <span data-i18n="lblXyzTiles">QGIS basemap texture</span></label>
         <label><input type="checkbox" data-setting="showTerrainTexture"> <span data-i18n="lblPlanTexture">Plan texture</span></label>
         <label><input type="checkbox" data-setting="showOutsideRoiTerrain"> <span data-i18n="lblOutsideRoiTerrain">Outside ROI terrain</span></label>
         <label><input type="checkbox" data-setting="showIslands"> <span data-i18n="lblBlocks">Blocks</span></label>
+        <label><input type="checkbox" data-setting="showFences"> <span data-i18n="lblFences">Fences / Borders</span></label>
+        <label><input type="checkbox" data-setting="showWaterlines"> <span data-i18n="lblWaterlines">Water lines / Streams</span></label>
         <label><input type="checkbox" data-setting="showRoads"> <span data-i18n="lblRoads">Roads</span></label>
         <label><input type="checkbox" data-setting="showSidewalks"> <span data-i18n="lblSidewalks">Sidewalks</span></label>
         <label><input type="checkbox" data-setting="showPedestrianPaths"> <span data-i18n="lblPedestrianPaths">Block paths</span></label>
@@ -164,6 +167,7 @@
         <label><span data-i18n="lblIslandColor">Block color</span> <input type="color" data-setting="islandColor"></label>
         <label><span data-i18n="lblIslandTexture">Block texture</span> <select data-setting="islandTexture"></select></label>
         <label><span data-i18n="lblIslandTransparency">Block transparency</span> <input type="range" min="0" max="0.95" step="0.05" data-setting="islandTransparency"></label>
+        <label><span data-i18n="lblWaterlineWidth">Waterline default width</span> <input type="range" min="0.5" max="15.0" step="0.5" data-setting="waterlineWidth"></label>
         <label><span data-i18n="lblParcelColor">Parcel boundary color</span> <input type="color" data-setting="parcelBoundaryColor"></label>
         <label><span data-i18n="lblParcelOpacity">Parcel boundary opacity</span> <input type="range" min="0.05" max="1" step="0.01" data-setting="parcelBoundaryOpacity"></label>
         <label><span data-i18n="lblRoadColor">Road color</span> <input type="color" data-setting="roadColor"></label>
@@ -185,6 +189,8 @@
         <label><span data-i18n="lblRoofShape">Roof shape</span> <select data-setting="roofShape"></select></label>
         <label><span data-i18n="lblRoofHeight">Roof height</span> <input type="range" min="0.5" max="6" step="0.1" data-setting="roofHeight"></label>
         <label><span data-i18n="lblRoofTexture">Roof texture</span> <select data-setting="roofTexture"></select></label>
+        <div class="dock-subtitle" data-i18n="lblBlockStyles">Block Categories</div>
+        <div id="block-style-controls" class="block-style-controls"></div>
         <div class="dock-subtitle" data-i18n="lblFunctionStyles">Function colors and facades</div>
         <div id="function-style-controls" class="function-style-controls"></div>
     </aside>
@@ -208,6 +214,22 @@
         <label><span data-i18n="lblBinStyle">Trash bin style</span> <select data-setting="binStyle"></select></label>
         <label><input type="checkbox" data-setting="showBusStops"> <span data-i18n="lblStops">Bus stops</span></label>
         <label><span data-i18n="lblStopStyle">Bus stop style</span> <select data-setting="stopStyle"></select></label>
+    </aside>
+
+    <aside class="dock-panel hidden" id="fences-dock">
+        <div class="dock-head"><span data-i18n="dockFences">Fences & Borders</span><button class="dock-close" data-close="fences-dock">x</button></div>
+        <label><input type="checkbox" data-setting="showFences"> <span data-i18n="lblShowFences">Show Fences</span></label>
+        <label><span data-i18n="lblFenceHeight">Fence Height (m)</span> <input type="range" min="0.5" max="6.0" step="0.1" data-setting="fenceHeight"></label>
+        <label><span data-i18n="lblFenceThickness">Fence Thickness (m)</span> <input type="range" min="0.05" max="1.5" step="0.05" data-setting="fenceThickness"></label>
+        <label><span data-i18n="lblFenceTexture">Fence Texture</span>
+            <select data-setting="fenceTexture">
+                <option value="wall" data-i18n="fenceWall">Concrete Wall</option>
+                <option value="steel_fence" data-i18n="fenceSteel">Steel Fence</option>
+                <option value="pipeline" data-i18n="fencePipeline">Industrial Pipeline</option>
+                <option value="wood_fence" data-i18n="fenceWood">Wood Fence / Conservative</option>
+            </select>
+        </label>
+        <label><span data-i18n="lblFenceColor">Fence Color</span> <input type="color" data-setting="fenceColor"></label>
     </aside>
 
     <aside class="dock-panel hidden" id="analysis-dock">

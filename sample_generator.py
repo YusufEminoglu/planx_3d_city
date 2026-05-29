@@ -210,6 +210,38 @@ def _build_trees() -> list:
     return feats
 
 
+def _build_fences() -> list:
+    feats = []
+    cells = _block_cells()
+    if len(cells) >= 5:
+        _, _, x0, y0, x1, y1 = cells[4]
+        # Inset slightly
+        x0 += 2.0
+        y0 += 2.0
+        x1 -= 2.0
+        y1 -= 2.0
+        feat = QgsFeature()
+        feat.setGeometry(_rect_polygon(x0, y0, x1, y1))
+        feat.setAttributes(["Center Fence"])
+        feats.append(feat)
+    return feats
+
+
+def _build_waterlines() -> list:
+    feats = []
+    points = [
+        QgsPointXY(ORIGIN_X + 50.0, ORIGIN_Y + 100.0),
+        QgsPointXY(ORIGIN_X + 250.0, ORIGIN_Y + 250.0),
+        QgsPointXY(ORIGIN_X + 450.0, ORIGIN_Y + 300.0),
+        QgsPointXY(ORIGIN_X + 550.0, ORIGIN_Y + 500.0),
+    ]
+    feat = QgsFeature()
+    feat.setGeometry(QgsGeometry.fromPolylineXY(points))
+    feat.setAttributes(["Stream A", 4.5])
+    feats.append(feat)
+    return feats
+
+
 def generate_sample_project(parent_dir: Path | None = None) -> dict:
     """Generate sample dataset on disk; return paths suitable for the plugin dialog.
 
@@ -227,6 +259,8 @@ def generate_sample_project(parent_dir: Path | None = None) -> dict:
     buildings_path = out / "sample_buildings.geojson"
     roads_path = out / "sample_roads.geojson"
     trees_path = out / "sample_trees.geojson"
+    fences_path = out / "sample_fences.geojson"
+    waterlines_path = out / "sample_waterlines.geojson"
 
     _write_dem(dem_path)
     _save_vector([_build_roi()], "Polygon", [("name", QVariant.String)], roi_path)
@@ -245,6 +279,8 @@ def generate_sample_project(parent_dir: Path | None = None) -> dict:
     )
     _save_vector(_build_roads(), "LineString", [("yol_id", QVariant.String), ("yol_turu", QVariant.String)], roads_path)
     _save_vector(_build_trees(), "Point", [("agac_id", QVariant.String), ("height", QVariant.Double)], trees_path)
+    _save_vector(_build_fences(), "Polygon", [("fence_id", QVariant.String)], fences_path)
+    _save_vector(_build_waterlines(), "LineString", [("stream_id", QVariant.String), ("width", QVariant.Double)], waterlines_path)
 
     project = QgsProject.instance()
 
@@ -262,6 +298,8 @@ def generate_sample_project(parent_dir: Path | None = None) -> dict:
         "buildings": _add_layer(QgsVectorLayer(str(buildings_path), "PlanX Sample Buildings", "ogr"), "PlanX Sample Buildings"),
         "roads": _add_layer(QgsVectorLayer(str(roads_path), "PlanX Sample Roads", "ogr"), "PlanX Sample Roads"),
         "trees": _add_layer(QgsVectorLayer(str(trees_path), "PlanX Sample Trees", "ogr"), "PlanX Sample Trees"),
+        "fences": _add_layer(QgsVectorLayer(str(fences_path), "PlanX Sample Fences", "ogr"), "PlanX Sample Fences"),
+        "waterlines": _add_layer(QgsVectorLayer(str(waterlines_path), "PlanX Sample Waterlines", "ogr"), "PlanX Sample Waterlines"),
     }
 
     return {

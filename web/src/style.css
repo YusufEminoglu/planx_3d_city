@@ -159,6 +159,10 @@ ul {
     left: 540px;
     font-size: 1.1rem;
 }
+.fences-btn {
+    left: 590px;
+    font-size: 1.1rem;
+}
 
 .walk-btn.active {
     background: #0f766e;
@@ -364,7 +368,8 @@ ul {
     border-top: 1px solid rgba(255,255,255,0.10);
 }
 
-.function-style-controls {
+.function-style-controls,
+.block-style-controls {
     display: grid;
     gap: 10px;
 }

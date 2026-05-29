@@ -31,7 +31,7 @@ VECTOR_REQUIRED_INPUTS = ()
 VECTOR_RECOMMENDED_INPUTS = ("dem", "roi", "roads", "buildings", "blocks", "parcels")
 RASTER_TEXTURE_REQUIRED_INPUTS = ("roi", "plan_texture", "roads", "buildings")
 REQUIRED_INPUTS = VECTOR_REQUIRED_INPUTS
-OPTIONAL_INPUTS = ("trees", "hardscape", "sidewalks", "pedestrian_paths", "lights", "benches", "trashbins", "busstops")
+OPTIONAL_INPUTS = ("trees", "hardscape", "sidewalks", "pedestrian_paths", "lights", "benches", "trashbins", "busstops", "fences", "waterlines")
 VECTOR_OPTIONAL_INPUTS = VECTOR_RECOMMENDED_INPUTS + OPTIONAL_INPUTS
 ASSET_THEME_DEFAULT = "Modern Urban"
 ASSET_CATEGORIES = ("pedestrians", "cars", "trees", "lights", "benches", "bins", "busstops", "facades", "roofs", "paving")
@@ -173,6 +173,8 @@ VECTOR_TARGETS = {
     "benches": "mybenches.geojson",
     "trashbins": "mytrashbins.geojson",
     "busstops": "mybusstops.geojson",
+    "fences": "myfences.geojson",
+    "waterlines": "mywaterlines.geojson",
 }
 
 LABELS = {
@@ -192,6 +194,8 @@ LABELS = {
     "benches": "Benches",
     "trashbins": "Trash bins",
     "busstops": "Bus stops",
+    "fences": "Fences / Borders",
+    "waterlines": "Water lines / Streams",
 }
 
 
@@ -552,6 +556,8 @@ def _field_mappings_manifest(layer_map: dict) -> dict:
         "bench_angle_field",
         "trashbin_angle_field",
         "busstop_angle_field",
+        "block_category_field",
+        "waterline_width_field",
     )
     return {key: (layer_map.get(key) or "").strip() or None for key in keys}
 

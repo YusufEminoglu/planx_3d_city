@@ -81,6 +81,11 @@ Object.assign(i18n.TR, {
   dockFurniture: 'Kent Mobilyalari', dockAnalysis: 'Analiz',
   lblRoads: 'Yollar', lblSidewalks: 'Kaldirimlar', lblCrosswalks: 'Yaya gecitleri', lblPedestrianPaths: 'Ada ici patikalar',
   lblBlocks: 'Adalar / bloklar', lblParcels: 'Parseller', lblHardscape: 'Sert zemin', lblBuildings: 'Binalar',
+  lblFences: 'Çitler / Sınırlar', lblWaterlines: 'Su Hatları / Akarsular', lblWaterlineWidth: 'Akarsu genişliği',
+  dockFences: 'Çitler & Sınırlar', lblShowFences: 'Çitleri Göster', lblFenceHeight: 'Çit Yüksekliği',
+  lblFenceThickness: 'Çit Kalınlığı', lblFenceTexture: 'Çit Dokusu', lblFenceColor: 'Çit Rengi',
+  fenceWall: 'Beton Duvar', fenceSteel: 'Metal Çit', fencePipeline: 'Sanayi Borusu', fenceWood: 'Ahşap Çit / Koruma Alanı',
+  lblBlockStyles: 'Ada Kategorileri', dockTitleFences: 'Çit paneli',
   lblTrees: 'Agaclar', lblFurniture: 'Kent mobilyalari', lblCars: 'Araclar', lblPedestrians: 'Yayalar',
   lblPlanTexture: 'Plan texture', lblOutsideRoiTerrain: 'ROI disi zemin', lblTextureOpacity: 'Texture opakligi',
   lblTextureBrightness: 'Texture parlakligi', lblTextureContrast: 'Texture kontrasti',
@@ -129,6 +134,11 @@ Object.assign(i18n.EN, {
   dockFurniture: 'Street Furniture', dockAnalysis: 'Analysis',
   lblRoads: 'Roads', lblSidewalks: 'Sidewalks', lblCrosswalks: 'Crosswalks', lblPedestrianPaths: 'Block paths',
   lblBlocks: 'Blocks', lblParcels: 'Parcels', lblHardscape: 'Hardscape', lblBuildings: 'Buildings',
+  lblFences: 'Fences / Borders', lblWaterlines: 'Water lines / Streams', lblWaterlineWidth: 'Waterline default width',
+  dockFences: 'Fences & Borders', lblShowFences: 'Show Fences', lblFenceHeight: 'Fence Height',
+  lblFenceThickness: 'Fence Thickness', lblFenceTexture: 'Fence Texture', lblFenceColor: 'Fence Color',
+  fenceWall: 'Concrete Wall', fenceSteel: 'Steel Fence', fencePipeline: 'Industrial Pipeline', fenceWood: 'Wood Fence / Conservative',
+  lblBlockStyles: 'Block Categories', dockTitleFences: 'Fences dock',
   lblTrees: 'Trees', lblFurniture: 'Street furniture', lblCars: 'Cars', lblPedestrians: 'Pedestrians',
   lblPlanTexture: 'Plan texture', lblOutsideRoiTerrain: 'Outside ROI terrain', lblTextureOpacity: 'Texture opacity',
   lblTextureBrightness: 'Texture brightness', lblTextureContrast: 'Texture contrast',
@@ -402,6 +412,8 @@ let crosswalkGroup = new THREE.Group();
 let terrainSideGroup = new THREE.Group();
 let windPlumeGroup = new THREE.Group();
 let roiBoundaryGroup = new THREE.Group();
+let fenceGroup = new THREE.Group();
+let waterlineGroup = new THREE.Group();
 world.add(islandGroup);
 world.add(parcelGroup);
 world.add(hardscapeGroup);
@@ -417,12 +429,15 @@ world.add(carGroup);
 world.add(furnitureGroup);
 world.add(pedestrianGroup);
 world.add(roiBoundaryGroup);
+world.add(fenceGroup);
+world.add(waterlineGroup);
 
 /* Layer Elevation Hierarchy
  * DEM < islands < block paths < buildings/trees < parcels < hardscape slab < roads < sidewalks < cars.
  * Offsets are relative to the final visible terrain surface.
  */
 const LAYER = {
+  waterline: 0.58,
   island:    0.60,
   path:      0.72,
   content:   0.78,
@@ -784,7 +799,8 @@ const textureSets = {
     ParkGreen: 'ParkGreen',
     ResidentialBeige: 'ResidentialBeige',
     CivicGravel: 'CivicGravel',
-    CoastalSand: 'CoastalSand'
+    CoastalSand: 'CoastalSand',
+    Water: 'Water'
   },
   hardscape: {
     Cobble: 'assets/pavement.png',
@@ -1491,7 +1507,14 @@ const settings = {
   parkTexture: 'ParkGreen',
   sportColor: '#4a8c30',
   furnitureGroundOffset: 0.02,
-  terrainTileMeters: 60
+  terrainTileMeters: 60,
+  showFences: true,
+  fenceHeight: 1.8,
+  fenceThickness: 0.15,
+  fenceTexture: 'wall',
+  fenceColor: '#a1a1aa',
+  showWaterlines: true,
+  waterlineWidth: 3.0
 };
 
 const PERSISTED_SETTING_KEYS = [
@@ -1512,7 +1535,9 @@ const PERSISTED_SETTING_KEYS = [
   'flattenIslands', 'islandPlateauTransition',
   'dayOfYear', 'latitude',
   'parkColor', 'parkTexture', 'sportColor',
-  'terrainTileMeters'
+  'terrainTileMeters',
+  'showFences', 'fenceHeight', 'fenceThickness', 'fenceTexture', 'fenceColor',
+  'showWaterlines', 'waterlineWidth'
 ];
 
 function loadPersistedSettings() {
@@ -1625,6 +1650,7 @@ function savePersistedSettings() {
 
 loadPersistedSettings();
 loadFunctionBuildingStyles();
+loadBlockCategoryStyles();
 
 const tourState = {
   keyframes: [],
@@ -1796,6 +1822,20 @@ function createIslandTexturePreset(name) {
       for (let i = 0; i < 256; i += 12) {
         ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 256); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(256, i); ctx.stroke();
+      }
+    } else if (name === 'Water') {
+      ctx.fillStyle = '#0f5e9c';
+      ctx.fillRect(0, 0, 256, 256);
+      for (let band = 0; band < 10; band++) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        const yBand = band * 25 + 5 + Math.random() * 5;
+        ctx.moveTo(0, yBand);
+        for (let x = 0; x <= 256; x += 6) {
+          ctx.lineTo(x, yBand + Math.sin(x * 0.25 + band * 1.5) * 1.8);
+        }
+        ctx.stroke();
       }
     }
   }
@@ -3526,33 +3566,463 @@ function subdivideShapeGeometry(geometry, maxEdgeLen) {
   return geo;
 }
 
+// --- Block Category Styling Infrastructure ---
+const blockCategoryStyleState = {};
+const blockCategoryColorState = {};
+const blockCategoryTextureState = {};
+const BLOCK_STYLE_STORAGE_KEY = 'planx_3d_city_block_styles';
+
+function blockCategoryValue(properties) {
+  const field = projectManifest?.fieldMappings?.block_category_field;
+  if (field && properties && properties[field] !== undefined && properties[field] !== null) {
+    return properties[field];
+  }
+  const defaults = ['uipfonksiyon', 'arazi_kull', 'planx_category', 'category', 'function', 'fonksiyon'];
+  for (const def of defaults) {
+    if (properties && properties[def] !== undefined && properties[def] !== null) {
+      return properties[def];
+    }
+  }
+  return 'Residential';
+}
+
+function defaultBlockCategoryStyle(cat, index = 0) {
+  const c = cat.toUpperCase();
+  let color = ['#f5e4c2', '#bfdbfe', '#fee2e2', '#dcfce7', '#fef3c7', '#ede9fe'][index % 6];
+  let texture = 'None';
+  if (c.includes('PARK') || c.includes('GREEN') || c.includes('YEŞİL') || c.includes('ORMAN') || c.includes('PLAYGROUND') || c.includes('BAHÇE')) {
+    color = '#5e9e3e';
+    texture = 'ParkGreen';
+  } else if (c.includes('WATER') || c.includes('SU') || c.includes('GÖL') || c.includes('DENİZ') || c.includes('NEHİR')) {
+    color = '#0f5e9c';
+    texture = 'Water';
+  } else if (c.includes('SPORT') || c.includes('SPOR')) {
+    color = '#4a8c30';
+    texture = 'FineGrid';
+  } else if (c.includes('RESIDENT') || c.includes('KONUT')) {
+    color = '#d6c8a6';
+    texture = 'ResidentialBeige';
+  } else if (c.includes('CIVIC') || c.includes('KAMU') || c.includes('COMMERCIAL') || c.includes('TİCARET') || c.includes('SCHOOL') || c.includes('OKUL')) {
+    color = '#b6b3a8';
+    texture = 'CivicGravel';
+  }
+  return { color, texture };
+}
+
+function ensureBlockCategoryStyle(cat, index = 0) {
+  if (!blockCategoryStyleState[cat]) {
+    const fallback = defaultBlockCategoryStyle(cat, index);
+    blockCategoryStyleState[cat] = {
+      color: fallback.color,
+      texture: fallback.texture
+    };
+  }
+  blockCategoryColorState[cat] = blockCategoryStyleState[cat].color;
+  blockCategoryTextureState[cat] = blockCategoryStyleState[cat].texture;
+  return blockCategoryStyleState[cat];
+}
+
+function loadBlockCategoryStyles() {
+  try {
+    const raw = localStorage.getItem(BLOCK_STYLE_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      Object.entries(parsed || {}).forEach(([k, v]) => {
+        blockCategoryStyleState[k] = v;
+      });
+    }
+  } catch (err) {
+    console.warn('Could not restore block category styles', err);
+  }
+}
+
+function saveBlockCategoryStyles() {
+  try {
+    localStorage.setItem(BLOCK_STYLE_STORAGE_KEY, JSON.stringify(blockCategoryStyleState));
+  } catch (err) {
+    console.warn('Could not save block category styles', err);
+  }
+}
+
+function renderBlockCategoryStyleDock() {
+  const host = document.getElementById('block-style-controls');
+  if (!host) return;
+  const keys = Object.keys(blockCategoryColorState).sort();
+  if (!keys.length) {
+    host.innerHTML = `<p class="dock-note">Block categories appear after data is loaded.</p>`;
+    return;
+  }
+  host.innerHTML = '';
+  const islandOptions = Object.keys(textureSets.island);
+  const makeSelect = (options, value) => {
+    const select = document.createElement('select');
+    options.forEach((item) => {
+      const opt = document.createElement('option');
+      opt.value = item;
+      opt.textContent = item;
+      select.appendChild(opt);
+    });
+    select.value = value;
+    return select;
+  };
+  const makeField = (labelText, control) => {
+    const label = document.createElement('label');
+    label.className = 'function-style-field';
+    const span = document.createElement('span');
+    span.textContent = labelText;
+    label.append(span, control);
+    return label;
+  };
+  keys.forEach((key, index) => {
+    const style = ensureBlockCategoryStyle(key, index);
+    const card = document.createElement('div');
+    card.className = 'function-style-card';
+
+    const header = document.createElement('div');
+    header.className = 'function-style-header';
+    const name = document.createElement('strong');
+    name.textContent = key;
+    name.title = key;
+    const color = document.createElement('input');
+    color.type = 'color';
+    color.value = style.color;
+    color.title = 'Block color';
+    color.addEventListener('input', () => {
+      style.color = color.value;
+      blockCategoryColorState[key] = color.value;
+      saveBlockCategoryStyles();
+      requestFunctionStyleRebuild();
+    });
+    header.append(name, color);
+
+    const grid = document.createElement('div');
+    grid.className = 'function-style-grid';
+
+    const islandTex = makeSelect(islandOptions, style.texture);
+    islandTex.addEventListener('change', () => {
+      style.texture = islandTex.value;
+      blockCategoryTextureState[key] = style.texture;
+      saveBlockCategoryStyles();
+      rebuildScene();
+    });
+
+    grid.append(makeField('Texture', islandTex));
+    card.append(header, grid);
+    host.append(card);
+  });
+}
+
+// --- Procedural Textures Helper Functions ---
+function createWaterTexture() {
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#0f5e9c';
+  ctx.fillRect(0, 0, 128, 128);
+  for (let band = 0; band < 5; band++) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    const yBand = band * 25 + 5 + Math.random() * 5;
+    ctx.moveTo(0, yBand);
+    for (let x = 0; x <= 128; x += 6) {
+      ctx.lineTo(x, yBand + Math.sin(x * 0.25 + band * 1.5) * 1.8);
+    }
+    ctx.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1, 1);
+  return t;
+}
+
+function createSteelFenceTexture() {
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 64;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = 'rgba(0,0,0,0)';
+  ctx.fillRect(0, 0, 64, 64);
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(0, 0); ctx.lineTo(64, 64);
+  ctx.moveTo(64, 0); ctx.lineTo(0, 64);
+  ctx.stroke();
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1, 1);
+  return t;
+}
+
+function createWoodFenceTexture() {
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 64;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = 'rgba(0,0,0,0)';
+  ctx.fillRect(0, 0, 64, 64);
+  ctx.fillStyle = '#b45309';
+  ctx.fillRect(4, 0, 16, 64);
+  ctx.fillRect(24, 0, 16, 64);
+  ctx.fillRect(44, 0, 16, 64);
+  ctx.fillStyle = '#78350f';
+  ctx.fillRect(0, 12, 64, 8);
+  ctx.fillRect(0, 44, 64, 8);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1, 1);
+  return t;
+}
+
+function createSoftNoiseTexture() {
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 2000; i++) {
+    const x = Math.random() * 128;
+    const y = Math.random() * 128;
+    const g = 180 + Math.random() * 75;
+    ctx.fillStyle = `rgba(${g},${g},${g},0.15)`;
+    ctx.fillRect(x, y, 1.5, 1.5);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(2, 2);
+  return t;
+}
+
+// --- Fences & Waterlines Layers implementation ---
+function buildFencesLayer(fences) {
+  clearGroup(fenceGroup);
+  if (!settings.showFences || !fences?.features?.length) return;
+  
+  const height = settings.fenceHeight;
+  const thickness = settings.fenceThickness;
+  const type = settings.fenceTexture;
+  const color = new THREE.Color(settings.fenceColor);
+  
+  let mat;
+  if (type === 'steel_fence') {
+    mat = new THREE.MeshStandardMaterial({
+      color: color,
+      map: createSteelFenceTexture(),
+      transparent: true,
+      alphaTest: 0.1,
+      roughness: 0.5,
+      metalness: 0.8,
+      side: THREE.DoubleSide
+    });
+  } else if (type === 'wood_fence') {
+    mat = new THREE.MeshStandardMaterial({
+      color: color,
+      map: createWoodFenceTexture(),
+      transparent: true,
+      alphaTest: 0.1,
+      roughness: 0.9,
+      side: THREE.DoubleSide
+    });
+  } else if (type === 'pipeline') {
+    mat = new THREE.MeshStandardMaterial({
+      color: color,
+      roughness: 0.3,
+      metalness: 0.9
+    });
+  } else {
+    mat = new THREE.MeshStandardMaterial({
+      color: color,
+      roughness: 0.9,
+      bumpMap: createSoftNoiseTexture(),
+      bumpScale: 0.05
+    });
+  }
+  
+  const postMat = new THREE.MeshStandardMaterial({
+    color: color.clone().multiplyScalar(0.8),
+    roughness: 0.6,
+    metalness: type === 'pipeline' || type === 'steel_fence' ? 0.8 : 0.2
+  });
+  
+  for (const f of fences.features) {
+    for (const poly of getPolygonRings(f.geometry)) {
+      const outer = poly[0];
+      if (!outer || outer.length < 3) continue;
+      
+      const pts = outer.map(pt => {
+        const [x, z] = metersToLocal(pt[0], pt[1]);
+        const y = terrainLocalYAt(x, z) + LAYER.island;
+        return new THREE.Vector3(x, y, z);
+      });
+      
+      for (let i = 0; i < pts.length; i++) {
+        const A = pts[i];
+        const B = pts[(i + 1) % pts.length];
+        const distance = A.distanceTo(B);
+        if (distance < 0.1) continue;
+        
+        let geom;
+        if (type === 'pipeline') {
+          geom = new THREE.CylinderGeometry(thickness, thickness, distance, 8);
+          geom.rotateX(Math.PI / 2);
+          geom.translate(0, height, 0);
+        } else {
+          geom = new THREE.BoxGeometry(thickness, height, distance);
+          geom.translate(0, height / 2, 0);
+        }
+        
+        const segmentMesh = new THREE.Mesh(geom, mat);
+        segmentMesh.castShadow = true;
+        segmentMesh.receiveShadow = true;
+        
+        const midpoint = new THREE.Vector3().addVectors(A, B).multiplyScalar(0.5);
+        segmentMesh.position.copy(midpoint);
+        segmentMesh.lookAt(B);
+        fenceGroup.add(segmentMesh);
+        
+        if (type !== 'wall') {
+          const postH = height;
+          const postR = thickness * (type === 'pipeline' ? 1.2 : 1.3);
+          const postGeom = new THREE.CylinderGeometry(postR, postR, postH, 8);
+          postGeom.translate(0, postH / 2, 0);
+          const postMesh = new THREE.Mesh(postGeom, postMat);
+          postMesh.castShadow = true;
+          postMesh.receiveShadow = true;
+          postMesh.position.copy(A);
+          fenceGroup.add(postMesh);
+        }
+      }
+    }
+  }
+}
+
+function buildWaterlinesLayer(waterlines) {
+  clearGroup(waterlineGroup);
+  if (!settings.showWaterlines || !waterlines?.features?.length) return;
+
+  const defaultWidth = settings.waterlineWidth;
+  const widthField = projectManifest?.fieldMappings?.waterline_width_field;
+
+  const mat = new THREE.MeshStandardMaterial({
+    color: '#0f5e9c',
+    map: createWaterTexture(),
+    roughness: 0.15,
+    metalness: 0.1,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -3,
+    polygonOffsetUnits: -3
+  });
+
+  for (const f of waterlines.features) {
+    if (f.geometry?.type !== 'LineString' && f.geometry?.type !== 'MultiLineString') continue;
+
+    const lines = f.geometry.type === 'LineString' ? [f.geometry.coordinates] : f.geometry.coordinates;
+    const featureWidth = parseNumberProp(f.properties || {}, widthField ? [widthField] : [], defaultWidth);
+
+    for (const coords of lines) {
+      if (coords.length < 2) continue;
+
+      const pts = coords.map(pt => {
+        const [x, z] = metersToLocal(pt[0], pt[1]);
+        const y = terrainLocalYAt(x, z) + LAYER.waterline;
+        return new THREE.Vector3(x, y, z);
+      });
+
+      for (let i = 0; i < pts.length - 1; i++) {
+        const A = pts[i];
+        const B = pts[i + 1];
+        const distance = A.distanceTo(B);
+        if (distance < 0.1) continue;
+
+        const dx = B.x - A.x;
+        const dz = B.z - A.z;
+        const len = Math.sqrt(dx * dx + dz * dz);
+        if (len < 0.01) continue;
+
+        const nx = -dz / len;
+        const nz = dx / len;
+
+        const wHalf = featureWidth / 2;
+        
+        const p0x = A.x - nx * wHalf;
+        const p0z = A.z - nz * wHalf;
+        const p0y = terrainLocalYAt(p0x, p0z) + LAYER.waterline;
+
+        const p1x = A.x + nx * wHalf;
+        const p1z = A.z + nz * wHalf;
+        const p1y = terrainLocalYAt(p1x, p1z) + LAYER.waterline;
+
+        const p2x = B.x - nx * wHalf;
+        const p2z = B.z - nz * wHalf;
+        const p2y = terrainLocalYAt(p2x, p2z) + LAYER.waterline;
+
+        const p3x = B.x + nx * wHalf;
+        const p3z = B.z + nz * wHalf;
+        const p3y = terrainLocalYAt(p3x, p3z) + LAYER.waterline;
+
+        const geom = new THREE.BufferGeometry();
+        const vertices = new Float32Array([
+          p0x, p0y, p0z,
+          p1x, p1y, p1z,
+          p2x, p2y, p2z,
+
+          p1x, p1y, p1z,
+          p3x, p3y, p3z,
+          p2x, p2y, p2z
+        ]);
+
+        const uvs = new Float32Array([
+          0, 0,
+          1, 0,
+          0, distance / featureWidth,
+
+          1, 0,
+          1, distance / featureWidth,
+          0, distance / featureWidth
+        ]);
+
+        geom.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+        geom.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+        geom.computeVertexNormals();
+
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.receiveShadow = true;
+        waterlineGroup.add(mesh);
+      }
+    }
+  }
+}
+
 async function buildIslandLayer(adalar, buildToken = sceneBuildToken) {
   clearGroup(islandGroup);
   if (!adalar?.features?.length) return;
-  const t = createIslandTexturePreset(settings.islandTexture);
-  const defaultMat = applyIslandMaterialVisibility(new THREE.MeshStandardMaterial({
-    color: new THREE.Color(settings.islandColor),
-    map: t,
-    roughness: 0.92,
-    side: THREE.DoubleSide,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2
-  }));
-  const customMaterials = {};
-  const materialForIsland = (feature, fallbackMat) => {
-    const props = feature.properties || {};
-    const customColor = normalizeHexColor(propFirst(props, ['planx_color', 'planx_renk', 'color', 'renk']));
-    const customTexture = presetValue(propFirst(props, ['planx_texture', 'planx_island_texture', 'texture', 'doku']), textureSets.island, null);
-    if (!customColor && !customTexture) return fallbackMat;
+  
+  const categories = [...new Set(adalar.features.map(f => String(blockCategoryValue(f.properties))))];
+  categories.forEach((cat, i) => {
+    ensureBlockCategoryStyle(cat, i);
+  });
 
-    const color = customColor || settings.islandColor;
-    const textureName = customTexture || settings.islandTexture;
-    const key = `${color}_${textureName}`;
-    if (!customMaterials[key]) {
-      customMaterials[key] = applyIslandMaterialVisibility(new THREE.MeshStandardMaterial({
-        color: new THREE.Color(color),
-        map: createIslandTexturePreset(textureName),
+  const customMaterials = {};
+  
+  for (const f of adalar.features) {
+    const cat = String(blockCategoryValue(f.properties));
+    const catStyle = ensureBlockCategoryStyle(cat, categories.indexOf(cat));
+    
+    const featureColor = normalizeHexColor(propFirst(f.properties || {}, ['planx_color', 'planx_renk', 'color', 'renk']), catStyle.color);
+    const featureTexture = presetValue(propFirst(f.properties || {}, ['planx_texture', 'planx_island_texture', 'texture', 'doku']), textureSets.island, catStyle.texture);
+    
+    const matKey = `${featureColor}_${featureTexture}`;
+    if (!customMaterials[matKey]) {
+      customMaterials[matKey] = applyIslandMaterialVisibility(new THREE.MeshStandardMaterial({
+        color: new THREE.Color(featureColor),
+        map: createIslandTexturePreset(featureTexture),
         roughness: 0.92,
         side: THREE.DoubleSide,
         polygonOffset: true,
@@ -3560,32 +4030,7 @@ async function buildIslandLayer(adalar, buildToken = sceneBuildToken) {
         polygonOffsetUnits: -2
       }));
     }
-    return customMaterials[key];
-  };
-  const parkTex = createIslandTexturePreset(settings.parkTexture || 'ParkGreen');
-  const parkMat = applyIslandMaterialVisibility(new THREE.MeshStandardMaterial({
-    color: new THREE.Color(settings.parkColor || '#5e9e3e'),
-    map: parkTex,
-    roughness: 0.90,
-    side: THREE.DoubleSide,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2
-  }));
-  const sportMat = applyIslandMaterialVisibility(new THREE.MeshStandardMaterial({
-    color: new THREE.Color(settings.sportColor || '#4a8c30'),
-    roughness: 0.88,
-    side: THREE.DoubleSide,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2
-  }));
-
-  for (const f of adalar.features) {
-    const fn = ((f.properties?.uipfonksiyon || f.properties?.arazi_kull || '')).toString().toUpperCase();
-    const isPark = fn.includes('PARK') || fn.includes('YEŞİL') || fn.includes('ORMAN') || fn.includes('BAHÇE');
-    const isSport = fn.includes('SPOR') || fn.includes('STADYUM');
-    const mat = materialForIsland(f, isPark ? parkMat : (isSport ? sportMat : defaultMat));
+    const mat = customMaterials[matKey];
 
     for (const poly of getPolygonRings(f.geometry)) {
       const outer = poly[0];
@@ -3600,10 +4045,6 @@ async function buildIslandLayer(adalar, buildToken = sceneBuildToken) {
       if (plateauY != null) {
         g = rawGeo;
       } else {
-        // Conforming 4-1 subdivision down to ~6 m edges, then merge coincident
-        // vertices so computeVertexNormals can produce smooth shading across
-        // shared edges. Output is watertight (every shared edge agrees on its
-        // midpoint), so DEM drape lands on a continuous surface.
         const subdivided = subdivideShapeGeometry(rawGeo, 6);
         g = indexAndMergeNonIndexed(subdivided, 0.1);
       }
@@ -5845,6 +6286,8 @@ async function rebuildScene() {
     const benches = await loadGeoJson('../data/yerlesim/mybenches.geojson', { label: 'Benches' });
     const bins = await loadGeoJson('../data/yerlesim/mytrashbins.geojson', { label: 'Trash bins' });
     const busstops = await loadGeoJson('../data/yerlesim/mybusstops.geojson', { label: 'Bus stops' });
+    const fences = await loadGeoJson('../data/yerlesim/myfences.geojson', { label: 'Fences' });
+    const waterlines = await loadGeoJson('../data/yerlesim/mywaterlines.geojson', { label: 'Water lines' });
     
     const roi = await loadGeoJson('../data/yerlesim/roi.geojson', { required: manifestRequiresInput('roi'), label: 'ROI' });
     layerDataCache = {
@@ -5856,6 +6299,8 @@ async function rebuildScene() {
        hardscape: null,
        sidewalks: null,
        pedestrianPaths: null,
+       fences: asFeatureCollection(fences, 'Fences'),
+       waterlines: asFeatureCollection(waterlines, 'Water lines'),
        furniture: {
          lights: asFeatureCollection(lights, 'Lights'),
          benches: asFeatureCollection(benches, 'Benches'),
@@ -5886,6 +6331,14 @@ async function rebuildScene() {
     const pedestrianPaths = await loadGeoJson('../data/yerlesim/mypedestrian_paths.geojson', { label: 'Pedestrian paths' });
     layerDataCache.pedestrianPaths = asFeatureCollection(pedestrianPaths, 'Pedestrian paths');
   }
+  if (settings.showFences && !layerDataCache.fences) {
+    const fences = await loadGeoJson('../data/yerlesim/myfences.geojson', { label: 'Fences' });
+    layerDataCache.fences = asFeatureCollection(fences, 'Fences');
+  }
+  if (settings.showWaterlines && !layerDataCache.waterlines) {
+    const waterlines = await loadGeoJson('../data/yerlesim/mywaterlines.geojson', { label: 'Water lines' });
+    layerDataCache.waterlines = asFeatureCollection(waterlines, 'Water lines');
+  }
   
   const adalar = asFeatureCollection(layerDataCache.adalar, 'Blocks');
   const yapilar = asFeatureCollection(layerDataCache.yapilar, 'Buildings');
@@ -5895,7 +6348,9 @@ async function rebuildScene() {
   const hardscape = layerDataCache.hardscape ? asFeatureCollection(layerDataCache.hardscape, 'Hardscape') : null;
   const sidewalks = layerDataCache.sidewalks ? asFeatureCollection(layerDataCache.sidewalks, 'Sidewalks') : null;
   const pedestrianPaths = layerDataCache.pedestrianPaths ? asFeatureCollection(layerDataCache.pedestrianPaths, 'Pedestrian paths') : null;
-  Object.assign(layerDataCache, { adalar, yapilar, yollar, agaclar, parseller, hardscape, sidewalks, pedestrianPaths });
+  const fences = layerDataCache.fences ? asFeatureCollection(layerDataCache.fences, 'Fences') : null;
+  const waterlines = layerDataCache.waterlines ? asFeatureCollection(layerDataCache.waterlines, 'Water lines') : null;
+  Object.assign(layerDataCache, { adalar, yapilar, yollar, agaclar, parseller, hardscape, sidewalks, pedestrianPaths, fences, waterlines });
   updateDashboard(layerDataCache);
 
   // Calculate and update stats
@@ -6047,8 +6502,19 @@ async function rebuildScene() {
   } else {
     clearGroup(furnitureGroup);
   }
+  if (settings.showFences && fences) {
+    await runLayerBuild('Fences', () => buildFencesLayer(fences), () => clearGroup(fenceGroup));
+  } else {
+    clearGroup(fenceGroup);
+  }
+  if (settings.showWaterlines && waterlines) {
+    await runLayerBuild('Water lines', () => buildWaterlinesLayer(waterlines), () => clearGroup(waterlineGroup));
+  } else {
+    clearGroup(waterlineGroup);
+  }
   rebuildMinimapBg();
   updateDockControls();
+  renderBlockCategoryStyleDock();
   renderFunctionStyleDock();
   updateDashboard(layerDataCache);
   setSceneState('sceneReady');
@@ -7231,6 +7697,7 @@ function updateDockControls() {
     else el.value = settings[key];
   });
 }
+const reflectDockSettings = updateDockControls;
 
 let functionStyleRebuildTimer = null;
 function requestFunctionStyleRebuild() {
@@ -7390,6 +7857,8 @@ function applyDockSetting(key, value, inputType) {
     else if (key === 'showCrosswalks') clearGroup(crosswalkGroup);
     else if (key === 'showCars') clearGroup(carGroup);
     else if (key === 'showPedestrians') clearGroup(pedestrianGroup);
+    else if (key === 'showFences') clearGroup(fenceGroup);
+    else if (key === 'showWaterlines') clearGroup(waterlineGroup);
   }
   if (key === 'assetTheme') {
     applyThemeDefaultsToSettings(true);

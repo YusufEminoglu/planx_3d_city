@@ -73,6 +73,8 @@ EXPECTED_GEOMETRIES = {
     "benches": "Point",
     "trashbins": "Point",
     "busstops": "Point",
+    "fences": "Polygon",
+    "waterlines": "Line",
 }
 
 RECOMMENDED_BUILDING_FIELDS = ("katadedi", "uipfonksiyon")
@@ -91,6 +93,8 @@ FIELD_MAPPING_DEFS = (
     ("bench_angle_field", "benches", "Bench direction field", "Direction angle in degrees; otherwise aligned beside the nearest road axis. / Bank yonu."),
     ("trashbin_angle_field", "trashbins", "Trash bin direction field", "Direction angle in degrees; otherwise aligned to the nearest road axis. / Cop kutusu yonu."),
     ("busstop_angle_field", "busstops", "Bus stop direction field", "Direction angle in degrees; otherwise aligned beside the nearest road axis. / Durak yonu."),
+    ("block_category_field", "blocks", "Block category field", "Field containing block functions or landuse categories (e.g. residential, park, school, sport, water). / Ada kategori sutunu."),
+    ("waterline_width_field", "waterlines", "Waterline width field (metres)", "Per-feature stream/waterline width in metres. / Akarsu/su hattı genişlik sütunu."),
 )
 
 ASSET_THEME_OPTIONS = (
@@ -154,6 +158,8 @@ AUTO_MATCH_ALIASES = {
     "benches": ("benches", "bench", "bank", "mybenches"),
     "trashbins": ("trashbins", "trash", "bin", "cop", "mytrashbins"),
     "busstops": ("busstops", "bus", "durak", "mybusstops"),
+    "fences": ("fences", "fence", "border", "borders", "wall", "walls", "cit", "çit", "myfences"),
+    "waterlines": ("waterlines", "waterline", "stream", "streams", "river", "rivers", "dere", "akarsu", "mywaterlines"),
 }
 
 
