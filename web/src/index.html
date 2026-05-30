@@ -6,7 +6,7 @@
     <title>PlanX 3D City - 3D Urban Cockpit</title>
     <meta name="description" content="PlanX 3D City: an English-first, Turkish-supported 3D urban cockpit for DEM, plan, road, parcel, building and street-life data.">
 
-    <link rel="stylesheet" href="style.css?v=0.8.29">
+    <link rel="stylesheet" href="style.css?v=0.8.39">
 
     <script type="importmap">
         {
@@ -119,6 +119,7 @@
         <label><input type="checkbox" data-setting="showHardscape"> <span data-i18n="lblHardscape">Hardscape</span></label>
         <label><input type="checkbox" data-setting="showBuildings"> <span data-i18n="lblBuildings">Buildings</span></label>
         <label><input type="checkbox" data-setting="showTrees"> <span data-i18n="lblTrees">Trees</span></label>
+        <label><input type="checkbox" data-setting="showMosques"> <span data-i18n="lblMosques">Mosques</span></label>
         <label><input type="checkbox" data-setting="showFurniture"> <span data-i18n="lblFurniture">Street furniture</span></label>
         <label><input type="checkbox" data-setting="showCars"> <span data-i18n="lblCars">Cars</span></label>
         <label><input type="checkbox" data-setting="showPedestrians"> <span data-i18n="lblPedestrians">Pedestrians</span></label>
@@ -189,6 +190,11 @@
         <label><span data-i18n="lblRoofShape">Roof shape</span> <select data-setting="roofShape"></select></label>
         <label><span data-i18n="lblRoofHeight">Roof height</span> <input type="range" min="0.5" max="6" step="0.1" data-setting="roofHeight"></label>
         <label><span data-i18n="lblRoofTexture">Roof texture</span> <select data-setting="roofTexture"></select></label>
+        <div class="dock-subtitle" data-i18n="lblMosqueSettings">Mosque Settings</div>
+        <label><span data-i18n="lblMosqueScaleX">Scale X</span> <input type="range" min="0.1" max="10" step="0.1" data-setting="mosqueScaleX" value="1.0"></label>
+        <label><span data-i18n="lblMosqueScaleY">Scale Y</span> <input type="range" min="0.1" max="10" step="0.1" data-setting="mosqueScaleY" value="1.0"></label>
+        <label><span data-i18n="lblMosqueScaleZ">Scale Z</span> <input type="range" min="0.1" max="10" step="0.1" data-setting="mosqueScaleZ" value="1.0"></label>
+        <label><span data-i18n="lblMosqueRotation">Rotation Angle</span> <input type="range" min="0" max="360" step="1" data-setting="mosqueRotation" value="0"></label>
         <div class="dock-subtitle">Procedural Rules</div>
         <label><input type="checkbox" data-setting="showRoadMarkings"> <span>Show Road Markings</span></label>
         <label><input type="checkbox" data-setting="showLedges"> <span>Facade Ledges / Slabs</span></label>
@@ -322,6 +328,6 @@
         <canvas id="compass-canvas" width="48" height="48"></canvas>
     </div>
 
-    <script type="module" src="app.js?v=0.8.38"></script>
+    <script type="module" src="app.js?v=0.8.39"></script>
 </body>
 </html>

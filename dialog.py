@@ -75,6 +75,7 @@ EXPECTED_GEOMETRIES = {
     "busstops": "Point",
     "fences": "Polygon",
     "waterlines": "Line",
+    "mosques": "Point",
 }
 
 RECOMMENDED_BUILDING_FIELDS = ("katadedi", "uipfonksiyon")
@@ -139,6 +140,7 @@ TREE_VARIANT_MAX_COUNT = len(TREE_VARIANT_OPTIONS)
 TREE_RENDER_MODE_OPTIONS = (
     ("Stylized", "Stylized (Fast)"),
     ("Realistic", "Realistic (Enhanced)"),
+    ("Model-based", "Model-based (3D GLB)"),
 )
 
 AUTO_MATCH_ALIASES = {
@@ -160,6 +162,7 @@ AUTO_MATCH_ALIASES = {
     "busstops": ("busstops", "bus", "durak", "mybusstops"),
     "fences": ("fences", "fence", "border", "borders", "wall", "walls", "cit", "çit", "myfences"),
     "waterlines": ("waterlines", "waterline", "stream", "streams", "river", "rivers", "dere", "akarsu", "mywaterlines"),
+    "mosques": ("mosque", "mosques", "cami", "camiler", "mymosques"),
 }
 
 
@@ -1452,6 +1455,7 @@ class PlanX3DCityDialog(QDialog):
             "busstops": "Bus-stop points. / Otobus duragi noktalari.",
             "fences": "Fence or boundary wall polygons. / Cit veya bahce/sinir duvari poligonlari.",
             "waterlines": "Water lines or streams. / Akarsu veya su hatlari.",
+            "mosques": "Mosque point features. / Cami nokta katmani.",
         }
         if role == "required":
             mark = " <span style='color:#b91c1c'>*</span>"

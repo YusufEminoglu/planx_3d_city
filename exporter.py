@@ -31,7 +31,7 @@ VECTOR_REQUIRED_INPUTS = ()
 VECTOR_RECOMMENDED_INPUTS = ("dem", "roi", "roads", "buildings", "blocks", "parcels")
 RASTER_TEXTURE_REQUIRED_INPUTS = ("roi", "plan_texture", "roads", "buildings")
 REQUIRED_INPUTS = VECTOR_REQUIRED_INPUTS
-OPTIONAL_INPUTS = ("trees", "hardscape", "sidewalks", "pedestrian_paths", "lights", "benches", "trashbins", "busstops", "fences", "waterlines")
+OPTIONAL_INPUTS = ("trees", "hardscape", "sidewalks", "pedestrian_paths", "lights", "benches", "trashbins", "busstops", "fences", "waterlines", "mosques")
 VECTOR_OPTIONAL_INPUTS = VECTOR_RECOMMENDED_INPUTS + OPTIONAL_INPUTS
 ASSET_THEME_DEFAULT = "Modern Urban"
 ASSET_CATEGORIES = ("pedestrians", "cars", "trees", "lights", "benches", "bins", "busstops", "facades", "roofs", "paving")
@@ -175,6 +175,7 @@ VECTOR_TARGETS = {
     "busstops": "mybusstops.geojson",
     "fences": "myfences.geojson",
     "waterlines": "mywaterlines.geojson",
+    "mosques": "mymosques.geojson",
 }
 
 LABELS = {
@@ -196,6 +197,7 @@ LABELS = {
     "busstops": "Bus stops",
     "fences": "Fences / Borders",
     "waterlines": "Water lines / Streams",
+    "mosques": "Mosques",
 }
 
 
@@ -227,7 +229,7 @@ def copy_portable_viewer(web_root: str, output_dir: str, tour_json_path: Optiona
                 copied.append(str(path))
 
     copy_dir(web_path / "src", output_path / "src")
-    copy_dir(web_path / "assets" / "vendor", output_path / "assets" / "vendor")
+    copy_dir(web_path / "assets", output_path / "assets")
     copy_dir(data_path, output_path / "data")
 
     if tour_json_path:
@@ -251,7 +253,7 @@ def copy_portable_viewer(web_root: str, output_dir: str, tour_json_path: Optiona
                 "Option B:",
                 "1. Open a terminal in this folder.",
                 "2. Run: py -3 -m http.server 8080",
-                "3. Open: http://127.0.0.1:8080/src/",
+                "3. Open: http://127.0.0.1:8080/src/?portable=1",
                 "",
                 "Notes:",
                 "- Do not open src/index.html directly from the file system; GeoTIFF and GeoJSON loading needs a local HTTP server.",
@@ -270,7 +272,7 @@ def copy_portable_viewer(web_root: str, output_dir: str, tour_json_path: Optiona
             [
                 "@echo off",
                 "cd /d \"%~dp0\"",
-                "start \"\" \"http://127.0.0.1:8080/src/\"",
+                "start \"\" \"http://127.0.0.1:8080/src/?portable=1\"",
                 "py -3 -m http.server 8080",
                 "pause",
             ]
@@ -284,7 +286,7 @@ def copy_portable_viewer(web_root: str, output_dir: str, tour_json_path: Optiona
         "\n".join(
             [
                 "Set-Location -LiteralPath $PSScriptRoot",
-                "Start-Process \"http://127.0.0.1:8080/src/\"",
+                "Start-Process \"http://127.0.0.1:8080/src/?portable=1\"",
                 "py -3 -m http.server 8080",
             ]
         ),

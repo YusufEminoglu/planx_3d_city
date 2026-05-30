@@ -8,8 +8,11 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { SSAOPass } from 'three/addons/postprocessing/SSAOPass.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 let currentLang = 'EN';
+const urlParams = new URLSearchParams(window.location.search);
+const isPortableMode = urlParams.has('portable') || urlParams.get('portable') === '1';
 const i18n = {
   TR: {
     guiTitle: 'Kentsel Kontroller',
@@ -87,6 +90,12 @@ Object.assign(i18n.TR, {
   fenceWall: 'Beton Duvar', fenceSteel: 'Metal Çit', fencePipeline: 'Sanayi Borusu', fenceWood: 'Ahşap Çit / Koruma Alanı',
   lblBlockStyles: 'Ada Kategorileri', dockTitleFences: 'Çit paneli',
   lblTrees: 'Agaclar', lblFurniture: 'Kent mobilyalari', lblCars: 'Araclar', lblPedestrians: 'Yayalar',
+  lblMosques: 'Camiler',
+  lblMosqueSettings: 'Cami Ayarları',
+  lblMosqueScaleX: 'Ölçek X',
+  lblMosqueScaleY: 'Ölçek Y',
+  lblMosqueScaleZ: 'Ölçek Z',
+  lblMosqueRotation: 'Açı (Derece)',
   lblPlanTexture: 'Plan texture', lblOutsideRoiTerrain: 'ROI disi zemin', lblTextureOpacity: 'Texture opakligi',
   lblTextureBrightness: 'Texture parlakligi', lblTextureContrast: 'Texture kontrasti',
   lblModelBase: 'ROI model altligi', lblSideDrop: 'Altlik dususu', lblSideColor: 'Altlik rengi',
@@ -140,6 +149,12 @@ Object.assign(i18n.EN, {
   fenceWall: 'Concrete Wall', fenceSteel: 'Steel Fence', fencePipeline: 'Industrial Pipeline', fenceWood: 'Wood Fence / Conservative',
   lblBlockStyles: 'Block Categories', dockTitleFences: 'Fences dock',
   lblTrees: 'Trees', lblFurniture: 'Street furniture', lblCars: 'Cars', lblPedestrians: 'Pedestrians',
+  lblMosques: 'Mosques',
+  lblMosqueSettings: 'Mosque Settings',
+  lblMosqueScaleX: 'Scale X',
+  lblMosqueScaleY: 'Scale Y',
+  lblMosqueScaleZ: 'Scale Z',
+  lblMosqueRotation: 'Rotation Angle',
   lblPlanTexture: 'Plan texture', lblOutsideRoiTerrain: 'Outside ROI terrain', lblTextureOpacity: 'Texture opacity',
   lblTextureBrightness: 'Texture brightness', lblTextureContrast: 'Texture contrast',
   lblModelBase: 'ROI model base', lblSideDrop: 'Base drop', lblSideColor: 'Base color',
@@ -402,6 +417,7 @@ let hardscapeGroup = new THREE.Group();
 let buildingGroup = new THREE.Group();
 let roadGroup = new THREE.Group();
 let treeGroup = new THREE.Group();
+let mosqueGroup = new THREE.Group();
 let shadowHeatmapMesh = null;
 let carGroup = new THREE.Group();
 let furnitureGroup = new THREE.Group();
@@ -426,6 +442,7 @@ world.add(terrainSideGroup);
 world.add(windPlumeGroup);
 world.add(roadGroup);
 world.add(treeGroup);
+world.add(mosqueGroup);
 world.add(carGroup);
 world.add(furnitureGroup);
 world.add(pedestrianGroup);
@@ -499,6 +516,10 @@ const BOOKMARK_STORAGE_KEY = 'planx_3d_city_camera_bookmarks';
 let cameraBookmarks = [];
 
 function loadCameraBookmarks() {
+  if (isPortableMode) {
+    cameraBookmarks = [];
+    return;
+  }
   try {
     const raw = localStorage.getItem(BOOKMARK_STORAGE_KEY);
     cameraBookmarks = raw ? JSON.parse(raw) : [];
@@ -509,6 +530,7 @@ function loadCameraBookmarks() {
 }
 
 function saveCameraBookmarks() {
+  if (isPortableMode) return;
   try {
     localStorage.setItem(BOOKMARK_STORAGE_KEY, JSON.stringify(cameraBookmarks));
   } catch (_err) {
@@ -1468,35 +1490,40 @@ const settings = {
   showUrbanComfort: false,
   carDensity: 0.2,
   showIslands: true,
-  showParcels: true,
+  showParcels: false,
   showHardscape: false,
   showBuildings: true,
   facadeTextureScale: FACADE_TEXTURE_SCALE_MULTIPLIER,
-  showTrees: true,
+  showTrees: false,
   treeRenderMode: 'Stylized',
   treeRandomize: true,
   treeVariantCount: 8,
   treeHeightRandomExpr: '',
-  showFurniture: true,
+  showMosques: true,
+  mosqueScaleX: 1.0,
+  mosqueScaleY: 1.0,
+  mosqueScaleZ: 1.0,
+  mosqueRotation: 0.0,
+  showFurniture: false,
   showCars: false,
   showRoads: true,
   showSidewalks: true,
   showPedestrianPaths: true,
   showCrosswalks: true,
-  showLights: true,
+  showLights: false,
   lightStyle: 'Modern Arc',
-  showBenches: true,
+  showBenches: false,
   benchStyle: 'Wood Plank',
-  showBins: true,
+  showBins: false,
   binStyle: 'Square Box',
-  showBusStops: true,
+  showBusStops: false,
   stopStyle: 'Glass Shelter',
   fastTerrainSegments: 120,
   demMeshQuality: 160,
   timeOfDay: 14,
   enableSSAO: true,
   enableBloom: true,
-  showPedestrians: true,
+  showPedestrians: false,
   pedestrianDensity: 0.5,
   weather: 'Clear',
   fov: 58,
@@ -1515,12 +1542,12 @@ const settings = {
   sportColor: '#4a8c30',
   furnitureGroundOffset: 0.02,
   terrainTileMeters: 60,
-  showFences: true,
+  showFences: false,
   fenceHeight: 1.8,
   fenceThickness: 0.15,
   fenceTexture: 'wall',
   fenceColor: '#a1a1aa',
-  showWaterlines: true,
+  showWaterlines: false,
   waterlineWidth: 3.0,
   showRoadMarkings: true,
   showLedges: true,
@@ -1543,7 +1570,8 @@ const PERSISTED_SETTING_KEYS = [
   'assetTheme',
   'floorHeight', 'roofTexture', 'roofShape', 'roofHeight', 'roadStyle', 'roadColor', 'roadColorMode', 'roadWidth',
   'showLights', 'lightStyle', 'showBenches', 'benchStyle', 'showBins', 'binStyle', 'showBusStops', 'stopStyle',
-  'showIslands', 'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture',
+  'showIslands', 'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture', 'showMosques',
+  'mosqueScaleX', 'mosqueScaleY', 'mosqueScaleZ', 'mosqueRotation',
   'treeRenderMode', 'treeRandomize', 'treeVariantCount', 'treeHeightRandomExpr',
   'showCars', 'showRoads', 'showSidewalks', 'showPedestrianPaths', 'showCrosswalks', 'showPedestrians',
   'showWindPlumes', 'windDirectionDeg', 'windPlumeDistance', 'showUrbanComfort',
@@ -1559,6 +1587,10 @@ const PERSISTED_SETTING_KEYS = [
 ];
 
 function loadPersistedSettings() {
+  if (isPortableMode) {
+    console.log('PlanX Portable Mode: localStorage settings reading disabled.');
+    return;
+  }
   try {
     const raw = localStorage.getItem('planx_3d_city_settings');
     if (!raw) return;
@@ -1635,6 +1667,7 @@ function syncLegacyFunctionStyle(fn) {
 }
 
 function loadFunctionBuildingStyles() {
+  if (isPortableMode) return;
   try {
     const raw = localStorage.getItem(FUNCTION_STYLE_STORAGE_KEY);
     if (!raw) return;
@@ -1648,6 +1681,7 @@ function loadFunctionBuildingStyles() {
 }
 
 function saveFunctionBuildingStyles() {
+  if (isPortableMode) return;
   try {
     localStorage.setItem(FUNCTION_STYLE_STORAGE_KEY, JSON.stringify(functionBuildingStyleState));
   } catch (err) {
@@ -1656,6 +1690,7 @@ function saveFunctionBuildingStyles() {
 }
 
 function savePersistedSettings() {
+  if (isPortableMode) return;
   try {
     const payload = {};
     for (const key of PERSISTED_SETTING_KEYS) payload[key] = settings[key];
@@ -1682,6 +1717,7 @@ const tourState = {
 let selectedTourIndex = -1;
 
 function loadTourState() {
+  if (isPortableMode) return;
   try {
     const raw = localStorage.getItem('planx_3d_city_tour');
     if (!raw) return;
@@ -1717,6 +1753,7 @@ async function loadBundledTourStateIfAvailable() {
 }
 
 function saveTourState() {
+  if (isPortableMode) return;
   try {
     localStorage.setItem('planx_3d_city_tour', JSON.stringify({
       keyframes: tourState.keyframes,
@@ -2144,7 +2181,12 @@ async function loadManifest() {
 function applyManifestDefaults() {
   if (manifestDefaultsApplied || !projectManifest) return;
   manifestDefaultsApplied = true;
-  const persistedRaw = localStorage.getItem('planx_3d_city_settings');
+  let persistedRaw = null;
+  if (!isPortableMode) {
+    try {
+      persistedRaw = localStorage.getItem('planx_3d_city_settings');
+    } catch (_) {}
+  }
   if (persistedRaw) {
     try {
       const persisted = JSON.parse(persistedRaw);
@@ -3733,6 +3775,7 @@ function ensureBlockCategoryStyle(cat, index = 0) {
 }
 
 function loadBlockCategoryStyles() {
+  if (isPortableMode) return;
   try {
     const raw = localStorage.getItem(BLOCK_STYLE_STORAGE_KEY);
     if (raw) {
@@ -3747,6 +3790,7 @@ function loadBlockCategoryStyles() {
 }
 
 function saveBlockCategoryStyles() {
+  if (isPortableMode) return;
   try {
     localStorage.setItem(BLOCK_STYLE_STORAGE_KEY, JSON.stringify(blockCategoryStyleState));
   } catch (err) {
@@ -5203,7 +5247,7 @@ function representativeTreeCoords(geometry) {
 }
 
 // InstancedMesh trees — dynamic variant buckets (up to 10 presets) with optional randomize + rand(min,max) heights.
-function buildTreeLayer(agaclar) {
+function buildTreeLayer(agaclar, treeModel) {
   clearGroup(treeGroup);
   if (!agaclar?.features?.length) return;
   const treeSamples = [];
@@ -5222,6 +5266,7 @@ function buildTreeLayer(agaclar) {
   const randomHeightExpr = parseRandRangeExpr(settings.treeHeightRandomExpr);
   const randomizeTrees = !!settings.treeRandomize;
   const realisticTrees = String(settings.treeRenderMode || 'Stylized') === 'Realistic';
+  const modelBasedTrees = String(settings.treeRenderMode || 'Stylized') === 'Model-based';
   const mustUseDefaultHeightRandom = !mappedHeightField && !randomHeightExpr;
   const treeVariants = activeTreeVariantsForBuild();
   if (!treeVariants.length) return;
@@ -5249,6 +5294,27 @@ function buildTreeLayer(agaclar) {
       : i % variantsForBuild.length;
     buckets[variantIndex].push({ x, y, z, h: treeH });
   });
+
+  if (modelBasedTrees && treeModel) {
+    buckets.forEach((trees) => {
+      trees.forEach(({ x, y, z, h }) => {
+        const m = treeModel.clone();
+        m.position.set(x, y, z);
+        const scaleFactor = h / 8.0;
+        m.scale.set(scaleFactor, scaleFactor, scaleFactor);
+        const rot = ((x * 13.7 + z * 7.3) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+        m.rotation.y = rot;
+        m.traverse(child => {
+          if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+        treeGroup.add(m);
+      });
+    });
+    return;
+  }
 
   const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3a2a, roughness: 0.95 });
   const trunkGeo = new THREE.CylinderGeometry(0.1, 0.18, 1, 6);
@@ -5324,6 +5390,116 @@ function buildTreeLayer(agaclar) {
     } else {
       treeGroup.add(trunkInst, crownInst);
     }
+  });
+}
+
+const modelCache = new Map();
+const gltfLoader = new GLTFLoader();
+
+function loadGltfModel(url) {
+  if (modelCache.has(url)) {
+    return Promise.resolve(modelCache.get(url));
+  }
+  return new Promise((resolve) => {
+    gltfLoader.load(url, 
+      (gltf) => {
+        modelCache.set(url, gltf.scene);
+        resolve(gltf.scene);
+      },
+      undefined,
+      (err) => {
+        console.warn(`Model could not be loaded from ${url}. Using fallback.`, err);
+        resolve(null);
+      }
+    );
+  });
+}
+
+function createProceduralMosque() {
+  const group = new THREE.Group();
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.8 });
+  const domeMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.6, roughness: 0.2 });
+  const coneMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.5 });
+  
+  const main = new THREE.Mesh(new THREE.BoxGeometry(4, 3, 4), wallMat);
+  main.position.y = 1.5;
+  main.castShadow = true;
+  main.receiveShadow = true;
+  group.add(main);
+  
+  const dome = new THREE.Mesh(
+    new THREE.SphereGeometry(1.6, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+    domeMat
+  );
+  dome.position.y = 3;
+  dome.castShadow = true;
+  group.add(dome);
+  
+  const minaretOffsets = [
+    [-1.9, 1.9],
+    [1.9, 1.9]
+  ];
+  minaretOffsets.forEach(([mx, mz]) => {
+    const minaret = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 5, 8), wallMat);
+    body.position.y = 2.5;
+    body.castShadow = true;
+    const balcony = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.18, 0.3, 8), wallMat);
+    balcony.position.y = 4.5;
+    balcony.castShadow = true;
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1, 8), wallMat);
+    top.position.y = 5.1;
+    top.castShadow = true;
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.6, 8), coneMat);
+    cap.position.y = 5.9;
+    cap.castShadow = true;
+    minaret.add(body, balcony, top, cap);
+    minaret.position.set(mx, 0, mz);
+    group.add(minaret);
+  });
+  
+  return group;
+}
+
+function buildMosqueLayer(mosques, mosqueModel) {
+  clearGroup(mosqueGroup);
+  if (!settings.showMosques || !mosques?.features?.length) return;
+  
+  const template = mosqueModel ? mosqueModel : createProceduralMosque();
+  
+  mosques.features.forEach(f => {
+    if (!f.geometry || f.geometry.type !== 'Point') return;
+    const [x, z] = metersToLocal(f.geometry.coordinates[0], f.geometry.coordinates[1]);
+    const y = terrainLocalYAt(x, z) + LAYER.content;
+    const m = template.clone();
+    
+    m.position.set(x, y, z);
+    
+    const scaleX = settings.mosqueScaleX !== undefined ? settings.mosqueScaleX : 1.0;
+    const scaleY = settings.mosqueScaleY !== undefined ? settings.mosqueScaleY : 1.0;
+    const scaleZ = settings.mosqueScaleZ !== undefined ? settings.mosqueScaleZ : 1.0;
+    
+    const props = f.properties || {};
+    const px = parseNumberProp(props, ['planx_scale_x', 'scale_x', 'planx_scale', 'scale'], scaleX);
+    const py = parseNumberProp(props, ['planx_scale_y', 'scale_y', 'planx_scale', 'scale'], scaleY);
+    const pz = parseNumberProp(props, ['planx_scale_z', 'scale_z', 'planx_scale', 'scale'], scaleZ);
+    m.scale.set(px, py, pz);
+    
+    const deg = numericPropFirst(props, ['planx_angle', 'planx_rotation', 'angle', 'rotation', 'yon', 'yön']);
+    if (deg !== null) {
+      m.rotation.y = -THREE.MathUtils.degToRad(deg);
+    } else {
+      m.rotation.y = -THREE.MathUtils.degToRad(settings.mosqueRotation || 0);
+    }
+    
+    m.traverse(child => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    
+    mosqueGroup.add(m);
   });
 }
 
@@ -6714,6 +6890,7 @@ async function rebuildScene() {
     const busstops = await loadGeoJson('../data/yerlesim/mybusstops.geojson', { label: 'Bus stops' });
     const fences = await loadGeoJson('../data/yerlesim/myfences.geojson', { label: 'Fences' });
     const waterlines = await loadGeoJson('../data/yerlesim/mywaterlines.geojson', { label: 'Water lines' });
+    const mosques = await loadGeoJson('../data/yerlesim/mymosques.geojson', { label: 'Mosques' });
     
     const roi = await loadGeoJson('../data/yerlesim/roi.geojson', { required: manifestRequiresInput('roi'), label: 'ROI' });
     layerDataCache = {
@@ -6721,6 +6898,7 @@ async function rebuildScene() {
        yapilar: asFeatureCollection(yapilar, 'Buildings'),
        yollar: asFeatureCollection(yollar, 'Roads'),
        agaclar: asFeatureCollection(agaclar, 'Trees'),
+       mosques: asFeatureCollection(mosques, 'Mosques'),
        parseller: null,
        hardscape: null,
        sidewalks: null,
@@ -6770,13 +6948,14 @@ async function rebuildScene() {
   const yapilar = asFeatureCollection(layerDataCache.yapilar, 'Buildings');
   const yollar = asFeatureCollection(layerDataCache.yollar, 'Roads');
   const agaclar = asFeatureCollection(layerDataCache.agaclar, 'Trees');
+  const mosques = asFeatureCollection(layerDataCache.mosques, 'Mosques');
   const parseller = layerDataCache.parseller ? asFeatureCollection(layerDataCache.parseller, 'Parcels') : null;
   const hardscape = layerDataCache.hardscape ? asFeatureCollection(layerDataCache.hardscape, 'Hardscape') : null;
   const sidewalks = layerDataCache.sidewalks ? asFeatureCollection(layerDataCache.sidewalks, 'Sidewalks') : null;
   const pedestrianPaths = layerDataCache.pedestrianPaths ? asFeatureCollection(layerDataCache.pedestrianPaths, 'Pedestrian paths') : null;
   const fences = layerDataCache.fences ? asFeatureCollection(layerDataCache.fences, 'Fences') : null;
   const waterlines = layerDataCache.waterlines ? asFeatureCollection(layerDataCache.waterlines, 'Water lines') : null;
-  Object.assign(layerDataCache, { adalar, yapilar, yollar, agaclar, parseller, hardscape, sidewalks, pedestrianPaths, fences, waterlines });
+  Object.assign(layerDataCache, { adalar, yapilar, yollar, agaclar, parseller, hardscape, sidewalks, pedestrianPaths, fences, waterlines, mosques });
   updateDashboard(layerDataCache);
 
   // Calculate and update stats
@@ -6875,6 +7054,15 @@ async function rebuildScene() {
 
   loadingText.innerText = t('processing');
   setSceneState('sceneLayers');
+
+  let mosqueModel = null;
+  if (settings.showMosques) {
+    mosqueModel = await loadGltfModel('../assets/models/mosque.glb');
+  }
+  let treeModel = null;
+  if (settings.showTrees && settings.treeRenderMode === 'Model-based') {
+    treeModel = await loadGltfModel('../assets/models/tree.glb');
+  }
   if (settings.showIslands && (!isRasterTextureMode() || adalar.features.length)) {
     await runLayerBuild('Blocks', () => buildIslandLayer(adalar, buildToken), () => clearGroup(islandGroup));
   } else {
@@ -6925,9 +7113,14 @@ async function rebuildScene() {
   }
   await runLayerBuild('Pedestrians', () => buildPedestrianLayer(), () => clearGroup(pedestrianGroup));
   if (settings.showTrees) {
-    await runLayerBuild('Trees', () => buildTreeLayer(agaclar), () => clearGroup(treeGroup));
+    await runLayerBuild('Trees', () => buildTreeLayer(agaclar, treeModel), () => clearGroup(treeGroup));
   } else {
     clearGroup(treeGroup);
+  }
+  if (settings.showMosques) {
+    await runLayerBuild('Mosques', () => buildMosqueLayer(mosques, mosqueModel), () => clearGroup(mosqueGroup));
+  } else {
+    clearGroup(mosqueGroup);
   }
   if (settings.showFurniture) {
     await runLayerBuild('Street furniture', () => buildFurnitureLayer(), () => clearGroup(furnitureGroup));
@@ -7167,8 +7360,10 @@ function addGui() {
   const style = globalGui.addFolder(t('funcCol'));
   const facade = globalGui.addFolder(t('funcFac'));
   const refreshFunctionGui = async () => {
-    while (style.controllers.length) style.controllers[0].destroy();
-    while (facade.controllers.length) facade.controllers[0].destroy();
+    const styleCtrls = [...style.controllers];
+    styleCtrls.forEach((c) => c.destroy());
+    const facadeCtrls = [...facade.controllers];
+    facadeCtrls.forEach((c) => c.destroy());
     const keys = Object.keys(functionColorState);
     keys.forEach((k) => {
       ensureFunctionBuildingStyle(k);
@@ -8282,6 +8477,7 @@ function applyDockSetting(key, value, inputType) {
     else if (key === 'showParcels') clearGroup(parcelGroup);
     else if (key === 'showHardscape') clearGroup(hardscapeGroup);
     else if (key === 'showTrees') clearGroup(treeGroup);
+    else if (key === 'showMosques') clearGroup(mosqueGroup);
     else if (key === 'showFurniture') clearGroup(furnitureGroup);
     else if (key === 'showRoads') clearGroup(roadGroup);
     else if (key === 'showSidewalks') clearGroup(sidewalkGroup);
@@ -8398,10 +8594,10 @@ function initDockUi() {
       if (value === 'light' || value === 'dark') {
         root.setAttribute('data-theme', value);
       }
-      try { localStorage.setItem('planx_3d_city_theme', value); } catch (_) {}
+      try { if (!isPortableMode) localStorage.setItem('planx_3d_city_theme', value); } catch (_) {}
     };
     let saved = 'auto';
-    try { saved = localStorage.getItem('planx_3d_city_theme') || 'auto'; } catch (_) {}
+    try { saved = (isPortableMode ? 'auto' : localStorage.getItem('planx_3d_city_theme')) || 'auto'; } catch (_) {}
     themeSelect.value = ['auto', 'light', 'dark'].includes(saved) ? saved : 'auto';
     applyTheme(themeSelect.value);
     themeSelect.addEventListener('change', () => applyTheme(themeSelect.value));
