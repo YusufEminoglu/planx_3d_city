@@ -2,7 +2,7 @@
 
 ## [0.8.38] - 2026-05-29
 
-- Exclude .zipignore from packaging, fix sidewalk Z-value draping, and remove CityEngine brand references
+- Exclude .zipignore from packaging, fix sidewalk Z-value draping, and establish a unique PlanX branding identity.
 
 ## [0.8.37] - 2026-05-29
 
