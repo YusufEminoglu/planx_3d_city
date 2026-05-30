@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.40] - 2026-05-30
+
+- Ozel 3D model yukleme paneli (Model Laboratuvari), her cami objesi icin ayri model/renk/olcek/aci kontrolu, sokak mobilyalari/agaclar icin model kutuphanesinden sablon atama ve otomatik katman aktiflestirme.
+
 ## [0.8.38] - 2026-05-29
 
 - Exclude .zipignore from packaging, fix sidewalk Z-value draping, and establish a unique PlanX branding identity.

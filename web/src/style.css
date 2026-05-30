@@ -1482,6 +1482,132 @@ body {
     border-color: var(--planx-accent);
 }
 
+.model-studio-btn {
+    left: 640px;
+    font-size: 1.15rem;
+}
+#model-studio-dock {
+    width: min(420px, calc(100vw - 48px));
+}
+.uploaded-model-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    font-size: 0.76rem;
+}
+.uploaded-model-item .model-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.uploaded-model-item .model-name {
+    font-weight: 700;
+    color: #f8fafc;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.uploaded-model-item .model-tag {
+    font-size: 0.65rem;
+    color: #38bdf8;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+.uploaded-model-item .btn-delete-model {
+    background: #ef4444;
+    color: white;
+    border: 0;
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-weight: bold;
+    transition: background 0.18s;
+}
+.uploaded-model-item .btn-delete-model:hover {
+    background: #dc2626;
+}
+.mosque-custom-card {
+    background: rgba(15, 23, 42, 0.42);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.mosque-custom-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 6px;
+    margin-bottom: 2px;
+}
+.mosque-custom-card-header strong {
+    font-size: 0.78rem;
+    color: #e2e8f0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.mosque-custom-card-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+}
+.mosque-custom-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.74rem;
+    color: #cbd5e1;
+    gap: 10px;
+}
+.mosque-custom-field select {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: white;
+    border-radius: 6px;
+    padding: 3px 6px;
+    font-size: 0.74rem;
+    max-width: 160px;
+}
+.mosque-custom-field select option {
+    color: #0f172a;
+}
+.mosque-custom-field input[type="color"] {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    width: 32px;
+    height: 24px;
+    cursor: pointer;
+}
+.mosque-custom-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    justify-content: flex-end;
+}
+.mosque-custom-slider-row input[type="range"] {
+    width: 100px;
+    accent-color: #38bdf8;
+}
+.mosque-custom-slider-row output {
+    font-size: 0.7rem;
+    font-family: monospace;
+    color: #38bdf8;
+    min-width: 28px;
+    text-align: right;
+}
+
 /* Reduce motion preference */
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {

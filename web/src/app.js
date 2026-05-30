@@ -135,7 +135,34 @@ Object.assign(i18n.TR, {
   lblStops: 'Duraklar', lblStopStyle: 'Durak tipi', lblWindPlumes: 'Ruzgar etki zonu',
   lblWindDirection: 'Ruzgar yonu', lblPlumeDistance: 'Etki mesafesi',
   lblSolarReview: 'Solar inceleme', lblUrbanComfort: 'Kentsel konfor taramasi',
-  analysisNote: 'Planlama taramasi / tasarim kontrolu. Bu katmanlar muhendislik simulasyonu degildir.'
+  analysisNote: 'Planlama taramasi / tasarim kontrolu. Bu katmanlar muhendislik simulasyonu degildir.',
+  dockTitleModelStudio: 'Model Laboratuvarı',
+  modelUploadTitle: 'Özel Model Yükle (.glb)',
+  lblModelCategory: 'Kategori',
+  catMosque: 'Cami',
+  catTree: 'Ağaç',
+  catLight: 'Sokak Lambası',
+  catBench: 'Bank',
+  catBin: 'Çöp Kutusu',
+  catBusStop: 'Otobüs Durağı',
+  uploadedModelsTitle: 'Model Kütüphanesi',
+  mosqueCustomTitle: 'Cami Konumlandırma & Özelleştirme',
+  lblModel: 'Model',
+  lblColor: 'Renk',
+  lblScaleX: 'Ölçek X',
+  lblScaleY: 'Ölçek Y',
+  lblScaleZ: 'Ölçek Z',
+  lblRotation: 'Döndürme',
+  catGlobal: 'Genel Varsayılan',
+  catProcedural: 'Yorumsal (Procedural)',
+  noModelsUploaded: 'Henüz model yüklenmedi.',
+  btnUse: 'Kullan',
+  btnReset: 'Sıfırla',
+  confirmDeleteModel: 'Bu modeli silmek istediğinize emin misiniz?',
+  noMosquesInProject: 'Bu projede cami objesi bulunamadı.',
+  statusParsing: 'GLB model ayrıştırılıyor...',
+  statusSuccess: 'Başarıyla yüklendi!',
+  statusError: 'Hata: '
 });
 
 Object.assign(i18n.EN, {
@@ -194,7 +221,34 @@ Object.assign(i18n.EN, {
   lblStops: 'Bus stops', lblStopStyle: 'Bus stop style', lblWindPlumes: 'Wind impact zone',
   lblWindDirection: 'Wind direction', lblPlumeDistance: 'Impact distance',
   lblSolarReview: 'Solar review', lblUrbanComfort: 'Urban comfort screening',
-  analysisNote: 'Planning screening / design review. These overlays are not engineering simulation.'
+  analysisNote: 'Planning screening / design review. These overlays are not engineering simulation.',
+  dockTitleModelStudio: 'Model Studio',
+  modelUploadTitle: 'Upload Custom Model (.glb)',
+  lblModelCategory: 'Category',
+  catMosque: 'Mosque',
+  catTree: 'Tree',
+  catLight: 'Street Light',
+  catBench: 'Bench',
+  catBin: 'Trash Bin',
+  catBusStop: 'Bus Stop',
+  uploadedModelsTitle: 'Library Models',
+  mosqueCustomTitle: 'Mosque Placement & Overrides',
+  lblModel: 'Model',
+  lblColor: 'Color',
+  lblScaleX: 'Scale X',
+  lblScaleY: 'Scale Y',
+  lblScaleZ: 'Scale Z',
+  lblRotation: 'Rotation',
+  catGlobal: 'Global Default',
+  catProcedural: 'Procedural',
+  noModelsUploaded: 'No models uploaded yet.',
+  btnUse: 'Use',
+  btnReset: 'Reset',
+  confirmDeleteModel: 'Are you sure you want to delete this model?',
+  noMosquesInProject: 'No mosques in the current project.',
+  statusParsing: 'Parsing GLB model...',
+  statusSuccess: 'Successfully loaded!',
+  statusError: 'Error: '
 });
 
 Object.assign(i18n.EN, {
@@ -1557,7 +1611,13 @@ const settings = {
   showZoningEnvelopes: false,
   highlightViolations: true,
   zoningSetback: 3.0,
-  zoningMaxHeight: 40.0
+  zoningMaxHeight: 40.0,
+  activeTreeModel: 'default',
+  activeLightModel: 'default',
+  activeBenchModel: 'default',
+  activeBinModel: 'default',
+  activeBusStopModel: 'default',
+  activeMosqueModel: 'default'
 };
 
 const PERSISTED_SETTING_KEYS = [
@@ -1583,7 +1643,8 @@ const PERSISTED_SETTING_KEYS = [
   'showFences', 'fenceHeight', 'fenceThickness', 'fenceTexture', 'fenceColor',
   'showWaterlines', 'waterlineWidth',
   'showRoadMarkings', 'showLedges', 'showStorefronts', 'buildingSetback', 'ledgeProjection',
-  'showZoningEnvelopes', 'highlightViolations', 'zoningSetback', 'zoningMaxHeight'
+  'showZoningEnvelopes', 'highlightViolations', 'zoningSetback', 'zoningMaxHeight',
+  'activeTreeModel', 'activeLightModel', 'activeBenchModel', 'activeBinModel', 'activeBusStopModel', 'activeMosqueModel'
 ];
 
 function loadPersistedSettings() {
@@ -1704,6 +1765,482 @@ function savePersistedSettings() {
 loadPersistedSettings();
 loadFunctionBuildingStyles();
 loadBlockCategoryStyles();
+
+// --- Model Studio & IndexedDB Storage ---
+const dbName = 'PlanX_ModelStudio_DB';
+const storeName = 'models';
+const uploadedModels = []; // holds { id, name, category, scene }
+let mosqueCustomizations = [];
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(dbName, 1);
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(storeName)) {
+        db.createObjectStore(storeName, { keyPath: 'id' });
+      }
+    };
+    request.onsuccess = (e) => resolve(e.target.result);
+    request.onerror = (e) => reject(e.target.error);
+  });
+}
+
+async function saveModelToDB(id, name, category, blob) {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([storeName], 'readwrite');
+      const store = transaction.objectStore(storeName);
+      const request = store.put({ id, name, category, blob });
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  } catch (err) {
+    console.error('Error saving model to IndexedDB', err);
+  }
+}
+
+async function deleteModelFromDB(id) {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([storeName], 'readwrite');
+      const store = transaction.objectStore(storeName);
+      const request = store.delete(id);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  } catch (err) {
+    console.error('Error deleting model from IndexedDB', err);
+  }
+}
+
+async function loadModelsFromDB() {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([storeName], 'readonly');
+      const store = transaction.objectStore(storeName);
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  } catch (err) {
+    console.error('Error loading models from IndexedDB', err);
+    return [];
+  }
+}
+
+function loadMosqueCustomizations() {
+  if (isPortableMode) return;
+  try {
+    const raw = localStorage.getItem('planx_3d_city_mosque_customizations');
+    mosqueCustomizations = raw ? JSON.parse(raw) : [];
+  } catch (_) {}
+}
+
+function saveMosqueCustomizations() {
+  if (isPortableMode) return;
+  try {
+    localStorage.setItem('planx_3d_city_mosque_customizations', JSON.stringify(mosqueCustomizations));
+  } catch (_) {}
+}
+
+loadMosqueCustomizations();
+
+// --- Model Studio Integration Logic & UI rendering ---
+let uploadedModelsLoaded = false;
+
+function parseGltfBuffer(buffer) {
+  return new Promise((resolve, reject) => {
+    gltfLoader.parse(buffer, '', (gltf) => {
+      gltf.scene.traverse(child => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+      resolve(gltf.scene);
+    }, (err) => {
+      reject(err);
+    });
+  });
+}
+
+async function ensureUploadedModelsLoaded() {
+  if (isPortableMode) return;
+  if (uploadedModelsLoaded) return;
+  uploadedModelsLoaded = true;
+  try {
+    const rows = await loadModelsFromDB();
+    for (const row of rows) {
+      try {
+        const buffer = await row.blob.arrayBuffer();
+        const scene = await parseGltfBuffer(buffer);
+        uploadedModels.push({
+          id: row.id,
+          name: row.name,
+          category: row.category,
+          scene: scene
+        });
+      } catch (err) {
+        console.error(`Failed to parse cached model ${row.name}`, err);
+      }
+    }
+  } catch (err) {
+    console.error('Error loading uploaded models from IndexedDB:', err);
+  }
+}
+
+let cachedDefaultMosqueModel = null;
+let cachedDefaultTreeModel = null;
+
+function rebuildMosqueLayerPartially() {
+  if (!layerDataCache || !layerDataCache.mosques) return;
+  buildMosqueLayer(layerDataCache.mosques, cachedDefaultMosqueModel);
+}
+
+function rebuildTreeLayerPartially() {
+  if (!layerDataCache || !layerDataCache.agaclar) return;
+  buildTreeLayer(layerDataCache.agaclar, cachedDefaultTreeModel);
+}
+
+function rebuildFurnitureLayerPartially() {
+  if (!layerDataCache) return;
+  buildFurnitureLayer();
+}
+
+function rebuildCategoryLayer(cat) {
+  if (cat === 'tree') {
+    rebuildTreeLayerPartially();
+  } else if (cat === 'mosque') {
+    rebuildMosqueLayerPartially();
+  } else {
+    rebuildFurnitureLayerPartially();
+  }
+}
+
+function getActiveModelForCategory(cat) {
+  if (cat === 'tree') return settings.activeTreeModel;
+  if (cat === 'light') return settings.activeLightModel;
+  if (cat === 'bench') return settings.activeBenchModel;
+  if (cat === 'bin') return settings.activeBinModel;
+  if (cat === 'busstop') return settings.activeBusStopModel;
+  if (cat === 'mosque') return settings.activeMosqueModel;
+  return 'default';
+}
+
+function setActiveModelForCategory(cat, modelId) {
+  if (cat === 'tree') {
+    settings.activeTreeModel = modelId;
+    if (modelId !== 'default') {
+      settings.showTrees = true;
+      settings.treeRenderMode = 'Model-based';
+    }
+  } else if (cat === 'light') {
+    settings.activeLightModel = modelId;
+    if (modelId !== 'default') {
+      settings.showFurniture = true;
+      settings.showLights = true;
+    }
+  } else if (cat === 'bench') {
+    settings.activeBenchModel = modelId;
+    if (modelId !== 'default') {
+      settings.showFurniture = true;
+      settings.showBenches = true;
+    }
+  } else if (cat === 'bin') {
+    settings.activeBinModel = modelId;
+    if (modelId !== 'default') {
+      settings.showFurniture = true;
+      settings.showBins = true;
+    }
+  } else if (cat === 'busstop') {
+    settings.activeBusStopModel = modelId;
+    if (modelId !== 'default') {
+      settings.showFurniture = true;
+      settings.showBusStops = true;
+    }
+  } else if (cat === 'mosque') {
+    settings.activeMosqueModel = modelId;
+    if (modelId !== 'default') {
+      settings.showMosques = true;
+    }
+  }
+  
+  if (typeof updateDockControls === 'function') {
+    updateDockControls();
+  }
+}
+
+function getMosqueName(feature, index) {
+  const props = feature.properties || {};
+  return props.name || props.adi || props.label || `${t('catMosque') || 'Mosque'} #${index + 1}`;
+}
+
+function renderUploadedModelsList() {
+  const container = document.getElementById('uploaded-models-list');
+  if (!container) return;
+  container.innerHTML = '';
+  
+  if (uploadedModels.length === 0) {
+    container.innerHTML = `<div style="text-align:center; font-size:0.7rem; color:rgba(255,255,255,0.4); padding:10px;">${t('noModelsUploaded') || 'No models uploaded yet.'}</div>`;
+    return;
+  }
+  
+  uploadedModels.forEach(m => {
+    const isCategoryActive = getActiveModelForCategory(m.category) === m.id;
+    const item = document.createElement('div');
+    item.className = 'uploaded-model-item';
+    
+    const catLabel = t('cat' + m.category.charAt(0).toUpperCase() + m.category.slice(1)) || m.category;
+    
+    item.innerHTML = `
+      <div class="model-meta">
+        <span class="model-name" title="${m.name}">${m.name}</span>
+        <span class="model-tag">${catLabel} ${isCategoryActive ? ` <span style="color:#22c55e;">● ${t('active') || 'Active'}</span>` : ''}</span>
+      </div>
+      <div style="display: flex; gap: 4px; align-items: center;">
+        ${!isCategoryActive ? `
+          <button class="btn-use-model" data-id="${m.id}" data-category="${m.category}" style="background: var(--planx-accent, #5eead4); color: #0f172a; border: 0; border-radius: 4px; padding: 2px 6px; font-size: 0.65rem; font-weight: bold; cursor: pointer;">
+            ${t('btnUse') || 'Use'}
+          </button>
+        ` : `
+          <button class="btn-reset-model" data-category="${m.category}" style="background: rgba(255,255,255,0.15); color: white; border: 0; border-radius: 4px; padding: 2px 6px; font-size: 0.65rem; font-weight: bold; cursor: pointer;">
+            ${t('btnReset') || 'Reset'}
+          </button>
+        `}
+        <button class="btn-delete-model" data-id="${m.id}">x</button>
+      </div>
+    `;
+    
+    item.querySelector('.btn-use-model')?.addEventListener('click', () => {
+      setActiveModelForCategory(m.category, m.id);
+      savePersistedSettings();
+      renderUploadedModelsList();
+      rebuildCategoryLayer(m.category);
+    });
+    
+    item.querySelector('.btn-reset-model')?.addEventListener('click', () => {
+      setActiveModelForCategory(m.category, 'default');
+      savePersistedSettings();
+      renderUploadedModelsList();
+      rebuildCategoryLayer(m.category);
+    });
+    
+    item.querySelector('.btn-delete-model')?.addEventListener('click', async () => {
+      if (confirm(t('confirmDeleteModel') || 'Are you sure you want to delete this model?')) {
+        await deleteModelFromDB(m.id);
+        const idx = uploadedModels.findIndex(x => x.id === m.id);
+        if (idx !== -1) uploadedModels.splice(idx, 1);
+        
+        if (getActiveModelForCategory(m.category) === m.id) {
+          setActiveModelForCategory(m.category, 'default');
+        }
+        
+        mosqueCustomizations.forEach(cust => {
+          if (cust.modelId === m.id) cust.modelId = 'default';
+        });
+        saveMosqueCustomizations();
+        
+        savePersistedSettings();
+        renderUploadedModelsList();
+        renderMosqueCustomizationsList();
+        rebuildCategoryLayer(m.category);
+      }
+    });
+    
+    container.appendChild(item);
+  });
+}
+
+function renderMosqueCustomizationsList() {
+  const container = document.getElementById('mosque-custom-list');
+  if (!container) return;
+  container.innerHTML = '';
+  
+  if (!layerDataCache?.mosques?.features?.length) {
+    container.innerHTML = `<div style="text-align:center; font-size:0.7rem; color:rgba(255,255,255,0.4); padding:10px;">${t('noMosquesInProject') || 'No mosques in the current project.'}</div>`;
+    return;
+  }
+  
+  layerDataCache.mosques.features.forEach((f, idx) => {
+    const name = getMosqueName(f, idx);
+    
+    if (!mosqueCustomizations[idx]) {
+      mosqueCustomizations[idx] = {
+        modelId: 'default',
+        color: '#ffffff',
+        scaleX: 1.0,
+        scaleY: 1.0,
+        scaleZ: 1.0,
+        rotation: 0
+      };
+    }
+    const cust = mosqueCustomizations[idx];
+    
+    const card = document.createElement('div');
+    card.className = 'mosque-custom-card';
+    
+    let modelOptionsHtml = `
+      <option value="default" ${cust.modelId === 'default' ? 'selected' : ''}>${t('catGlobal') || 'Global Default'}</option>
+      <option value="procedural" ${cust.modelId === 'procedural' ? 'selected' : ''}>${t('catProcedural') || 'Procedural'}</option>
+    `;
+    
+    uploadedModels.filter(m => m.category === 'mosque').forEach(m => {
+      modelOptionsHtml += `<option value="${m.id}" ${cust.modelId === m.id ? 'selected' : ''}>${m.name}</option>`;
+    });
+    
+    card.innerHTML = `
+      <div class="mosque-custom-card-header">
+        <strong>${name}</strong>
+      </div>
+      <div class="mosque-custom-card-grid">
+        <div class="mosque-custom-field">
+          <span>${t('lblModel') || 'Model'}</span>
+          <select class="mosque-model-select">${modelOptionsHtml}</select>
+        </div>
+        <div class="mosque-custom-field">
+          <span>${t('lblColor') || 'Color'}</span>
+          <input type="color" class="mosque-color-input" value="${cust.color || '#ffffff'}">
+        </div>
+        <div class="mosque-custom-field">
+          <span>${t('lblScaleX') || 'Scale X'}</span>
+          <div class="mosque-custom-slider-row">
+            <input type="range" class="mosque-scale-x" min="0.1" max="5.0" step="0.1" value="${cust.scaleX}">
+            <span class="scale-x-val" style="min-width:24px; text-align:right;">${cust.scaleX}</span>
+          </div>
+        </div>
+        <div class="mosque-custom-field">
+          <span>${t('lblScaleY') || 'Scale Y'}</span>
+          <div class="mosque-custom-slider-row">
+            <input type="range" class="mosque-scale-y" min="0.1" max="5.0" step="0.1" value="${cust.scaleY}">
+            <span class="scale-y-val" style="min-width:24px; text-align:right;">${cust.scaleY}</span>
+          </div>
+        </div>
+        <div class="mosque-custom-field">
+          <span>${t('lblScaleZ') || 'Scale Z'}</span>
+          <div class="mosque-custom-slider-row">
+            <input type="range" class="mosque-scale-z" min="0.1" max="5.0" step="0.1" value="${cust.scaleZ}">
+            <span class="scale-z-val" style="min-width:24px; text-align:right;">${cust.scaleZ}</span>
+          </div>
+        </div>
+        <div class="mosque-custom-field">
+          <span>${t('lblRotation') || 'Rotation'}</span>
+          <div class="mosque-custom-slider-row">
+            <input type="range" class="mosque-rotation" min="0" max="360" step="5" value="${cust.rotation}">
+            <span class="rotation-val" style="min-width:24px; text-align:right;">${cust.rotation}</span>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    let debounceTimer;
+    const triggerRebuild = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        saveMosqueCustomizations();
+        rebuildMosqueLayerPartially();
+      }, 50);
+    };
+    
+    card.querySelector('.mosque-model-select').addEventListener('change', (e) => {
+      cust.modelId = e.target.value;
+      triggerRebuild();
+    });
+    
+    card.querySelector('.mosque-color-input').addEventListener('input', (e) => {
+      cust.color = e.target.value;
+      triggerRebuild();
+    });
+    
+    const scaleXInput = card.querySelector('.mosque-scale-x');
+    const scaleXVal = card.querySelector('.scale-x-val');
+    scaleXInput.addEventListener('input', (e) => {
+      cust.scaleX = parseFloat(e.target.value);
+      scaleXVal.innerText = cust.scaleX;
+      triggerRebuild();
+    });
+    
+    const scaleYInput = card.querySelector('.mosque-scale-y');
+    const scaleYVal = card.querySelector('.scale-y-val');
+    scaleYInput.addEventListener('input', (e) => {
+      cust.scaleY = parseFloat(e.target.value);
+      scaleYVal.innerText = cust.scaleY;
+      triggerRebuild();
+    });
+    
+    const scaleZInput = card.querySelector('.mosque-scale-z');
+    const scaleZVal = card.querySelector('.scale-z-val');
+    scaleZInput.addEventListener('input', (e) => {
+      cust.scaleZ = parseFloat(e.target.value);
+      scaleZVal.innerText = cust.scaleZ;
+      triggerRebuild();
+    });
+    
+    const rotationInput = card.querySelector('.mosque-rotation');
+    const rotationVal = card.querySelector('.rotation-val');
+    rotationInput.addEventListener('input', (e) => {
+      cust.rotation = parseInt(e.target.value);
+      rotationVal.innerText = cust.rotation;
+      triggerRebuild();
+    });
+    
+    container.appendChild(card);
+  });
+}
+
+function initModelStudioListeners() {
+  const uploadFileInput = document.getElementById('upload-model-file');
+  const uploadCategorySelect = document.getElementById('upload-model-category');
+  const uploadStatusDiv = document.getElementById('upload-status');
+
+  if (uploadFileInput) {
+    uploadFileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const category = uploadCategorySelect.value;
+      uploadStatusDiv.innerText = t('statusParsing') || 'Parsing GLB model...';
+      uploadStatusDiv.style.color = '#a5f3fc';
+      
+      try {
+        const buffer = await file.arrayBuffer();
+        const scene = await parseGltfBuffer(buffer);
+        
+        const id = 'custom_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        await saveModelToDB(id, file.name, category, file);
+        
+        uploadedModels.push({
+          id,
+          name: file.name,
+          category,
+          scene
+        });
+        
+        uploadStatusDiv.innerText = t('statusSuccess') || 'Successfully loaded!';
+        uploadStatusDiv.style.color = '#22c55e';
+        uploadFileInput.value = '';
+        
+        renderUploadedModelsList();
+        renderMosqueCustomizationsList();
+        
+        setActiveModelForCategory(category, id);
+        savePersistedSettings();
+        renderUploadedModelsList();
+        rebuildCategoryLayer(category);
+        
+      } catch (err) {
+        console.error('Error parsing uploaded file', err);
+        uploadStatusDiv.innerText = (t('statusError') || 'Error parsing model: ') + err.message;
+        uploadStatusDiv.style.color = '#ef4444';
+      }
+    });
+  }
+}
+
+loadMosqueCustomizations();
 
 const tourState = {
   keyframes: [],
@@ -5266,7 +5803,7 @@ function buildTreeLayer(agaclar, treeModel) {
   const randomHeightExpr = parseRandRangeExpr(settings.treeHeightRandomExpr);
   const randomizeTrees = !!settings.treeRandomize;
   const realisticTrees = String(settings.treeRenderMode || 'Stylized') === 'Realistic';
-  const modelBasedTrees = String(settings.treeRenderMode || 'Stylized') === 'Model-based';
+  const modelBasedTrees = String(settings.treeRenderMode || 'Stylized') === 'Model-based' || settings.activeTreeModel !== 'default';
   const mustUseDefaultHeightRandom = !mappedHeightField && !randomHeightExpr;
   const treeVariants = activeTreeVariantsForBuild();
   if (!treeVariants.length) return;
@@ -5295,10 +5832,15 @@ function buildTreeLayer(agaclar, treeModel) {
     buckets[variantIndex].push({ x, y, z, h: treeH });
   });
 
-  if (modelBasedTrees && treeModel) {
+  const customModelEntry = settings.activeTreeModel !== 'default'
+    ? uploadedModels.find(m => m.id === settings.activeTreeModel)
+    : null;
+  const activeTreeModelTemplate = customModelEntry ? customModelEntry.scene : treeModel;
+
+  if (modelBasedTrees && activeTreeModelTemplate) {
     buckets.forEach((trees) => {
       trees.forEach(({ x, y, z, h }) => {
-        const m = treeModel.clone();
+        const m = activeTreeModelTemplate.clone();
         m.position.set(x, y, z);
         const scaleFactor = h / 8.0;
         m.scale.set(scaleFactor, scaleFactor, scaleFactor);
@@ -5465,37 +6007,69 @@ function buildMosqueLayer(mosques, mosqueModel) {
   clearGroup(mosqueGroup);
   if (!settings.showMosques || !mosques?.features?.length) return;
   
-  const template = mosqueModel ? mosqueModel : createProceduralMosque();
+  const globalActiveMosqueEntry = settings.activeMosqueModel !== 'default'
+    ? uploadedModels.find(m => m.id === settings.activeMosqueModel)
+    : null;
+  const globalTemplate = globalActiveMosqueEntry ? globalActiveMosqueEntry.scene : (mosqueModel ? mosqueModel : createProceduralMosque());
   
-  mosques.features.forEach(f => {
+  mosques.features.forEach((f, index) => {
     if (!f.geometry || f.geometry.type !== 'Point') return;
     const [x, z] = metersToLocal(f.geometry.coordinates[0], f.geometry.coordinates[1]);
     const y = terrainLocalYAt(x, z) + LAYER.content;
-    const m = template.clone();
     
-    m.position.set(x, y, z);
+    const cust = mosqueCustomizations[index] || {};
     
-    const scaleX = settings.mosqueScaleX !== undefined ? settings.mosqueScaleX : 1.0;
-    const scaleY = settings.mosqueScaleY !== undefined ? settings.mosqueScaleY : 1.0;
-    const scaleZ = settings.mosqueScaleZ !== undefined ? settings.mosqueScaleZ : 1.0;
-    
-    const props = f.properties || {};
-    const px = parseNumberProp(props, ['planx_scale_x', 'scale_x', 'planx_scale', 'scale'], scaleX);
-    const py = parseNumberProp(props, ['planx_scale_y', 'scale_y', 'planx_scale', 'scale'], scaleY);
-    const pz = parseNumberProp(props, ['planx_scale_z', 'scale_z', 'planx_scale', 'scale'], scaleZ);
-    m.scale.set(px, py, pz);
-    
-    const deg = numericPropFirst(props, ['planx_angle', 'planx_rotation', 'angle', 'rotation', 'yon', 'yön']);
-    if (deg !== null) {
-      m.rotation.y = -THREE.MathUtils.degToRad(deg);
-    } else {
-      m.rotation.y = -THREE.MathUtils.degToRad(settings.mosqueRotation || 0);
+    let template = globalTemplate;
+    if (cust.modelId === 'procedural') {
+      template = createProceduralMosque();
+    } else if (cust.modelId && cust.modelId !== 'default') {
+      const modelEntry = uploadedModels.find(m => m.id === cust.modelId);
+      if (modelEntry) template = modelEntry.scene;
     }
     
+    const m = template.clone();
+    m.position.set(x, y, z);
+    
+    const globalScaleX = settings.mosqueScaleX !== undefined ? settings.mosqueScaleX : 1.0;
+    const globalScaleY = settings.mosqueScaleY !== undefined ? settings.mosqueScaleY : 1.0;
+    const globalScaleZ = settings.mosqueScaleZ !== undefined ? settings.mosqueScaleZ : 1.0;
+    
+    const props = f.properties || {};
+    const px = cust.scaleX !== undefined ? cust.scaleX : parseNumberProp(props, ['planx_scale_x', 'scale_x', 'planx_scale', 'scale'], globalScaleX);
+    const py = cust.scaleY !== undefined ? cust.scaleY : parseNumberProp(props, ['planx_scale_y', 'scale_y', 'planx_scale', 'scale'], globalScaleY);
+    const pz = cust.scaleZ !== undefined ? cust.scaleZ : parseNumberProp(props, ['planx_scale_z', 'scale_z', 'planx_scale', 'scale'], globalScaleZ);
+    m.scale.set(px, py, pz);
+    
+    let angleRad;
+    if (cust.rotation !== undefined) {
+      angleRad = -THREE.MathUtils.degToRad(cust.rotation);
+    } else {
+      const deg = numericPropFirst(props, ['planx_angle', 'planx_rotation', 'angle', 'rotation', 'yon', 'yön']);
+      if (deg !== null) {
+        angleRad = -THREE.MathUtils.degToRad(deg);
+      } else {
+        angleRad = -THREE.MathUtils.degToRad(settings.mosqueRotation || 0);
+      }
+    }
+    m.rotation.y = angleRad;
+    
+    const tintColor = cust.color || '#ffffff';
     m.traverse(child => {
       if (child.isMesh) {
         child.castShadow = true;
         child.receiveShadow = true;
+        if (cust.color && cust.color !== '#ffffff') {
+          if (Array.isArray(child.material)) {
+            child.material = child.material.map(mat => {
+              const newMat = mat.clone();
+              newMat.color.set(tintColor);
+              return newMat;
+            });
+          } else {
+            child.material = child.material.clone();
+            child.material.color.set(tintColor);
+          }
+        }
       }
     });
     
@@ -5790,10 +6364,25 @@ function buildFurnitureLayer() {
     return g;
   }
 
-  const lightGeo = getLightGeo();
-  const benchGeo = getBenchGeo();
-  const binMesh = getBinGeo();
-  const stopGeo = getStopGeo();
+  const customLightEntry = settings.activeLightModel !== 'default'
+    ? uploadedModels.find(m => m.id === settings.activeLightModel)
+    : null;
+  const lightGeo = customLightEntry ? customLightEntry.scene : getLightGeo();
+
+  const customBenchEntry = settings.activeBenchModel !== 'default'
+    ? uploadedModels.find(m => m.id === settings.activeBenchModel)
+    : null;
+  const benchGeo = customBenchEntry ? customBenchEntry.scene : getBenchGeo();
+
+  const customBinEntry = settings.activeBinModel !== 'default'
+    ? uploadedModels.find(m => m.id === settings.activeBinModel)
+    : null;
+  const binMesh = customBinEntry ? customBinEntry.scene : getBinGeo();
+
+  const customStopEntry = settings.activeBusStopModel !== 'default'
+    ? uploadedModels.find(m => m.id === settings.activeBusStopModel)
+    : null;
+  const stopGeo = customStopEntry ? customStopEntry.scene : getStopGeo();
   const angleFieldKeyByKind = {
     lights: 'light_angle_field',
     benches: 'bench_angle_field',
@@ -6872,6 +7461,7 @@ async function runLayerBuild(label, buildFn, clearFn = null) {
 
 async function rebuildScene() {
   const buildToken = ++sceneBuildToken;
+  await ensureUploadedModelsLoaded();
   const loadingText = document.getElementById('loading-text');
   loadingText.innerText = t('loadingData');
   setSceneState('sceneLoading');
@@ -7057,11 +7647,17 @@ async function rebuildScene() {
 
   let mosqueModel = null;
   if (settings.showMosques) {
-    mosqueModel = await loadGltfModel('../assets/models/mosque.glb');
+    if (!cachedDefaultMosqueModel) {
+      cachedDefaultMosqueModel = await loadGltfModel('../assets/models/mosque.glb');
+    }
+    mosqueModel = cachedDefaultMosqueModel;
   }
   let treeModel = null;
-  if (settings.showTrees && settings.treeRenderMode === 'Model-based') {
-    treeModel = await loadGltfModel('../assets/models/tree.glb');
+  if (settings.showTrees && (settings.treeRenderMode === 'Model-based' || settings.activeTreeModel !== 'default')) {
+    if (!cachedDefaultTreeModel) {
+      cachedDefaultTreeModel = await loadGltfModel('../assets/models/tree.glb');
+    }
+    treeModel = cachedDefaultTreeModel;
   }
   if (settings.showIslands && (!isRasterTextureMode() || adalar.features.length)) {
     await runLayerBuild('Blocks', () => buildIslandLayer(adalar, buildToken), () => clearGroup(islandGroup));
@@ -7142,6 +7738,9 @@ async function rebuildScene() {
   renderBlockCategoryStyleDock();
   renderFunctionStyleDock();
   updateDashboard(layerDataCache);
+  if (typeof renderMosqueCustomizationsList === 'function') {
+    renderMosqueCustomizationsList();
+  }
   setSceneState('sceneReady');
 
   hideLoadingOverlay();
@@ -8529,6 +9128,12 @@ function initDockUi() {
       if (dock !== target) dock.classList.add('hidden');
     });
     target.classList.toggle('hidden');
+    
+    // Refresh Model Studio lists if opened
+    if (target.id === 'model-studio-dock' && !target.classList.contains('hidden')) {
+      renderUploadedModelsList();
+      renderMosqueCustomizationsList();
+    }
   });
   document.getElementById('advanced-toggle')?.addEventListener('click', () => {
     if (!globalGui?.domElement) return;
@@ -8611,6 +9216,9 @@ function initDockUi() {
     if (name === null) return;
     addCameraBookmark(name);
   });
+
+  // Model Studio Listeners
+  initModelStudioListeners();
 }
 
 initDockUi();

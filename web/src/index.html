@@ -41,6 +41,7 @@
         <button id="advanced-toggle" class="panel-btn advanced-btn" title="Advanced controls" data-i18n-title="dockTitleAdvanced">⚙</button>
         <button id="walk-toggle" class="panel-btn walk-btn" title="Walk mode" data-i18n-title="dockTitleWalk">W</button>
         <button id="game-toggle" class="panel-btn game-btn advanced-game" title="Slingshot mode" data-i18n-title="dockTitleGame">◎</button>
+        <button id="model-studio-toggle" class="panel-btn model-studio-btn" data-dock-target="model-studio-dock" title="Model Studio" data-i18n-title="dockTitleModelStudio">✦</button>
 
         <div id="recording-container">
             <button id="btn-toggle-rec" class="panel-btn" style="left:0;position:relative;" title="Camera panel" data-i18n-title="cameraPanel">CAM</button>
@@ -297,6 +298,36 @@
         </div>
         <input id="tour-import" type="file" accept="application/json" class="dock-file">
         <div id="tour-list" class="tour-list"></div>
+    </aside>
+ 
+    <aside class="dock-panel hidden" id="model-studio-dock" style="width: 360px;">
+        <div class="dock-head"><span data-i18n="dockTitleModelStudio">Model Studio</span><button class="dock-close" data-close="model-studio-dock">x</button></div>
+        
+        <div class="dock-section">
+            <h4 data-i18n="modelUploadTitle" style="margin: 4px 0 8px; color: #5eead4; font-size: 0.85rem;">Upload Custom Model (.glb)</h4>
+            <label><span data-i18n="lblModelCategory">Category</span>
+                <select id="upload-model-category">
+                    <option value="mosque" data-i18n="catMosque">Mosque</option>
+                    <option value="tree" data-i18n="catTree">Tree</option>
+                    <option value="light" data-i18n="catLight">Street Light</option>
+                    <option value="bench" data-i18n="catBench">Bench</option>
+                    <option value="bin" data-i18n="catBin">Trash Bin</option>
+                    <option value="busstop" data-i18n="catBusStop">Bus Stop</option>
+                </select>
+            </label>
+            <input type="file" id="upload-model-file" accept=".glb" class="dock-file" style="margin-top: 6px;">
+            <div id="upload-status" class="dock-note" style="margin-top: 6px; color: #a5f3fc;"></div>
+        </div>
+
+        <div class="dock-section" style="border-top: 1px solid rgba(255,255,255,0.12); padding-top: 10px; margin-top: 10px;">
+            <h4 data-i18n="uploadedModelsTitle" style="margin: 0 0 8px; color: #5eead4; font-size: 0.85rem;">Library Models</h4>
+            <div id="uploaded-models-list" class="uploaded-models-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; padding-right: 4px;"></div>
+        </div>
+
+        <div class="dock-section" style="border-top: 1px solid rgba(255,255,255,0.12); padding-top: 10px; margin-top: 10px;">
+            <h4 data-i18n="mosqueCustomTitle" style="margin: 0 0 8px; color: #5eead4; font-size: 0.85rem;">Mosque Placements & Overrides</h4>
+            <div id="mosque-custom-list" class="mosque-custom-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto; padding-right: 4px;"></div>
+        </div>
     </aside>
 
     <div id="tour-caption-overlay" class="tour-caption-overlay hidden"></div>
