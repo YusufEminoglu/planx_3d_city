@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.41] - 2026-05-31
+
+- Model Laboratuvari'na Tumulus (hoyuk) destegi: yeni opsiyonel nokta katmani (mytumulus.geojson) QGIS yayinlayicisinda secilebilir, GLB modeli yuklenebilir; model yuklenmezse varsayilan prosedurel hoyuk modeli (toprak kubbe + tas cember) cizilir. Katmanlar panelinde gorunurluk anahtari eklendi.
+- Her model kategorisi (cami, tumulus, agac, lamba, bank, cop kutusu, durak) icin Model Yuksekligi (Y ofset) kaydiraci eklendi; yer altinda kalan modeller (orn. cami) yukari tasinabilir. Cami kartlarina ek olarak obje basina yukseklik kontrolu geldi.
+- Agaclar icin coklu model havuzu: Model Laboratuvari'ndan 2-3 agac GLB modeli eklenip havuzdan rastgele (deterministik) secimle yerlestirilebilir. Havuz bossa varsayilan stilize agaclar korunur.
+- Viewer modul onbellek anahtari app.js?v=0.8.41 olarak guncellendi.
+
 ## [0.8.40] - 2026-05-30
 
 - Ozel 3D model yukleme paneli (Model Laboratuvari), her cami objesi icin ayri model/renk/olcek/aci kontrolu, sokak mobilyalari/agaclar icin model kutuphanesinden sablon atama ve otomatik katman aktiflestirme.

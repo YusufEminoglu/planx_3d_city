@@ -145,6 +145,14 @@ Object.assign(i18n.TR, {
   catBench: 'Bank',
   catBin: 'Çöp Kutusu',
   catBusStop: 'Otobüs Durağı',
+  catTumulus: 'Tümülüs',
+  lblTumulus: 'Tümülüsler',
+  modelElevationTitle: 'Model Yüksekliği (Y Ofset)',
+  treePoolTitle: 'Ağaç Model Havuzu (rastgele)',
+  treePoolNote: '2-3 ağaç modeli ekleyin; ağaçlar bunlar arasından rastgele seçilir. Havuz boşsa varsayılan stilize ağaçlar kullanılır.',
+  btnInPool: '✓ Havuzda',
+  btnAddPool: '+ Havuza ekle',
+  lblElevation: 'Yükseklik',
   uploadedModelsTitle: 'Model Kütüphanesi',
   mosqueCustomTitle: 'Cami Konumlandırma & Özelleştirme',
   lblModel: 'Model',
@@ -231,6 +239,14 @@ Object.assign(i18n.EN, {
   catBench: 'Bench',
   catBin: 'Trash Bin',
   catBusStop: 'Bus Stop',
+  catTumulus: 'Tumulus',
+  lblTumulus: 'Tumuli',
+  modelElevationTitle: 'Model Elevation (Y Offset)',
+  treePoolTitle: 'Tree Model Pool (random)',
+  treePoolNote: 'Add 2-3 tree models; trees are picked randomly from them. When the pool is empty the default stylized trees are used.',
+  btnInPool: '✓ In pool',
+  btnAddPool: '+ Add to pool',
+  lblElevation: 'Elevation',
   uploadedModelsTitle: 'Library Models',
   mosqueCustomTitle: 'Mosque Placement & Overrides',
   lblModel: 'Model',
@@ -472,6 +488,7 @@ let buildingGroup = new THREE.Group();
 let roadGroup = new THREE.Group();
 let treeGroup = new THREE.Group();
 let mosqueGroup = new THREE.Group();
+let tumulusGroup = new THREE.Group();
 let shadowHeatmapMesh = null;
 let carGroup = new THREE.Group();
 let furnitureGroup = new THREE.Group();
@@ -497,6 +514,7 @@ world.add(windPlumeGroup);
 world.add(roadGroup);
 world.add(treeGroup);
 world.add(mosqueGroup);
+world.add(tumulusGroup);
 world.add(carGroup);
 world.add(furnitureGroup);
 world.add(pedestrianGroup);
@@ -1558,6 +1576,8 @@ const settings = {
   mosqueScaleY: 1.0,
   mosqueScaleZ: 1.0,
   mosqueRotation: 0.0,
+  showTumulus: true,
+  tumulusScale: 1.0,
   showFurniture: false,
   showCars: false,
   showRoads: true,
@@ -1617,7 +1637,16 @@ const settings = {
   activeBenchModel: 'default',
   activeBinModel: 'default',
   activeBusStopModel: 'default',
-  activeMosqueModel: 'default'
+  activeMosqueModel: 'default',
+  activeTumulusModel: 'default',
+  treeModelPool: [],
+  mosqueElevation: 0,
+  tumulusElevation: 0,
+  treeElevation: 0,
+  lightElevation: 0,
+  benchElevation: 0,
+  binElevation: 0,
+  busstopElevation: 0
 };
 
 const PERSISTED_SETTING_KEYS = [
@@ -1631,7 +1660,9 @@ const PERSISTED_SETTING_KEYS = [
   'floorHeight', 'roofTexture', 'roofShape', 'roofHeight', 'roadStyle', 'roadColor', 'roadColorMode', 'roadWidth',
   'showLights', 'lightStyle', 'showBenches', 'benchStyle', 'showBins', 'binStyle', 'showBusStops', 'stopStyle',
   'showIslands', 'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture', 'showMosques',
+  'showTumulus', 'tumulusScale',
   'mosqueScaleX', 'mosqueScaleY', 'mosqueScaleZ', 'mosqueRotation',
+  'mosqueElevation', 'tumulusElevation', 'treeElevation', 'lightElevation', 'benchElevation', 'binElevation', 'busstopElevation',
   'treeRenderMode', 'treeRandomize', 'treeVariantCount', 'treeHeightRandomExpr',
   'showCars', 'showRoads', 'showSidewalks', 'showPedestrianPaths', 'showCrosswalks', 'showPedestrians',
   'showWindPlumes', 'windDirectionDeg', 'windPlumeDistance', 'showUrbanComfort',
@@ -1644,7 +1675,8 @@ const PERSISTED_SETTING_KEYS = [
   'showWaterlines', 'waterlineWidth',
   'showRoadMarkings', 'showLedges', 'showStorefronts', 'buildingSetback', 'ledgeProjection',
   'showZoningEnvelopes', 'highlightViolations', 'zoningSetback', 'zoningMaxHeight',
-  'activeTreeModel', 'activeLightModel', 'activeBenchModel', 'activeBinModel', 'activeBusStopModel', 'activeMosqueModel'
+  'activeTreeModel', 'activeLightModel', 'activeBenchModel', 'activeBinModel', 'activeBusStopModel', 'activeMosqueModel',
+  'activeTumulusModel', 'treeModelPool'
 ];
 
 function loadPersistedSettings() {
@@ -1906,6 +1938,11 @@ function rebuildTreeLayerPartially() {
   buildTreeLayer(layerDataCache.agaclar, cachedDefaultTreeModel);
 }
 
+function rebuildTumulusLayerPartially() {
+  if (!layerDataCache || !layerDataCache.tumulus) return;
+  buildTumulusLayer(layerDataCache.tumulus, null);
+}
+
 function rebuildFurnitureLayerPartially() {
   if (!layerDataCache) return;
   buildFurnitureLayer();
@@ -1916,6 +1953,8 @@ function rebuildCategoryLayer(cat) {
     rebuildTreeLayerPartially();
   } else if (cat === 'mosque') {
     rebuildMosqueLayerPartially();
+  } else if (cat === 'tumulus') {
+    rebuildTumulusLayerPartially();
   } else {
     rebuildFurnitureLayerPartially();
   }
@@ -1928,6 +1967,7 @@ function getActiveModelForCategory(cat) {
   if (cat === 'bin') return settings.activeBinModel;
   if (cat === 'busstop') return settings.activeBusStopModel;
   if (cat === 'mosque') return settings.activeMosqueModel;
+  if (cat === 'tumulus') return settings.activeTumulusModel;
   return 'default';
 }
 
@@ -1967,8 +2007,13 @@ function setActiveModelForCategory(cat, modelId) {
     if (modelId !== 'default') {
       settings.showMosques = true;
     }
+  } else if (cat === 'tumulus') {
+    settings.activeTumulusModel = modelId;
+    if (modelId !== 'default') {
+      settings.showTumulus = true;
+    }
   }
-  
+
   if (typeof updateDockControls === 'function') {
     updateDockControls();
   }
@@ -1983,13 +2028,16 @@ function renderUploadedModelsList() {
   const container = document.getElementById('uploaded-models-list');
   if (!container) return;
   container.innerHTML = '';
-  
-  if (uploadedModels.length === 0) {
+
+  // Trees are managed in their own random-pool section, not via single Use/Reset.
+  const items = uploadedModels.filter(m => m.category !== 'tree');
+
+  if (items.length === 0) {
     container.innerHTML = `<div style="text-align:center; font-size:0.7rem; color:rgba(255,255,255,0.4); padding:10px;">${t('noModelsUploaded') || 'No models uploaded yet.'}</div>`;
     return;
   }
-  
-  uploadedModels.forEach(m => {
+
+  items.forEach(m => {
     const isCategoryActive = getActiveModelForCategory(m.category) === m.id;
     const item = document.createElement('div');
     item.className = 'uploaded-model-item';
@@ -2038,20 +2086,136 @@ function renderUploadedModelsList() {
         if (getActiveModelForCategory(m.category) === m.id) {
           setActiveModelForCategory(m.category, 'default');
         }
-        
+        if (Array.isArray(settings.treeModelPool)) {
+          settings.treeModelPool = settings.treeModelPool.filter(id => id !== m.id);
+        }
+
         mosqueCustomizations.forEach(cust => {
           if (cust.modelId === m.id) cust.modelId = 'default';
         });
         saveMosqueCustomizations();
-        
+
         savePersistedSettings();
         renderUploadedModelsList();
+        renderTreePoolList();
         renderMosqueCustomizationsList();
         rebuildCategoryLayer(m.category);
       }
     });
-    
+
     container.appendChild(item);
+  });
+}
+
+function renderTreePoolList() {
+  const container = document.getElementById('tree-pool-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const treeItems = uploadedModels.filter(m => m.category === 'tree');
+  if (treeItems.length === 0) {
+    container.innerHTML = `<div style="text-align:center; font-size:0.7rem; color:rgba(255,255,255,0.4); padding:10px;">${t('noModelsUploaded') || 'No models uploaded yet.'}</div>`;
+    return;
+  }
+
+  if (!Array.isArray(settings.treeModelPool)) settings.treeModelPool = [];
+
+  treeItems.forEach(m => {
+    const inPool = settings.treeModelPool.includes(m.id);
+    const item = document.createElement('div');
+    item.className = 'uploaded-model-item';
+    item.innerHTML = `
+      <div class="model-meta">
+        <span class="model-name" title="${m.name}">${m.name}</span>
+        <span class="model-tag">${t('catTree') || 'Tree'} ${inPool ? ` <span style="color:#22c55e;">● ${t('active') || 'Active'}</span>` : ''}</span>
+      </div>
+      <div style="display: flex; gap: 4px; align-items: center;">
+        <button class="btn-pool-toggle" style="background: ${inPool ? 'rgba(255,255,255,0.15)' : 'var(--planx-accent, #5eead4)'}; color: ${inPool ? 'white' : '#0f172a'}; border: 0; border-radius: 4px; padding: 2px 6px; font-size: 0.65rem; font-weight: bold; cursor: pointer;">
+          ${inPool ? (t('btnInPool') || '✓ In pool') : (t('btnAddPool') || '+ Add to pool')}
+        </button>
+        <button class="btn-delete-model" data-id="${m.id}">x</button>
+      </div>
+    `;
+
+    item.querySelector('.btn-pool-toggle')?.addEventListener('click', () => {
+      if (!Array.isArray(settings.treeModelPool)) settings.treeModelPool = [];
+      if (settings.treeModelPool.includes(m.id)) {
+        settings.treeModelPool = settings.treeModelPool.filter(id => id !== m.id);
+      } else {
+        settings.treeModelPool.push(m.id);
+      }
+      // Keep the legacy single-active field in sync and switch trees to model mode.
+      settings.activeTreeModel = settings.treeModelPool[0] || 'default';
+      if (settings.treeModelPool.length) {
+        settings.showTrees = true;
+        settings.treeRenderMode = 'Model-based';
+      }
+      savePersistedSettings();
+      renderTreePoolList();
+      updateDockControls();
+      rebuildTreeLayerPartially();
+    });
+
+    item.querySelector('.btn-delete-model')?.addEventListener('click', async () => {
+      if (confirm(t('confirmDeleteModel') || 'Are you sure you want to delete this model?')) {
+        await deleteModelFromDB(m.id);
+        const idx = uploadedModels.findIndex(x => x.id === m.id);
+        if (idx !== -1) uploadedModels.splice(idx, 1);
+        if (Array.isArray(settings.treeModelPool)) {
+          settings.treeModelPool = settings.treeModelPool.filter(id => id !== m.id);
+        }
+        settings.activeTreeModel = settings.treeModelPool[0] || 'default';
+        savePersistedSettings();
+        renderTreePoolList();
+        renderUploadedModelsList();
+        updateDockControls();
+        rebuildTreeLayerPartially();
+      }
+    });
+
+    container.appendChild(item);
+  });
+}
+
+const MODEL_ELEVATION_CATEGORIES = [
+  ['mosque', 'mosqueElevation', 'catMosque'],
+  ['tumulus', 'tumulusElevation', 'catTumulus'],
+  ['tree', 'treeElevation', 'catTree'],
+  ['light', 'lightElevation', 'catLight'],
+  ['bench', 'benchElevation', 'catBench'],
+  ['bin', 'binElevation', 'catBin'],
+  ['busstop', 'busstopElevation', 'catBusStop'],
+];
+
+function renderModelElevationControls() {
+  const container = document.getElementById('model-elevation-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  MODEL_ELEVATION_CATEGORIES.forEach(([cat, key, labelKey]) => {
+    const current = Number(settings[key]) || 0;
+    const row = document.createElement('div');
+    row.className = 'mosque-custom-slider-row';
+    row.style.cssText = 'display:flex; align-items:center; gap:6px;';
+    row.innerHTML = `
+      <span style="flex: 0 0 96px; font-size: 0.72rem; color: rgba(255,255,255,0.85);">${t(labelKey) || cat}</span>
+      <input type="range" class="model-elev-input" min="-15" max="30" step="0.5" value="${current}" style="flex:1;">
+      <span class="model-elev-val" style="min-width:42px; text-align:right; font-size:0.72rem;">${current.toFixed(1)}m</span>
+    `;
+    const input = row.querySelector('.model-elev-input');
+    const valOut = row.querySelector('.model-elev-val');
+    let debounceTimer;
+    input.addEventListener('input', () => {
+      const v = parseFloat(input.value);
+      settings[key] = v;
+      valOut.textContent = v.toFixed(1) + 'm';
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        savePersistedSettings();
+        rebuildCategoryLayer(cat);
+      }, 60);
+    });
+    container.appendChild(row);
   });
 }
 
@@ -2075,10 +2239,12 @@ function renderMosqueCustomizationsList() {
         scaleX: 1.0,
         scaleY: 1.0,
         scaleZ: 1.0,
-        rotation: 0
+        rotation: 0,
+        elevation: 0
       };
     }
     const cust = mosqueCustomizations[idx];
+    if (cust.elevation === undefined) cust.elevation = 0;
     
     const card = document.createElement('div');
     card.className = 'mosque-custom-card';
@@ -2131,6 +2297,13 @@ function renderMosqueCustomizationsList() {
           <div class="mosque-custom-slider-row">
             <input type="range" class="mosque-rotation" min="0" max="360" step="5" value="${cust.rotation}">
             <span class="rotation-val" style="min-width:24px; text-align:right;">${cust.rotation}</span>
+          </div>
+        </div>
+        <div class="mosque-custom-field">
+          <span>${t('lblElevation') || 'Elevation'}</span>
+          <div class="mosque-custom-slider-row">
+            <input type="range" class="mosque-elevation" min="-15" max="30" step="0.5" value="${cust.elevation}">
+            <span class="elevation-val" style="min-width:32px; text-align:right;">${Number(cust.elevation).toFixed(1)}m</span>
           </div>
         </div>
       </div>
@@ -2186,7 +2359,15 @@ function renderMosqueCustomizationsList() {
       rotationVal.innerText = cust.rotation;
       triggerRebuild();
     });
-    
+
+    const elevationInput = card.querySelector('.mosque-elevation');
+    const elevationVal = card.querySelector('.elevation-val');
+    elevationInput.addEventListener('input', (e) => {
+      cust.elevation = parseFloat(e.target.value);
+      elevationVal.innerText = cust.elevation.toFixed(1) + 'm';
+      triggerRebuild();
+    });
+
     container.appendChild(card);
   });
 }
@@ -2222,15 +2403,25 @@ function initModelStudioListeners() {
         uploadStatusDiv.innerText = t('statusSuccess') || 'Successfully loaded!';
         uploadStatusDiv.style.color = '#22c55e';
         uploadFileInput.value = '';
-        
-        renderUploadedModelsList();
-        renderMosqueCustomizationsList();
-        
-        setActiveModelForCategory(category, id);
+
+        if (category === 'tree') {
+          // Newly uploaded tree models join the random pool automatically.
+          if (!Array.isArray(settings.treeModelPool)) settings.treeModelPool = [];
+          if (!settings.treeModelPool.includes(id)) settings.treeModelPool.push(id);
+          settings.activeTreeModel = settings.treeModelPool[0] || 'default';
+          settings.showTrees = true;
+          settings.treeRenderMode = 'Model-based';
+          updateDockControls();
+        } else {
+          setActiveModelForCategory(category, id);
+        }
         savePersistedSettings();
         renderUploadedModelsList();
+        renderTreePoolList();
+        renderModelElevationControls();
+        renderMosqueCustomizationsList();
         rebuildCategoryLayer(category);
-        
+
       } catch (err) {
         console.error('Error parsing uploaded file', err);
         uploadStatusDiv.innerText = (t('statusError') || 'Error parsing model: ') + err.message;
@@ -5803,7 +5994,15 @@ function buildTreeLayer(agaclar, treeModel) {
   const randomHeightExpr = parseRandRangeExpr(settings.treeHeightRandomExpr);
   const randomizeTrees = !!settings.treeRandomize;
   const realisticTrees = String(settings.treeRenderMode || 'Stylized') === 'Realistic';
-  const modelBasedTrees = String(settings.treeRenderMode || 'Stylized') === 'Model-based' || settings.activeTreeModel !== 'default';
+  // Tree model pool (Model Studio): one or more uploaded GLB tree models. When
+  // the pool has entries, each tree picks a model from it at random (deterministic).
+  const treePoolScenes = (Array.isArray(settings.treeModelPool) ? settings.treeModelPool : [])
+    .map(id => uploadedModels.find(m => m.id === id && m.category === 'tree'))
+    .filter(Boolean)
+    .map(m => m.scene);
+  const modelBasedTrees = String(settings.treeRenderMode || 'Stylized') === 'Model-based'
+    || settings.activeTreeModel !== 'default'
+    || treePoolScenes.length > 0;
   const mustUseDefaultHeightRandom = !mappedHeightField && !randomHeightExpr;
   const treeVariants = activeTreeVariantsForBuild();
   if (!treeVariants.length) return;
@@ -5815,7 +6014,7 @@ function buildTreeLayer(agaclar, treeModel) {
     const feature = entry.feature;
     if (!isFiniteCoord(coord)) return;
     const [x, z] = metersToLocal(coord[0], coord[1]);
-    const y = terrainLocalYAt(x, z) + LAYER.content;
+    const y = terrainLocalYAt(x, z) + LAYER.content + (settings.treeElevation || 0);
     const baseRandom = 1 + deterministicUnitHash(x, z, i + 101) * 6;
     const sourceHeight = parseNumberProp(feature?.properties || {}, heightFields, NaN);
     let treeH = Number.isFinite(sourceHeight) && sourceHeight > 0.5 ? sourceHeight : baseRandom;
@@ -5835,12 +6034,18 @@ function buildTreeLayer(agaclar, treeModel) {
   const customModelEntry = settings.activeTreeModel !== 'default'
     ? uploadedModels.find(m => m.id === settings.activeTreeModel)
     : null;
-  const activeTreeModelTemplate = customModelEntry ? customModelEntry.scene : treeModel;
+  // Priority: random pool > single active model > bundled default tree.glb.
+  const modelScenes = treePoolScenes.length
+    ? treePoolScenes
+    : (customModelEntry ? [customModelEntry.scene] : (treeModel ? [treeModel] : []));
 
-  if (modelBasedTrees && activeTreeModelTemplate) {
+  if (modelBasedTrees && modelScenes.length) {
     buckets.forEach((trees) => {
       trees.forEach(({ x, y, z, h }) => {
-        const m = activeTreeModelTemplate.clone();
+        const pick = modelScenes.length > 1
+          ? modelScenes[Math.floor(deterministicUnitHash(x, z, 73) * modelScenes.length) % modelScenes.length]
+          : modelScenes[0];
+        const m = pick.clone();
         m.position.set(x, y, z);
         const scaleFactor = h / 8.0;
         m.scale.set(scaleFactor, scaleFactor, scaleFactor);
@@ -6015,10 +6220,9 @@ function buildMosqueLayer(mosques, mosqueModel) {
   mosques.features.forEach((f, index) => {
     if (!f.geometry || f.geometry.type !== 'Point') return;
     const [x, z] = metersToLocal(f.geometry.coordinates[0], f.geometry.coordinates[1]);
-    const y = terrainLocalYAt(x, z) + LAYER.content;
-    
     const cust = mosqueCustomizations[index] || {};
-    
+    const y = terrainLocalYAt(x, z) + LAYER.content + (settings.mosqueElevation || 0) + (Number(cust.elevation) || 0);
+
     let template = globalTemplate;
     if (cust.modelId === 'procedural') {
       template = createProceduralMosque();
@@ -6074,6 +6278,87 @@ function buildMosqueLayer(mosques, mosqueModel) {
     });
     
     mosqueGroup.add(m);
+  });
+}
+
+function createProceduralTumulus() {
+  // Simple burial-mound model: a low earthy dome on a stone retaining ring,
+  // used as the default when no GLB tumulus model is uploaded.
+  const group = new THREE.Group();
+  const soilMat = new THREE.MeshStandardMaterial({ color: 0x7c6b4f, roughness: 0.97, metalness: 0.0 });
+  const grassMat = new THREE.MeshStandardMaterial({ color: 0x6f7d44, roughness: 0.95, metalness: 0.0 });
+  const stoneMat = new THREE.MeshStandardMaterial({ color: 0x9a958c, roughness: 0.85, metalness: 0.05 });
+
+  // Mound: a flattened half-sphere (dome) ~14 m wide, ~5 m tall.
+  const radius = 7.5;
+  const height = 5.0;
+  const moundGeo = new THREE.SphereGeometry(radius, 28, 18, 0, Math.PI * 2, 0, Math.PI / 2);
+  moundGeo.scale(1, height / radius, 1);
+  const mound = new THREE.Mesh(moundGeo, grassMat);
+  mound.castShadow = true;
+  mound.receiveShadow = true;
+  group.add(mound);
+
+  // Inner soil core slightly below the grass skin to avoid a hollow look at the rim.
+  const coreGeo = new THREE.SphereGeometry(radius * 0.96, 20, 14, 0, Math.PI * 2, 0, Math.PI / 2);
+  coreGeo.scale(1, (height * 0.9) / (radius * 0.96), 1);
+  const core = new THREE.Mesh(coreGeo, soilMat);
+  core.position.y = -0.05;
+  core.receiveShadow = true;
+  group.add(core);
+
+  // Stone retaining ring (krepis) around the base.
+  const ringGeo = new THREE.TorusGeometry(radius * 0.98, 0.55, 10, 40);
+  const ring = new THREE.Mesh(ringGeo, stoneMat);
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = 0.45;
+  ring.castShadow = true;
+  ring.receiveShadow = true;
+  group.add(ring);
+
+  return group;
+}
+
+let cachedDefaultTumulusModel = null;
+
+function buildTumulusLayer(tumulus, tumulusModel) {
+  clearGroup(tumulusGroup);
+  if (!settings.showTumulus || !tumulus?.features?.length) return;
+
+  const globalActiveEntry = settings.activeTumulusModel !== 'default'
+    ? uploadedModels.find(m => m.id === settings.activeTumulusModel)
+    : null;
+  const globalTemplate = globalActiveEntry
+    ? globalActiveEntry.scene
+    : (tumulusModel ? tumulusModel : createProceduralTumulus());
+  const usingDefaultMound = !globalActiveEntry && !tumulusModel;
+
+  const baseScale = settings.tumulusScale !== undefined ? settings.tumulusScale : 1.0;
+
+  tumulus.features.forEach((f, index) => {
+    if (!f.geometry || f.geometry.type !== 'Point') return;
+    const [x, z] = metersToLocal(f.geometry.coordinates[0], f.geometry.coordinates[1]);
+    const y = terrainLocalYAt(x, z) + LAYER.content + (settings.tumulusElevation || 0);
+
+    // Each procedural mound is built fresh so per-feature tweaks never alias.
+    const template = usingDefaultMound ? createProceduralTumulus() : globalTemplate;
+    const m = usingDefaultMound ? template : template.clone();
+    m.position.set(x, y, z);
+
+    const props = f.properties || {};
+    const pScale = parseNumberProp(props, ['planx_scale', 'scale', 'tumulus_scale', 'olcek', 'ölçek'], baseScale);
+    m.scale.set(pScale, pScale, pScale);
+
+    const deg = numericPropFirst(props, ['planx_angle', 'planx_rotation', 'angle', 'rotation', 'yon', 'yön']);
+    m.rotation.y = deg !== null ? -THREE.MathUtils.degToRad(deg) : (x * 11.3 + z * 5.1) % (Math.PI * 2);
+
+    m.traverse(child => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    tumulusGroup.add(m);
   });
 }
 
@@ -6390,15 +6675,22 @@ function buildFurnitureLayer() {
     busstops: 'busstop_angle_field'
   };
 
+  const furnitureElevationByKind = {
+    lights: settings.lightElevation || 0,
+    benches: settings.benchElevation || 0,
+    bins: settings.binElevation || 0,
+    busstops: settings.busstopElevation || 0
+  };
   const placeItem = (feats, modelTemplate, kind) => {
     if (!feats || !feats.features) return;
+    const elevOffset = furnitureElevationByKind[kind] || 0;
     feats.features.forEach(f => {
       if (!f.geometry || f.geometry.type !== 'Point') return;
       const [x, z] = metersToLocal(f.geometry.coordinates[0], f.geometry.coordinates[1]);
       // Furniture meshes are modelled pivot-at-base; place directly on terrain
       // with a tiny anti-z-fighting offset. Earlier (LAYER.content + LAYER.road)
       // sum lifted them ~1 m into the air.
-      const y = terrainLocalYAt(x, z) + (settings.furnitureGroundOffset ?? 0.02);
+      const y = terrainLocalYAt(x, z) + (settings.furnitureGroundOffset ?? 0.02) + elevOffset;
       const m = modelTemplate.clone();
       m.position.set(x, y, z);
       m.rotation.y = furnitureRotationY(f, x, z, angleFieldKeyByKind[kind]);
@@ -6413,7 +6705,7 @@ function buildFurnitureLayer() {
       lights.features.forEach((f) => {
         if (!f.geometry || f.geometry.type !== 'Point') return;
         const [x, z] = metersToLocal(f.geometry.coordinates[0], f.geometry.coordinates[1]);
-        const y = terrainLocalYAt(x, z) + (settings.furnitureGroundOffset ?? 0.02) + 4.2;
+        const y = terrainLocalYAt(x, z) + (settings.furnitureGroundOffset ?? 0.02) + (settings.lightElevation || 0) + 4.2;
         const pl = new THREE.PointLight(0xffcc88, 1.4, 24);
         pl.position.set(x, y, z);
         furnitureGroup.add(pl);
@@ -7481,7 +7773,8 @@ async function rebuildScene() {
     const fences = await loadGeoJson('../data/yerlesim/myfences.geojson', { label: 'Fences' });
     const waterlines = await loadGeoJson('../data/yerlesim/mywaterlines.geojson', { label: 'Water lines' });
     const mosques = await loadGeoJson('../data/yerlesim/mymosques.geojson', { label: 'Mosques' });
-    
+    const tumulus = await loadGeoJson('../data/yerlesim/mytumulus.geojson', { label: 'Tumulus' });
+
     const roi = await loadGeoJson('../data/yerlesim/roi.geojson', { required: manifestRequiresInput('roi'), label: 'ROI' });
     layerDataCache = {
        adalar: asFeatureCollection(adalar, 'Blocks'),
@@ -7489,6 +7782,7 @@ async function rebuildScene() {
        yollar: asFeatureCollection(yollar, 'Roads'),
        agaclar: asFeatureCollection(agaclar, 'Trees'),
        mosques: asFeatureCollection(mosques, 'Mosques'),
+       tumulus: asFeatureCollection(tumulus, 'Tumulus'),
        parseller: null,
        hardscape: null,
        sidewalks: null,
@@ -7539,13 +7833,14 @@ async function rebuildScene() {
   const yollar = asFeatureCollection(layerDataCache.yollar, 'Roads');
   const agaclar = asFeatureCollection(layerDataCache.agaclar, 'Trees');
   const mosques = asFeatureCollection(layerDataCache.mosques, 'Mosques');
+  const tumulus = asFeatureCollection(layerDataCache.tumulus, 'Tumulus');
   const parseller = layerDataCache.parseller ? asFeatureCollection(layerDataCache.parseller, 'Parcels') : null;
   const hardscape = layerDataCache.hardscape ? asFeatureCollection(layerDataCache.hardscape, 'Hardscape') : null;
   const sidewalks = layerDataCache.sidewalks ? asFeatureCollection(layerDataCache.sidewalks, 'Sidewalks') : null;
   const pedestrianPaths = layerDataCache.pedestrianPaths ? asFeatureCollection(layerDataCache.pedestrianPaths, 'Pedestrian paths') : null;
   const fences = layerDataCache.fences ? asFeatureCollection(layerDataCache.fences, 'Fences') : null;
   const waterlines = layerDataCache.waterlines ? asFeatureCollection(layerDataCache.waterlines, 'Water lines') : null;
-  Object.assign(layerDataCache, { adalar, yapilar, yollar, agaclar, parseller, hardscape, sidewalks, pedestrianPaths, fences, waterlines, mosques });
+  Object.assign(layerDataCache, { adalar, yapilar, yollar, agaclar, parseller, hardscape, sidewalks, pedestrianPaths, fences, waterlines, mosques, tumulus });
   updateDashboard(layerDataCache);
 
   // Calculate and update stats
@@ -7659,6 +7954,15 @@ async function rebuildScene() {
     }
     treeModel = cachedDefaultTreeModel;
   }
+  // Tumulus has no bundled GLB; the default is a procedural mound built on demand.
+  // An optional ../assets/models/tumulus.glb is used automatically if present.
+  let tumulusModel = null;
+  if (settings.showTumulus && settings.activeTumulusModel === 'default') {
+    if (cachedDefaultTumulusModel === null) {
+      cachedDefaultTumulusModel = await loadGltfModel('../assets/models/tumulus.glb');
+    }
+    tumulusModel = cachedDefaultTumulusModel;
+  }
   if (settings.showIslands && (!isRasterTextureMode() || adalar.features.length)) {
     await runLayerBuild('Blocks', () => buildIslandLayer(adalar, buildToken), () => clearGroup(islandGroup));
   } else {
@@ -7717,6 +8021,11 @@ async function rebuildScene() {
     await runLayerBuild('Mosques', () => buildMosqueLayer(mosques, mosqueModel), () => clearGroup(mosqueGroup));
   } else {
     clearGroup(mosqueGroup);
+  }
+  if (settings.showTumulus) {
+    await runLayerBuild('Tumulus', () => buildTumulusLayer(tumulus, tumulusModel), () => clearGroup(tumulusGroup));
+  } else {
+    clearGroup(tumulusGroup);
   }
   if (settings.showFurniture) {
     await runLayerBuild('Street furniture', () => buildFurnitureLayer(), () => clearGroup(furnitureGroup));
@@ -9077,6 +9386,7 @@ function applyDockSetting(key, value, inputType) {
     else if (key === 'showHardscape') clearGroup(hardscapeGroup);
     else if (key === 'showTrees') clearGroup(treeGroup);
     else if (key === 'showMosques') clearGroup(mosqueGroup);
+    else if (key === 'showTumulus') clearGroup(tumulusGroup);
     else if (key === 'showFurniture') clearGroup(furnitureGroup);
     else if (key === 'showRoads') clearGroup(roadGroup);
     else if (key === 'showSidewalks') clearGroup(sidewalkGroup);
@@ -9132,6 +9442,8 @@ function initDockUi() {
     // Refresh Model Studio lists if opened
     if (target.id === 'model-studio-dock' && !target.classList.contains('hidden')) {
       renderUploadedModelsList();
+      renderTreePoolList();
+      renderModelElevationControls();
       renderMosqueCustomizationsList();
     }
   });

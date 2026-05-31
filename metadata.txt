@@ -2,7 +2,7 @@
 name=PlanX 3D City Viewer
 qgisMinimumVersion=3.28
 description=Export QGIS layers and launch the interactive PlanX 3D City web viewer.
-version=0.8.40
+version=0.8.41
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 about=PlanX 3D City Viewer maps user-exported DEM, ROI, road, building, block, parcel, optional urban furniture layers, and optional raster plan texture workflows to a browser-based Three.js city cockpit with narrative keyframes, terrain quality controls, mobility, wind impact, and building statistics overlays. Developed with feedback from educational workflows at Dokuz Eylul University, Department of City and Regional Planning.
@@ -19,6 +19,11 @@ hasProcessingProvider=no
 plugin_dependencies=
 license=MIT
 changelog=
+    PlanX 3D City Viewer 0.8.41 - Tumulus layer, per-model elevation, and random tree model pool.
+        - Added a Tumulus optional point layer to the QGIS publisher (mytumulus.geojson) and the web viewer, with a Model Studio Tumulus category; uploaded GLB models are used when provided, otherwise a default procedural burial-mound model (earthen dome + stone retaining ring) is rendered. Added a Tumulus visibility toggle to the Layers panel.
+        - Added a Model Elevation (Y offset) slider per category (mosque, tumulus, tree, light, bench, bin, bus stop) so models that sink below the terrain (e.g. mosque) can be raised. Mosque placement cards also gained a per-feature elevation control.
+        - Added a Tree Model Pool to Model Studio: upload 2-3 tree GLB models and trees are placed by deterministic random selection from the pool; the default stylized trees remain when the pool is empty.
+        - Updated the viewer module cache key to app.js?v=0.8.41.
     PlanX 3D City Viewer 0.8.18 - Sidewalk visibility, inner-block pedestrian paths, and raster building clamping release.
         - Fixed exported sidewalk polygon rendering in the web viewer by passing the scene build token into the sidewalk polygon builder and raising sidewalk surfaces above road meshes with their own layer offset.
         - Added an optional Pedestrian paths input (mypedestrian_paths.geojson) for inner-block paths/walkways; accepts line or polygon layers, appears in the QGIS publisher, exports in both Vector Plan and Raster Plan Texture modes, and has a dedicated viewer visibility toggle.

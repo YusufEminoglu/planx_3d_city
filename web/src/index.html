@@ -121,6 +121,7 @@
         <label><input type="checkbox" data-setting="showBuildings"> <span data-i18n="lblBuildings">Buildings</span></label>
         <label><input type="checkbox" data-setting="showTrees"> <span data-i18n="lblTrees">Trees</span></label>
         <label><input type="checkbox" data-setting="showMosques"> <span data-i18n="lblMosques">Mosques</span></label>
+        <label><input type="checkbox" data-setting="showTumulus"> <span data-i18n="lblTumulus">Tumuli</span></label>
         <label><input type="checkbox" data-setting="showFurniture"> <span data-i18n="lblFurniture">Street furniture</span></label>
         <label><input type="checkbox" data-setting="showCars"> <span data-i18n="lblCars">Cars</span></label>
         <label><input type="checkbox" data-setting="showPedestrians"> <span data-i18n="lblPedestrians">Pedestrians</span></label>
@@ -308,6 +309,7 @@
             <label><span data-i18n="lblModelCategory">Category</span>
                 <select id="upload-model-category">
                     <option value="mosque" data-i18n="catMosque">Mosque</option>
+                    <option value="tumulus" data-i18n="catTumulus">Tumulus</option>
                     <option value="tree" data-i18n="catTree">Tree</option>
                     <option value="light" data-i18n="catLight">Street Light</option>
                     <option value="bench" data-i18n="catBench">Bench</option>
@@ -322,6 +324,17 @@
         <div class="dock-section" style="border-top: 1px solid rgba(255,255,255,0.12); padding-top: 10px; margin-top: 10px;">
             <h4 data-i18n="uploadedModelsTitle" style="margin: 0 0 8px; color: #5eead4; font-size: 0.85rem;">Library Models</h4>
             <div id="uploaded-models-list" class="uploaded-models-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; padding-right: 4px;"></div>
+        </div>
+
+        <div class="dock-section" style="border-top: 1px solid rgba(255,255,255,0.12); padding-top: 10px; margin-top: 10px;">
+            <h4 data-i18n="treePoolTitle" style="margin: 0 0 6px; color: #5eead4; font-size: 0.85rem;">Tree Model Pool (random)</h4>
+            <div data-i18n="treePoolNote" class="dock-note" style="font-size: 0.68rem; color: rgba(255,255,255,0.5); margin-bottom: 6px;">Add 2-3 tree models; trees are picked randomly from them.</div>
+            <div id="tree-pool-list" class="uploaded-models-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 150px; overflow-y: auto; padding-right: 4px;"></div>
+        </div>
+
+        <div class="dock-section" style="border-top: 1px solid rgba(255,255,255,0.12); padding-top: 10px; margin-top: 10px;">
+            <h4 data-i18n="modelElevationTitle" style="margin: 0 0 8px; color: #5eead4; font-size: 0.85rem;">Model Elevation (Y Offset)</h4>
+            <div id="model-elevation-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
         </div>
 
         <div class="dock-section" style="border-top: 1px solid rgba(255,255,255,0.12); padding-top: 10px; margin-top: 10px;">
@@ -359,6 +372,6 @@
         <canvas id="compass-canvas" width="48" height="48"></canvas>
     </div>
 
-    <script type="module" src="app.js?v=0.8.39"></script>
+    <script type="module" src="app.js?v=0.8.41"></script>
 </body>
 </html>

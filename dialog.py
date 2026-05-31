@@ -76,6 +76,7 @@ EXPECTED_GEOMETRIES = {
     "fences": "Polygon",
     "waterlines": "Line",
     "mosques": "Point",
+    "tumulus": "Point",
 }
 
 RECOMMENDED_BUILDING_FIELDS = ("katadedi", "uipfonksiyon")
@@ -163,6 +164,7 @@ AUTO_MATCH_ALIASES = {
     "fences": ("fences", "fence", "border", "borders", "wall", "walls", "cit", "çit", "myfences"),
     "waterlines": ("waterlines", "waterline", "stream", "streams", "river", "rivers", "dere", "akarsu", "mywaterlines"),
     "mosques": ("mosque", "mosques", "cami", "camiler", "mymosques"),
+    "tumulus": ("tumulus", "tumuli", "tumulusler", "tümülüs", "tumulus noktalari", "hoyuk", "höyük", "mytumulus"),
 }
 
 
@@ -1456,6 +1458,7 @@ class PlanX3DCityDialog(QDialog):
             "fences": "Fence or boundary wall polygons. / Cit veya bahce/sinir duvari poligonlari.",
             "waterlines": "Water lines or streams. / Akarsu veya su hatlari.",
             "mosques": "Mosque point features. / Cami nokta katmani.",
+            "tumulus": "Tumulus / burial mound point features; a default mound model is used when no GLB is uploaded. / Tumulus (hoyuk) nokta katmani; GLB yuklenmezse varsayilan hoyuk modeli kullanilir.",
         }
         if role == "required":
             mark = " <span style='color:#b91c1c'>*</span>"

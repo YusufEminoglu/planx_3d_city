@@ -31,7 +31,7 @@ VECTOR_REQUIRED_INPUTS = ()
 VECTOR_RECOMMENDED_INPUTS = ("dem", "roi", "roads", "buildings", "blocks", "parcels")
 RASTER_TEXTURE_REQUIRED_INPUTS = ("roi", "plan_texture", "roads", "buildings")
 REQUIRED_INPUTS = VECTOR_REQUIRED_INPUTS
-OPTIONAL_INPUTS = ("trees", "hardscape", "sidewalks", "pedestrian_paths", "lights", "benches", "trashbins", "busstops", "fences", "waterlines", "mosques")
+OPTIONAL_INPUTS = ("trees", "hardscape", "sidewalks", "pedestrian_paths", "lights", "benches", "trashbins", "busstops", "fences", "waterlines", "mosques", "tumulus")
 VECTOR_OPTIONAL_INPUTS = VECTOR_RECOMMENDED_INPUTS + OPTIONAL_INPUTS
 ASSET_THEME_DEFAULT = "Modern Urban"
 ASSET_CATEGORIES = ("pedestrians", "cars", "trees", "lights", "benches", "bins", "busstops", "facades", "roofs", "paving")
@@ -176,6 +176,7 @@ VECTOR_TARGETS = {
     "fences": "myfences.geojson",
     "waterlines": "mywaterlines.geojson",
     "mosques": "mymosques.geojson",
+    "tumulus": "mytumulus.geojson",
 }
 
 LABELS = {
@@ -198,6 +199,7 @@ LABELS = {
     "fences": "Fences / Borders",
     "waterlines": "Water lines / Streams",
     "mosques": "Mosques",
+    "tumulus": "Tumulus",
 }
 
 
