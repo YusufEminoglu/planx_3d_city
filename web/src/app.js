@@ -3027,6 +3027,26 @@ function parseLevel(v) {
   return 4;
 }
 
+// Common Turkish/English column names for building floor count.
+const BUILDING_FLOOR_FIELD_ALIASES = [
+  'katadedi', 'kat_adedi', 'katadet', 'kat_adet', 'katsayisi', 'kat_sayisi',
+  'kat_sayısı', 'katSayisi', 'kat', 'katlar', 'floors', 'num_floors', 'numfloors',
+  'floor_count', 'levels', 'storeys', 'stories', 'nkat', 'n_kat'
+];
+
+// Raw floor-count value as stored on the feature, honoring the QGIS-mapped
+// 'building_floors_field' first, or null when no usable column exists.
+function buildingLevelsRaw(props) {
+  return propFirst(props || {}, namesWithMapping('building_floors_field', BUILDING_FLOOR_FIELD_ALIASES));
+}
+
+// Building floor count: prefers the QGIS-mapped 'building_floors_field', then
+// falls back to common Turkish/English column names. Building height is this
+// count multiplied by the (per-feature or global) floor height.
+function buildingLevels(props) {
+  return parseLevel(buildingLevelsRaw(props));
+}
+
 function getPolygonRings(geometry) {
   if (!geometry) return [];
   if (geometry.type === 'Polygon') return [geometry.coordinates];
@@ -5291,7 +5311,7 @@ function polygonAreaGeo(ring) {
 
 function estimateBuildingFeatureMetrics(feature) {
   const props = feature?.properties || {};
-  const levels = parseLevel(props.katadedi);
+  const levels = buildingLevels(props);
   let footprint = parseNumberProp(props, ['taban_alani', 'footprint_area', 'aream2'], null);
   if (!footprint) {
     const outer = getPolygonRings(feature.geometry)?.[0]?.[0];
@@ -7071,7 +7091,7 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
     const fn = String(buildingFunctionValue(props));
     const fnIndex = Math.max(0, functions.indexOf(fn));
     const fnStyle = ensureFunctionBuildingStyle(fn, fnIndex);
-    const levels = parseLevel(f.properties?.katadedi);
+    const levels = buildingLevels(f.properties);
     const featureFloorHeight = parseNumberProp(props, ['planx_floor_height', 'floor_height', 'kat_yuksekligi', 'kat_yüksekliği'], fnStyle.floorHeight);
     const height = buildingHeightFromProps(props, levels, featureFloorHeight);
     const featureColor = normalizeHexColor(propFirst(props, ['planx_color', 'planx_renk', 'color', 'renk']), fnStyle.color);
@@ -7326,7 +7346,7 @@ function buildZoningEnvelopesLayer(yapilar) {
 
   for (const f of yapilar.features) {
     const props = f.properties || {};
-    const levels = parseLevel(props.katadedi);
+    const levels = buildingLevels(props);
     const fn = String(buildingFunctionValue(props));
     const fnIndex = Math.max(0, Object.keys(functionColorState).indexOf(fn));
     const fnStyle = ensureFunctionBuildingStyle(fn, fnIndex);
@@ -8148,7 +8168,7 @@ async function rebuildScene() {
     yapilar.features.forEach(f => {
        const fn = buildingFunctionValue(f.properties || {});
        funcMap[fn] = (funcMap[fn] || 0) + 1;
-       totalFloors += parseLevel(f.properties?.katadedi);
+       totalFloors += buildingLevels(f.properties);
     });
     const avgFlr = (bldCount > 0 ? (totalFloors / bldCount).toFixed(1) : 0);
     
@@ -8403,7 +8423,7 @@ function updateDashboard(data) {
   yapilar.features.forEach((f) => {
     const fn = buildingFunctionValue(f.properties || {});
     funcMap[fn] = (funcMap[fn] || 0) + 1;
-    totalFloors += parseLevel(f.properties?.katadedi);
+    totalFloors += buildingLevels(f.properties);
     const metrics = estimateBuildingFeatureMetrics(f);
     totalPopulation += metrics.population || 0;
     totalDwellings += metrics.dwellings || 0;
@@ -8637,7 +8657,8 @@ window.addEventListener('mousemove', (e) => {
   if (hoverTip) {
     const p = hits[0].object.userData || {};
     const icon = getFunctionIcon(p.uipfonksiyon || '');
-    const floors = p.katadedi ? `${p.katadedi} ${t('biKat').toLowerCase()}` : '-';
+    const floorVal = buildingLevelsRaw(p);
+    const floors = floorVal != null ? `${floorVal} ${t('biKat').toLowerCase()}` : '-';
     hoverTip.innerHTML = `<div class="tooltip-title">${icon} ${(p.uipfonksiyon || '-').slice(0, 26)}</div><div class="tooltip-row"><span>${t('biKat')}</span><span>${floors}</span></div>`;
     hoverTip.style.display = 'block';
     const tx = Math.min(e.clientX + 16, innerWidth - 200);
@@ -8682,7 +8703,7 @@ window.addEventListener('click', (e) => {
     detailTip.innerHTML = `
       <div class="tooltip-title">${icon} ${t('binaInfo')} <span class="tip-close" onclick="this.closest('#bldg-detail-tip').style.display='none'">✕</span></div>
       <div class="tooltip-row"><span>${t('biFonk')}</span><span>${(p.uipfonksiyon || '-').slice(0, 24)}</span></div>
-      <div class="tooltip-row"><span>${t('biKat')}</span><span>${p.katadedi || '-'}</span></div>
+      <div class="tooltip-row"><span>${t('biKat')}</span><span>${buildingLevelsRaw(p) ?? '-'}</span></div>
       <div class="tooltip-row"><span>${t('biNiz')}</span><span>${p.nizam || '-'}</span></div>
       ${p.taks != null ? `<div class="tooltip-row"><span>TAKS</span><span>${p.taks}</span></div>` : ''}
       ${p.kaks != null ? `<div class="tooltip-row"><span>KAKS</span><span>${p.kaks}</span></div>` : ''}

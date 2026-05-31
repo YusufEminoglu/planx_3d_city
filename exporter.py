@@ -552,6 +552,7 @@ def _field_mappings_manifest(layer_map: dict) -> dict:
         "building_population_field",
         "building_dwelling_field",
         "building_vehicle_field",
+        "building_floors_field",
         "building_floor_area_field",
         "landuse_function_field",
         "odor_source_field",

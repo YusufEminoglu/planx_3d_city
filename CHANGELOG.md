@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.8.47] - 2026-05-31
+
+- Added a Building floor count field mapping to the QGIS publisher. Building height = floor count x floor height; previously the count was read only from a hard-coded `katadedi` column.
+- The viewer resolves the floor count from the mapped field first, then common Turkish/English fallback column names (`katadedi`, `kat`, `kat_sayisi`, `floors`, `levels`, `storeys`, ...). Building extrusion, facade rows, ledges, statistics and tooltips all use the resolved count.
+- Updated the viewer module cache key to app.js?v=0.8.47.
+
 ## [0.8.46] - 2026-05-31
 
 - Added a Rotation slider to the Model Studio Model Transform panel for the light, bench, trash bin and bus stop categories (previously only mosque and tumulus had one).

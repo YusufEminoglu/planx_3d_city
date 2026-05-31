@@ -87,6 +87,7 @@ FIELD_MAPPING_DEFS = (
     ("building_population_field", "buildings", "Building population field", "Optional population value; otherwise the viewer estimates from dwellings and area. / Bina nufusu."),
     ("building_dwelling_field", "buildings", "Building dwelling field", "Dwelling or housing-unit count. / Daire veya konut birimi sayisi."),
     ("building_vehicle_field", "buildings", "Building vehicle field", "Estimated or calculated vehicle count. / Tahmini ya da hesapli arac sayisi."),
+    ("building_floors_field", "buildings", "Building floor count field", "Number of storeys; building height = floor count x floor height. Fallback column names include katadedi, kat, floors, levels. / Kat sayisi; bina yuksekligi = kat sayisi x kat yuksekligi. Varsayilan sutun adlari: katadedi, kat."),
     ("building_floor_area_field", "buildings", "Building gross floor area field", "Gross floor area or FAR-derived area. / Toplam insaat ya da emsal alani."),
     ("landuse_function_field", "buildings", "Land-use/function field", "Building use/function; used when uipfonksiyon is not available. / Kullanim fonksiyonu."),
     ("odor_source_field", "buildings", "Odor/noise source field", "Helps detect industry, waste, storage or treatment sources for wind/noise screening. / Koku-gurultu kaynak ipucu."),
