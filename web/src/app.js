@@ -1670,7 +1670,11 @@ const settings = {
   binScaleZ: 1.0,
   busstopScaleX: 1.0,
   busstopScaleY: 1.0,
-  busstopScaleZ: 1.0
+  busstopScaleZ: 1.0,
+  lightRotation: 0,
+  benchRotation: 0,
+  binRotation: 0,
+  busstopRotation: 0
 };
 
 const PERSISTED_SETTING_KEYS = [
@@ -1690,6 +1694,7 @@ const PERSISTED_SETTING_KEYS = [
   'treeScaleX', 'treeScaleY', 'treeScaleZ', 'lightScaleX', 'lightScaleY', 'lightScaleZ',
   'benchScaleX', 'benchScaleY', 'benchScaleZ', 'binScaleX', 'binScaleY', 'binScaleZ',
   'busstopScaleX', 'busstopScaleY', 'busstopScaleZ',
+  'lightRotation', 'benchRotation', 'binRotation', 'busstopRotation',
   'treeRenderMode', 'treeRandomize', 'treeVariantCount', 'treeHeightRandomExpr',
   'showCars', 'showRoads', 'showSidewalks', 'showPedestrianPaths', 'showCrosswalks', 'showPedestrians',
   'showWindPlumes', 'windDirectionDeg', 'windPlumeDistance', 'showUrbanComfort',
@@ -2247,9 +2252,14 @@ const CATEGORY_SCALE_KEYS = {
 };
 
 // Categories whose global rotation is meaningful from the Transform panel.
+// Furniture rotation is applied as an offset on top of the road-aligned/attribute angle.
 const CATEGORY_ROTATION_KEY = {
   mosque: 'mosqueRotation',
   tumulus: 'tumulusRotation',
+  light: 'lightRotation',
+  bench: 'benchRotation',
+  bin: 'binRotation',
+  busstop: 'busstopRotation',
 };
 
 function activeTransformCategory() {
@@ -6952,6 +6962,12 @@ function buildFurnitureLayer() {
     bins: ['binScaleX', 'binScaleY', 'binScaleZ'],
     busstops: ['busstopScaleX', 'busstopScaleY', 'busstopScaleZ']
   };
+  const furnitureRotationByKind = {
+    lights: settings.lightRotation || 0,
+    benches: settings.benchRotation || 0,
+    bins: settings.binRotation || 0,
+    busstops: settings.busstopRotation || 0
+  };
   const placeItem = (feats, modelTemplate, kind) => {
     if (!feats || !feats.features) return;
     const elevOffset = furnitureElevationByKind[kind] || 0;
@@ -6959,6 +6975,8 @@ function buildFurnitureLayer() {
     const sx = sk && settings[sk[0]] !== undefined ? settings[sk[0]] : 1.0;
     const sy = sk && settings[sk[1]] !== undefined ? settings[sk[1]] : 1.0;
     const sz = sk && settings[sk[2]] !== undefined ? settings[sk[2]] : 1.0;
+    // Manual rotation offset (deg) added on top of the road-aligned/attribute angle.
+    const rotOffset = THREE.MathUtils.degToRad(furnitureRotationByKind[kind] || 0);
     feats.features.forEach(f => {
       if (!f.geometry || f.geometry.type !== 'Point') return;
       const [x, z] = metersToLocal(f.geometry.coordinates[0], f.geometry.coordinates[1]);
@@ -6969,7 +6987,7 @@ function buildFurnitureLayer() {
       const m = modelTemplate.clone();
       m.position.set(x, y, z);
       if (sx !== 1.0 || sy !== 1.0 || sz !== 1.0) m.scale.set(sx, sy, sz);
-      m.rotation.y = furnitureRotationY(f, x, z, angleFieldKeyByKind[kind]);
+      m.rotation.y = furnitureRotationY(f, x, z, angleFieldKeyByKind[kind]) - rotOffset;
       furnitureGroup.add(m);
     });
   };

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.8.46] - 2026-05-31
+
+- Added a Rotation slider to the Model Studio Model Transform panel for the light, bench, trash bin and bus stop categories (previously only mosque and tumulus had one).
+- Furniture rotation is applied as a manual offset on top of the existing road-aligned / attribute-based orientation, so 0 keeps the current auto-alignment.
+- Updated the viewer module cache key to app.js?v=0.8.46.
+
 ## [0.8.45] - 2026-05-31
 
 - Added a Tumulus Placements & Overrides section to Model Studio, mirroring the mosque cards: per-tumulus model (global / procedural mound / uploaded GLB), color tint, scale X/Y/Z, rotation and elevation, persisted in browser storage.
