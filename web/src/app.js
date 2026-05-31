@@ -148,6 +148,8 @@ Object.assign(i18n.TR, {
   catTumulus: 'Tümülüs',
   lblTumulus: 'Tümülüsler',
   modelElevationTitle: 'Model Yüksekliği (Y Ofset)',
+  modelTransformTitle: 'Model Dönüşümü (Yükseklik & Ölçek)',
+  lblTransformCategory: 'Kategori',
   treePoolTitle: 'Ağaç Model Havuzu (rastgele)',
   treePoolNote: '2-3 ağaç modeli ekleyin; ağaçlar bunlar arasından rastgele seçilir. Havuz boşsa varsayılan stilize ağaçlar kullanılır.',
   btnInPool: '✓ Havuzda',
@@ -242,6 +244,8 @@ Object.assign(i18n.EN, {
   catTumulus: 'Tumulus',
   lblTumulus: 'Tumuli',
   modelElevationTitle: 'Model Elevation (Y Offset)',
+  modelTransformTitle: 'Model Transform (Elevation & Scale)',
+  lblTransformCategory: 'Category',
   treePoolTitle: 'Tree Model Pool (random)',
   treePoolNote: 'Add 2-3 tree models; trees are picked randomly from them. When the pool is empty the default stylized trees are used.',
   btnInPool: '✓ In pool',
@@ -1577,7 +1581,9 @@ const settings = {
   mosqueScaleZ: 1.0,
   mosqueRotation: 0.0,
   showTumulus: true,
-  tumulusScale: 1.0,
+  tumulusScaleX: 1.0,
+  tumulusScaleY: 1.0,
+  tumulusScaleZ: 1.0,
   showFurniture: false,
   showCars: false,
   showRoads: true,
@@ -1646,7 +1652,22 @@ const settings = {
   lightElevation: 0,
   benchElevation: 0,
   binElevation: 0,
-  busstopElevation: 0
+  busstopElevation: 0,
+  treeScaleX: 1.0,
+  treeScaleY: 1.0,
+  treeScaleZ: 1.0,
+  lightScaleX: 1.0,
+  lightScaleY: 1.0,
+  lightScaleZ: 1.0,
+  benchScaleX: 1.0,
+  benchScaleY: 1.0,
+  benchScaleZ: 1.0,
+  binScaleX: 1.0,
+  binScaleY: 1.0,
+  binScaleZ: 1.0,
+  busstopScaleX: 1.0,
+  busstopScaleY: 1.0,
+  busstopScaleZ: 1.0
 };
 
 const PERSISTED_SETTING_KEYS = [
@@ -1660,9 +1681,12 @@ const PERSISTED_SETTING_KEYS = [
   'floorHeight', 'roofTexture', 'roofShape', 'roofHeight', 'roadStyle', 'roadColor', 'roadColorMode', 'roadWidth',
   'showLights', 'lightStyle', 'showBenches', 'benchStyle', 'showBins', 'binStyle', 'showBusStops', 'stopStyle',
   'showIslands', 'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture', 'showMosques',
-  'showTumulus', 'tumulusScale',
+  'showTumulus', 'tumulusScaleX', 'tumulusScaleY', 'tumulusScaleZ',
   'mosqueScaleX', 'mosqueScaleY', 'mosqueScaleZ', 'mosqueRotation',
   'mosqueElevation', 'tumulusElevation', 'treeElevation', 'lightElevation', 'benchElevation', 'binElevation', 'busstopElevation',
+  'treeScaleX', 'treeScaleY', 'treeScaleZ', 'lightScaleX', 'lightScaleY', 'lightScaleZ',
+  'benchScaleX', 'benchScaleY', 'benchScaleZ', 'binScaleX', 'binScaleY', 'binScaleZ',
+  'busstopScaleX', 'busstopScaleY', 'busstopScaleZ',
   'treeRenderMode', 'treeRandomize', 'treeVariantCount', 'treeHeightRandomExpr',
   'showCars', 'showRoads', 'showSidewalks', 'showPedestrianPaths', 'showCrosswalks', 'showPedestrians',
   'showWindPlumes', 'windDirectionDeg', 'windPlumeDistance', 'showUrbanComfort',
@@ -2177,38 +2201,60 @@ function renderTreePoolList() {
   });
 }
 
-const MODEL_ELEVATION_CATEGORIES = [
-  ['mosque', 'mosqueElevation', 'catMosque'],
-  ['tumulus', 'tumulusElevation', 'catTumulus'],
-  ['tree', 'treeElevation', 'catTree'],
-  ['light', 'lightElevation', 'catLight'],
-  ['bench', 'benchElevation', 'catBench'],
-  ['bin', 'binElevation', 'catBin'],
-  ['busstop', 'busstopElevation', 'catBusStop'],
-];
+const CATEGORY_ELEVATION_KEY = {
+  mosque: 'mosqueElevation',
+  tumulus: 'tumulusElevation',
+  tree: 'treeElevation',
+  light: 'lightElevation',
+  bench: 'benchElevation',
+  bin: 'binElevation',
+  busstop: 'busstopElevation',
+};
 
-function renderModelElevationControls() {
-  const container = document.getElementById('model-elevation-list');
+const CATEGORY_SCALE_KEYS = {
+  mosque: ['mosqueScaleX', 'mosqueScaleY', 'mosqueScaleZ'],
+  tumulus: ['tumulusScaleX', 'tumulusScaleY', 'tumulusScaleZ'],
+  tree: ['treeScaleX', 'treeScaleY', 'treeScaleZ'],
+  light: ['lightScaleX', 'lightScaleY', 'lightScaleZ'],
+  bench: ['benchScaleX', 'benchScaleY', 'benchScaleZ'],
+  bin: ['binScaleX', 'binScaleY', 'binScaleZ'],
+  busstop: ['busstopScaleX', 'busstopScaleY', 'busstopScaleZ'],
+};
+
+function activeTransformCategory() {
+  const sel = document.getElementById('transform-category');
+  return (sel && sel.value) || 'mosque';
+}
+
+// Per-category Elevation + Scale (X/Y/Z) panel, driven by the category selector.
+function renderModelTransformControls() {
+  const container = document.getElementById('model-transform-controls');
   if (!container) return;
   container.innerHTML = '';
 
-  MODEL_ELEVATION_CATEGORIES.forEach(([cat, key, labelKey]) => {
-    const current = Number(settings[key]) || 0;
+  const cat = activeTransformCategory();
+  const elevKey = CATEGORY_ELEVATION_KEY[cat];
+  const scaleKeys = CATEGORY_SCALE_KEYS[cat];
+
+  const makeSliderRow = (labelText, key, min, max, step, fmt) => {
+    const current = Number(settings[key]);
+    const value = Number.isFinite(current) ? current : (key.includes('Scale') ? 1 : 0);
     const row = document.createElement('div');
     row.className = 'mosque-custom-slider-row';
     row.style.cssText = 'display:flex; align-items:center; gap:6px;';
     row.innerHTML = `
-      <span style="flex: 0 0 96px; font-size: 0.72rem; color: rgba(255,255,255,0.85);">${t(labelKey) || cat}</span>
-      <input type="range" class="model-elev-input" min="-15" max="30" step="0.5" value="${current}" style="flex:1;">
-      <span class="model-elev-val" style="min-width:42px; text-align:right; font-size:0.72rem;">${current.toFixed(1)}m</span>
+      <span style="flex: 0 0 78px; font-size: 0.72rem; color: rgba(255,255,255,0.85);">${labelText}</span>
+      <input type="range" min="${min}" max="${max}" step="${step}" value="${value}" style="flex:1;">
+      <span class="transform-val" style="min-width:44px; text-align:right; font-size:0.72rem;">${fmt(value)}</span>
     `;
-    const input = row.querySelector('.model-elev-input');
-    const valOut = row.querySelector('.model-elev-val');
+    const input = row.querySelector('input');
+    const valOut = row.querySelector('.transform-val');
     let debounceTimer;
     input.addEventListener('input', () => {
       const v = parseFloat(input.value);
       settings[key] = v;
-      valOut.textContent = v.toFixed(1) + 'm';
+      valOut.textContent = fmt(v);
+      if (typeof updateDockControls === 'function') updateDockControls();
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         savePersistedSettings();
@@ -2216,7 +2262,16 @@ function renderModelElevationControls() {
       }, 60);
     });
     container.appendChild(row);
-  });
+  };
+
+  if (elevKey) {
+    makeSliderRow(t('lblElevation') || 'Elevation', elevKey, -15, 30, 0.5, (v) => v.toFixed(1) + 'm');
+  }
+  if (scaleKeys) {
+    makeSliderRow(t('lblScaleX') || 'Scale X', scaleKeys[0], 0.1, 10, 0.1, (v) => v.toFixed(1) + 'x');
+    makeSliderRow(t('lblScaleY') || 'Scale Y', scaleKeys[1], 0.1, 10, 0.1, (v) => v.toFixed(1) + 'x');
+    makeSliderRow(t('lblScaleZ') || 'Scale Z', scaleKeys[2], 0.1, 10, 0.1, (v) => v.toFixed(1) + 'x');
+  }
 }
 
 function renderMosqueCustomizationsList() {
@@ -2376,6 +2431,10 @@ function initModelStudioListeners() {
   const uploadFileInput = document.getElementById('upload-model-file');
   const uploadCategorySelect = document.getElementById('upload-model-category');
   const uploadStatusDiv = document.getElementById('upload-status');
+  const transformCategorySelect = document.getElementById('transform-category');
+  if (transformCategorySelect) {
+    transformCategorySelect.addEventListener('change', () => renderModelTransformControls());
+  }
 
   if (uploadFileInput) {
     uploadFileInput.addEventListener('change', async (e) => {
@@ -2418,7 +2477,7 @@ function initModelStudioListeners() {
         savePersistedSettings();
         renderUploadedModelsList();
         renderTreePoolList();
-        renderModelElevationControls();
+        renderModelTransformControls();
         renderMosqueCustomizationsList();
         rebuildCategoryLayer(category);
 
@@ -6048,7 +6107,10 @@ function buildTreeLayer(agaclar, treeModel) {
         const m = pick.clone();
         m.position.set(x, y, z);
         const scaleFactor = h / 8.0;
-        m.scale.set(scaleFactor, scaleFactor, scaleFactor);
+        const tsx = settings.treeScaleX !== undefined ? settings.treeScaleX : 1.0;
+        const tsy = settings.treeScaleY !== undefined ? settings.treeScaleY : 1.0;
+        const tsz = settings.treeScaleZ !== undefined ? settings.treeScaleZ : 1.0;
+        m.scale.set(scaleFactor * tsx, scaleFactor * tsy, scaleFactor * tsz);
         const rot = ((x * 13.7 + z * 7.3) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
         m.rotation.y = rot;
         m.traverse(child => {
@@ -6239,9 +6301,11 @@ function buildMosqueLayer(mosques, mosqueModel) {
     const globalScaleZ = settings.mosqueScaleZ !== undefined ? settings.mosqueScaleZ : 1.0;
     
     const props = f.properties || {};
-    const px = cust.scaleX !== undefined ? cust.scaleX : parseNumberProp(props, ['planx_scale_x', 'scale_x', 'planx_scale', 'scale'], globalScaleX);
-    const py = cust.scaleY !== undefined ? cust.scaleY : parseNumberProp(props, ['planx_scale_y', 'scale_y', 'planx_scale', 'scale'], globalScaleY);
-    const pz = cust.scaleZ !== undefined ? cust.scaleZ : parseNumberProp(props, ['planx_scale_z', 'scale_z', 'planx_scale', 'scale'], globalScaleZ);
+    // The Model Studio global mosque scale is a base; per-placement overrides
+    // (or attribute scales) multiply on top so the category slider stays effective.
+    const px = (cust.scaleX !== undefined ? cust.scaleX : parseNumberProp(props, ['planx_scale_x', 'scale_x', 'planx_scale', 'scale'], 1.0)) * globalScaleX;
+    const py = (cust.scaleY !== undefined ? cust.scaleY : parseNumberProp(props, ['planx_scale_y', 'scale_y', 'planx_scale', 'scale'], 1.0)) * globalScaleY;
+    const pz = (cust.scaleZ !== undefined ? cust.scaleZ : parseNumberProp(props, ['planx_scale_z', 'scale_z', 'planx_scale', 'scale'], 1.0)) * globalScaleZ;
     m.scale.set(px, py, pz);
     
     let angleRad;
@@ -6333,7 +6397,9 @@ function buildTumulusLayer(tumulus, tumulusModel) {
     : (tumulusModel ? tumulusModel : createProceduralTumulus());
   const usingDefaultMound = !globalActiveEntry && !tumulusModel;
 
-  const baseScale = settings.tumulusScale !== undefined ? settings.tumulusScale : 1.0;
+  const gScaleX = settings.tumulusScaleX !== undefined ? settings.tumulusScaleX : 1.0;
+  const gScaleY = settings.tumulusScaleY !== undefined ? settings.tumulusScaleY : 1.0;
+  const gScaleZ = settings.tumulusScaleZ !== undefined ? settings.tumulusScaleZ : 1.0;
 
   tumulus.features.forEach((f, index) => {
     if (!f.geometry || f.geometry.type !== 'Point') return;
@@ -6346,8 +6412,9 @@ function buildTumulusLayer(tumulus, tumulusModel) {
     m.position.set(x, y, z);
 
     const props = f.properties || {};
-    const pScale = parseNumberProp(props, ['planx_scale', 'scale', 'tumulus_scale', 'olcek', 'ölçek'], baseScale);
-    m.scale.set(pScale, pScale, pScale);
+    // Per-feature uniform multiplier from attributes, on top of the global X/Y/Z scale.
+    const pScale = parseNumberProp(props, ['planx_scale', 'scale', 'tumulus_scale', 'olcek', 'ölçek'], 1.0);
+    m.scale.set(gScaleX * pScale, gScaleY * pScale, gScaleZ * pScale);
 
     const deg = numericPropFirst(props, ['planx_angle', 'planx_rotation', 'angle', 'rotation', 'yon', 'yön']);
     m.rotation.y = deg !== null ? -THREE.MathUtils.degToRad(deg) : (x * 11.3 + z * 5.1) % (Math.PI * 2);
@@ -6681,9 +6748,19 @@ function buildFurnitureLayer() {
     bins: settings.binElevation || 0,
     busstops: settings.busstopElevation || 0
   };
+  const furnitureScaleByKind = {
+    lights: ['lightScaleX', 'lightScaleY', 'lightScaleZ'],
+    benches: ['benchScaleX', 'benchScaleY', 'benchScaleZ'],
+    bins: ['binScaleX', 'binScaleY', 'binScaleZ'],
+    busstops: ['busstopScaleX', 'busstopScaleY', 'busstopScaleZ']
+  };
   const placeItem = (feats, modelTemplate, kind) => {
     if (!feats || !feats.features) return;
     const elevOffset = furnitureElevationByKind[kind] || 0;
+    const sk = furnitureScaleByKind[kind];
+    const sx = sk && settings[sk[0]] !== undefined ? settings[sk[0]] : 1.0;
+    const sy = sk && settings[sk[1]] !== undefined ? settings[sk[1]] : 1.0;
+    const sz = sk && settings[sk[2]] !== undefined ? settings[sk[2]] : 1.0;
     feats.features.forEach(f => {
       if (!f.geometry || f.geometry.type !== 'Point') return;
       const [x, z] = metersToLocal(f.geometry.coordinates[0], f.geometry.coordinates[1]);
@@ -6693,6 +6770,7 @@ function buildFurnitureLayer() {
       const y = terrainLocalYAt(x, z) + (settings.furnitureGroundOffset ?? 0.02) + elevOffset;
       const m = modelTemplate.clone();
       m.position.set(x, y, z);
+      if (sx !== 1.0 || sy !== 1.0 || sz !== 1.0) m.scale.set(sx, sy, sz);
       m.rotation.y = furnitureRotationY(f, x, z, angleFieldKeyByKind[kind]);
       furnitureGroup.add(m);
     });
@@ -9443,7 +9521,7 @@ function initDockUi() {
     if (target.id === 'model-studio-dock' && !target.classList.contains('hidden')) {
       renderUploadedModelsList();
       renderTreePoolList();
-      renderModelElevationControls();
+      renderModelTransformControls();
       renderMosqueCustomizationsList();
     }
   });

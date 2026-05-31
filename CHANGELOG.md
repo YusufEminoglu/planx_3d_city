@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.8.42] - 2026-05-31
+
+- Model Laboratuvari'na kategori bazli Model Donusumu paneli eklendi: kategori secici (cami, tumulus, agac, lamba, bank, cop kutusu, durak) ile Yukseklik ve Olcek X/Y/Z kaydiraclari; ozellikle tumulus ve cami boyutlandirmasi icin.
+- Global cami/tumulus/agac/mobilya olcegi, obje basina veya oznitelik tabanli olceklerle carpim olarak uygulaniyor; boylece kategori kaydiraclari her zaman etkili.
+- Viewer modul onbellek anahtari app.js?v=0.8.42 olarak guncellendi.
+
 ## [0.8.41] - 2026-05-31
 
 - Model Laboratuvari'na Tumulus (hoyuk) destegi: yeni opsiyonel nokta katmani (mytumulus.geojson) QGIS yayinlayicisinda secilebilir, GLB modeli yuklenebilir; model yuklenmezse varsayilan prosedurel hoyuk modeli (toprak kubbe + tas cember) cizilir. Katmanlar panelinde gorunurluk anahtari eklendi.

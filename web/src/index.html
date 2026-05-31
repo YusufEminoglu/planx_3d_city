@@ -333,8 +333,19 @@
         </div>
 
         <div class="dock-section" style="border-top: 1px solid rgba(255,255,255,0.12); padding-top: 10px; margin-top: 10px;">
-            <h4 data-i18n="modelElevationTitle" style="margin: 0 0 8px; color: #5eead4; font-size: 0.85rem;">Model Elevation (Y Offset)</h4>
-            <div id="model-elevation-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
+            <h4 data-i18n="modelTransformTitle" style="margin: 0 0 8px; color: #5eead4; font-size: 0.85rem;">Model Transform (Elevation &amp; Scale)</h4>
+            <label><span data-i18n="lblTransformCategory">Category</span>
+                <select id="transform-category">
+                    <option value="mosque" data-i18n="catMosque">Mosque</option>
+                    <option value="tumulus" data-i18n="catTumulus">Tumulus</option>
+                    <option value="tree" data-i18n="catTree">Tree</option>
+                    <option value="light" data-i18n="catLight">Street Light</option>
+                    <option value="bench" data-i18n="catBench">Bench</option>
+                    <option value="bin" data-i18n="catBin">Trash Bin</option>
+                    <option value="busstop" data-i18n="catBusStop">Bus Stop</option>
+                </select>
+            </label>
+            <div id="model-transform-controls" style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;"></div>
         </div>
 
         <div class="dock-section" style="border-top: 1px solid rgba(255,255,255,0.12); padding-top: 10px; margin-top: 10px;">
@@ -372,6 +383,6 @@
         <canvas id="compass-canvas" width="48" height="48"></canvas>
     </div>
 
-    <script type="module" src="app.js?v=0.8.41"></script>
+    <script type="module" src="app.js?v=0.8.42"></script>
 </body>
 </html>
