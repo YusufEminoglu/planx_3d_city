@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.8.45] - 2026-05-31
+
+- Added a Tumulus Placements & Overrides section to Model Studio, mirroring the mosque cards: per-tumulus model (global / procedural mound / uploaded GLB), color tint, scale X/Y/Z, rotation and elevation, persisted in browser storage.
+- Tumulus rendering applies these per-placement overrides on top of the global category transform, with per-feature attribute scale/rotation still honored as fallbacks.
+- Updated the viewer module cache key to app.js?v=0.8.45.
+
 ## [0.8.44] - 2026-05-31
 
 - Model Studio's dynamic panels (Library Models, Tree Model Pool, Model Transform, Mosque placements) now re-render on language toggle, so their labels follow the English/Turkish switch while the dock stays open.

@@ -156,6 +156,8 @@ Object.assign(i18n.TR, {
   lblElevation: 'Yükseklik',
   uploadedModelsTitle: 'Model Kütüphanesi',
   mosqueCustomTitle: 'Cami Konumlandırma & Özelleştirme',
+  tumulusCustomTitle: 'Tümülüs Konumlandırma & Özelleştirme',
+  noTumulusInProject: 'Bu projede tümülüs objesi bulunamadı.',
   lblModel: 'Model',
   lblColor: 'Renk',
   lblScaleX: 'Ölçek X',
@@ -251,6 +253,8 @@ Object.assign(i18n.EN, {
   lblElevation: 'Elevation',
   uploadedModelsTitle: 'Library Models',
   mosqueCustomTitle: 'Mosque Placement & Overrides',
+  tumulusCustomTitle: 'Tumulus Placement & Overrides',
+  noTumulusInProject: 'No tumuli in the current project.',
   lblModel: 'Model',
   lblColor: 'Color',
   lblScaleX: 'Scale X',
@@ -1826,6 +1830,7 @@ const dbName = 'PlanX_ModelStudio_DB';
 const storeName = 'models';
 const uploadedModels = []; // holds { id, name, category, scene }
 let mosqueCustomizations = [];
+let tumulusCustomizations = [];
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -1902,7 +1907,23 @@ function saveMosqueCustomizations() {
   } catch (_) {}
 }
 
+function loadTumulusCustomizations() {
+  if (isPortableMode) return;
+  try {
+    const raw = localStorage.getItem('planx_3d_city_tumulus_customizations');
+    tumulusCustomizations = raw ? JSON.parse(raw) : [];
+  } catch (_) {}
+}
+
+function saveTumulusCustomizations() {
+  if (isPortableMode) return;
+  try {
+    localStorage.setItem('planx_3d_city_tumulus_customizations', JSON.stringify(tumulusCustomizations));
+  } catch (_) {}
+}
+
 loadMosqueCustomizations();
+loadTumulusCustomizations();
 
 // --- Model Studio Integration Logic & UI rendering ---
 let uploadedModelsLoaded = false;
@@ -2117,11 +2138,16 @@ function renderUploadedModelsList() {
           if (cust.modelId === m.id) cust.modelId = 'default';
         });
         saveMosqueCustomizations();
+        tumulusCustomizations.forEach(cust => {
+          if (cust.modelId === m.id) cust.modelId = 'default';
+        });
+        saveTumulusCustomizations();
 
         savePersistedSettings();
         renderUploadedModelsList();
         renderTreePoolList();
         renderMosqueCustomizationsList();
+        renderTumulusCustomizationsList();
         rebuildCategoryLayer(m.category);
       }
     });
@@ -2436,6 +2462,138 @@ function renderMosqueCustomizationsList() {
   });
 }
 
+function getTumulusName(feature, index) {
+  const props = feature.properties || {};
+  return props.name || props.adi || props.label || `${t('catTumulus') || 'Tumulus'} #${index + 1}`;
+}
+
+function renderTumulusCustomizationsList() {
+  const container = document.getElementById('tumulus-custom-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (!layerDataCache?.tumulus?.features?.length) {
+    container.innerHTML = `<div style="text-align:center; font-size:0.7rem; color:rgba(255,255,255,0.4); padding:10px;">${t('noTumulusInProject') || 'No tumuli in the current project.'}</div>`;
+    return;
+  }
+
+  layerDataCache.tumulus.features.forEach((f, idx) => {
+    if (!f.geometry || f.geometry.type !== 'Point') return;
+    const name = getTumulusName(f, idx);
+
+    if (!tumulusCustomizations[idx]) {
+      tumulusCustomizations[idx] = {
+        modelId: 'default',
+        color: '#ffffff',
+        scaleX: 1.0,
+        scaleY: 1.0,
+        scaleZ: 1.0,
+        rotation: 0,
+        elevation: 0
+      };
+    }
+    const cust = tumulusCustomizations[idx];
+    if (cust.elevation === undefined) cust.elevation = 0;
+
+    const card = document.createElement('div');
+    card.className = 'mosque-custom-card';
+
+    let modelOptionsHtml = `
+      <option value="default" ${cust.modelId === 'default' ? 'selected' : ''}>${t('catGlobal') || 'Global Default'}</option>
+      <option value="procedural" ${cust.modelId === 'procedural' ? 'selected' : ''}>${t('catProcedural') || 'Procedural'}</option>
+    `;
+    uploadedModels.filter(m => m.category === 'tumulus').forEach(m => {
+      modelOptionsHtml += `<option value="${m.id}" ${cust.modelId === m.id ? 'selected' : ''}>${m.name}</option>`;
+    });
+
+    card.innerHTML = `
+      <div class="mosque-custom-card-header">
+        <strong>${name}</strong>
+      </div>
+      <div class="mosque-custom-card-grid">
+        <div class="mosque-custom-field">
+          <span>${t('lblModel') || 'Model'}</span>
+          <select class="tumulus-model-select">${modelOptionsHtml}</select>
+        </div>
+        <div class="mosque-custom-field">
+          <span>${t('lblColor') || 'Color'}</span>
+          <input type="color" class="tumulus-color-input" value="${cust.color || '#ffffff'}">
+        </div>
+        <div class="mosque-custom-field">
+          <span>${t('lblScaleX') || 'Scale X'}</span>
+          <div class="mosque-custom-slider-row">
+            <input type="range" class="tumulus-scale-x" min="0.1" max="5.0" step="0.1" value="${cust.scaleX}">
+            <span class="scale-x-val" style="min-width:24px; text-align:right;">${cust.scaleX}</span>
+          </div>
+        </div>
+        <div class="mosque-custom-field">
+          <span>${t('lblScaleY') || 'Scale Y'}</span>
+          <div class="mosque-custom-slider-row">
+            <input type="range" class="tumulus-scale-y" min="0.1" max="5.0" step="0.1" value="${cust.scaleY}">
+            <span class="scale-y-val" style="min-width:24px; text-align:right;">${cust.scaleY}</span>
+          </div>
+        </div>
+        <div class="mosque-custom-field">
+          <span>${t('lblScaleZ') || 'Scale Z'}</span>
+          <div class="mosque-custom-slider-row">
+            <input type="range" class="tumulus-scale-z" min="0.1" max="5.0" step="0.1" value="${cust.scaleZ}">
+            <span class="scale-z-val" style="min-width:24px; text-align:right;">${cust.scaleZ}</span>
+          </div>
+        </div>
+        <div class="mosque-custom-field">
+          <span>${t('lblRotation') || 'Rotation'}</span>
+          <div class="mosque-custom-slider-row">
+            <input type="range" class="tumulus-rotation" min="0" max="360" step="5" value="${cust.rotation}">
+            <span class="rotation-val" style="min-width:24px; text-align:right;">${cust.rotation}</span>
+          </div>
+        </div>
+        <div class="mosque-custom-field">
+          <span>${t('lblElevation') || 'Elevation'}</span>
+          <div class="mosque-custom-slider-row">
+            <input type="range" class="tumulus-elevation" min="-15" max="30" step="0.5" value="${cust.elevation}">
+            <span class="elevation-val" style="min-width:32px; text-align:right;">${Number(cust.elevation).toFixed(1)}m</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    let debounceTimer;
+    const triggerRebuild = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        saveTumulusCustomizations();
+        rebuildTumulusLayerPartially();
+      }, 50);
+    };
+
+    card.querySelector('.tumulus-model-select').addEventListener('change', (e) => {
+      cust.modelId = e.target.value;
+      triggerRebuild();
+    });
+    card.querySelector('.tumulus-color-input').addEventListener('input', (e) => {
+      cust.color = e.target.value;
+      triggerRebuild();
+    });
+    const sx = card.querySelector('.tumulus-scale-x');
+    const sxv = card.querySelector('.scale-x-val');
+    sx.addEventListener('input', (e) => { cust.scaleX = parseFloat(e.target.value); sxv.innerText = cust.scaleX; triggerRebuild(); });
+    const sy = card.querySelector('.tumulus-scale-y');
+    const syv = card.querySelector('.scale-y-val');
+    sy.addEventListener('input', (e) => { cust.scaleY = parseFloat(e.target.value); syv.innerText = cust.scaleY; triggerRebuild(); });
+    const sz = card.querySelector('.tumulus-scale-z');
+    const szv = card.querySelector('.scale-z-val');
+    sz.addEventListener('input', (e) => { cust.scaleZ = parseFloat(e.target.value); szv.innerText = cust.scaleZ; triggerRebuild(); });
+    const rot = card.querySelector('.tumulus-rotation');
+    const rotv = card.querySelector('.rotation-val');
+    rot.addEventListener('input', (e) => { cust.rotation = parseInt(e.target.value); rotv.innerText = cust.rotation; triggerRebuild(); });
+    const elev = card.querySelector('.tumulus-elevation');
+    const elevv = card.querySelector('.elevation-val');
+    elev.addEventListener('input', (e) => { cust.elevation = parseFloat(e.target.value); elevv.innerText = cust.elevation.toFixed(1) + 'm'; triggerRebuild(); });
+
+    container.appendChild(card);
+  });
+}
+
 function initModelStudioListeners() {
   const uploadFileInput = document.getElementById('upload-model-file');
   const uploadCategorySelect = document.getElementById('upload-model-category');
@@ -2488,6 +2646,7 @@ function initModelStudioListeners() {
         renderTreePoolList();
         renderModelTransformControls();
         renderMosqueCustomizationsList();
+        renderTumulusCustomizationsList();
         rebuildCategoryLayer(category);
 
       } catch (err) {
@@ -6401,10 +6560,8 @@ function buildTumulusLayer(tumulus, tumulusModel) {
   const globalActiveEntry = settings.activeTumulusModel !== 'default'
     ? uploadedModels.find(m => m.id === settings.activeTumulusModel)
     : null;
-  // Build one template (uploaded GLB or the default procedural mound) and clone
-  // it per feature. clone() shares geometry/materials, so per-feature position,
-  // scale and rotation never alias back onto the template.
-  const template = globalActiveEntry
+  // Global template: uploaded GLB, optional bundled GLB, or the default procedural mound.
+  const globalTemplate = globalActiveEntry
     ? globalActiveEntry.scene
     : (tumulusModel ? tumulusModel : createProceduralTumulus());
 
@@ -6415,25 +6572,55 @@ function buildTumulusLayer(tumulus, tumulusModel) {
   tumulus.features.forEach((f, index) => {
     if (!f.geometry || f.geometry.type !== 'Point') return;
     const [x, z] = metersToLocal(f.geometry.coordinates[0], f.geometry.coordinates[1]);
-    const y = terrainLocalYAt(x, z) + LAYER.content + (settings.tumulusElevation || 0);
+    const cust = tumulusCustomizations[index] || {};
+    const y = terrainLocalYAt(x, z) + LAYER.content + (settings.tumulusElevation || 0) + (Number(cust.elevation) || 0);
+
+    // Per-placement model override: procedural mound, an uploaded tumulus model, or the global template.
+    let template = globalTemplate;
+    if (cust.modelId === 'procedural') {
+      template = createProceduralTumulus();
+    } else if (cust.modelId && cust.modelId !== 'default') {
+      const modelEntry = uploadedModels.find(m => m.id === cust.modelId);
+      if (modelEntry) template = modelEntry.scene;
+    }
 
     const m = template.clone();
     m.position.set(x, y, z);
 
     const props = f.properties || {};
-    // Per-feature uniform multiplier from attributes, on top of the global X/Y/Z scale.
+    // Per-feature attribute multiplier and per-placement overrides stack on the global X/Y/Z scale.
     const pScale = parseNumberProp(props, ['planx_scale', 'scale', 'tumulus_scale', 'olcek', 'ölçek'], 1.0);
-    m.scale.set(gScaleX * pScale, gScaleY * pScale, gScaleZ * pScale);
+    const sx = (cust.scaleX !== undefined ? cust.scaleX : pScale) * gScaleX;
+    const sy = (cust.scaleY !== undefined ? cust.scaleY : pScale) * gScaleY;
+    const sz = (cust.scaleZ !== undefined ? cust.scaleZ : pScale) * gScaleZ;
+    m.scale.set(sx, sy, sz);
 
-    const deg = numericPropFirst(props, ['planx_angle', 'planx_rotation', 'angle', 'rotation', 'yon', 'yön']);
-    m.rotation.y = deg !== null
-      ? -THREE.MathUtils.degToRad(deg)
-      : -THREE.MathUtils.degToRad(settings.tumulusRotation || 0);
+    if (cust.rotation !== undefined) {
+      m.rotation.y = -THREE.MathUtils.degToRad(cust.rotation);
+    } else {
+      const deg = numericPropFirst(props, ['planx_angle', 'planx_rotation', 'angle', 'rotation', 'yon', 'yön']);
+      m.rotation.y = deg !== null
+        ? -THREE.MathUtils.degToRad(deg)
+        : -THREE.MathUtils.degToRad(settings.tumulusRotation || 0);
+    }
 
+    const tintColor = cust.color || '#ffffff';
     m.traverse(child => {
       if (child.isMesh) {
         child.castShadow = true;
         child.receiveShadow = true;
+        if (cust.color && cust.color !== '#ffffff') {
+          if (Array.isArray(child.material)) {
+            child.material = child.material.map(mat => {
+              const newMat = mat.clone();
+              newMat.color.set(tintColor);
+              return newMat;
+            });
+          } else {
+            child.material = child.material.clone();
+            child.material.color.set(tintColor);
+          }
+        }
       }
     });
     tumulusGroup.add(m);
@@ -8139,6 +8326,9 @@ async function rebuildScene() {
   if (typeof renderMosqueCustomizationsList === 'function') {
     renderMosqueCustomizationsList();
   }
+  if (typeof renderTumulusCustomizationsList === 'function') {
+    renderTumulusCustomizationsList();
+  }
   setSceneState('sceneReady');
 
   hideLoadingOverlay();
@@ -8894,6 +9084,7 @@ function updateHtmlLang() {
     if (typeof renderTreePoolList === 'function') renderTreePoolList();
     if (typeof renderModelTransformControls === 'function') renderModelTransformControls();
     if (typeof renderMosqueCustomizationsList === 'function') renderMosqueCustomizationsList();
+    if (typeof renderTumulusCustomizationsList === 'function') renderTumulusCustomizationsList();
   }
 }
 
@@ -9542,6 +9733,7 @@ function initDockUi() {
       renderTreePoolList();
       renderModelTransformControls();
       renderMosqueCustomizationsList();
+      renderTumulusCustomizationsList();
     }
   });
   document.getElementById('advanced-toggle')?.addEventListener('click', () => {
