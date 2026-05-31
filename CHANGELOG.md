@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.44] - 2026-05-31
+
+- Model Studio's dynamic panels (Library Models, Tree Model Pool, Model Transform, Mosque placements) now re-render on language toggle, so their labels follow the English/Turkish switch while the dock stays open.
+- Optimized tumulus rendering to build a single template (uploaded GLB or the default procedural mound) and clone it per feature, sharing geometry and materials.
+- Minor cleanups: hoisted tree scale lookups out of the per-tree loop and removed an unused i18n key.
+- Updated the viewer module cache key to app.js?v=0.8.44.
+
 ## [0.8.43] - 2026-05-31
 
 - Added a Rotation slider to the Model Studio Model Transform panel for the mosque and tumulus categories; the tumulus global rotation now drives placement instead of a pseudo-random angle, so uploaded tumulus GLB models can be oriented.

@@ -147,7 +147,6 @@ Object.assign(i18n.TR, {
   catBusStop: 'Otobüs Durağı',
   catTumulus: 'Tümülüs',
   lblTumulus: 'Tümülüsler',
-  modelElevationTitle: 'Model Yüksekliği (Y Ofset)',
   modelTransformTitle: 'Model Dönüşümü (Yükseklik & Ölçek)',
   lblTransformCategory: 'Kategori',
   treePoolTitle: 'Ağaç Model Havuzu (rastgele)',
@@ -243,7 +242,6 @@ Object.assign(i18n.EN, {
   catBusStop: 'Bus Stop',
   catTumulus: 'Tumulus',
   lblTumulus: 'Tumuli',
-  modelElevationTitle: 'Model Elevation (Y Offset)',
   modelTransformTitle: 'Model Transform (Elevation & Scale)',
   lblTransformCategory: 'Category',
   treePoolTitle: 'Tree Model Pool (random)',
@@ -6110,6 +6108,9 @@ function buildTreeLayer(agaclar, treeModel) {
     : (customModelEntry ? [customModelEntry.scene] : (treeModel ? [treeModel] : []));
 
   if (modelBasedTrees && modelScenes.length) {
+    const tsx = settings.treeScaleX !== undefined ? settings.treeScaleX : 1.0;
+    const tsy = settings.treeScaleY !== undefined ? settings.treeScaleY : 1.0;
+    const tsz = settings.treeScaleZ !== undefined ? settings.treeScaleZ : 1.0;
     buckets.forEach((trees) => {
       trees.forEach(({ x, y, z, h }) => {
         const pick = modelScenes.length > 1
@@ -6118,9 +6119,6 @@ function buildTreeLayer(agaclar, treeModel) {
         const m = pick.clone();
         m.position.set(x, y, z);
         const scaleFactor = h / 8.0;
-        const tsx = settings.treeScaleX !== undefined ? settings.treeScaleX : 1.0;
-        const tsy = settings.treeScaleY !== undefined ? settings.treeScaleY : 1.0;
-        const tsz = settings.treeScaleZ !== undefined ? settings.treeScaleZ : 1.0;
         m.scale.set(scaleFactor * tsx, scaleFactor * tsy, scaleFactor * tsz);
         const rot = ((x * 13.7 + z * 7.3) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
         m.rotation.y = rot;
@@ -6403,10 +6401,12 @@ function buildTumulusLayer(tumulus, tumulusModel) {
   const globalActiveEntry = settings.activeTumulusModel !== 'default'
     ? uploadedModels.find(m => m.id === settings.activeTumulusModel)
     : null;
-  const globalTemplate = globalActiveEntry
+  // Build one template (uploaded GLB or the default procedural mound) and clone
+  // it per feature. clone() shares geometry/materials, so per-feature position,
+  // scale and rotation never alias back onto the template.
+  const template = globalActiveEntry
     ? globalActiveEntry.scene
     : (tumulusModel ? tumulusModel : createProceduralTumulus());
-  const usingDefaultMound = !globalActiveEntry && !tumulusModel;
 
   const gScaleX = settings.tumulusScaleX !== undefined ? settings.tumulusScaleX : 1.0;
   const gScaleY = settings.tumulusScaleY !== undefined ? settings.tumulusScaleY : 1.0;
@@ -6417,9 +6417,7 @@ function buildTumulusLayer(tumulus, tumulusModel) {
     const [x, z] = metersToLocal(f.geometry.coordinates[0], f.geometry.coordinates[1]);
     const y = terrainLocalYAt(x, z) + LAYER.content + (settings.tumulusElevation || 0);
 
-    // Each procedural mound is built fresh so per-feature tweaks never alias.
-    const template = usingDefaultMound ? createProceduralTumulus() : globalTemplate;
-    const m = usingDefaultMound ? template : template.clone();
+    const m = template.clone();
     m.position.set(x, y, z);
 
     const props = f.properties || {};
@@ -8889,6 +8887,14 @@ function updateHtmlLang() {
   if (scenePill?.dataset.sceneI18n) scenePill.textContent = t(scenePill.dataset.sceneI18n);
   renderFunctionStyleDock();
   renderTourList();
+  // Re-render Model Studio's dynamic panels so their labels follow the language.
+  const studioDock = document.getElementById('model-studio-dock');
+  if (studioDock && !studioDock.classList.contains('hidden')) {
+    if (typeof renderUploadedModelsList === 'function') renderUploadedModelsList();
+    if (typeof renderTreePoolList === 'function') renderTreePoolList();
+    if (typeof renderModelTransformControls === 'function') renderModelTransformControls();
+    if (typeof renderMosqueCustomizationsList === 'function') renderMosqueCustomizationsList();
+  }
 }
 
 const panelToggleBtn = document.getElementById('panel-toggle');
