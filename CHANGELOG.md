@@ -1,21 +1,27 @@
 # Changelog
 
+## [0.8.43] - 2026-05-31
+
+- Added a Rotation slider to the Model Studio Model Transform panel for the mosque and tumulus categories; the tumulus global rotation now drives placement instead of a pseudo-random angle, so uploaded tumulus GLB models can be oriented.
+- Converted the remaining changelog entries to English so the release notes are uniformly English.
+- Updated the viewer module cache key to app.js?v=0.8.43.
+
 ## [0.8.42] - 2026-05-31
 
-- Model Laboratuvari'na kategori bazli Model Donusumu paneli eklendi: kategori secici (cami, tumulus, agac, lamba, bank, cop kutusu, durak) ile Yukseklik ve Olcek X/Y/Z kaydiraclari; ozellikle tumulus ve cami boyutlandirmasi icin.
-- Global cami/tumulus/agac/mobilya olcegi, obje basina veya oznitelik tabanli olceklerle carpim olarak uygulaniyor; boylece kategori kaydiraclari her zaman etkili.
-- Viewer modul onbellek anahtari app.js?v=0.8.42 olarak guncellendi.
+- Added a category-based Model Transform panel to Model Studio: a category selector (mosque, tumulus, tree, light, bench, bin, bus stop) exposing Elevation and Scale X/Y/Z sliders, especially for tumulus and mosque sizing.
+- Global mosque/tumulus/tree/furniture scale now multiplies with per-feature attribute or per-placement overrides, so the category sliders always take effect.
+- Updated the viewer module cache key to app.js?v=0.8.42.
 
 ## [0.8.41] - 2026-05-31
 
-- Model Laboratuvari'na Tumulus (hoyuk) destegi: yeni opsiyonel nokta katmani (mytumulus.geojson) QGIS yayinlayicisinda secilebilir, GLB modeli yuklenebilir; model yuklenmezse varsayilan prosedurel hoyuk modeli (toprak kubbe + tas cember) cizilir. Katmanlar panelinde gorunurluk anahtari eklendi.
-- Her model kategorisi (cami, tumulus, agac, lamba, bank, cop kutusu, durak) icin Model Yuksekligi (Y ofset) kaydiraci eklendi; yer altinda kalan modeller (orn. cami) yukari tasinabilir. Cami kartlarina ek olarak obje basina yukseklik kontrolu geldi.
-- Agaclar icin coklu model havuzu: Model Laboratuvari'ndan 2-3 agac GLB modeli eklenip havuzdan rastgele (deterministik) secimle yerlestirilebilir. Havuz bossa varsayilan stilize agaclar korunur.
-- Viewer modul onbellek anahtari app.js?v=0.8.41 olarak guncellendi.
+- Added Tumulus (burial mound) support to Model Studio: a new optional point layer (mytumulus.geojson) selectable in the QGIS publisher with optional GLB upload; when no model is uploaded a default procedural mound model (earthen dome + stone retaining ring) is rendered. Added a Tumulus visibility toggle to the Layers panel.
+- Added a Model Elevation (Y offset) slider per model category (mosque, tumulus, tree, light, bench, bin, bus stop) so models that sink below the terrain (e.g. mosque) can be raised. Mosque placement cards also gained a per-feature elevation control.
+- Added a multi-model tree pool: upload 2-3 tree GLB models in Model Studio and trees are placed by deterministic random selection from the pool. The default stylized trees remain when the pool is empty.
+- Updated the viewer module cache key to app.js?v=0.8.41.
 
 ## [0.8.40] - 2026-05-30
 
-- Ozel 3D model yukleme paneli (Model Laboratuvari), her cami objesi icin ayri model/renk/olcek/aci kontrolu, sokak mobilyalari/agaclar icin model kutuphanesinden sablon atama ve otomatik katman aktiflestirme.
+- Added a custom 3D model upload panel (Model Studio), per-mosque model/color/scale/angle controls, library-model template assignment for street furniture and trees, and automatic layer activation.
 
 ## [0.8.38] - 2026-05-29
 

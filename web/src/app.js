@@ -1584,6 +1584,7 @@ const settings = {
   tumulusScaleX: 1.0,
   tumulusScaleY: 1.0,
   tumulusScaleZ: 1.0,
+  tumulusRotation: 0.0,
   showFurniture: false,
   showCars: false,
   showRoads: true,
@@ -1681,7 +1682,7 @@ const PERSISTED_SETTING_KEYS = [
   'floorHeight', 'roofTexture', 'roofShape', 'roofHeight', 'roadStyle', 'roadColor', 'roadColorMode', 'roadWidth',
   'showLights', 'lightStyle', 'showBenches', 'benchStyle', 'showBins', 'binStyle', 'showBusStops', 'stopStyle',
   'showIslands', 'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture', 'showMosques',
-  'showTumulus', 'tumulusScaleX', 'tumulusScaleY', 'tumulusScaleZ',
+  'showTumulus', 'tumulusScaleX', 'tumulusScaleY', 'tumulusScaleZ', 'tumulusRotation',
   'mosqueScaleX', 'mosqueScaleY', 'mosqueScaleZ', 'mosqueRotation',
   'mosqueElevation', 'tumulusElevation', 'treeElevation', 'lightElevation', 'benchElevation', 'binElevation', 'busstopElevation',
   'treeScaleX', 'treeScaleY', 'treeScaleZ', 'lightScaleX', 'lightScaleY', 'lightScaleZ',
@@ -2221,6 +2222,12 @@ const CATEGORY_SCALE_KEYS = {
   busstop: ['busstopScaleX', 'busstopScaleY', 'busstopScaleZ'],
 };
 
+// Categories whose global rotation is meaningful from the Transform panel.
+const CATEGORY_ROTATION_KEY = {
+  mosque: 'mosqueRotation',
+  tumulus: 'tumulusRotation',
+};
+
 function activeTransformCategory() {
   const sel = document.getElementById('transform-category');
   return (sel && sel.value) || 'mosque';
@@ -2235,6 +2242,7 @@ function renderModelTransformControls() {
   const cat = activeTransformCategory();
   const elevKey = CATEGORY_ELEVATION_KEY[cat];
   const scaleKeys = CATEGORY_SCALE_KEYS[cat];
+  const rotKey = CATEGORY_ROTATION_KEY[cat];
 
   const makeSliderRow = (labelText, key, min, max, step, fmt) => {
     const current = Number(settings[key]);
@@ -2271,6 +2279,9 @@ function renderModelTransformControls() {
     makeSliderRow(t('lblScaleX') || 'Scale X', scaleKeys[0], 0.1, 10, 0.1, (v) => v.toFixed(1) + 'x');
     makeSliderRow(t('lblScaleY') || 'Scale Y', scaleKeys[1], 0.1, 10, 0.1, (v) => v.toFixed(1) + 'x');
     makeSliderRow(t('lblScaleZ') || 'Scale Z', scaleKeys[2], 0.1, 10, 0.1, (v) => v.toFixed(1) + 'x');
+  }
+  if (rotKey) {
+    makeSliderRow(t('lblRotation') || 'Rotation', rotKey, 0, 360, 1, (v) => Math.round(v) + '°');
   }
 }
 
@@ -6417,7 +6428,9 @@ function buildTumulusLayer(tumulus, tumulusModel) {
     m.scale.set(gScaleX * pScale, gScaleY * pScale, gScaleZ * pScale);
 
     const deg = numericPropFirst(props, ['planx_angle', 'planx_rotation', 'angle', 'rotation', 'yon', 'yön']);
-    m.rotation.y = deg !== null ? -THREE.MathUtils.degToRad(deg) : (x * 11.3 + z * 5.1) % (Math.PI * 2);
+    m.rotation.y = deg !== null
+      ? -THREE.MathUtils.degToRad(deg)
+      : -THREE.MathUtils.degToRad(settings.tumulusRotation || 0);
 
     m.traverse(child => {
       if (child.isMesh) {
