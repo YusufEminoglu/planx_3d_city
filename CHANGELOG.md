@@ -1,14 +1,12 @@
 # Changelog
 
+## [0.8.51] - 2026-06-01
+
+- Finalize dedicated bike lane layer and per-function setback toggles
+
 ## [0.8.50] - 2026-06-01
 
 - Use dedicated bike lane layer and per-function setback toggles
-
-## [0.8.50] - 2026-06-01
-
-- Move bicycle lanes to a dedicated optional layer export (`bike_lanes` / `mybikelanes.geojson`) and run bicycle simulation only on that layer.
-- Add per-building-function setback enable/disable controls while keeping setback enabled by default for existing categories.
-- Update the viewer module cache key to app.js?v=0.8.50.
 
 ## [0.8.49] - 2026-06-01
 
