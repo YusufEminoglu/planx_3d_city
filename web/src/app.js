@@ -7874,18 +7874,21 @@ function buildSidewalkPolygonLayer(sidewalks, buildToken = sceneBuildToken) {
   }
 }
 
-function buildSidewalkLayer(yollar, sidewalks = EMPTY_GEOJSON, buildToken = sceneBuildToken) {
-  clearGroup(sidewalkGroup);
-  if (!settings.showSidewalks) return;
-  if (sidewalks?.features?.length) {
-    buildSidewalkPolygonLayer(sidewalks, buildToken);
-    return;
-  }
+function buildProceduralSidewalkStrips(yollar, buildToken = sceneBuildToken) {
   if (!yollar?.features?.length) return;
 
   const swWidth = 1.3;
   const sidewalkTex = createSidewalkTexture(settings.sidewalkColor);
-  const swMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: sidewalkTex, roughness: 0.95, metalness: 0.0 });
+  const swMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    map: sidewalkTex,
+    roughness: 0.95,
+    metalness: 0.0,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -3,
+    polygonOffsetUnits: -3
+  });
 
   for (const f of yollar.features) {
     if (!f.geometry || f.geometry.type !== 'LineString') continue;
@@ -7943,6 +7946,16 @@ function buildSidewalkLayer(yollar, sidewalks = EMPTY_GEOJSON, buildToken = scen
       sidewalkGroup.add(mesh);
     }
   }
+}
+
+function buildSidewalkLayer(yollar, sidewalks = EMPTY_GEOJSON, buildToken = sceneBuildToken) {
+  clearGroup(sidewalkGroup);
+  if (!settings.showSidewalks) return;
+  if (sidewalks?.features?.length) {
+    buildSidewalkPolygonLayer(sidewalks, buildToken);
+    if (isSceneBuildStale(buildToken)) return;
+  }
+  buildProceduralSidewalkStrips(yollar, buildToken);
 }
 
 function pedestrianPathWidth(feature) {
