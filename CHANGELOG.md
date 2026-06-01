@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.48] - 2026-06-01
+
+- Add procedural road, sidewalk, roof color controls and wider model elevation range
+
 ## [0.8.47] - 2026-05-31
 
 - Added a Building floor count field mapping to the QGIS publisher. Building height = floor count x floor height; previously the count was read only from a hard-coded `katadedi` column.
