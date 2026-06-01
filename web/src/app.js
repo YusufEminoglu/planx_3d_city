@@ -131,7 +131,7 @@ Object.assign(i18n.TR, {
   lblRoofTexture: 'Cati dokusu', lblRoofColor: 'Cati rengi', lblFunctionStyles: 'Kullanim renkleri ve cepheleri',
   lblRoadAnalysis: 'Yol analizi', lblRoadWidth: 'Yol genisligi',
   lblTrafficSpeed: 'Trafik hizi', lblCarDensity: 'Arac yogunlugu', lblPedDensity: 'Yaya yogunlugu',
-  lblBikeLaneWidth: 'Bisiklet yolu genisligi', lblBikeLaneSide: 'Bisiklet yolu tarafi', lblBikeLaneColor: 'Bisiklet yolu rengi',
+  lblBikeLaneWidth: 'Bisiklet yolu genisligi', lblBikeLaneColor: 'Bisiklet yolu rengi',
   lblBikeDensity: 'Bisiklet yogunlugu', lblBikeSpeed: 'Bisiklet hizi',
   lblLights: 'Aydinlatmalar', lblLightStyle: 'Aydinlatma tipi', lblBenches: 'Banklar',
   lblBenchStyle: 'Bank tipi', lblBins: 'Cop kutulari', lblBinStyle: 'Cop kutusu tipi',
@@ -231,7 +231,7 @@ Object.assign(i18n.EN, {
   lblRoofTexture: 'Roof texture', lblRoofColor: 'Roof color', lblFunctionStyles: 'Function colors and facades',
   lblRoadAnalysis: 'Road analysis', lblRoadWidth: 'Road width',
   lblTrafficSpeed: 'Traffic speed', lblCarDensity: 'Car density', lblPedDensity: 'Pedestrian density',
-  lblBikeLaneWidth: 'Bike lane width', lblBikeLaneSide: 'Bike lane side', lblBikeLaneColor: 'Bike lane color',
+  lblBikeLaneWidth: 'Bike lane width', lblBikeLaneColor: 'Bike lane color',
   lblBikeDensity: 'Bike density', lblBikeSpeed: 'Bike speed',
   lblLights: 'Lights', lblLightStyle: 'Light style', lblBenches: 'Benches',
   lblBenchStyle: 'Bench style', lblBins: 'Trash bins', lblBinStyle: 'Trash bin style',
@@ -1579,7 +1579,6 @@ const settings = {
   roadWidth: 8.0,
   showBikeLanes: true,
   bikeLaneWidth: 3.0,
-  bikeLaneSide: 'Both sides',
   bikeLaneColor: '#16a34a',
   showBikes: true,
   bikeDensity: 0.12,
@@ -1709,7 +1708,7 @@ const PERSISTED_SETTING_KEYS = [
   'pavementStyle', 'hardscapeStyle', 'hardscapeHeight', 'buildingMode', 'facadeTextureScale', 'terrainAnalysisMode', 'showXyzTiles', 'xyzTileUrl',
   'assetTheme',
   'floorHeight', 'roofTexture', 'roofShape', 'roofHeight', 'roadStyle', 'roadColor', 'sidewalkColor', 'roadColorMode', 'roadWidth',
-  'showBikeLanes', 'bikeLaneWidth', 'bikeLaneSide', 'bikeLaneColor', 'showBikes', 'bikeDensity', 'bikeSpeed',
+  'showBikeLanes', 'bikeLaneWidth', 'bikeLaneColor', 'showBikes', 'bikeDensity', 'bikeSpeed',
   'showLights', 'lightStyle', 'showBenches', 'benchStyle', 'showBins', 'binStyle', 'showBusStops', 'stopStyle',
   'showIslands', 'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture', 'showMosques',
   'showTumulus', 'tumulusScaleX', 'tumulusScaleY', 'tumulusScaleZ', 'tumulusRotation',
@@ -1785,7 +1784,8 @@ function defaultFunctionBuildingStyle(fn, index = 0) {
     roofShape: roofShapeValue(settings.roofShape, 'Pyramid'),
     roofHeight: settings.roofHeight,
     roofTexture: presetValue(settings.roofTexture, textureSets.roof, 'RoofA'),
-    roofColor: '#ffffff'
+    roofColor: '#ffffff',
+    setbackEnabled: true
   };
 }
 
@@ -1799,7 +1799,8 @@ function sanitizeFunctionBuildingStyle(style, fallback) {
     roofShape: roofShapeValue(base.roofShape, fallback.roofShape),
     roofHeight: Math.max(0, Math.min(8, Number(base.roofHeight) || fallback.roofHeight)),
     roofTexture: presetValue(base.roofTexture, textureSets.roof, fallback.roofTexture),
-    roofColor: normalizeHexColor(base.roofColor, fallback.roofColor)
+    roofColor: normalizeHexColor(base.roofColor, fallback.roofColor),
+    setbackEnabled: base.setbackEnabled !== false
   };
 }
 
@@ -7266,6 +7267,7 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
     const levels = buildingLevels(f.properties);
     const featureFloorHeight = parseNumberProp(props, ['planx_floor_height', 'floor_height', 'kat_yuksekligi', 'kat_yüksekliği'], fnStyle.floorHeight);
     const height = buildingHeightFromProps(props, levels, featureFloorHeight);
+    const featureSetback = fnStyle.setbackEnabled !== false ? Math.max(0, Number(settings.buildingSetback) || 0) : 0;
     const featureColor = normalizeHexColor(propFirst(props, ['planx_color', 'planx_renk', 'color', 'renk']), fnStyle.color);
     const selectedFacadeRaw = presetValue(propFirst(props, ['planx_facade', 'planx_texture', 'facade', 'cephe', 'doku']), textureSets.facade, fnStyle.facade);
     const selectedFacade = normalizeFacadeKey(selectedFacadeRaw);
@@ -7352,7 +7354,7 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
 
       const useSeparateRoofMesh = settings.buildingMode === 'Extruded + roof';
       
-      const podiumHeight = (levels > 2 && settings.buildingSetback > 0) ? featureFloorHeight : 0;
+      const podiumHeight = (levels > 2 && featureSetback > 0) ? featureFloorHeight : 0;
       let finalTowerShape = shape;
       let finalTowerFootprint = footprint;
       const buildingData = {
@@ -7399,10 +7401,10 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
         buildingGroup.add(podMesh);
 
         // 2. Setback Tower
-        const inset = shapeFromInsetPolygon(poly, settings.buildingSetback);
+        const inset = shapeFromInsetPolygon(poly, featureSetback);
         if (inset) {
           finalTowerShape = inset;
-          const outerInset = offsetRing(poly[0], settings.buildingSetback, false);
+          const outerInset = offsetRing(poly[0], featureSetback, false);
           if (outerInset && outerInset.length >= 3) {
             finalTowerFootprint = outerInset.map(pt => new THREE.Vector3(pt.x, 0, pt.y));
           }
@@ -7476,7 +7478,7 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
 
         for (let i = 1; i < levels; i++) {
           const slabY = baseY + i * featureFloorHeight;
-          const slabSetback = ((i === 1 && podiumHeight > 0) ? 0 : (podiumHeight > 0 ? settings.buildingSetback : 0)) - settings.ledgeProjection;
+          const slabSetback = ((i === 1 && podiumHeight > 0) ? 0 : (podiumHeight > 0 ? featureSetback : 0)) - settings.ledgeProjection;
           const outsetShape = shapeFromInsetPolygon(poly, slabSetback);
           if (outsetShape) {
             const slabGeom = new THREE.ExtrudeGeometry(outsetShape, { depth: slabThickness, bevelEnabled: false });
@@ -7525,6 +7527,8 @@ function buildZoningEnvelopesLayer(yapilar) {
     const featureFloorHeight = parseNumberProp(props, ['planx_floor_height', 'floor_height', 'kat_yuksekligi', 'kat_yüksekliği'], fnStyle.floorHeight);
     const height = buildingHeightFromProps(props, levels, featureFloorHeight);
 
+    const featureSetback = fnStyle.setbackEnabled !== false ? Math.max(0, Number(settings.buildingSetback) || 0) : 0;
+
     const poly = getPolygonRings(f.geometry);
     const outer = poly?.[0];
     if (!outer || outer.length < 3) continue;
@@ -7541,7 +7545,7 @@ function buildZoningEnvelopesLayer(yapilar) {
     if (minY !== 0) extrude.translate(0, -minY, 0);
 
     const heightViolation = height > zoningHeight;
-    const setbackViolation = zoningSetbackVal > 0 && settings.buildingSetback < zoningSetbackVal && levels > 2;
+    const setbackViolation = zoningSetbackVal > 0 && featureSetback < zoningSetbackVal && levels > 2;
     const violated = highlight && (heightViolation || setbackViolation);
 
     const envelopeColor = violated ? 0xef4444 : 0x10b981;
@@ -7618,16 +7622,6 @@ function createPedestrianModel(index = 0) {
   return { mesh: root, limbRefs: { leftArm, rightArm, leftLeg, rightLeg, leftShoe, rightShoe } };
 }
 
-function bikeLaneSideSigns() {
-  if (settings.bikeLaneSide === 'Left side') return [-1];
-  if (settings.bikeLaneSide === 'Right side') return [1];
-  return [-1, 1];
-}
-
-function sideHasBikeLane(side) {
-  return settings.showBikeLanes && bikeLaneSideSigns().includes(side);
-}
-
 function createBikeLaneTexture(baseColor = settings.bikeLaneColor) {
   const base = colorObjectFromHex(baseColor, '#16a34a');
   const cacheKey = `bike:${base.getHexString()}`;
@@ -7660,10 +7654,17 @@ function createBikeLaneTexture(baseColor = settings.bikeLaneColor) {
   return t;
 }
 
-function addBikeLaneForRoad(curve, centers, featureWidth) {
-  if (!settings.showBikeLanes || centers.length < 2) return;
-  const laneWidth = Math.max(1.5, Math.min(5, Number(settings.bikeLaneWidth) || 3));
-  const laneMat = new THREE.MeshStandardMaterial({
+function bikeLaneFeatureWidth(feature) {
+  const width = parseNumberProp(
+    feature?.properties || {},
+    ['planx_width', 'bike_lane_width', 'cycleway_width', 'width', 'genislik', 'bisiklet_yolu_genisligi'],
+    settings.bikeLaneWidth
+  );
+  return Math.max(1.5, Math.min(5, width || 3));
+}
+
+function createBikeLaneMaterial() {
+  return new THREE.MeshStandardMaterial({
     color: 0xffffff,
     map: createBikeLaneTexture(settings.bikeLaneColor),
     roughness: 0.88,
@@ -7673,45 +7674,123 @@ function addBikeLaneForRoad(curve, centers, featureWidth) {
     polygonOffsetFactor: -5,
     polygonOffsetUnits: -5
   });
+}
 
-  for (const side of bikeLaneSideSigns()) {
-    const innerOff = featureWidth * 0.5 * side;
-    const outerOff = (featureWidth * 0.5 + laneWidth) * side;
-    const centerOff = (featureWidth * 0.5 + laneWidth * 0.5) * side;
-    const positions = [];
-    const uvs = [];
-    const indices = [];
-    const laneCenters = [];
-
-    for (let i = 0; i < centers.length; i++) {
-      const p = centers[i];
-      const tangent = curve.getTangent(i / Math.max(1, centers.length - 1));
-      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-      const left = new THREE.Vector3(p.x + normal.x * innerOff, p.y + 0.025, p.z + normal.z * innerOff);
-      const right = new THREE.Vector3(p.x + normal.x * outerOff, p.y + 0.025, p.z + normal.z * outerOff);
-      const laneCenter = new THREE.Vector3(p.x + normal.x * centerOff, p.y + 0.055, p.z + normal.z * centerOff);
-      positions.push(left.x, left.y, left.z, right.x, right.y, right.z);
-      const v = i / Math.max(1, centers.length - 1);
-      uvs.push(0, v * 8, 1, v * 8);
-      laneCenters.push(laneCenter);
-    }
-
-    for (let i = 0; i < centers.length - 1; i++) {
-      const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
-      indices.push(a, c, b, c, d, b);
-    }
-
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-    geo.setIndex(indices);
-    geo.computeVertexNormals();
-    const mesh = new THREE.Mesh(geo, laneMat);
-    mesh.receiveShadow = true;
-    mesh.renderOrder = 32;
-    bikeLaneGroup.add(mesh);
-    bikeLaneCurves.push(new THREE.CatmullRomCurve3(laneCenters, false, 'centripetal'));
+function createBikeLaneCurve(coords, closed = false) {
+  const xzPts = [];
+  for (const c of coords || []) {
+    if (!c || c.length < 2) continue;
+    const [x, z] = metersToLocal(c[0], c[1]);
+    xzPts.push(new THREE.Vector3(x, 0, z));
   }
+  if (xzPts.length < 2) return null;
+  const xzCurve = new THREE.CatmullRomCurve3(xzPts, closed, 'centripetal');
+  const laneLen = Math.max(1, xzCurve.getLength());
+  const nSamples = Math.max(xzPts.length, Math.ceil(laneLen / 3) + 1);
+  const terrainPts = [];
+  for (let i = 0; i <= nSamples; i++) {
+    const tp = xzCurve.getPointAt(i / nSamples);
+    tp.y = terrainLocalYAt(tp.x, tp.z) + LAYER.bikeLane + 0.045;
+    terrainPts.push(tp);
+  }
+  return new THREE.CatmullRomCurve3(terrainPts, closed, 'centripetal');
+}
+
+function buildBikeLaneStrip(coords, width, mat, buildToken) {
+  const curve = createBikeLaneCurve(coords, false);
+  if (!curve) return;
+  bikeLaneCurves.push(curve);
+  if (!settings.showBikeLanes) return;
+
+  const curveLen = Math.max(1, curve.getLength());
+  const centers = curve.getPoints(Math.max(16, Math.ceil(curveLen / 3) * 3));
+  const positions = [];
+  const uvs = [];
+  const indices = [];
+
+  for (let i = 0; i < centers.length; i++) {
+    const p = centers[i];
+    const tangent = curve.getTangent(i / Math.max(1, centers.length - 1));
+    const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize().multiplyScalar(width * 0.5);
+    positions.push(p.x + normal.x, p.y, p.z + normal.z, p.x - normal.x, p.y, p.z - normal.z);
+    const v = i / Math.max(1, centers.length - 1);
+    uvs.push(0, v * Math.max(1, curveLen / 16), 1, v * Math.max(1, curveLen / 16));
+  }
+
+  for (let i = 0; i < centers.length - 1; i++) {
+    const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
+    indices.push(a, c, b, c, d, b);
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  if (isSceneBuildStale(buildToken)) return;
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.receiveShadow = true;
+  mesh.renderOrder = 32;
+  bikeLaneGroup.add(mesh);
+}
+
+function buildBikeLanePolygon(poly, mat, buildToken) {
+  if (settings.showBikes && poly?.[0]?.length >= 3) {
+    const ring = poly[0];
+    const first = ring[0];
+    const last = ring[ring.length - 1];
+    const closed = first && last && first[0] === last[0] && first[1] === last[1];
+    const route = createBikeLaneCurve(closed ? ring.slice(0, -1) : ring, closed);
+    if (route) bikeLaneCurves.push(route);
+  }
+  if (!settings.showBikeLanes) return;
+  const shape = shapeFromLocalPolygon(poly);
+  if (!shape) return;
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.08, bevelEnabled: false });
+  geo.rotateX(Math.PI / 2);
+  const pos = geo.attributes.position;
+  for (let vi = 0; vi < pos.count; vi++) {
+    const vx = pos.getX(vi);
+    const vz = pos.getZ(vi);
+    const origY = pos.getY(vi);
+    const t = (origY - (-0.08)) / 0.08;
+    const clampedT = Math.max(0, Math.min(1, t));
+    const offset = -0.02 + clampedT * 0.07;
+    pos.setY(vi, terrainLocalYAt(vx, vz) + LAYER.bikeLane + offset);
+  }
+  pos.needsUpdate = true;
+  geo.computeVertexNormals();
+  if (isSceneBuildStale(buildToken)) return;
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.receiveShadow = true;
+  mesh.renderOrder = 32;
+  bikeLaneGroup.add(mesh);
+}
+
+function buildBikeLaneLayer(bikeLanes = EMPTY_GEOJSON, buildToken = sceneBuildToken) {
+  clearGroup(bikeLaneGroup);
+  clearGroup(bikeGroup);
+  bikeLaneCurves = [];
+  bikes = [];
+  if ((!settings.showBikeLanes && !settings.showBikes) || !bikeLanes?.features?.length) return;
+
+  const mat = createBikeLaneMaterial();
+  for (const f of bikeLanes.features) {
+    if (!f.geometry) continue;
+    if (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon') {
+      for (const poly of getPolygonRings(f.geometry)) {
+        buildBikeLanePolygon(poly, mat, buildToken);
+        if (isSceneBuildStale(buildToken)) return;
+      }
+      continue;
+    }
+    const width = bikeLaneFeatureWidth(f);
+    for (const line of lineSetsFromGeometry(f.geometry)) {
+      buildBikeLaneStrip(line, width, mat, buildToken);
+      if (isSceneBuildStale(buildToken)) return;
+    }
+  }
+  buildBicycleTraffic();
 }
 
 function createBicycleModel(index = 0) {
@@ -7746,7 +7825,7 @@ function createBicycleModel(index = 0) {
 function buildBicycleTraffic() {
   bikes = [];
   clearGroup(bikeGroup);
-  if (!settings.showBikes || !settings.showBikeLanes || !bikeLaneCurves.length) return;
+  if (!settings.showBikes || !bikeLaneCurves.length) return;
   const density = Math.max(0, Math.min(0.4, Number(settings.bikeDensity) || 0));
   const spawnCount = density <= 0 ? 0 : Math.min(60, Math.max(1, Math.round(bikeLaneCurves.length * density * 2)));
   for (let i = 0; i < spawnCount; i++) {
@@ -7767,15 +7846,11 @@ function buildBicycleTraffic() {
 
 async function buildRoadsAndTraffic(yollar, buildToken = sceneBuildToken) {
   clearGroup(roadGroup);
-  clearGroup(bikeLaneGroup);
   clearGroup(carGroup);
-  clearGroup(bikeGroup);
   clearGroup(pedestrianGroup);
   roadCurves = [];
   vehicleRoadCurves = [];
-  bikeLaneCurves = [];
   cars = [];
-  bikes = [];
   pedestrians = [];
   if (!yollar?.features?.length) return;
 
@@ -7870,7 +7945,6 @@ async function buildRoadsAndTraffic(yollar, buildToken = sceneBuildToken) {
     mesh.receiveShadow = true;
     mesh.renderOrder = 30;
     roadGroup.add(mesh);
-    addBikeLaneForRoad(curve, centers, featureWidth);
 
     // Procedural Road Markings
     if (settings.showRoadMarkings && settings.showRoads) {
@@ -8170,9 +8244,8 @@ function buildProceduralSidewalkStrips(yollar, buildToken = sceneBuildToken) {
     const centers = curve.getPoints(segments);
 
     for (const side of [-1, 1]) {
-      const bikeOffset = sideHasBikeLane(side) ? Math.max(1.5, Math.min(5, Number(settings.bikeLaneWidth) || 3)) : 0;
-      const innerOff = (featureWidth * 0.5 + bikeOffset) * side;
-      const outerOff = (featureWidth * 0.5 + bikeOffset + swWidth) * side;
+      const innerOff = featureWidth * 0.5 * side;
+      const outerOff = (featureWidth * 0.5 + swWidth) * side;
       const positions = [];
       const uvs = [];
       const indices = [];
@@ -8451,6 +8524,7 @@ async function rebuildScene() {
        hardscape: null,
        sidewalks: null,
        pedestrianPaths: null,
+       bikeLanes: null,
        fences: asFeatureCollection(fences, 'Fences'),
        waterlines: asFeatureCollection(waterlines, 'Water lines'),
        furniture: {
@@ -8483,6 +8557,10 @@ async function rebuildScene() {
     const pedestrianPaths = await loadGeoJson('../data/yerlesim/mypedestrian_paths.geojson', { label: 'Pedestrian paths' });
     layerDataCache.pedestrianPaths = asFeatureCollection(pedestrianPaths, 'Pedestrian paths');
   }
+  if ((settings.showBikeLanes || settings.showBikes) && !layerDataCache.bikeLanes) {
+    const bikeLanes = await loadGeoJson('../data/yerlesim/mybikelanes.geojson', { label: 'Bike lanes' });
+    layerDataCache.bikeLanes = asFeatureCollection(bikeLanes, 'Bike lanes');
+  }
   if (settings.showFences && !layerDataCache.fences) {
     const fences = await loadGeoJson('../data/yerlesim/myfences.geojson', { label: 'Fences' });
     layerDataCache.fences = asFeatureCollection(fences, 'Fences');
@@ -8502,9 +8580,10 @@ async function rebuildScene() {
   const hardscape = layerDataCache.hardscape ? asFeatureCollection(layerDataCache.hardscape, 'Hardscape') : null;
   const sidewalks = layerDataCache.sidewalks ? asFeatureCollection(layerDataCache.sidewalks, 'Sidewalks') : null;
   const pedestrianPaths = layerDataCache.pedestrianPaths ? asFeatureCollection(layerDataCache.pedestrianPaths, 'Pedestrian paths') : null;
+  const bikeLanes = layerDataCache.bikeLanes ? asFeatureCollection(layerDataCache.bikeLanes, 'Bike lanes') : null;
   const fences = layerDataCache.fences ? asFeatureCollection(layerDataCache.fences, 'Fences') : null;
   const waterlines = layerDataCache.waterlines ? asFeatureCollection(layerDataCache.waterlines, 'Water lines') : null;
-  Object.assign(layerDataCache, { adalar, yapilar, yollar, agaclar, parseller, hardscape, sidewalks, pedestrianPaths, fences, waterlines, mosques, tumulus });
+  Object.assign(layerDataCache, { adalar, yapilar, yollar, agaclar, parseller, hardscape, sidewalks, pedestrianPaths, bikeLanes, fences, waterlines, mosques, tumulus });
   updateDashboard(layerDataCache);
 
   // Calculate and update stats
@@ -8659,11 +8738,23 @@ async function rebuildScene() {
   if (isSceneBuildStale(buildToken)) return;
   await runLayerBuild('Roads', () => buildRoadsAndTraffic(yollar, buildToken), () => {
     clearGroup(roadGroup);
-    clearGroup(bikeLaneGroup);
     clearGroup(carGroup);
-    clearGroup(bikeGroup);
     clearGroup(pedestrianGroup);
   });
+  if (isSceneBuildStale(buildToken)) return;
+  if (settings.showBikeLanes || settings.showBikes) {
+    await runLayerBuild('Bike lanes', () => buildBikeLaneLayer(bikeLanes, buildToken), () => {
+      clearGroup(bikeLaneGroup);
+      clearGroup(bikeGroup);
+      bikeLaneCurves = [];
+      bikes = [];
+    });
+  } else {
+    clearGroup(bikeLaneGroup);
+    clearGroup(bikeGroup);
+    bikeLaneCurves = [];
+    bikes = [];
+  }
   if (isSceneBuildStale(buildToken)) return;
   if (settings.showSidewalks) {
     await runLayerBuild('Sidewalks', () => buildSidewalkLayer(yollar, sidewalks, buildToken), () => clearGroup(sidewalkGroup));
@@ -8766,6 +8857,7 @@ function updateDashboard(data) {
   const hardscape = data.hardscape || EMPTY_GEOJSON;
   const sidewalks = data.sidewalks || EMPTY_GEOJSON;
   const pedestrianPaths = data.pedestrianPaths || EMPTY_GEOJSON;
+  const bikeLanes = data.bikeLanes || EMPTY_GEOJSON;
   const furniture = data.furniture || {};
 
   const bldCount = yapilar.features.length;
@@ -8825,6 +8917,7 @@ function updateDashboard(data) {
       ['hardscape', 'Hardscape', hardscape?.features?.length || 0],
       ['sidewalks', 'Sidewalks', sidewalks?.features?.length || 0],
       ['pedestrian_paths', 'Paths', pedestrianPaths?.features?.length || 0],
+      ['bike_lanes', 'Bike lanes', bikeLanes?.features?.length || 0],
       ['lights', 'Lights', furniture.lights?.features?.length || 0],
       ['benches', 'Benches', furniture.benches?.features?.length || 0],
       ['busstops', 'Stops', furniture.busstops?.features?.length || 0],
@@ -8927,7 +9020,6 @@ function addGui() {
   const bikeFolder = globalGui.addFolder(t('dockBike'));
   bikeFolder.add(settings, 'showBikeLanes').name(t('lblBikeLanes')).onChange(rebuildScene);
   bikeFolder.add(settings, 'bikeLaneWidth', 1.5, 5.0, 0.1).name(t('lblBikeLaneWidth')).onChange(rebuildScene);
-  bikeFolder.add(settings, 'bikeLaneSide', ['Both sides', 'Right side', 'Left side']).name(t('lblBikeLaneSide')).onChange(rebuildScene);
   bikeFolder.addColor(settings, 'bikeLaneColor').name(t('lblBikeLaneColor')).onChange(rebuildScene);
   bikeFolder.add(settings, 'showBikes').name(t('lblBikes')).onChange(rebuildScene);
   bikeFolder.add(settings, 'bikeDensity', 0.0, 0.4, 0.02).name(t('lblBikeDensity')).onChange(rebuildScene);
@@ -9714,7 +9806,7 @@ if (autoOrbitBtn) {
 const TOUR_SETTING_KEYS = [
   'showIslands', 'islandTransparency', 'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture',
   'showCars', 'showRoads', 'showSidewalks', 'showPedestrianPaths', 'showCrosswalks', 'showPedestrians',
-  'showBikeLanes', 'showBikes', 'bikeLaneWidth', 'bikeLaneSide', 'bikeLaneColor', 'bikeDensity', 'bikeSpeed',
+  'showBikeLanes', 'showBikes', 'bikeLaneWidth', 'bikeLaneColor', 'bikeDensity', 'bikeSpeed',
   'roadColorMode', 'roadColor', 'sidewalkColor', 'showWindPlumes', 'windDirectionDeg', 'windPlumeDistance',
   'showTerrainTexture', 'showTerrainSides'
 ];
@@ -9917,7 +10009,6 @@ function populateDockSelects() {
     hardscapeStyle: Object.keys(textureSets.hardscape),
     roadStyle: Object.keys(textureSets.road),
     roadColorMode: ['Default', 'Amenity distance', 'Access / traffic'],
-    bikeLaneSide: ['Both sides', 'Right side', 'Left side'],
     assetTheme: Object.keys(assetThemePresets),
     treeRenderMode: ['Stylized', 'Realistic'],
     treeVariantCount: Array.from({ length: TREE_VARIANT_CATALOG.length }, (_item, idx) => String(idx + 1)),
@@ -10078,6 +10169,16 @@ function renderFunctionStyleDock() {
       requestFunctionStyleRebuild();
     });
 
+    const setbackEnabled = document.createElement('input');
+    setbackEnabled.type = 'checkbox';
+    setbackEnabled.checked = style.setbackEnabled !== false;
+    setbackEnabled.title = 'Use procedural setback for this function';
+    setbackEnabled.addEventListener('change', () => {
+      style.setbackEnabled = setbackEnabled.checked;
+      saveFunctionBuildingStyles();
+      rebuildScene();
+    });
+
     grid.append(
       makeField('Facade', facade),
       makeField('Roof shape', roofShape),
@@ -10085,7 +10186,8 @@ function renderFunctionStyleDock() {
       makeField(t('lblRoofColor') || 'Roof color', roofColor),
       makeField('Roof height', roofHeight.wrap),
       makeField('Facade scale', facadeScale.wrap),
-      makeField('Floor height', floorHeight.wrap)
+      makeField('Floor height', floorHeight.wrap),
+      makeField('Setback', setbackEnabled)
     );
     card.append(header, grid);
     host.appendChild(card);

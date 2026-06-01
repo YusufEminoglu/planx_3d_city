@@ -453,6 +453,10 @@ ul {
     height: 28px;
 }
 
+.function-style-field input[type="checkbox"] {
+    justify-self: start;
+}
+
 .function-style-range {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 36px;

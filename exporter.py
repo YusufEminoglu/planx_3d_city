@@ -31,7 +31,7 @@ VECTOR_REQUIRED_INPUTS = ()
 VECTOR_RECOMMENDED_INPUTS = ("dem", "roi", "roads", "buildings", "blocks", "parcels")
 RASTER_TEXTURE_REQUIRED_INPUTS = ("roi", "plan_texture", "roads", "buildings")
 REQUIRED_INPUTS = VECTOR_REQUIRED_INPUTS
-OPTIONAL_INPUTS = ("trees", "hardscape", "sidewalks", "pedestrian_paths", "lights", "benches", "trashbins", "busstops", "fences", "waterlines", "mosques", "tumulus")
+OPTIONAL_INPUTS = ("trees", "hardscape", "sidewalks", "pedestrian_paths", "bike_lanes", "lights", "benches", "trashbins", "busstops", "fences", "waterlines", "mosques", "tumulus")
 VECTOR_OPTIONAL_INPUTS = VECTOR_RECOMMENDED_INPUTS + OPTIONAL_INPUTS
 ASSET_THEME_DEFAULT = "Modern Urban"
 ASSET_CATEGORIES = ("pedestrians", "cars", "trees", "lights", "benches", "bins", "busstops", "facades", "roofs", "paving")
@@ -169,6 +169,7 @@ VECTOR_TARGETS = {
     "hardscape": "myhardscape.geojson",
     "sidewalks": "mysidewalks.geojson",
     "pedestrian_paths": "mypedestrian_paths.geojson",
+    "bike_lanes": "mybikelanes.geojson",
     "lights": "mylights.geojson",
     "benches": "mybenches.geojson",
     "trashbins": "mytrashbins.geojson",
@@ -192,6 +193,7 @@ LABELS = {
     "hardscape": "Hardscape",
     "sidewalks": "Sidewalks",
     "pedestrian_paths": "Pedestrian paths",
+    "bike_lanes": "Bike lanes",
     "lights": "Lights",
     "benches": "Benches",
     "trashbins": "Trash bins",
@@ -741,6 +743,7 @@ def _target_export_crs(layer_map: dict):
         "hardscape",
         "sidewalks",
         "pedestrian_paths",
+        "bike_lanes",
         "lights",
         "benches",
         "trashbins",
