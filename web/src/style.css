@@ -443,6 +443,12 @@ ul {
     min-width: 0;
 }
 
+.function-style-field input[type="color"] {
+    width: 100%;
+    min-width: 0;
+    height: 28px;
+}
+
 .function-style-range {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 36px;

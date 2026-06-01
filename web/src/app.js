@@ -22,7 +22,7 @@ const i18n = {
     parkCol: 'Park Rengi', parkTex: 'Park Dokusu', sportCol: 'Spor Alani Rengi',
     parcels: 'Parseller', showParcels: 'Parselleri Göster', boundCol: 'Sınır Rengi', boundOp: 'Sınır Opaklığı',
     bld: 'Binalar', floorH: 'Kat Yüksekliği (m)', roofShape: 'Çatı Tipi', roofTex: 'Çatı Dokusu', roofH: 'Çatı Yüksekliği (m)',
-    roads: 'Yollar & Trafik', showCars: 'Arabaları Göster', showRoads: 'Yolları Göster', roadCol: 'Yol Rengi',
+    roads: 'Yollar & Trafik', showCars: 'Arabaları Göster', showRoads: 'Yolları Göster', roadCol: 'Yol Rengi', sidewalkCol: 'Kaldirim Rengi',
     roadW: 'Yol Genişliği', trafficSpd: 'Trafik Hızı',
     funcCol: 'Kullanım Renkleri', funcFac: 'Kullanım Cepheleri',
     demWait: 'DEM bekleniyor...', demFail: 'DEM yüklenemedi. Düz zeminle devam.',
@@ -53,7 +53,7 @@ const i18n = {
     parkCol: 'Park Color', parkTex: 'Park Texture', sportCol: 'Sport Area Color',
     parcels: 'Parcels', showParcels: 'Show Parcels', boundCol: 'Boundary Color', boundOp: 'Boundary Opacity',
     bld: 'Buildings', floorH: 'Floor Height (m)', roofShape: 'Roof Shape', roofTex: 'Roof Texture', roofH: 'Roof Height (m)',
-    roads: 'Roads & Traffic', showCars: 'Show Cars', showRoads: 'Show Roads', roadCol: 'Road Color',
+    roads: 'Roads & Traffic', showCars: 'Show Cars', showRoads: 'Show Roads', roadCol: 'Road Color', sidewalkCol: 'Sidewalk Color',
     roadW: 'Road Width', trafficSpd: 'Traffic Speed',
     funcCol: 'Function Colors', funcFac: 'Function Facades',
     demWait: 'Waiting for DEM...', demFail: 'DEM failed. Using flat terrain.',
@@ -120,14 +120,14 @@ Object.assign(i18n.TR, {
   lblWeather: 'Hava', lblSSAO: 'Golge kalitesi', lblBloom: 'Bloom/parlama',
   lblIslandColor: 'Ada rengi', lblIslandTexture: 'Ada dokusu', lblIslandTransparency: 'Ada transparanligi',
   lblParcelColor: 'Parsel sinir rengi', lblParcelOpacity: 'Parsel sinir opakligi',
-  lblRoadColor: 'Yol rengi', lblRoadStyle: 'Yol dokusu', lblPavementStyle: 'Zemin dokusu',
+  lblRoadColor: 'Yol rengi', lblSidewalkColor: 'Kaldirim rengi', lblRoadStyle: 'Yol dokusu', lblPavementStyle: 'Zemin dokusu',
   lblHardscapeStyle: 'Sert zemin dokusu', lblHardscapeHeight: 'Sert zemin yuksekligi',
   lblBuildingMode: 'Bina modu', lblFacadeTextureScale: 'Cephe olcegi', lblTerrainAnalysis: 'Topoğrafya görünümü', lblAssetTheme: 'Asset theme',
   lblTreeRenderMode: 'Agac render modu',
   lblTreeRandomize: 'Agaclari rastgele dagit', lblTreeVariantCount: 'Agac cesit sayisi', lblTreeHeightRandom: 'Agac yukseklik ifadesi',
   lblXyzTiles: 'QGIS basemap altligi', lblXyzUrl: 'XYZ URL sablonu',
   lblFloorHeight: 'Kat yuksekligi', lblRoofShape: 'Cati tipi', lblRoofHeight: 'Cati yuksekligi',
-  lblRoofTexture: 'Cati dokusu', lblFunctionStyles: 'Kullanim renkleri ve cepheleri',
+  lblRoofTexture: 'Cati dokusu', lblRoofColor: 'Cati rengi', lblFunctionStyles: 'Kullanim renkleri ve cepheleri',
   lblRoadAnalysis: 'Yol analizi', lblRoadWidth: 'Yol genisligi',
   lblTrafficSpeed: 'Trafik hizi', lblCarDensity: 'Arac yogunlugu', lblPedDensity: 'Yaya yogunlugu',
   lblLights: 'Aydinlatmalar', lblLightStyle: 'Aydinlatma tipi', lblBenches: 'Banklar',
@@ -217,14 +217,14 @@ Object.assign(i18n.EN, {
   lblWeather: 'Weather', lblSSAO: 'Shadow quality', lblBloom: 'Bloom/glow',
   lblIslandColor: 'Block color', lblIslandTexture: 'Block texture', lblIslandTransparency: 'Block transparency',
   lblParcelColor: 'Parcel boundary color', lblParcelOpacity: 'Parcel boundary opacity',
-  lblRoadColor: 'Road color', lblRoadStyle: 'Road texture', lblPavementStyle: 'Ground texture',
+  lblRoadColor: 'Road color', lblSidewalkColor: 'Sidewalk color', lblRoadStyle: 'Road texture', lblPavementStyle: 'Ground texture',
   lblHardscapeStyle: 'Hardscape texture', lblHardscapeHeight: 'Hardscape height',
   lblBuildingMode: 'Building mode', lblFacadeTextureScale: 'Facade scale', lblTerrainAnalysis: 'Topography view', lblAssetTheme: 'Asset theme',
   lblTreeRenderMode: 'Tree render mode',
   lblTreeRandomize: 'Randomize trees', lblTreeVariantCount: 'Tree variant count', lblTreeHeightRandom: 'Tree height expression',
   lblXyzTiles: 'QGIS basemap texture', lblXyzUrl: 'XYZ URL template',
   lblFloorHeight: 'Floor height', lblRoofShape: 'Roof shape', lblRoofHeight: 'Roof height',
-  lblRoofTexture: 'Roof texture', lblFunctionStyles: 'Function colors and facades',
+  lblRoofTexture: 'Roof texture', lblRoofColor: 'Roof color', lblFunctionStyles: 'Function colors and facades',
   lblRoadAnalysis: 'Road analysis', lblRoadWidth: 'Road width',
   lblTrafficSpeed: 'Traffic speed', lblCarDensity: 'Car density', lblPedDensity: 'Pedestrian density',
   lblLights: 'Lights', lblLightStyle: 'Light style', lblBenches: 'Benches',
@@ -1559,6 +1559,7 @@ const settings = {
   roofHeight: 2.0,
   roadStyle: 'Asphalt',
   roadColor: '#2f3438',
+  sidewalkColor: '#c9bfa2',
   roadColorMode: 'Default',
   roadWidth: 8.0,
   trafficSpeed: 1.0,
@@ -1685,7 +1686,7 @@ const PERSISTED_SETTING_KEYS = [
   'fogDensity', 'autoTime', 'autoTimeSpeed', 'enableSSAO', 'enableBloom',
   'pavementStyle', 'hardscapeStyle', 'hardscapeHeight', 'buildingMode', 'facadeTextureScale', 'terrainAnalysisMode', 'showXyzTiles', 'xyzTileUrl',
   'assetTheme',
-  'floorHeight', 'roofTexture', 'roofShape', 'roofHeight', 'roadStyle', 'roadColor', 'roadColorMode', 'roadWidth',
+  'floorHeight', 'roofTexture', 'roofShape', 'roofHeight', 'roadStyle', 'roadColor', 'sidewalkColor', 'roadColorMode', 'roadWidth',
   'showLights', 'lightStyle', 'showBenches', 'benchStyle', 'showBins', 'binStyle', 'showBusStops', 'stopStyle',
   'showIslands', 'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture', 'showMosques',
   'showTumulus', 'tumulusScaleX', 'tumulusScaleY', 'tumulusScaleZ', 'tumulusRotation',
@@ -1760,7 +1761,8 @@ function defaultFunctionBuildingStyle(fn, index = 0) {
     floorHeight: settings.floorHeight,
     roofShape: roofShapeValue(settings.roofShape, 'Pyramid'),
     roofHeight: settings.roofHeight,
-    roofTexture: presetValue(settings.roofTexture, textureSets.roof, 'RoofA')
+    roofTexture: presetValue(settings.roofTexture, textureSets.roof, 'RoofA'),
+    roofColor: '#ffffff'
   };
 }
 
@@ -1773,7 +1775,8 @@ function sanitizeFunctionBuildingStyle(style, fallback) {
     floorHeight: Math.max(2.4, Math.min(6, Number(base.floorHeight) || fallback.floorHeight)),
     roofShape: roofShapeValue(base.roofShape, fallback.roofShape),
     roofHeight: Math.max(0, Math.min(8, Number(base.roofHeight) || fallback.roofHeight)),
-    roofTexture: presetValue(base.roofTexture, textureSets.roof, fallback.roofTexture)
+    roofTexture: presetValue(base.roofTexture, textureSets.roof, fallback.roofTexture),
+    roofColor: normalizeHexColor(base.roofColor, fallback.roofColor)
   };
 }
 
@@ -2241,6 +2244,9 @@ const CATEGORY_ELEVATION_KEY = {
   busstop: 'busstopElevation',
 };
 
+const MODEL_ELEVATION_MIN = -30;
+const MODEL_ELEVATION_MAX = 50;
+
 const CATEGORY_SCALE_KEYS = {
   mosque: ['mosqueScaleX', 'mosqueScaleY', 'mosqueScaleZ'],
   tumulus: ['tumulusScaleX', 'tumulusScaleY', 'tumulusScaleZ'],
@@ -2307,7 +2313,7 @@ function renderModelTransformControls() {
   };
 
   if (elevKey) {
-    makeSliderRow(t('lblElevation') || 'Elevation', elevKey, -15, 30, 0.5, (v) => v.toFixed(1) + 'm');
+    makeSliderRow(t('lblElevation') || 'Elevation', elevKey, MODEL_ELEVATION_MIN, MODEL_ELEVATION_MAX, 0.5, (v) => v.toFixed(1) + 'm');
   }
   if (scaleKeys) {
     makeSliderRow(t('lblScaleX') || 'Scale X', scaleKeys[0], 0.1, 10, 0.1, (v) => v.toFixed(1) + 'x');
@@ -2402,7 +2408,7 @@ function renderMosqueCustomizationsList() {
         <div class="mosque-custom-field">
           <span>${t('lblElevation') || 'Elevation'}</span>
           <div class="mosque-custom-slider-row">
-            <input type="range" class="mosque-elevation" min="-15" max="30" step="0.5" value="${cust.elevation}">
+            <input type="range" class="mosque-elevation" min="${MODEL_ELEVATION_MIN}" max="${MODEL_ELEVATION_MAX}" step="0.5" value="${cust.elevation}">
             <span class="elevation-val" style="min-width:32px; text-align:right;">${Number(cust.elevation).toFixed(1)}m</span>
           </div>
         </div>
@@ -2560,7 +2566,7 @@ function renderTumulusCustomizationsList() {
         <div class="mosque-custom-field">
           <span>${t('lblElevation') || 'Elevation'}</span>
           <div class="mosque-custom-slider-row">
-            <input type="range" class="tumulus-elevation" min="-15" max="30" step="0.5" value="${cust.elevation}">
+            <input type="range" class="tumulus-elevation" min="${MODEL_ELEVATION_MIN}" max="${MODEL_ELEVATION_MAX}" step="0.5" value="${cust.elevation}">
             <span class="elevation-val" style="min-width:32px; text-align:right;">${Number(cust.elevation).toFixed(1)}m</span>
           </div>
         </div>
@@ -2732,25 +2738,88 @@ function saveTourState() {
 
 loadTourState();
 
-function createAsphaltTexture() {
+function colorObjectFromHex(value, fallback = '#2f3438') {
+  if (value && value.isColor) return value.clone();
+  return new THREE.Color(normalizeHexColor(value, fallback) || fallback);
+}
+
+function rgbaFromColor(color, alpha = 1) {
+  return `rgba(${Math.round(color.r * 255)},${Math.round(color.g * 255)},${Math.round(color.b * 255)},${alpha})`;
+}
+
+function mixedColor(base, target, amount) {
+  return base.clone().lerp(new THREE.Color(target), Math.max(0, Math.min(1, amount)));
+}
+
+function createAsphaltTexture(baseColor = '#2e3135') {
+  const base = colorObjectFromHex(baseColor, '#2e3135');
+  const cacheKey = `asphalt:${base.getHexString()}`;
+  createAsphaltTexture.cache = createAsphaltTexture.cache || new Map();
+  if (createAsphaltTexture.cache.has(cacheKey)) return createAsphaltTexture.cache.get(cacheKey);
+
   const c = document.createElement('canvas');
   c.width = 512; c.height = 512;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#2e3135';
+  ctx.fillStyle = `#${base.getHexString()}`;
   ctx.fillRect(0, 0, c.width, c.height);
   for (let i = 0; i < 2200; i++) {
     const x = Math.random() * c.width;
     const y = Math.random() * c.height;
     const r = Math.random() * 1.2 + 0.2;
-    const g = 80 + Math.floor(Math.random() * 70);
-    ctx.fillStyle = `rgba(${g},${g},${g},0.20)`;
+    const target = Math.random() > 0.5 ? 0xffffff : 0x000000;
+    const amount = 0.12 + Math.random() * 0.24;
+    ctx.fillStyle = rgbaFromColor(mixedColor(base, target, amount), 0.18);
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.strokeStyle = rgbaFromColor(mixedColor(base, 0xffffff, 0.18), 0.10);
+  ctx.lineWidth = 1;
+  for (let y = 24; y < c.height; y += 54) {
+    ctx.beginPath();
+    ctx.moveTo(0, y + Math.random() * 2);
+    ctx.lineTo(c.width, y + Math.random() * 2);
+    ctx.stroke();
   }
   const t = new THREE.CanvasTexture(c);
   t.wrapS = THREE.RepeatWrapping;
   t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(8, 8);
   t.colorSpace = THREE.SRGBColorSpace;
+  createAsphaltTexture.cache.set(cacheKey, t);
+  return t;
+}
+
+function createSidewalkTexture(baseColor = settings.sidewalkColor) {
+  const base = colorObjectFromHex(baseColor, settings.sidewalkColor || '#c9bfa2');
+  const cacheKey = `sidewalk:${base.getHexString()}`;
+  createSidewalkTexture.cache = createSidewalkTexture.cache || new Map();
+  if (createSidewalkTexture.cache.has(cacheKey)) return createSidewalkTexture.cache.get(cacheKey);
+
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = `#${base.getHexString()}`;
+  ctx.fillRect(0, 0, c.width, c.height);
+  ctx.strokeStyle = rgbaFromColor(mixedColor(base, 0x000000, 0.22), 0.34);
+  ctx.lineWidth = 2;
+  for (let x = 0; x <= c.width; x += 64) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, c.height); ctx.stroke();
+  }
+  for (let y = 0; y <= c.height; y += 64) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(c.width, y); ctx.stroke();
+  }
+  for (let i = 0; i < 900; i++) {
+    const x = Math.random() * c.width;
+    const y = Math.random() * c.height;
+    const target = Math.random() > 0.55 ? 0xffffff : 0x000000;
+    ctx.fillStyle = rgbaFromColor(mixedColor(base, target, 0.10 + Math.random() * 0.18), 0.14);
+    ctx.fillRect(x, y, 1 + Math.random() * 1.5, 1 + Math.random() * 1.5);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(2, 12);
+  t.colorSpace = THREE.SRGBColorSpace;
+  createSidewalkTexture.cache.set(cacheKey, t);
   return t;
 }
 
@@ -7102,7 +7171,7 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
     const featureRoofTexture = presetValue(propFirst(props, ['planx_roof_texture', 'roof_texture', 'cati_doku', 'cati_texture']), textureSets.roof, fnStyle.roofTexture);
     const featureRoofShape = roofShapeValue(propFirst(props, ['planx_roof_shape', 'roof_shape', 'cati_tipi']), fnStyle.roofShape);
     const featureRoofHeight = parseNumberProp(props, ['planx_roof_height', 'roof_height', 'cati_yuksekligi', 'çatı_yüksekliği'], fnStyle.roofHeight);
-    const featureRoofColor = normalizeHexColor(propFirst(props, ['planx_roof_color', 'roof_color', 'cati_renk']), '#ffffff');
+    const featureRoofColor = normalizeHexColor(propFirst(props, ['planx_roof_color', 'roof_color', 'cati_renk']), fnStyle.roofColor);
 
     for (const poly of getPolygonRings(f.geometry)) {
       const outer = poly[0];
@@ -7458,7 +7527,7 @@ async function buildRoadsAndTraffic(yollar, buildToken = sceneBuildToken) {
 
   let roadTex = null;
   if (settings.roadStyle === 'Asphalt') {
-    roadTex = createAsphaltTexture();
+    roadTex = null;
   } else if (settings.roadStyle === 'Cobblestone') {
     roadTex = await textureFromSet('road', 'Cobblestone', 2, 20);
   } else if (settings.roadStyle === 'SharedStreet') {
@@ -7467,7 +7536,7 @@ async function buildRoadsAndTraffic(yollar, buildToken = sceneBuildToken) {
   if (isSceneBuildStale(buildToken)) return;
 
   const roadMat = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(settings.roadColor),
+    color: 0xffffff,
     map: roadTex,
     roughness: 0.97,
     transparent: !settings.showRoads,
@@ -7533,8 +7602,15 @@ async function buildRoadsAndTraffic(yollar, buildToken = sceneBuildToken) {
     roadGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     roadGeo.setIndex(indices);
     roadGeo.computeVertexNormals();
+    const featureColor = roadVisualColor(f, amenityPoints);
     const featureRoadMat = roadMat.clone();
-    featureRoadMat.color = roadVisualColor(f, amenityPoints);
+    if (settings.roadStyle === 'Asphalt') {
+      featureRoadMat.map = createAsphaltTexture(`#${featureColor.getHexString()}`);
+      featureRoadMat.color = new THREE.Color(0xffffff);
+    } else {
+      featureRoadMat.color = featureColor;
+    }
+    featureRoadMat.needsUpdate = true;
     if (isSceneBuildStale(buildToken)) return;
     const mesh = new THREE.Mesh(roadGeo, featureRoadMat);
     mesh.receiveShadow = true;
@@ -7756,8 +7832,10 @@ function buildPedestrianLayer() {
 }
 
 function buildSidewalkPolygonLayer(sidewalks, buildToken = sceneBuildToken) {
+  const sidewalkTex = createSidewalkTexture(settings.sidewalkColor);
   const mat = new THREE.MeshStandardMaterial({
-    color: 0xd8d2c2,
+    color: 0xffffff,
+    map: sidewalkTex,
     roughness: 0.96,
     metalness: 0.0,
     side: THREE.DoubleSide,
@@ -7806,7 +7884,8 @@ function buildSidewalkLayer(yollar, sidewalks = EMPTY_GEOJSON, buildToken = scen
   if (!yollar?.features?.length) return;
 
   const swWidth = 1.3;
-  const swMat = new THREE.MeshStandardMaterial({ color: 0xc9bfa2, roughness: 0.95, metalness: 0.0 });
+  const sidewalkTex = createSidewalkTexture(settings.sidewalkColor);
+  const swMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: sidewalkTex, roughness: 0.95, metalness: 0.0 });
 
   for (const f of yollar.features) {
     if (!f.geometry || f.geometry.type !== 'LineString') continue;
@@ -8559,6 +8638,7 @@ function addGui() {
   roads.add(settings, 'showRoads').name(t('showRoads')).onChange(rebuildScene);
   roads.add(settings, 'roadColorMode', ['Default', 'Amenity distance', 'Access / traffic']).name('Road analysis').onChange(rebuildScene);
   roads.addColor(settings, 'roadColor').name(t('roadCol')).onChange(rebuildScene);
+  roads.addColor(settings, 'sidewalkColor').name(t('sidewalkCol')).onChange(rebuildScene);
   roads.add(settings, 'roadWidth', 5.0, 20.0, 0.5).name(t('roadW')).onChange(rebuildScene);
   roads.add(settings, 'trafficSpeed', 0, 5, 0.1).name(t('trafficSpd'));
   roads.add(settings, 'showSidewalks').name(t('showSidewalks')).onChange(rebuildScene);
@@ -9333,7 +9413,7 @@ if (autoOrbitBtn) {
 const TOUR_SETTING_KEYS = [
   'showIslands', 'islandTransparency', 'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture',
   'showCars', 'showRoads', 'showSidewalks', 'showPedestrianPaths', 'showCrosswalks', 'showPedestrians',
-  'roadColorMode', 'showWindPlumes', 'windDirectionDeg', 'windPlumeDistance',
+  'roadColorMode', 'roadColor', 'sidewalkColor', 'showWindPlumes', 'windDirectionDeg', 'windPlumeDistance',
   'showTerrainTexture', 'showTerrainSides'
 ];
 
@@ -9660,6 +9740,16 @@ function renderFunctionStyleDock() {
       rebuildScene();
     });
 
+    const roofColor = document.createElement('input');
+    roofColor.type = 'color';
+    roofColor.value = style.roofColor;
+    roofColor.title = t('lblRoofColor') || 'Roof color';
+    roofColor.addEventListener('input', () => {
+      style.roofColor = roofColor.value;
+      saveFunctionBuildingStyles();
+      requestFunctionStyleRebuild();
+    });
+
     const roofHeight = makeRange(0, 8, 0.1, style.roofHeight);
     roofHeight.input.addEventListener('input', () => {
       style.roofHeight = Number(roofHeight.input.value);
@@ -9688,6 +9778,7 @@ function renderFunctionStyleDock() {
       makeField('Facade', facade),
       makeField('Roof shape', roofShape),
       makeField('Roof texture', roofTexture),
+      makeField(t('lblRoofColor') || 'Roof color', roofColor),
       makeField('Roof height', roofHeight.wrap),
       makeField('Facade scale', facadeScale.wrap),
       makeField('Floor height', floorHeight.wrap)
