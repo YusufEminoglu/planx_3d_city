@@ -81,8 +81,9 @@ function t(key) { return i18n[currentLang]?.[key] ?? i18n.EN?.[key] ?? key; }
 
 Object.assign(i18n.TR, {
   dockLayers: 'Katmanlar', dockScene: 'Sahne', dockStyle: 'Stil', dockMobility: 'Hareketlilik',
-  dockFurniture: 'Kent Mobilyalari', dockAnalysis: 'Analiz',
+  dockBike: 'Bisiklet Yollari', dockFurniture: 'Kent Mobilyalari', dockAnalysis: 'Analiz',
   lblRoads: 'Yollar', lblSidewalks: 'Kaldirimlar', lblCrosswalks: 'Yaya gecitleri', lblPedestrianPaths: 'Ada ici patikalar',
+  lblBikeLanes: 'Bisiklet yollari', lblBikes: 'Bisikletler',
   lblBlocks: 'Adalar / bloklar', lblParcels: 'Parseller', lblHardscape: 'Sert zemin', lblBuildings: 'Binalar',
   lblFences: 'Çitler / Sınırlar', lblWaterlines: 'Su Hatları / Akarsular', lblWaterlineWidth: 'Akarsu genişliği',
   dockFences: 'Çitler & Sınırlar', lblShowFences: 'Çitleri Göster', lblFenceHeight: 'Çit Yüksekliği',
@@ -130,6 +131,8 @@ Object.assign(i18n.TR, {
   lblRoofTexture: 'Cati dokusu', lblRoofColor: 'Cati rengi', lblFunctionStyles: 'Kullanim renkleri ve cepheleri',
   lblRoadAnalysis: 'Yol analizi', lblRoadWidth: 'Yol genisligi',
   lblTrafficSpeed: 'Trafik hizi', lblCarDensity: 'Arac yogunlugu', lblPedDensity: 'Yaya yogunlugu',
+  lblBikeLaneWidth: 'Bisiklet yolu genisligi', lblBikeLaneSide: 'Bisiklet yolu tarafi', lblBikeLaneColor: 'Bisiklet yolu rengi',
+  lblBikeDensity: 'Bisiklet yogunlugu', lblBikeSpeed: 'Bisiklet hizi',
   lblLights: 'Aydinlatmalar', lblLightStyle: 'Aydinlatma tipi', lblBenches: 'Banklar',
   lblBenchStyle: 'Bank tipi', lblBins: 'Cop kutulari', lblBinStyle: 'Cop kutusu tipi',
   lblStops: 'Duraklar', lblStopStyle: 'Durak tipi', lblWindPlumes: 'Ruzgar etki zonu',
@@ -178,8 +181,9 @@ Object.assign(i18n.TR, {
 
 Object.assign(i18n.EN, {
   dockLayers: 'Layers', dockScene: 'Scene', dockStyle: 'Style', dockMobility: 'Mobility',
-  dockFurniture: 'Street Furniture', dockAnalysis: 'Analysis',
+  dockBike: 'Bike Lanes', dockFurniture: 'Street Furniture', dockAnalysis: 'Analysis',
   lblRoads: 'Roads', lblSidewalks: 'Sidewalks', lblCrosswalks: 'Crosswalks', lblPedestrianPaths: 'Block paths',
+  lblBikeLanes: 'Bike lanes', lblBikes: 'Bikes',
   lblBlocks: 'Blocks', lblParcels: 'Parcels', lblHardscape: 'Hardscape', lblBuildings: 'Buildings',
   lblFences: 'Fences / Borders', lblWaterlines: 'Water lines / Streams', lblWaterlineWidth: 'Waterline default width',
   dockFences: 'Fences & Borders', lblShowFences: 'Show Fences', lblFenceHeight: 'Fence Height',
@@ -227,6 +231,8 @@ Object.assign(i18n.EN, {
   lblRoofTexture: 'Roof texture', lblRoofColor: 'Roof color', lblFunctionStyles: 'Function colors and facades',
   lblRoadAnalysis: 'Road analysis', lblRoadWidth: 'Road width',
   lblTrafficSpeed: 'Traffic speed', lblCarDensity: 'Car density', lblPedDensity: 'Pedestrian density',
+  lblBikeLaneWidth: 'Bike lane width', lblBikeLaneSide: 'Bike lane side', lblBikeLaneColor: 'Bike lane color',
+  lblBikeDensity: 'Bike density', lblBikeSpeed: 'Bike speed',
   lblLights: 'Lights', lblLightStyle: 'Light style', lblBenches: 'Benches',
   lblBenchStyle: 'Bench style', lblBins: 'Trash bins', lblBinStyle: 'Trash bin style',
   lblStops: 'Bus stops', lblStopStyle: 'Bus stop style', lblWindPlumes: 'Wind impact zone',
@@ -313,6 +319,7 @@ Object.assign(i18n.EN, {
   dockTitleLayers: 'Layer dock',
   dockTitleStyle: 'Style dock',
   dockTitleMobility: 'Mobility dock',
+  dockTitleBike: 'Bike lane dock',
   dockTitleFurniture: 'Street furniture dock',
   dockTitleAnalysis: 'Analysis dock',
   dockTitleNarrative: 'Narrative Studio',
@@ -382,6 +389,7 @@ Object.assign(i18n.TR, {
   dockTitleLayers: 'Katman paneli',
   dockTitleStyle: 'Stil paneli',
   dockTitleMobility: 'Hareketlilik paneli',
+  dockTitleBike: 'Bisiklet yolu paneli',
   dockTitleFurniture: 'Kent mobilyalari paneli',
   dockTitleAnalysis: 'Analiz paneli',
   dockTitleNarrative: 'Narrative Studio',
@@ -497,6 +505,8 @@ let mosqueGroup = new THREE.Group();
 let tumulusGroup = new THREE.Group();
 let shadowHeatmapMesh = null;
 let carGroup = new THREE.Group();
+let bikeLaneGroup = new THREE.Group();
+let bikeGroup = new THREE.Group();
 let furnitureGroup = new THREE.Group();
 let pedestrianGroup = new THREE.Group();
 let sidewalkGroup = new THREE.Group();
@@ -518,10 +528,12 @@ world.add(crosswalkGroup);
 world.add(terrainSideGroup);
 world.add(windPlumeGroup);
 world.add(roadGroup);
+world.add(bikeLaneGroup);
 world.add(treeGroup);
 world.add(mosqueGroup);
 world.add(tumulusGroup);
 world.add(carGroup);
+world.add(bikeGroup);
 world.add(furnitureGroup);
 world.add(pedestrianGroup);
 world.add(roiBoundaryGroup);
@@ -530,7 +542,7 @@ world.add(waterlineGroup);
 world.add(zoningGroup);
 
 /* Layer Elevation Hierarchy
- * DEM < islands < block paths < buildings/trees < parcels < hardscape slab < roads < sidewalks < cars.
+ * DEM < islands < block paths < buildings/trees < parcels < hardscape slab < roads < bike lanes < sidewalks < cars/bikes.
  * Offsets are relative to the final visible terrain surface.
  */
 const LAYER = {
@@ -541,6 +553,7 @@ const LAYER = {
   parcel:    0.94,
   hardscape: 0.98,
   road:      1.36,
+  bikeLane:  1.44,
   sidewalk:  1.52,
   carExtra:  0.08
 };
@@ -562,8 +575,10 @@ let baseMapTexture = null;
 let terrainOverlayMesh = null;
 let roadCurves = [];
 let vehicleRoadCurves = [];
+let bikeLaneCurves = [];
 let pedestrianPathCurves = [];
 let cars = [];
+let bikes = [];
 let pedestrians = [];
 let buildingFunctionMaterials = new Map();
 let manifestDefaultsApplied = false;
@@ -1562,6 +1577,13 @@ const settings = {
   sidewalkColor: '#c9bfa2',
   roadColorMode: 'Default',
   roadWidth: 8.0,
+  showBikeLanes: true,
+  bikeLaneWidth: 3.0,
+  bikeLaneSide: 'Both sides',
+  bikeLaneColor: '#16a34a',
+  showBikes: true,
+  bikeDensity: 0.12,
+  bikeSpeed: 1.0,
   trafficSpeed: 1.0,
   showWindPlumes: false,
   windDirectionDeg: 315,
@@ -1687,6 +1709,7 @@ const PERSISTED_SETTING_KEYS = [
   'pavementStyle', 'hardscapeStyle', 'hardscapeHeight', 'buildingMode', 'facadeTextureScale', 'terrainAnalysisMode', 'showXyzTiles', 'xyzTileUrl',
   'assetTheme',
   'floorHeight', 'roofTexture', 'roofShape', 'roofHeight', 'roadStyle', 'roadColor', 'sidewalkColor', 'roadColorMode', 'roadWidth',
+  'showBikeLanes', 'bikeLaneWidth', 'bikeLaneSide', 'bikeLaneColor', 'showBikes', 'bikeDensity', 'bikeSpeed',
   'showLights', 'lightStyle', 'showBenches', 'benchStyle', 'showBins', 'binStyle', 'showBusStops', 'stopStyle',
   'showIslands', 'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture', 'showMosques',
   'showTumulus', 'tumulusScaleX', 'tumulusScaleY', 'tumulusScaleZ', 'tumulusRotation',
@@ -2933,6 +2956,66 @@ function createIslandTexturePreset(name) {
   t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(4, 4);
   t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+function createTintedIslandTexturePreset(name, baseColor) {
+  if (name === 'None') return null;
+  const base = colorObjectFromHex(baseColor, '#e5e7eb');
+  const cacheKey = `${name}:${base.getHexString()}`;
+  createTintedIslandTexturePreset.cache = createTintedIslandTexturePreset.cache || new Map();
+  if (createTintedIslandTexturePreset.cache.has(cacheKey)) return createTintedIslandTexturePreset.cache.get(cacheKey);
+
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 256;
+  const ctx = c.getContext('2d');
+  const shadow = mixedColor(base, 0x000000, 0.30);
+  const highlight = mixedColor(base, 0xffffff, 0.28);
+  ctx.fillStyle = `#${base.getHexString()}`;
+  ctx.fillRect(0, 0, 256, 256);
+
+  if (name === 'FineGrid') {
+    ctx.strokeStyle = rgbaFromColor(shadow, 0.24);
+    for (let i = 0; i < 256; i += 12) {
+      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 256); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(256, i); ctx.stroke();
+    }
+  } else if (name === 'Water') {
+    for (let band = 0; band < 10; band++) {
+      ctx.strokeStyle = rgbaFromColor(highlight, 0.22);
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      const yBand = band * 25 + 5 + Math.random() * 5;
+      ctx.moveTo(0, yBand);
+      for (let x = 0; x <= 256; x += 6) {
+        ctx.lineTo(x, yBand + Math.sin(x * 0.25 + band * 1.5) * 1.8);
+      }
+      ctx.stroke();
+    }
+  } else {
+    const dotCount = name === 'CivicGravel' ? 1800 : 1000;
+    for (let i = 0; i < dotCount; i++) {
+      const x = Math.random() * 256;
+      const y = Math.random() * 256;
+      const r = name === 'CivicGravel' ? 0.4 + Math.random() * 1.2 : 1 + Math.random() * 1.8;
+      ctx.fillStyle = rgbaFromColor(Math.random() < 0.5 ? shadow : highlight, 0.10 + Math.random() * 0.14);
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+    if (name === 'ResidentialBeige' || name === 'CoastalSand') {
+      ctx.strokeStyle = rgbaFromColor(shadow, 0.18);
+      ctx.lineWidth = 0.8;
+      for (let y = 0; y < 256; y += 36) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(256, y + (name === 'CoastalSand' ? Math.sin(y) * 2 : 0)); ctx.stroke();
+      }
+    }
+  }
+
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(4, 4);
+  t.colorSpace = THREE.SRGBColorSpace;
+  createTintedIslandTexturePreset.cache.set(cacheKey, t);
   return t;
 }
 
@@ -4852,10 +4935,24 @@ function saveBlockCategoryStyles() {
   }
 }
 
+function blockCategoryStylesActive() {
+  return Object.keys(blockCategoryColorState).length > 0;
+}
+
+function updateBlockStyleModeUi() {
+  const categoryMode = blockCategoryStylesActive();
+  document.querySelectorAll('[data-setting="islandColor"], [data-setting="islandTexture"]').forEach((control) => {
+    control.disabled = categoryMode;
+    control.closest('label')?.classList.toggle('control-disabled', categoryMode);
+    control.title = categoryMode ? 'Block Categories active' : '';
+  });
+}
+
 function renderBlockCategoryStyleDock() {
   const host = document.getElementById('block-style-controls');
   if (!host) return;
   const keys = Object.keys(blockCategoryColorState).sort();
+  updateBlockStyleModeUi();
   if (!keys.length) {
     host.innerHTML = `<p class="dock-note">Block categories appear after data is loaded.</p>`;
     return;
@@ -5226,19 +5323,25 @@ async function buildIslandLayer(adalar, buildToken = sceneBuildToken) {
   });
 
   const customMaterials = {};
+  const categoryMode = categories.length > 0;
   
   for (const f of adalar.features) {
     const cat = String(blockCategoryValue(f.properties));
     const catStyle = ensureBlockCategoryStyle(cat, categories.indexOf(cat));
     
-    const featureColor = normalizeHexColor(propFirst(f.properties || {}, ['planx_color', 'planx_renk', 'color', 'renk']), catStyle.color);
-    const featureTexture = presetValue(propFirst(f.properties || {}, ['planx_texture', 'planx_island_texture', 'texture', 'doku']), textureSets.island, catStyle.texture);
+    const fallbackColor = categoryMode ? catStyle.color : settings.islandColor;
+    const fallbackTexture = categoryMode ? catStyle.texture : settings.islandTexture;
+    const featureColor = normalizeHexColor(propFirst(f.properties || {}, ['planx_color', 'planx_renk', 'color', 'renk']), fallbackColor);
+    const featureTexture = presetValue(propFirst(f.properties || {}, ['planx_texture', 'planx_island_texture', 'texture', 'doku']), textureSets.island, fallbackTexture);
+    const featureTextureMap = categoryMode
+      ? createTintedIslandTexturePreset(featureTexture, featureColor)
+      : createIslandTexturePreset(featureTexture);
     
     const matKey = `${featureColor}_${featureTexture}`;
     if (!customMaterials[matKey]) {
       customMaterials[matKey] = applyIslandMaterialVisibility(new THREE.MeshStandardMaterial({
-        color: new THREE.Color(featureColor),
-        map: createIslandTexturePreset(featureTexture),
+        color: featureTextureMap ? 0xffffff : new THREE.Color(featureColor),
+        map: featureTextureMap,
         roughness: 0.92,
         side: THREE.DoubleSide,
         polygonOffset: true,
@@ -7515,13 +7618,164 @@ function createPedestrianModel(index = 0) {
   return { mesh: root, limbRefs: { leftArm, rightArm, leftLeg, rightLeg, leftShoe, rightShoe } };
 }
 
+function bikeLaneSideSigns() {
+  if (settings.bikeLaneSide === 'Left side') return [-1];
+  if (settings.bikeLaneSide === 'Right side') return [1];
+  return [-1, 1];
+}
+
+function sideHasBikeLane(side) {
+  return settings.showBikeLanes && bikeLaneSideSigns().includes(side);
+}
+
+function createBikeLaneTexture(baseColor = settings.bikeLaneColor) {
+  const base = colorObjectFromHex(baseColor, '#16a34a');
+  const cacheKey = `bike:${base.getHexString()}`;
+  createBikeLaneTexture.cache = createBikeLaneTexture.cache || new Map();
+  if (createBikeLaneTexture.cache.has(cacheKey)) return createBikeLaneTexture.cache.get(cacheKey);
+
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = `#${base.getHexString()}`;
+  ctx.fillRect(0, 0, c.width, c.height);
+  ctx.strokeStyle = rgbaFromColor(mixedColor(base, 0xffffff, 0.65), 0.45);
+  ctx.lineWidth = 4;
+  for (let y = 16; y < c.height; y += 48) {
+    ctx.beginPath();
+    ctx.moveTo(16, y);
+    ctx.lineTo(c.width - 16, y);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = rgbaFromColor(mixedColor(base, 0x000000, 0.35), 0.18);
+  ctx.lineWidth = 2;
+  ctx.strokeRect(3, 3, c.width - 6, c.height - 6);
+
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1, 10);
+  t.colorSpace = THREE.SRGBColorSpace;
+  createBikeLaneTexture.cache.set(cacheKey, t);
+  return t;
+}
+
+function addBikeLaneForRoad(curve, centers, featureWidth) {
+  if (!settings.showBikeLanes || centers.length < 2) return;
+  const laneWidth = Math.max(1.5, Math.min(5, Number(settings.bikeLaneWidth) || 3));
+  const laneMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    map: createBikeLaneTexture(settings.bikeLaneColor),
+    roughness: 0.88,
+    metalness: 0.0,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -5,
+    polygonOffsetUnits: -5
+  });
+
+  for (const side of bikeLaneSideSigns()) {
+    const innerOff = featureWidth * 0.5 * side;
+    const outerOff = (featureWidth * 0.5 + laneWidth) * side;
+    const centerOff = (featureWidth * 0.5 + laneWidth * 0.5) * side;
+    const positions = [];
+    const uvs = [];
+    const indices = [];
+    const laneCenters = [];
+
+    for (let i = 0; i < centers.length; i++) {
+      const p = centers[i];
+      const tangent = curve.getTangent(i / Math.max(1, centers.length - 1));
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+      const left = new THREE.Vector3(p.x + normal.x * innerOff, p.y + 0.025, p.z + normal.z * innerOff);
+      const right = new THREE.Vector3(p.x + normal.x * outerOff, p.y + 0.025, p.z + normal.z * outerOff);
+      const laneCenter = new THREE.Vector3(p.x + normal.x * centerOff, p.y + 0.055, p.z + normal.z * centerOff);
+      positions.push(left.x, left.y, left.z, right.x, right.y, right.z);
+      const v = i / Math.max(1, centers.length - 1);
+      uvs.push(0, v * 8, 1, v * 8);
+      laneCenters.push(laneCenter);
+    }
+
+    for (let i = 0; i < centers.length - 1; i++) {
+      const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
+      indices.push(a, c, b, c, d, b);
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    const mesh = new THREE.Mesh(geo, laneMat);
+    mesh.receiveShadow = true;
+    mesh.renderOrder = 32;
+    bikeLaneGroup.add(mesh);
+    bikeLaneCurves.push(new THREE.CatmullRomCurve3(laneCenters, false, 'centripetal'));
+  }
+}
+
+function createBicycleModel(index = 0) {
+  const root = new THREE.Group();
+  const frameColor = [0x0f172a, 0x0f766e, 0x1d4ed8, 0x7c2d12][index % 4];
+  const frameMat = new THREE.MeshStandardMaterial({ color: frameColor, roughness: 0.45, metalness: 0.25 });
+  const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.62, metalness: 0.15 });
+  const riderMat = new THREE.MeshStandardMaterial({ color: [0xf97316, 0x38bdf8, 0xa3e635, 0xe879f9][index % 4], roughness: 0.8 });
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xd7a67f, roughness: 0.65 });
+
+  const wheelGeo = new THREE.TorusGeometry(0.32, 0.035, 8, 20);
+  wheelGeo.rotateY(Math.PI / 2);
+  const rearWheel = new THREE.Mesh(wheelGeo, wheelMat);
+  rearWheel.position.set(0, 0.35, 0.52);
+  const frontWheel = new THREE.Mesh(wheelGeo.clone(), wheelMat);
+  frontWheel.position.set(0, 0.35, -0.52);
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 1.05), frameMat);
+  frame.position.set(0, 0.68, 0);
+  frame.rotation.x = 0.18;
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.06, 0.08), frameMat);
+  handle.position.set(0, 0.92, -0.56);
+  const rider = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.54, 0.18), riderMat);
+  rider.position.set(0, 1.08, 0.05);
+  rider.rotation.x = -0.25;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), skinMat);
+  head.position.set(0, 1.45, -0.06);
+  root.add(rearWheel, frontWheel, frame, handle, rider, head);
+  root.scale.setScalar(1.05);
+  return { mesh: root, wheels: [rearWheel, frontWheel] };
+}
+
+function buildBicycleTraffic() {
+  bikes = [];
+  clearGroup(bikeGroup);
+  if (!settings.showBikes || !settings.showBikeLanes || !bikeLaneCurves.length) return;
+  const density = Math.max(0, Math.min(0.4, Number(settings.bikeDensity) || 0));
+  const spawnCount = density <= 0 ? 0 : Math.min(60, Math.max(1, Math.round(bikeLaneCurves.length * density * 2)));
+  for (let i = 0; i < spawnCount; i++) {
+    const curve = bikeLaneCurves[i % bikeLaneCurves.length];
+    const model = createBicycleModel(i);
+    model.mesh.renderOrder = 42;
+    bikeGroup.add(model.mesh);
+    bikes.push({
+      mesh: model.mesh,
+      wheels: model.wheels,
+      curve,
+      direction: Math.random() < 0.5 ? -1 : 1,
+      t: Math.random(),
+      speed: 0.00012 + Math.random() * 0.00024
+    });
+  }
+}
+
 async function buildRoadsAndTraffic(yollar, buildToken = sceneBuildToken) {
   clearGroup(roadGroup);
+  clearGroup(bikeLaneGroup);
   clearGroup(carGroup);
+  clearGroup(bikeGroup);
   clearGroup(pedestrianGroup);
   roadCurves = [];
   vehicleRoadCurves = [];
+  bikeLaneCurves = [];
   cars = [];
+  bikes = [];
   pedestrians = [];
   if (!yollar?.features?.length) return;
 
@@ -7616,6 +7870,7 @@ async function buildRoadsAndTraffic(yollar, buildToken = sceneBuildToken) {
     mesh.receiveShadow = true;
     mesh.renderOrder = 30;
     roadGroup.add(mesh);
+    addBikeLaneForRoad(curve, centers, featureWidth);
 
     // Procedural Road Markings
     if (settings.showRoadMarkings && settings.showRoads) {
@@ -7801,6 +8056,8 @@ async function buildRoadsAndTraffic(yollar, buildToken = sceneBuildToken) {
     }
   }
 
+  buildBicycleTraffic();
+
 }
 
 function buildPedestrianLayer() {
@@ -7913,8 +8170,9 @@ function buildProceduralSidewalkStrips(yollar, buildToken = sceneBuildToken) {
     const centers = curve.getPoints(segments);
 
     for (const side of [-1, 1]) {
-      const innerOff = featureWidth * 0.5 * side;
-      const outerOff = (featureWidth * 0.5 + swWidth) * side;
+      const bikeOffset = sideHasBikeLane(side) ? Math.max(1.5, Math.min(5, Number(settings.bikeLaneWidth) || 3)) : 0;
+      const innerOff = (featureWidth * 0.5 + bikeOffset) * side;
+      const outerOff = (featureWidth * 0.5 + bikeOffset + swWidth) * side;
       const positions = [];
       const uvs = [];
       const indices = [];
@@ -8399,7 +8657,13 @@ async function rebuildScene() {
     clearGroup(zoningGroup);
   }
   if (isSceneBuildStale(buildToken)) return;
-  await runLayerBuild('Roads', () => buildRoadsAndTraffic(yollar, buildToken), () => { clearGroup(roadGroup); clearGroup(carGroup); clearGroup(pedestrianGroup); });
+  await runLayerBuild('Roads', () => buildRoadsAndTraffic(yollar, buildToken), () => {
+    clearGroup(roadGroup);
+    clearGroup(bikeLaneGroup);
+    clearGroup(carGroup);
+    clearGroup(bikeGroup);
+    clearGroup(pedestrianGroup);
+  });
   if (isSceneBuildStale(buildToken)) return;
   if (settings.showSidewalks) {
     await runLayerBuild('Sidewalks', () => buildSidewalkLayer(yollar, sidewalks, buildToken), () => clearGroup(sidewalkGroup));
@@ -8659,6 +8923,15 @@ function addGui() {
   roads.add(settings, 'showCrosswalks').name(t('showCrosswalks')).onChange(rebuildScene);
   roads.add(settings, 'showPedestrians').onChange(rebuildScene);
   roads.add(settings, 'pedestrianDensity', 0.0, 1.0, 0.1).name(t('pedDensity')).onChange(rebuildScene);
+
+  const bikeFolder = globalGui.addFolder(t('dockBike'));
+  bikeFolder.add(settings, 'showBikeLanes').name(t('lblBikeLanes')).onChange(rebuildScene);
+  bikeFolder.add(settings, 'bikeLaneWidth', 1.5, 5.0, 0.1).name(t('lblBikeLaneWidth')).onChange(rebuildScene);
+  bikeFolder.add(settings, 'bikeLaneSide', ['Both sides', 'Right side', 'Left side']).name(t('lblBikeLaneSide')).onChange(rebuildScene);
+  bikeFolder.addColor(settings, 'bikeLaneColor').name(t('lblBikeLaneColor')).onChange(rebuildScene);
+  bikeFolder.add(settings, 'showBikes').name(t('lblBikes')).onChange(rebuildScene);
+  bikeFolder.add(settings, 'bikeDensity', 0.0, 0.4, 0.02).name(t('lblBikeDensity')).onChange(rebuildScene);
+  bikeFolder.add(settings, 'bikeSpeed', 0, 3, 0.1).name(t('lblBikeSpeed'));
 
   const analysis = globalGui.addFolder('Plan Analysis');
   analysis.add(settings, 'showWindPlumes').name('Wind plume risk').onChange(rebuildScene);
@@ -9039,6 +9312,21 @@ function animate() {
       c.car.lookAt(pos.x - tan.x / horiz, roadY, pos.z - tan.z / horiz);
     }
   }
+  for (const b of bikes) {
+    b.t += b.speed * Math.max(0, settings.bikeSpeed || 0);
+    if (b.t > 1) b.t = 0;
+    const sample = b.direction > 0 ? b.t : 1 - b.t;
+    const safe = Math.min(Math.max(sample, 0.01), 0.99);
+    const pos = b.curve.getPointAt(safe);
+    const tan = b.curve.getTangentAt(safe).multiplyScalar(b.direction);
+    const bikeY = terrainLocalYAt(pos.x, pos.z) + LAYER.bikeLane + 0.08;
+    b.mesh.position.set(pos.x, bikeY, pos.z);
+    const horiz = Math.sqrt(tan.x * tan.x + tan.z * tan.z);
+    if (horiz > 0.001) {
+      b.mesh.lookAt(pos.x - tan.x / horiz, bikeY, pos.z - tan.z / horiz);
+    }
+    for (const wheel of b.wheels || []) wheel.rotation.x -= delta * 8 * (settings.bikeSpeed || 0);
+  }
   for (const p of pedestrians) {
     p.t += p.speed;
     if (p.t > 1) p.t = 0;
@@ -9107,7 +9395,7 @@ function animate() {
   // → smooth orbit at 60fps, quality rendering when static
   const _now = performance.now();
   const _camMoving = (_now - _lastCameraMove) < 300;
-  const _hasAnim = isWalkMode || cars.length > 0 || pedestrians.length > 0
+  const _hasAnim = isWalkMode || cars.length > 0 || bikes.length > 0 || pedestrians.length > 0
     || settings.weather !== 'Clear' || stoneProjectiles.length > 0 || _flyT < 1.0;
   if (isRecording) {
     renderer.render(scene, camera);
@@ -9426,6 +9714,7 @@ if (autoOrbitBtn) {
 const TOUR_SETTING_KEYS = [
   'showIslands', 'islandTransparency', 'showParcels', 'showHardscape', 'showBuildings', 'showTrees', 'showFurniture',
   'showCars', 'showRoads', 'showSidewalks', 'showPedestrianPaths', 'showCrosswalks', 'showPedestrians',
+  'showBikeLanes', 'showBikes', 'bikeLaneWidth', 'bikeLaneSide', 'bikeLaneColor', 'bikeDensity', 'bikeSpeed',
   'roadColorMode', 'roadColor', 'sidewalkColor', 'showWindPlumes', 'windDirectionDeg', 'windPlumeDistance',
   'showTerrainTexture', 'showTerrainSides'
 ];
@@ -9628,6 +9917,7 @@ function populateDockSelects() {
     hardscapeStyle: Object.keys(textureSets.hardscape),
     roadStyle: Object.keys(textureSets.road),
     roadColorMode: ['Default', 'Amenity distance', 'Access / traffic'],
+    bikeLaneSide: ['Both sides', 'Right side', 'Left side'],
     assetTheme: Object.keys(assetThemePresets),
     treeRenderMode: ['Stylized', 'Realistic'],
     treeVariantCount: Array.from({ length: TREE_VARIANT_CATALOG.length }, (_item, idx) => String(idx + 1)),
@@ -9651,6 +9941,7 @@ function updateDockControls() {
     if (el.type === 'checkbox') el.checked = !!settings[key];
     else el.value = settings[key];
   });
+  updateBlockStyleModeUi();
 }
 const reflectDockSettings = updateDockControls;
 
@@ -9819,6 +10110,8 @@ function applyDockSetting(key, value, inputType) {
     else if (key === 'showMosques') clearGroup(mosqueGroup);
     else if (key === 'showTumulus') clearGroup(tumulusGroup);
     else if (key === 'showFurniture') clearGroup(furnitureGroup);
+    else if (key === 'showBikeLanes') { clearGroup(bikeLaneGroup); clearGroup(bikeGroup); bikeLaneCurves = []; bikes = []; }
+    else if (key === 'showBikes') { clearGroup(bikeGroup); bikes = []; }
     else if (key === 'showRoads') clearGroup(roadGroup);
     else if (key === 'showSidewalks') clearGroup(sidewalkGroup);
     else if (key === 'showPedestrianPaths') { clearGroup(pedestrianPathGroup); pedestrianPathCurves = []; }
@@ -9845,7 +10138,7 @@ function applyDockSetting(key, value, inputType) {
   if (key === 'timeOfDay' || key === 'weather' || key === 'fogDensity' || key === 'enableBloom' || key === 'enableSSAO') {
     if (key === 'weather') updateWeather();
     checkTimeChange();
-  } else if (key === 'autoTime' || key === 'autoTimeSpeed' || key === 'trafficSpeed') {
+  } else if (key === 'autoTime' || key === 'autoTimeSpeed' || key === 'trafficSpeed' || key === 'bikeSpeed') {
     updateDockControls();
   } else {
     rebuildScene();

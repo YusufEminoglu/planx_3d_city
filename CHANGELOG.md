@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.49] - 2026-06-01
+
+- Add block category color isolation and bicycle lane simulation
+
 ## [0.8.48] - 2026-06-01
 
 - Add procedural road, sidewalk, roof color controls and wider model elevation range
