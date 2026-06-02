@@ -1500,6 +1500,10 @@ body {
     left: 640px;
     font-size: 1.15rem;
 }
+.bike-btn {
+    left: 690px;
+    font-size: 1.1rem;
+}
 #model-studio-dock {
     width: min(420px, calc(100vw - 48px));
 }
@@ -1629,4 +1633,29 @@ body {
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
+}
+
+/* "Scene saved" toast — flashes when the live scene snapshot is auto-saved to
+   the project so the portable ZIP can freeze it. */
+#scene-state-indicator {
+    position: fixed;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%) translateY(8px);
+    background: rgba(15, 23, 42, 0.85);
+    color: #5eead4;
+    border: 1px solid rgba(94, 234, 212, 0.35);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 60;
+}
+#scene-state-indicator.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
 }

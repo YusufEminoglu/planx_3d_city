@@ -43,7 +43,8 @@ const i18n = {
     binaInfo: 'Bina Bilgisi', biFonk: 'Fonksiyon', biKat: 'Kat Sayısı', biNiz: 'Nizam', biAlan: 'Alan',
     sapanMode: 'Sapan Modu', sapanHit: 'Vuruş! +1', sapanScoreLbl: 'Skor',
     autoTime: '⏱ Güneş Animasyonu', autoTimeSpd: 'Hız (sa/s)',
-    minimap: 'Mini Harita'
+    minimap: 'Mini Harita',
+    sceneSaved: 'Sahne kaydedildi'
   },
   EN: {
     guiTitle: 'Urban Controls',
@@ -74,7 +75,8 @@ const i18n = {
     binaInfo: 'Building Info', biFonk: 'Function', biKat: 'Floors', biNiz: 'Type', biAlan: 'Area',
     sapanMode: 'Slingshot Mode', sapanHit: 'Hit! +1', sapanScoreLbl: 'Score',
     autoTime: '⏱ Solar Animation', autoTimeSpd: 'Speed (h/s)',
-    minimap: 'Minimap'
+    minimap: 'Minimap',
+    sceneSaved: 'Scene saved'
   }
 };
 function t(key) { return i18n[currentLang]?.[key] ?? i18n.EN?.[key] ?? key; }
@@ -1839,6 +1841,7 @@ function saveFunctionBuildingStyles() {
   } catch (err) {
     console.warn('Could not save function building styles', err);
   }
+  scheduleSceneStateSave();
 }
 
 function savePersistedSettings() {
@@ -1851,6 +1854,7 @@ function savePersistedSettings() {
   } catch (err) {
     console.warn('Could not save PlanX viewer settings', err);
   }
+  scheduleSceneStateSave();
 }
 
 loadPersistedSettings();
@@ -1881,13 +1885,16 @@ function openDB() {
 async function saveModelToDB(id, name, category, blob) {
   try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    const result = await new Promise((resolve, reject) => {
       const transaction = db.transaction([storeName], 'readwrite');
       const store = transaction.objectStore(storeName);
       const request = store.put({ id, name, category, blob });
       request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
     });
+    // Model library changed -> the next snapshot must embed the GLB bytes.
+    scheduleSceneStateSave({ includeModels: true });
+    return result;
   } catch (err) {
     console.error('Error saving model to IndexedDB', err);
   }
@@ -1896,13 +1903,16 @@ async function saveModelToDB(id, name, category, blob) {
 async function deleteModelFromDB(id) {
   try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    const result = await new Promise((resolve, reject) => {
       const transaction = db.transaction([storeName], 'readwrite');
       const store = transaction.objectStore(storeName);
       const request = store.delete(id);
       request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
     });
+    // Model removed -> resend the library so the server prunes its .glb file.
+    scheduleSceneStateSave({ includeModels: true });
+    return result;
   } catch (err) {
     console.error('Error deleting model from IndexedDB', err);
   }
@@ -1937,6 +1947,7 @@ function saveMosqueCustomizations() {
   try {
     localStorage.setItem('planx_3d_city_mosque_customizations', JSON.stringify(mosqueCustomizations));
   } catch (_) {}
+  scheduleSceneStateSave();
 }
 
 function loadTumulusCustomizations() {
@@ -1952,6 +1963,7 @@ function saveTumulusCustomizations() {
   try {
     localStorage.setItem('planx_3d_city_tumulus_customizations', JSON.stringify(tumulusCustomizations));
   } catch (_) {}
+  scheduleSceneStateSave();
 }
 
 loadMosqueCustomizations();
@@ -1999,6 +2011,188 @@ async function ensureUploadedModelsLoaded() {
   } catch (err) {
     console.error('Error loading uploaded models from IndexedDB:', err);
   }
+}
+
+// --- Portable Scene Snapshot (freeze the live scene into the portable ZIP) ---
+// In the QGIS dev session the viewer auto-saves the full live scene state to the
+// local server (writes web/data/planx_scene_state.json + web/data/models/*.glb).
+// The portable build (?portable=1) reads that file back and applies it BEFORE
+// the scene is built, so every style edit, GUI setting and Model Studio model
+// survives the handoff one-to-one — instead of falling back to bare defaults
+// (which is why mosques shrank to the procedural box and trees disappeared).
+const SCENE_STATE_ENDPOINT = '/api/scene-state';
+const SCENE_STATE_URL = '../data/planx_scene_state.json';
+let portableSceneState = null;
+let sceneStateSaveTimer = null;
+let sceneStateModelsDirty = false;
+let sceneStateSaveInFlight = false;
+let sceneStateSeeded = false;   // first save of a session always embeds the GLB models
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+function base64ToArrayBuffer(base64) {
+  const binary = atob(base64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+async function buildSceneStateBundle({ includeModels = false } = {}) {
+  const settingsPayload = {};
+  for (const key of PERSISTED_SETTING_KEYS) settingsPayload[key] = settings[key];
+  settingsPayload._schemaVersion = SETTINGS_SCHEMA_VERSION;
+  const bundle = {
+    schema: 'planx-3d-city-scene-state/v1',
+    plugin: 'planx_3d_city',
+    savedAt: new Date().toISOString(),
+    settings: settingsPayload,
+    functionStyles: functionBuildingStyleState,
+    blockStyles: blockCategoryStyleState,
+    mosqueCustomizations,
+    tumulusCustomizations,
+  };
+  if (includeModels) {
+    const models = [];
+    try {
+      const rows = await loadModelsFromDB();
+      for (const row of rows) {
+        try {
+          const buffer = await row.blob.arrayBuffer();
+          models.push({
+            id: row.id,
+            name: row.name,
+            category: row.category,
+            dataBase64: arrayBufferToBase64(buffer),
+          });
+        } catch (err) {
+          console.warn('Could not serialize Model Studio model', row && row.name, err);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not read Model Studio models for snapshot', err);
+    }
+    bundle.models = models;
+  }
+  return bundle;
+}
+
+function scheduleSceneStateSave(opts = {}) {
+  if (isPortableMode) return;            // the portable build never writes back
+  if (opts.includeModels) sceneStateModelsDirty = true;
+  if (sceneStateSaveTimer) clearTimeout(sceneStateSaveTimer);
+  sceneStateSaveTimer = window.setTimeout(() => { doSceneStateSave(); }, 700);
+}
+
+async function doSceneStateSave() {
+  if (isPortableMode || sceneStateSaveInFlight) return;
+  sceneStateSaveInFlight = true;
+  // The first save of a session embeds the models so a snapshot is never left
+  // with a stale/empty model list (e.g. when models already sit in IndexedDB
+  // from a previous session and the user only tweaks a color before exporting).
+  const includeModels = sceneStateModelsDirty || !sceneStateSeeded;
+  try {
+    const bundle = await buildSceneStateBundle({ includeModels });
+    const res = await fetch(SCENE_STATE_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bundle),
+    });
+    if (res && res.ok) {
+      sceneStateSeeded = true;
+      if (includeModels) sceneStateModelsDirty = false;
+      markSceneStateSaved();
+    }
+  } catch (err) {
+    // Opened without the PlanX local server (e.g. plain http.server) — ignore.
+  } finally {
+    sceneStateSaveInFlight = false;
+  }
+}
+
+function markSceneStateSaved() {
+  const el = document.getElementById('scene-state-indicator');
+  if (!el) return;
+  el.classList.add('visible');
+  if (markSceneStateSaved._t) clearTimeout(markSceneStateSaved._t);
+  markSceneStateSaved._t = window.setTimeout(() => el.classList.remove('visible'), 1600);
+}
+
+async function loadPortableSceneState() {
+  try {
+    const res = await fetch(SCENE_STATE_URL, { cache: 'no-store' });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.warn('Portable scene snapshot not available', err);
+    return null;
+  }
+}
+
+function applySceneStateSettings(state) {
+  const saved = state && state.settings;
+  if (!saved) return;
+  for (const key of PERSISTED_SETTING_KEYS) {
+    if (!(key in saved) || !(key in settings)) continue;
+    if (typeof settings[key] === 'number') settings[key] = Number(saved[key]);
+    else if (typeof settings[key] === 'boolean') settings[key] = Boolean(saved[key]);
+    else settings[key] = saved[key];
+  }
+  settings.roofShape = roofShapeValue(settings.roofShape, 'Pyramid');
+  settings.roofTexture = presetValue(settings.roofTexture, textureSets.roof, 'RoofA');
+}
+
+function applySceneStateStyles(state) {
+  if (!state) return;
+  if (state.functionStyles && typeof state.functionStyles === 'object') {
+    Object.entries(state.functionStyles).forEach(([k, v]) => { functionBuildingStyleState[k] = v; });
+  }
+  if (state.blockStyles && typeof state.blockStyles === 'object') {
+    Object.entries(state.blockStyles).forEach(([k, v]) => { blockCategoryStyleState[k] = v; });
+  }
+  if (Array.isArray(state.mosqueCustomizations)) mosqueCustomizations = state.mosqueCustomizations;
+  if (Array.isArray(state.tumulusCustomizations)) tumulusCustomizations = state.tumulusCustomizations;
+}
+
+async function applySceneStateModels(state) {
+  const models = state && state.models;
+  if (!Array.isArray(models)) return;
+  for (const model of models) {
+    if (!model || !model.id) continue;
+    try {
+      let buffer = null;
+      if (model.dataBase64) {
+        buffer = base64ToArrayBuffer(model.dataBase64);
+      } else if (model.target) {
+        const rel = String(model.target).replace(/^(\.\.\/)*data\//, '').replace(/^\/+/, '');
+        const res = await fetch('../data/' + rel, { cache: 'no-store' });
+        if (!res.ok) continue;
+        buffer = await res.arrayBuffer();
+      }
+      if (!buffer) continue;
+      const scene = await parseGltfBuffer(buffer);
+      uploadedModels.push({ id: model.id, name: model.name, category: model.category, scene });
+    } catch (err) {
+      console.warn('Could not load portable Model Studio model', model && model.name, err);
+    }
+  }
+  uploadedModelsLoaded = true;  // stop ensureUploadedModelsLoaded from re-running
+}
+
+async function hydratePortableSceneState() {
+  portableSceneState = await loadPortableSceneState();
+  if (!portableSceneState) return;
+  applySceneStateSettings(portableSceneState);
+  applySceneStateStyles(portableSceneState);
+  await applySceneStateModels(portableSceneState);
 }
 
 let cachedDefaultMosqueModel = null;
@@ -3319,15 +3513,19 @@ async function loadManifest() {
 function applyManifestDefaults() {
   if (manifestDefaultsApplied || !projectManifest) return;
   manifestDefaultsApplied = true;
-  let persistedRaw = null;
-  if (!isPortableMode) {
+  let persisted = null;
+  if (isPortableMode) {
+    // Portable build: the frozen snapshot's settings stand in for localStorage,
+    // so manifest defaults only fill gaps the snapshot does not already cover.
+    persisted = (portableSceneState && portableSceneState.settings) || null;
+  } else {
     try {
-      persistedRaw = localStorage.getItem('planx_3d_city_settings');
+      const raw = localStorage.getItem('planx_3d_city_settings');
+      if (raw) persisted = JSON.parse(raw);
     } catch (_) {}
   }
-  if (persistedRaw) {
+  if (persisted) {
     try {
-      const persisted = JSON.parse(persistedRaw);
       const schemaVersion = Number(persisted._schemaVersion || 0);
       const defaults = { ...(projectManifest.viewerDefaults || {}), ...(projectManifest.analysisDefaults || {}) };
       if (projectManifest.assetTheme && !defaults.assetTheme) defaults.assetTheme = projectManifest.assetTheme;
@@ -4934,6 +5132,7 @@ function saveBlockCategoryStyles() {
   } catch (err) {
     console.warn('Could not save block category styles', err);
   }
+  scheduleSceneStateSave();
 }
 
 function blockCategoryStylesActive() {
@@ -9069,6 +9268,18 @@ function addGui() {
   if (globalGui.domElement) globalGui.domElement.style.display = 'none';
 }
 
+// Portable build: load and apply the frozen scene snapshot BEFORE the GUI and
+// scene are built, so every control and layer reflects the saved state instead
+// of bare defaults (settings, styles, Model Studio models, mosque/tumulus overrides).
+// Wrapped so a bad/absent snapshot can never block the scene from building.
+if (isPortableMode) {
+  try {
+    await hydratePortableSceneState();
+  } catch (err) {
+    console.warn('Portable scene snapshot could not be applied; using defaults.', err);
+  }
+}
+
 addGui();
 
 // Building hover highlight helpers
@@ -9629,6 +9840,9 @@ window.addEventListener('unhandledrejection', (event) => {
 
 rebuildSceneSafe().then(() => {
   if (functionGuiRefs) functionGuiRefs.refreshFunctionGui();
+  // Seed the portable snapshot once per session so "tune nothing, just export"
+  // still freezes the current scene + Model Studio models. No-op in portable mode.
+  scheduleSceneStateSave({ includeModels: true });
 });
 animate();
 

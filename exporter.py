@@ -244,6 +244,68 @@ def copy_portable_viewer(web_root: str, output_dir: str, tour_json_path: Optiona
         shutil.copy2(tour_source, tour_target)
         copied.append(str(tour_target))
 
+    # Self-contained launcher: binds a FREE port (so several portable builds run
+    # side by side without colliding on 8080), sends no-cache headers (so each
+    # build always shows its own frozen scene instead of a cached older one), and
+    # opens the browser only after the server is actually listening.
+    serve_path = output_path / "serve.py"
+    serve_path.write_text(
+        '''# -*- coding: utf-8 -*-
+"""PlanX 3D City portable viewer launcher.
+
+Serves this folder on a free local port, disables HTTP caching, and opens the
+browser once the server is ready. Using a free port (instead of a fixed 8080)
+lets multiple portable builds run at the same time, each showing its own
+frozen scene.
+"""
+import functools
+import http.server
+import socketserver
+import threading
+import webbrowser
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+
+
+class Handler(http.server.SimpleHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
+        super().end_headers()
+
+    def log_message(self, *args):
+        pass
+
+
+class Server(socketserver.ThreadingTCPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
+
+def main():
+    handler = functools.partial(Handler, directory=str(ROOT))
+    httpd = Server(("127.0.0.1", 0), handler)  # 0 -> OS assigns a free port
+    port = httpd.server_address[1]
+    url = "http://127.0.0.1:{0}/src/?portable=1".format(port)
+    print("PlanX 3D City portable viewer running at:")
+    print("    " + url)
+    print("Keep this window open while viewing. Close it to stop the server.")
+    threading.Timer(0.7, lambda: webbrowser.open(url)).start()
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        pass
+
+
+if __name__ == "__main__":
+    main()
+''',
+        encoding="utf-8",
+    )
+    copied.append(str(serve_path))
+
     readme_path = output_path / "README_PORTABLE_VIEWER.txt"
     readme_path.write_text(
         "\n".join(
@@ -253,14 +315,18 @@ def copy_portable_viewer(web_root: str, output_dir: str, tour_json_path: Optiona
                 "This folder contains the exported viewer app, bundled vendor libraries, and the current project data.",
                 "",
                 "How to open:",
-                "Option A: double-click Start-PlanX-Viewer.bat on Windows.",
-                "Option B:",
-                "1. Open a terminal in this folder.",
-                "2. Run: py -3 -m http.server 8080",
-                "3. Open: http://127.0.0.1:8080/src/?portable=1",
+                "Option A: double-click Start-PlanX-Viewer.bat (Windows).",
+                "Option B: run 'py -3 serve.py' (or 'python serve.py') in this folder, then open the URL it prints.",
+                "",
+                "The launcher picks a FREE port automatically and disables caching, so you can open",
+                "several portable builds side by side and each one shows its own frozen scene.",
+                "Do NOT use 'py -m http.server 8080': a fixed port makes every build collide on the",
+                "same server, so they all show whichever build (or leftover server) grabbed 8080 first.",
                 "",
                 "Notes:",
                 "- Do not open src/index.html directly from the file system; GeoTIFF and GeoJSON loading needs a local HTTP server.",
+                "- This package freezes your scene: data/planx_scene_state.json carries the GUI settings, styles and Model Studio models you last tuned in the viewer, and the portable build applies them automatically (it is opened with ?portable=1).",
+                "- To refresh the frozen look, open the viewer from QGIS, adjust the scene (it auto-saves), then export a fresh portable folder/ZIP.",
                 "- Narrative Studio JSON files store camera/tour/viewer state only. They do not embed DEM, GeoJSON, imagery, or the viewer app.",
                 "- If this package includes data/planx_tour.json, the viewer can auto-load it on another computer.",
                 "- If you export a newer project from QGIS, create a fresh portable folder so the copied data stays in sync.",
@@ -276,8 +342,7 @@ def copy_portable_viewer(web_root: str, output_dir: str, tour_json_path: Optiona
             [
                 "@echo off",
                 "cd /d \"%~dp0\"",
-                "start \"\" \"http://127.0.0.1:8080/src/?portable=1\"",
-                "py -3 -m http.server 8080",
+                "py -3 serve.py || python serve.py",
                 "pause",
             ]
         ),
@@ -290,8 +355,7 @@ def copy_portable_viewer(web_root: str, output_dir: str, tour_json_path: Optiona
         "\n".join(
             [
                 "Set-Location -LiteralPath $PSScriptRoot",
-                "Start-Process \"http://127.0.0.1:8080/src/?portable=1\"",
-                "py -3 -m http.server 8080",
+                "try { py -3 serve.py } catch { python serve.py }",
             ]
         ),
         encoding="utf-8",

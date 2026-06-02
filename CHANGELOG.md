@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.8.52] - 2026-06-02
+
+- Portable builds now freeze the live scene. The viewer auto-saves a scene snapshot (web/data/planx_scene_state.json plus the bundled Model Studio GLB models) to the local server on every edit, and the portable build (?portable=1) applies it before the scene is built. Previously portable/exported viewers ignored browser storage and reverted to manifest defaults, so styling, roof/facade choices, mosque scale (mosques shrank to the procedural box) and uploaded models were lost.
+- Added a local-server save endpoint (POST /api/scene-state in server.py) and a "Scene saved" indicator, so every style, setting and Model Studio change is captured into the project for the portable ZIP.
+- Rewrote the portable launcher: each build now serves itself on a free local port with HTTP caching disabled (serve.py) instead of a hard-coded port 8080. Fixes several portable builds opened on one computer all showing the same, stale scene because they collided on the 8080 server.
+- Added tools/PlanX-Open-Build (drag-and-drop launcher) for reviewing many portable/student builds in sequence on one machine, each on its own free port with caching off.
+- Fixed the Bike Lanes panel toggle button, which had no CSS position and overlapped the dashboard toggle; it now sits next to the Model Studio button.
+- Updated the viewer module cache key to app.js?v=0.8.52.
+
 ## [0.8.51] - 2026-06-01
 
 - Finalize dedicated bike lane layer and per-function setback toggles
