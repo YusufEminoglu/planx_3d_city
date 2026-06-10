@@ -1,4 +1,19 @@
+<div align="center">
+
+<img src="icons/icon_main.svg" width="96" alt="PlanX 3D City Viewer icon"/>
+
 # PlanX 3D City Viewer
+
+**Turn QGIS layers into an interactive Three.js city — DEM terrain, buildings, mobility, wind and narrative keyframe tours in the browser.**
+
+[![QGIS](https://img.shields.io/badge/QGIS-3.28%2B-93b023?logo=qgis&logoColor=white)](https://plugins.qgis.org/plugins/planx_3d_city/)
+[![Version](https://img.shields.io/github/v/tag/YusufEminoglu/planx_3d_city?label=version&color=blue)](https://github.com/YusufEminoglu/planx_3d_city/releases)
+[![License](https://img.shields.io/badge/license-MIT-orange)](LICENSE)
+[![QGIS Plugin Hub](https://img.shields.io/badge/QGIS%20Hub-install-589632?logo=qgis&logoColor=white)](https://plugins.qgis.org/plugins/planx_3d_city/)
+
+</div>
+
+---
 
 PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, exporting them to the embedded web viewer data contract, and launching a local Three.js 3D city cockpit.
 
@@ -379,3 +394,19 @@ These overlays are for plan review and classroom discussion, not engineering-gra
 - If buildings look flat, verify `katadedi` values.
 - If function coloring is weak, verify `uipfonksiyon`.
 - If selected feature styling is not visible, save edits in QGIS and export again.
+
+## 🧩 Part of the PlanX ecosystem
+
+This plugin is one of 15 open-source QGIS plugins for urban planning by the same author:
+
+| Planning & analysis | CAD & production | 3D & visualization |
+|---|---|---|
+| [PlanX](https://github.com/YusufEminoglu/PlanX) — spatial-planning suite | [PlanX CAD Toolset](https://github.com/YusufEminoglu/PlanX-CAD) — drafting-grade CAD | [PlanX 3D City](https://github.com/YusufEminoglu/planx_3d_city) — Three.js city viewer |
+| [GeoStats Lab](https://github.com/YusufEminoglu/planx_geostats) — spatial statistics | [EasyFillet](https://github.com/YusufEminoglu/EasyFillet) — tangent-arc fillet | [3D OSM Model](https://github.com/YusufEminoglu/osm_3d_model) — OSM → 3D city in browser |
+| [Suitability Lab](https://github.com/YusufEminoglu/planx_suitability_lab) — raster MCDA | [Settlement Toolset](https://github.com/YusufEminoglu/PlanX-Settlement) — 9-stage settlement plans | [OSM Quick 3D](https://github.com/YusufEminoglu/osm_quick_3d) — OSM → native QGIS 3D |
+| [DataCube Lab](https://github.com/YusufEminoglu/planx_datacube) — spatiotemporal cubes | [UIP Toolset](https://github.com/YusufEminoglu/PlanX-UIP) — Turkish master-plan automation | [Urban Procedural 3D](https://github.com/YusufEminoglu/planx_urban_procedural_3d) — parametric zoning lab |
+| [Urban Resilience](https://github.com/YusufEminoglu/planx_urban_resilience) — 28 resilience tools | [ParcelFlux](https://github.com/YusufEminoglu/parcelflux) — parcel subdivision | [CartoLab](https://github.com/YusufEminoglu/planx_cartolab) — publication cartography |
+
+## 📜 License & author
+
+MIT © [Yusuf Eminoğlu](https://github.com/YusufEminoglu) — bug reports and feature requests welcome in [Issues](https://github.com/YusufEminoglu/planx_3d_city/issues).
