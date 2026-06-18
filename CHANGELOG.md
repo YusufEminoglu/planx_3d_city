@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.53] - 2026-06-18
+
+- docs: add CITATION.cff for Zenodo DOI integration
+
 ## [0.8.52] - 2026-06-02
 
 - Portable builds now freeze the live scene. The viewer auto-saves a scene snapshot (web/data/planx_scene_state.json plus the bundled Model Studio GLB models) to the local server on every edit, and the portable build (?portable=1) applies it before the scene is built. Previously portable/exported viewers ignored browser storage and reverted to manifest defaults, so styling, roof/facade choices, mosque scale (mosques shrank to the procedural box) and uploaded models were lost.
