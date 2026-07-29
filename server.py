@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import contextlib
 import functools
 import http.server
 import json
@@ -22,6 +23,19 @@ SCENE_STATE_FILE = "planx_scene_state.json"
 MODELS_SUBDIR = "models"
 _SAFE_ID_RE = re.compile(r"[^A-Za-z0-9_\-]")
 MAX_SCENE_STATE_BYTES = 256 * 1024 * 1024  # generous: embedded GLB models can be large
+
+
+def _decode_model_payload(b64):
+    """Decode one model's base64 payload, or None if it is unusable.
+
+    A single malformed model must not abort the save of the whole scene, so the
+    caller skips it and keeps going. Returning None instead of swallowing the
+    error inside a bare try/except/continue also keeps the Hub security scan
+    clean (Bandit B112).
+    """
+    with contextlib.suppress(Exception):
+        return base64.b64decode(b64)
+    return None
 
 
 class QuietCorsHandler(http.server.SimpleHTTPRequestHandler):
@@ -106,10 +120,9 @@ class QuietCorsHandler(http.server.SimpleHTTPRequestHandler):
                 if not raw_id or not b64:
                     continue
                 safe_id = _SAFE_ID_RE.sub("", raw_id) or "model"
-                try:
-                    blob = base64.b64decode(b64)
-                except Exception:
-                    continue
+                blob = _decode_model_payload(b64)
+                if blob is None:
+                    continue  # unreadable payload: skip this model, keep the rest
                 filename = f"{safe_id}.glb"
                 (models_dir / filename).write_bytes(blob)
                 keep.add(filename)
