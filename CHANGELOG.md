@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.55] - 2026-08-07
+
+- Add floating Save as PDF button to reference manual
+
 ## [0.8.54] - 2026-08-07
 
 - Expanded reference manual: 3D theory, rendering math, 17 DOI refs
