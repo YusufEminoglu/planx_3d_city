@@ -10,12 +10,17 @@
 [![Version](https://img.shields.io/github/v/tag/YusufEminoglu/planx_3d_city?label=version&color=blue)](https://github.com/YusufEminoglu/planx_3d_city/releases)
 [![License](https://img.shields.io/badge/license-MIT-orange)](LICENSE)
 [![QGIS Plugin Hub](https://img.shields.io/badge/QGIS%20Hub-install-589632?logo=qgis&logoColor=white)](https://plugins.qgis.org/plugins/planx_3d_city/)
+[![Documentation](https://img.shields.io/badge/📖_Reference_Manual-13a0a0)](https://yusufeminoglu.github.io/planx_3d_city/)
 
 </div>
 
 ---
 
 PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, exporting them to the embedded web viewer data contract, and launching a local Three.js 3D city cockpit.
+
+## 📖 Documentation
+
+**[Comprehensive Academic Reference Manual](https://yusufeminoglu.github.io/planx_3d_city/)** — complete documentation of every feature, parameter, data contract, and workflow. Hosted on GitHub Pages.
 
 ## Requirements
 
