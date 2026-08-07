@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlanX 3D City Viewer — Comprehensive Academic Reference Manual</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']], tags: 'ams' },
+  options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'], ignoreHtmlClass: 'no-math' }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+:root {
+  --bg: #ffffff; --fg: #1a1a1a; --muted: #555;
+  --accent: #6c5ce7; --accent-dark: #5a4bd1; --accent-light: #f0edff;
+  --border: #ddd; --code-bg: #f5f7f7;
+  --sidebar-bg: #f0f4f4; --sidebar-fg: #333; --sidebar-active: #f0edff;
+  --table-stripe: #f9fbfb;
+  font-size: 11pt; line-height: 1.55;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a2e; --fg: #e0e0e0; --muted: #999;
+    --accent: #7c6ff7; --accent-dark: #6c5ce7; --accent-light: #1a1540;
+    --border: #333; --code-bg: #1e2d3d;
+    --sidebar-bg: #16213e; --sidebar-fg: #ccc; --sidebar-active: #1a1540;
+    --table-stripe: #1a2a3a;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg); color: var(--fg); display: flex; min-height: 100vh; }
+
+#sidebar {
+  width: 300px; min-width: 300px; height: 100vh; position: sticky; top: 0;
+  background: var(--sidebar-bg); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden; z-index: 100;
+}
+#sidebar-header { padding: 16px 18px 8px; border-bottom: 1px solid var(--border); }
+#sidebar-header .logo { font-size: 1.3em; font-weight: 700; color: var(--accent); display: block; }
+#sidebar-header .subtitle { font-size: .78em; color: var(--muted); }
+#search-wrap { padding: 10px 14px; }
+#search { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: .9em; background: var(--bg); color: var(--fg); outline: none; }
+#search:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
+#toc { flex: 1; overflow-y: auto; padding: 4px 0; list-style: none; }
+.toc-group { border-bottom: 1px solid var(--border); }
+.toc-group-btn { display: block; width: 100%; text-align: left; padding: 8px 18px; background: none; border: none; font-size: .88em; font-weight: 600; color: var(--sidebar-fg); cursor: pointer; }
+.toc-group-btn:hover { background: var(--accent-light); }
+.toc-group-btn .arrow { font-size: .7em; transition: transform .2s; display: inline-block; }
+.toc-group-btn[aria-expanded="false"] .arrow { transform: rotate(-90deg); }
+.toc-algs { list-style: none; overflow: hidden; }
+.toc-algs li a { display: block; padding: 4px 18px 4px 28px; font-size: .85em; color: var(--sidebar-fg); text-decoration: none; border-left: 3px solid transparent; }
+.toc-algs li a:hover, .toc-algs li a.active { background: var(--accent-light); border-left-color: var(--accent); color: var(--accent-dark); }
+.toc-algs li a.hidden { display: none; }
+#sidebar-footer { padding: 10px 18px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 4px; }
+#sidebar-footer a { font-size: .82em; color: var(--muted); text-decoration: none; }
+#sidebar-footer a:hover { color: var(--accent); }
+
+#content { flex: 1; max-width: 52em; padding: 2em 2.5em 6em; overflow-y: auto; }
+h1 { font-size: 2.4em; margin: 0 0 .15em; color: var(--accent); }
+h1.subtitle { font-size: 1.15em; font-weight: 400; color: var(--muted); margin-bottom: 1.5em; }
+h2 { font-size: 1.55em; margin: 2em 0 .5em; padding-bottom: .25em; border-bottom: 2px solid var(--accent); color: var(--accent-dark); }
+h3 { font-size: 1.2em; margin: 1.5em 0 .4em; }
+h4 { font-size: 1.05em; margin: 1.2em 0 .3em; color: var(--muted); }
+p, ul, ol { margin: .6em 0; }
+ul, ol { padding-left: 1.8em; }
+li { margin: .25em 0; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: .9em; background: var(--code-bg); padding: .1em .3em; border-radius: 3px; }
+pre { background: var(--code-bg); padding: .8em 1em; border-radius: 4px; overflow-x: auto; margin: .8em 0; font-size: .88em; }
+table { width: 100%; border-collapse: collapse; margin: .8em 0; font-size: .95em; }
+th, td { text-align: left; padding: .45em .6em; border: 1px solid var(--border); }
+th { background: var(--accent-light); font-weight: 600; }
+tr:nth-child(even) td { background: var(--table-stripe); }
+.callout { background: var(--accent-light); border-left: 4px solid var(--accent); padding: .6em 1em; margin: .8em 0; border-radius: 0 4px 4px 0; }
+.callout.warn { background: #fff8e6; border-left: 4px solid #e6c300; }
+.callout.info { background: #e0f2fe; border-left: 4px solid #0284c7; }
+.pid { font-size: .85em; color: var(--muted); margin: -.3em 0 .8em; }
+.ref { margin: .35em 0; padding-left: 1.5em; text-indent: -1.5em; font-size: .93em; }
+
+#back-to-top { position: fixed; bottom: 24px; right: 24px; width: 40px; height: 40px; background: var(--accent); color: white; border: none; border-radius: 50%; font-size: 1.3em; cursor: pointer; opacity: 0; transform: translateY(20px); transition: opacity .2s, transform .2s; z-index: 200; }
+#back-to-top.visible { opacity: .85; transform: translateY(0); }
+#back-to-top:hover { opacity: 1; }
+
+@media (max-width: 768px) {
+  body { flex-direction: column; }
+  #sidebar { width: 100%; min-width: 0; height: auto; position: static; max-height: 40vh; }
+  #content { padding: 1em 1em 4em; }
+}
+@media print {
+  body { display: block; }
+  #sidebar, #back-to-top { display: none !important; }
+  #content { max-width: none; padding: 0; }
+  h2 { page-break-before: always; }
+}
+</style>
+</head>
+<body>
+<nav id="sidebar">
+<div id="sidebar-header">
+<span class="logo">PlanX 3D City Viewer</span>
+<span class="subtitle">Academic Reference Manual · v0.8.53</span>
+</div>
+<div id="search-wrap">
+<input type="text" id="search" placeholder="Search…" autocomplete="off">
+</div>
+<ul id="toc">
+<li class="toc-group">
+<button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #6c5ce7; background: linear-gradient(90deg, #6c5ce718 0%, transparent 100%)"><span class="arrow">▼</span> 1. Architecture &amp; Pipeline</button>
+<ul class="toc-algs">
+<li><a href="#architecture" data-name="architecture" data-display="plugin architecture and data pipeline">Plugin Architecture &amp; Data Pipeline</a></li>
+<li><a href="#export-modes" data-name="exportmodes" data-display="vector plan vs raster plan texture modes">Vector Plan vs Raster Plan Texture Modes</a></li>
+<li><a href="#local-server" data-name="localserver" data-display="local http server">Local HTTP Server</a></li>
+</ul></li>
+<li class="toc-group">
+<button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #e53935; background: linear-gradient(90deg, #e5393518 0%, transparent 100%)"><span class="arrow">▼</span> 2. Input Data Requirements</button>
+<ul class="toc-algs">
+<li><a href="#required-inputs" data-name="requiredinputs" data-display="required and recommended inputs">Required &amp; Recommended Inputs</a></li>
+<li><a href="#optional-inputs" data-name="optionalinputs" data-display="optional urban furniture and detail layers">Optional Urban Furniture &amp; Detail Layers</a></li>
+<li><a href="#field-requirements" data-name="fieldrequirements" data-display="attribute field requirements">Attribute Field Requirements</a></li>
+</ul></li>
+<li class="toc-group">
+<button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #43a047; background: linear-gradient(90deg, #43a04718 0%, transparent 100%)"><span class="arrow">▼</span> 3. QGIS Dialog &amp; Export Workflow</button>
+<ul class="toc-algs">
+<li><a href="#dialog-layout" data-name="dialoglayout" data-display="dialog layout and tabs">Dialog Layout &amp; Tabs</a></li>
+<li><a href="#export-process" data-name="exportprocess" data-display="export process and file contracts">Export Process &amp; File Contracts</a></li>
+<li><a href="#presets" data-name="presets" data-display="save and load presets">Save &amp; Load Presets</a></li>
+</ul></li>
+<li class="toc-group">
+<button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #fb8c00; background: linear-gradient(90deg, #fb8c0018 0%, transparent 100%)"><span class="arrow">▼</span> 4. Web Viewer — Environment &amp; Terrain</button>
+<ul class="toc-algs">
+<li><a href="#camera-controls" data-name="cameracontrols" data-display="camera controls orbit walk mode">Camera Controls: Orbit, Walk &amp; Minimap</a></li>
+<li><a href="#environment" data-name="environment" data-display="environment sky sun fog weather">Environment: Sky, Sun, Fog &amp; Weather</a></li>
+<li><a href="#terrain" data-name="terrain" data-display="terrain dem island plateau basemap">Terrain: DEM, Island Plateau &amp; Basemap</a></li>
+</ul></li>
+<li class="toc-group">
+<button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #1e88e5; background: linear-gradient(90deg, #1e88e518 0%, transparent 100%)"><span class="arrow">▼</span> 5. Web Viewer — Buildings &amp; Surfaces</button>
+<ul class="toc-algs">
+<li><a href="#buildings" data-name="buildings" data-display="buildings floors roofs facades">Buildings: Floors, Roofs, Facades &amp; Function Colors</a></li>
+<li><a href="#roads-hardscape" data-name="roadshardscape" data-display="roads hardscape sidewalks parcels">Roads, Hardscape, Sidewalks &amp; Parcels</a></li>
+</ul></li>
+<li class="toc-group">
+<button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #8e24aa; background: linear-gradient(90deg, #8e24aa18 0%, transparent 100%)"><span class="arrow">▼</span> 6. Web Viewer — Assets &amp; Effects</button>
+<ul class="toc-algs">
+<li><a href="#asset-themes" data-name="assetthemes" data-display="asset themes furniture vehicles trees">Asset Themes: Furniture, Vehicles &amp; Trees</a></li>
+<li><a href="#street-furniture" data-name="streetfurniture" data-display="street furniture lights benches bins stops">Street Furniture &amp; Vegetation</a></li>
+<li><a href="#effects" data-name="effects" data-display="ssao bloom post-processing solar animation">Post-Processing Effects &amp; Solar Animation</a></li>
+</ul></li>
+<li class="toc-group">
+<button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #00897b; background: linear-gradient(90deg, #00897b18 0%, transparent 100%)"><span class="arrow">▼</span> 7. Web Viewer — Advanced Features</button>
+<ul class="toc-algs">
+<li><a href="#narrative-tours" data-name="narrativetours" data-display="narrative keyframe tours">Narrative Keyframe Tours</a></li>
+<li><a href="#mobility-wind" data-name="mobilitywind" data-display="mobility mode walk wind visualization">Mobility Mode (Walk) &amp; Wind Visualization</a></li>
+<li><a href="#model-studio" data-name="modelstudio" data-display="model studio glb import custom models">Model Studio (Custom GLB Models)</a></li>
+<li><a href="#statistics" data-name="statistics" data-display="building statistics area dashboard">Building Statistics &amp; Area Dashboard</a></li>
+<li><a href="#scene-save" data-name="scenesave" data-display="scene state save portable freeze">Scene State Save &amp; Portable Freeze</a></li>
+</ul></li>
+<li class="toc-group">
+<button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #6d4c41; background: linear-gradient(90deg, #6d4c4118 0%, transparent 100%)"><span class="arrow">▼</span> 8. Data Acquisition Tools</button>
+<ul class="toc-algs">
+<li><a href="#osm-importer" data-name="osmimporter" data-display="openstreetmap import buildings roads trees">OpenStreetMap Importer</a></li>
+<li><a href="#sample-generator" data-name="samplegenerator" data-display="synthetic sample dataset generator">Synthetic Sample Dataset Generator</a></li>
+</ul></li>
+<li class="toc-group">
+<button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #c62828; background: linear-gradient(90deg, #c6282818 0%, transparent 100%)"><span class="arrow">▼</span> 9. Portable Export &amp; Deployment</button>
+<ul class="toc-algs">
+<li><a href="#portable-folder" data-name="portablefolder" data-display="portable viewer folder export">Portable Viewer (Folder Export)</a></li>
+<li><a href="#portable-zip" data-name="portablezip" data-display="portable viewer zip with tour">Portable Viewer (ZIP with Tour)</a></li>
+</ul></li>
+<li class="toc-group">
+<button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #4527a0; background: linear-gradient(90deg, #4527a018 0%, transparent 100%)"><span class="arrow">▼</span> 10. Building Styling Tools</button>
+<ul class="toc-algs">
+<li><a href="#style-tools" data-name="styletools" data-display="building style block style qgis field tools">Building &amp; Block Style Field Tools</a></li>
+</ul></li>
+</ul>
+<div id="sidebar-footer">
+<a href="#appendix-a">📊 Appendix A: File Contract Reference</a>
+<a href="#appendix-b">🎨 Appendix B: Asset Theme Catalog</a>
+<a href="#appendix-c">📖 Appendix C: Glossary</a>
+<a href="#appendix-d">📚 Appendix D: Bibliography</a>
+</div>
+</nav>
+
+<main id="content">
+
+<h1>PlanX 3D City Viewer</h1>
+<h1 class="subtitle">Comprehensive Academic Reference Manual · v0.8.53</h1>
+<p style="color:var(--muted);font-size:.9em;">Yusuf Eminoğlu · August 2026 · <a href="https://github.com/YusufEminoglu/planx_3d_city">github.com/YusufEminoglu/planx_3d_city</a></p>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 1. ARCHITECTURE & PIPELINE -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h2 id="architecture">1. Architecture &amp; Pipeline</h2>
+
+<h3 id="architecture">Plugin Architecture &amp; Data Pipeline</h3>
+<p>PlanX 3D City Viewer is a <b>QGIS publisher plugin</b> that bridges desktop GIS and browser-based 3D visualisation. The architecture has four layers:</p>
+<ol>
+  <li><b>QGIS Dialog</b> (<code>dialog.py</code>) — Layer selection, mode switching, preset management, sample loading, and export triggering. The user picks which QGIS layers map to which 3D scene elements.</li>
+  <li><b>Export Engine</b> (<code>exporter.py</code>) — Converts QGIS vector layers to GeoJSON and raster layers to GeoTIFF/PNG, writing them into the <code>web/data/</code> directory. Handles CRS reprojection, geometry validation, and DEM/plan-texture processing.</li>
+  <li><b>Local HTTP Server</b> (<code>server.py</code>) — A Python <code>ThreadingTCPServer</code> on <code>127.0.0.1:8080–8099</code> that serves the <code>web/</code> directory with CORS headers. Includes a <code>POST /api/scene-state</code> endpoint for saving live viewer settings back to disk.</li>
+  <li><b>Three.js Web Viewer</b> (<code>web/src/app.js</code>) — A single-page application using Three.js with OrbitControls, PointerLockControls, Sky, EffectComposer (SSAO + UnrealBloomPass), CSS2DRenderer, and GLTFLoader. No build step, no Node.js dependency — works directly in any modern browser.</li>
+</ol>
+<p>The pipeline is <b>one-directional</b>: QGIS layers → GeoJSON files → browser. The only reverse channel is the <code>/api/scene-state</code> save endpoint, which persists viewer settings (layer visibility, colors, asset selections, Model Studio models) so they survive export refreshes and portable ZIP freezing.</p>
+
+<h3 id="export-modes">Vector Plan vs Raster Plan Texture Modes</h3>
+<p>The plugin supports two export modes, selected in the dialog:</p>
+<table><tr><th>Mode</th><th>Required Layers</th><th>Behaviour</th></tr>
+<tr><td><b>Vector Plan</b> (<code>vector</code>)</td><td>DEM, ROI, Roads, Buildings, Blocks, Parcels</td><td>All 3D geometry is built from vector GeoJSON in the browser. Buildings are extruded polygons with procedural roofs. Terrain is a DEM-sampled mesh. Roads, blocks, and parcels are flat or draped polygon meshes.</td></tr>
+<tr><td><b>Raster Plan Texture</b> (<code>raster_texture</code>)</td><td>ROI, Plan Texture (GeoTIFF), Roads, Buildings</td><td>The plan-texture GeoTIFF is draped over the DEM as a CanvasTexture. Buildings are still extruded from vector GeoJSON but seated on the textured terrain. Useful when a rendered master plan or orthophoto should appear as the ground surface.</td></tr></table>
+
+<h3 id="local-server">Local HTTP Server</h3>
+<p>The server binds to <code>127.0.0.1</code> (localhost only — not accessible from other machines) on the first free port between 8080 and 8099. It serves the <code>web/</code> directory as static files with CORS headers. The viewer URL is <code>http://127.0.0.1:{port}/src/</code>. The server runs in a daemon thread and is stopped when the plugin is unloaded or the user clicks Stop Server in the dialog.</p>
+<div class="callout info"><b>Scene state persistence.</b> When the viewer saves its state (automatically on any settings change), a <code>POST /api/scene-state</code> request writes <code>web/data/planx_scene_state.json</code>. This file is included in portable exports, so the recipient sees the same camera angle, layer visibility, asset selections, and Model Studio models as the sender.</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 2. INPUT DATA REQUIREMENTS -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h2 id="required-inputs">2. Input Data Requirements</h2>
+
+<h3>Required &amp; Recommended Inputs</h3>
+<table><tr><th>Layer Key</th><th>Geometry</th><th>Vector Plan</th><th>Raster Texture</th><th>Purpose</th></tr>
+<tr><td><code>dem</code></td><td>Raster (GeoTIFF)</td><td>Recommended</td><td>—</td><td>Digital Elevation Model. Sampled into a terrain mesh. Without a DEM, terrain is flat at elevation 0.</td></tr>
+<tr><td><code>roi</code></td><td>Polygon</td><td>Recommended</td><td>Required</td><td>Region of Interest — clips the terrain, defines the scene bounds.</td></tr>
+<tr><td><code>roads</code></td><td>Line</td><td>Recommended</td><td>Required</td><td>Road centre-lines. Extruded to flat ribbons with configurable width.</td></tr>
+<tr><td><code>buildings</code></td><td>Polygon</td><td>Recommended</td><td>Required</td><td>Building footprints. Extruded by <code>floor_count</code> × <code>FLOOR_HEIGHT</code>. Roof type per <code>roof_shape</code> field.</td></tr>
+<tr><td><code>blocks</code></td><td>Polygon</td><td>Recommended</td><td>—</td><td>City blocks. Used for the island-plateau surface and block-level statistics.</td></tr>
+<tr><td><code>parcels</code></td><td>Polygon</td><td>Recommended</td><td>—</td><td>Cadastral parcels. Rendered as optional boundary lines with configurable colour and opacity.</td></tr>
+<tr><td><code>plan_texture</code></td><td>Raster (GeoTIFF)</td><td>—</td><td>Required</td><td>Raster plan or orthophoto draped as a terrain texture. Placed by its own projected bounding box.</td></tr>
+<tr><td><code>basemap</code></td><td>Raster (GeoTIFF/PNG)</td><td>Optional</td><td>Optional</td><td>QGIS-exported basemap image. When enabled, it replaces the procedural terrain colour.</td></tr></table>
+
+<h3 id="optional-inputs">Optional Urban Furniture &amp; Detail Layers</h3>
+<table><tr><th>Layer Key</th><th>Geometry</th><th>3D Representation</th></tr>
+<tr><td><code>trees</code></td><td>Point</td><td>Procedural tree models (8 species variants, configurable density).</td></tr>
+<tr><td><code>hardscape</code></td><td>Polygon</td><td>Paved surfaces (plazas, parking). Draped on terrain with configurable texture and height offset.</td></tr>
+<tr><td><code>sidewalks</code></td><td>Polygon</td><td>Sidewalk polygons elevated slightly above roads.</td></tr>
+<tr><td><code>pedestrian_paths</code></td><td>Line/Polygon</td><td>Inner-block walkways for pedestrian movement.</td></tr>
+<tr><td><code>bike_lanes</code></td><td>Line/Polygon</td><td>Bicycle lane markings on roads.</td></tr>
+<tr><td><code>lights</code></td><td>Point</td><td>Street lamps (5 style variants, configurable density).</td></tr>
+<tr><td><code>benches</code></td><td>Point</td><td>Public benches (5 style variants).</td></tr>
+<tr><td><code>trashbins</code></td><td>Point</td><td>Waste bins (5 style variants).</td></tr>
+<tr><td><code>busstops</code></td><td>Point</td><td>Bus stop shelters (5 style variants).</td></tr>
+<tr><td><code>fences</code></td><td>Polygon</td><td>Fence/wall lines extruded as thin barriers.</td></tr>
+<tr><td><code>waterlines</code></td><td>Line</td><td>Water features rendered as blue ribbons.</td></tr>
+<tr><td><code>mosques</code></td><td>Point</td><td>Mosque markers with minaret indicators.</td></tr>
+<tr><td><code>tumulus</code></td><td>Point</td><td>Archaeological mound markers.</td></tr></table>
+
+<h3 id="field-requirements">Attribute Field Requirements</h3>
+<table><tr><th>Layer</th><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td>Buildings</td><td><code>floor_count</code></td><td>Integer</td><td>Recommended</td><td>Number of storeys. Defaults to 1 if absent.</td></tr>
+<tr><td>Buildings</td><td><code>roof_shape</code></td><td>String</td><td>Optional</td><td>One of: <code>flat</code>, <code>gable</code>, <code>hip</code>, <code>shed</code>, <code>dome</code>. Defaults to <code>flat</code>.</td></tr>
+<tr><td>Buildings</td><td><code>function</code></td><td>String</td><td>Optional</td><td>Land-use category for function-based colouring and facade assignment.</td></tr>
+<tr><td>Buildings</td><td><code>building_type</code></td><td>String</td><td>Optional</td><td>Building typology for the info panel click display.</td></tr>
+<tr><td>Buildings</td><td><code>floors</code></td><td>Integer</td><td>Optional</td><td>Alias for <code>floor_count</code>. Checked if <code>floor_count</code> is absent.</td></tr>
+<tr><td>Blocks</td><td><code>block_id</code> / <code>name</code></td><td>String</td><td>Optional</td><td>Block identifier for statistics grouping.</td></tr>
+<tr><td>Trees</td><td><code>species</code></td><td>String</td><td>Optional</td><td>Tree species name. Maps to the 8 procedural tree variants.</td></tr>
+</table>
+<div class="callout warn"><b>CRS requirement.</b> All vector layers must share a common projected coordinate system (e.g. UTM zone). The exporter reprojects to the project CRS during GeoJSON writing. Unprojected layers (EPSG:4326) will produce distorted geometry — distances and extrusions will be in decimal degrees.</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 3. DIALOG & EXPORT -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h2 id="dialog-layout">3. QGIS Dialog &amp; Export Workflow</h2>
+
+<h3>Dialog Layout &amp; Tabs</h3>
+<p>The main dialog (<code>PlanX3DCityDialog</code>) organises the workflow into six panels:</p>
+<table><tr><th>Panel</th><th>Function</th></tr>
+<tr><td><b>0 Guide</b></td><td>Bundled English HTML user guide with quick-start instructions, layer descriptions, and troubleshooting tips. Served directly from <code>web/src/index.html</code> content.</td></tr>
+<tr><td><b>1 Data</b></td><td>Layer mapping: a grid of <code>QgsMapLayerComboBox</code> widgets, one per input key. A mode selector (Vector Plan / Raster Plan Texture) toggles which inputs are shown as required. Save Preset and Load Preset buttons for reusing configurations across sessions.</td></tr>
+<tr><td><b>2 Publish</b></td><td>Export and launch controls. The <b>Export &amp; Launch</b> button runs <code>validate_inputs</code>, writes all layers to <code>web/data/</code>, starts the local server, and opens the browser. Status bar, published-file summary, and empty-optional warnings.</td></tr>
+<tr><td><b>3 View</b></td><td>Viewer controls: Reopen Viewer, Stop Server. When the server is running, shows the local URL as a clickable link.</td></tr>
+<tr><td><b>4 Portable</b></td><td>Portable export: copy the entire <code>web/</code> directory to a folder or ZIP archive for distribution. Optionally includes a <code>planx_tour.json</code> narrative tour file.</td></tr>
+<tr><td><b>5 Style</b></td><td>Building and block styling tools: apply <code>floor_count</code>, <code>roof_shape</code>, <code>function</code>, and block-level fields to selected features in QGIS before export.</td></tr>
+</table>
+
+<h3 id="export-process">Export Process &amp; File Contracts</h3>
+<p>When <b>Export &amp; Launch</b> is clicked, the exporter:</p>
+<ol>
+  <li><b>Validates</b> that all required layers for the selected mode are assigned.</li>
+  <li><b>Warns</b> if existing data files would be overwritten.</li>
+  <li><b>Writes</b> each vector layer as GeoJSON to <code>web/data/{key}.geojson</code> using <code>QgsVectorFileWriter</code>, reprojecting to the project CRS.</li>
+  <li><b>Writes</b> raster layers: DEM and plan texture as GeoTIFF (<code>dem.tif</code>, <code>siteplan.tif</code>); basemap as PNG (<code>basemap.png</code>) rendered from the QGIS map canvas at the project extent.</li>
+  <li><b>Starts</b> the local server and opens the browser to <code>http://127.0.0.1:{port}/src/</code>.</li>
+</ol>
+<p>The web viewer reads <code>web/data/manifest.json</code> (auto-generated by the exporter) to discover which layers are available, then fetches each GeoJSON/GeoTIFF asynchronously.</p>
+
+<h3 id="presets">Save &amp; Load Presets</h3>
+<p>The Data panel's Save Preset button serialises the current layer selections (layer IDs) to a JSON file. Load Preset restores them. Presets are stored as <code>.planx3d</code> JSON files in the user's documents directory. This enables: (a) reusing a layer configuration across QGIS sessions without re-selecting each layer; (b) sharing a preset file with collaborators who have the same layers loaded; (c) switching between analysis scenarios (e.g. "existing conditions" vs "proposed development") by loading different presets.</p>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 4. ENVIRONMENT & TERRAIN -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h2 id="camera-controls">4. Web Viewer — Environment &amp; Terrain</h2>
+
+<h3>Camera Controls: Orbit, Walk &amp; Minimap</h3>
+<p>The viewer provides three camera modes:</p>
+<table><tr><th>Mode</th><th>Control</th><th>Implementation</th></tr>
+<tr><td><b>Orbit</b> (default)</td><td>Left-click + drag = orbit, scroll = zoom, right-click + drag = pan</td><td><code>OrbitControls</code> with damping, min/max distance limits, and target centered on the ROI.</td></tr>
+<tr><td><b>Walk</b> (Mobility Mode)</td><td>WASD keys = move, mouse = look, Shift = run</td><td><code>PointerLockControls</code> at eye height (1.7 m). Terrain-following: the camera climbs/descends with the DEM. Click to lock pointer, Esc to release.</td></tr>
+<tr><td><b>Minimap</b></td><td>Toggle via GUI checkbox</td><td>A small top-down orthographic camera rendered to a corner overlay using a second <code>WebGLRenderer</code> scene. Shows the full ROI extent with a camera-frustum indicator.</td></tr>
+</table>
+
+<h3 id="environment">Environment: Sky, Sun, Fog &amp; Weather</h3>
+<table><tr><th>Control</th><th>Default</th><th>Description</th></tr>
+<tr><td><b>Sun Direction</b></td><td>0° (north)</td><td>Azimuth angle of the directional light. 0–360°.</td></tr>
+<tr><td><b>Sun Elevation</b></td><td>45°</td><td>Altitude angle above the horizon. 0 = sunset, 90 = noon. Affects shadow length and sky colour.</td></tr>
+<tr><td><b>Fog</b></td><td>Enabled, density 0.00015</td><td>Exponential fog matching the sky colour. Toggle and density slider.</td></tr>
+<tr><td><b>Weather</b></td><td>Clear</td><td>Dropdown: Clear, Cloudy (dimmer sun, whiter sky), Overcast (flat grey light), Rain (dark sky, particle effect).</td></tr>
+<tr><td><b>Solar Animation</b> (⏱)</td><td>Off</td><td>Auto-rotates sun direction at configurable speed (hours/second). Creates a day-cycle timelapse effect.</td></tr>
+</table>
+
+<h3 id="terrain">Terrain: DEM, Island Plateau &amp; Basemap</h3>
+<table><tr><th>Control</th><th>Default</th><th>Description</th></tr>
+<tr><td><b>Island Plateau</b></td><td>On</td><td>Raises block polygons to match the DEM surface, creating a flat "island" at the median elevation of each block's footprint. Eliminates z-fighting between buildings and terrain within blocks. Toggle off to show raw DEM under buildings.</td></tr>
+<tr><td><b>Outside ROI Terrain</b></td><td>On</td><td>When enabled, the DEM mesh extends beyond the ROI polygon (useful for context). When disabled, the terrain is clipped to the ROI for a clean model-only view.</td></tr>
+<tr><td><b>Basemap Texture</b></td><td>Off</td><td>When enabled and a <code>basemap.png</code> exists, replaces the procedural terrain colour with the QGIS-exported basemap image. Takes precedence over procedural colour.</td></tr>
+<tr><td><b>Pavement</b></td><td>Asphalt texture</td><td>The procedural ground texture outside blocks. Configurable via the asset theme's paving selection.</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 5. BUILDINGS & SURFACES -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h2 id="buildings">5. Web Viewer — Buildings &amp; Surfaces</h2>
+
+<h3>Buildings: Floors, Roofs, Facades &amp; Function Colors</h3>
+<table><tr><th>Control</th><th>Default</th><th>Description</th></tr>
+<tr><td><b>Floor Height</b></td><td>3.0 m</td><td>Height per storey. Building height = <code>floor_count</code> × floor height. Slider: 2.5–5.0 m.</td></tr>
+<tr><td><b>Roof Shape</b></td><td>flat</td><td>Dropdown: flat, gable, hip, shed, dome. Applied globally to all buildings unless per-building <code>roof_shape</code> field overrides it.</td></tr>
+<tr><td><b>Roof Height</b></td><td>1.5 m</td><td>Vertical rise of the roof above the top floor. For gable/hip roofs, this is the ridge height.</td></tr>
+<tr><td><b>Roof Texture</b></td><td>Theme default</td><td>Texture applied to roof surfaces. Each asset theme provides 4–5 roof variants.</td></tr>
+<tr><td><b>Function Colors</b></td><td>Off</td><td>When enabled, buildings are coloured by their <code>function</code> field using a categorical palette (residential = warm beige, commercial = blue-grey, industrial = grey, educational = yellow, health = red, religious = purple, etc.).</td></tr>
+<tr><td><b>Function Facades</b></td><td>Off</td><td>When enabled, building walls use facade textures mapped to the <code>function</code> field. When disabled, a single facade texture (from the asset theme) is applied to all buildings.</td></tr>
+<tr><td><b>Facade Texture Scale</b></td><td>4.85×</td><td>Global scale multiplier for the facade texture UV coordinates. Adjust to make window and floor lines visually match the building's physical storey count.</td></tr>
+</table>
+<p><b>Roof geometry:</b> Gable, shed, and hip roofs follow the real building footprint polygon and orientation (not an axis-aligned bounding box). The roof is centered on the footprint with a ≤0.30 m eave. Shed roofs close their raised sides. All roof and wall materials are double-sided to prevent invisible faces from certain camera angles.</p>
+
+<h3 id="roads-hardscape">Roads, Hardscape, Sidewalks &amp; Parcels</h3>
+<table><tr><th>Control</th><th>Default</th><th>Description</th></tr>
+<tr><td><b>Show Roads</b></td><td>On</td><td>Toggle road ribbon visibility.</td></tr>
+<tr><td><b>Road Width</b></td><td>10 m</td><td>Width of the extruded road ribbon. Slider: 3–30 m.</td></tr>
+<tr><td><b>Road Color</b></td><td>Dark grey</td><td>Colour of the road surface.</td></tr>
+<tr><td><b>Sidewalk Color</b></td><td>Light grey</td><td>Colour of the sidewalk polygons.</td></tr>
+<tr><td><b>Show Sidewalks / Crosswalks / Pedestrian Paths</b></td><td>On</td><td>Independent toggles for each pedestrian surface type.</td></tr>
+<tr><td><b>Show Hardscape</b></td><td>On</td><td>Toggle paved-surface visibility. Hardscape polygons are subdivided before terrain draping to reduce instability near island edges.</td></tr>
+<tr><td><b>Hardscape Texture</b></td><td>Theme default</td><td>Texture applied to hardscape surfaces.</td></tr>
+<tr><td><b>Hardscape Height</b></td><td>0.05 m</td><td>Vertical offset above terrain. Prevents z-fighting with the ground mesh.</td></tr>
+<tr><td><b>Show Parcels</b></td><td>Off</td><td>Toggle parcel boundary visibility.</td></tr>
+<tr><td><b>Boundary Color / Opacity</b></td><td>White, 40%</td><td>Parcel line style.</td></tr>
+<tr><td><b>Show Blocks</b></td><td>On</td><td>Toggle block polygon visibility. When transparency &gt; 0, blocks are semi-transparent for reviewing the underlying DEM.</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 6. ASSETS & EFFECTS -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h2 id="asset-themes">6. Web Viewer — Assets &amp; Effects</h2>
+
+<h3>Asset Themes: Furniture, Vehicles &amp; Trees</h3>
+<p>The viewer ships with six curated asset themes, each providing a coherent visual style across all street furniture, vehicles, pedestrians, trees, facades, roofs, and paving:</p>
+<table><tr><th>Theme</th><th>Character</th><th>Tree Palette</th><th>Facade Palette</th></tr>
+<tr><td><b>Modern Urban</b></td><td>Contemporary global city</td><td>Linden, Plane, Maple, Columnar, Broadleaf, Pine, Olive, Cypress</td><td>UrbanA–E (glass, brick, panel, concrete, mixed)</td></tr>
+<tr><td><b>Modern Turkish</b></td><td>Turkish urban fabric (40 facade textures, 4 families × 10 storey variants)</td><td>Plane, Linden, Maple, Columnar, Olive, Cypress, Jacaranda, Pine</td><td>Urban_TR_A–D (entrance/commercial ground floor + apartment upper floors)</td></tr>
+<tr><td><b>Mediterranean</b></td><td>Southern European / coastal</td><td>Olive, Cypress, Plane, Palm, Jacaranda, Broadleaf, Maple, Linden</td><td>Stucco, UrbanB, UrbanD, CoastalWhite</td></tr>
+<tr><td><b>Campus</b></td><td>University / institutional</td><td>Plane, Pine, Maple, Linden, Broadleaf, Columnar, Olive, Cypress</td><td>CampusGlass, UrbanC, UrbanA, UrbanB</td></tr>
+<tr><td><b>Eco</b></td><td>Sustainable / green city</td><td>Broadleaf, Pine, Linden, Maple, Olive, Jacaranda, Cypress, Plane</td><td>EcoTimber, UrbanD, UrbanB, UrbanA</td></tr>
+<tr><td><b>Dense Urban</b></td><td>High-density metropolitan</td><td>Columnar, Maple, Linden, Plane, Broadleaf, Pine, Olive, Cypress</td><td>DenseBrick, UrbanA, UrbanC, UrbanD</td></tr>
+</table>
+<p>Each theme also defines variants for pedestrians (4–5 styles), cars (5–6 colours), lights, benches, bins, and bus stops. The theme is selected in the viewer's GUI and persists in the scene state.</p>
+
+<h3 id="street-furniture">Street Furniture &amp; Vegetation</h3>
+<table><tr><th>Control</th><th>Default</th><th>Description</th></tr>
+<tr><td><b>Car Density</b></td><td>Medium (50%)</td><td>Density of procedural vehicles placed on road segments. Slider: 0–100%.</td></tr>
+<tr><td><b>Traffic Speed</b></td><td>0 (static)</td><td>Speed of animated vehicle movement along roads. 0 = parked cars only.</td></tr>
+<tr><td><b>Pedestrian Density</b></td><td>Low (25%)</td><td>Density of procedural pedestrian models on sidewalks and paths. Slider: 0–100%.</td></tr>
+<tr><td><b>Tree Density</b></td><td>As per layer</td><td>When tree points are loaded, this slider downsamples them for performance: 100% = all trees, 25% = every fourth tree.</td></tr>
+<tr><td><b>Lights / Benches / Bins / Bus Stops</b></td><td>On</td><td>Independent toggles for each street-furniture category. Each category uses the active asset theme's style variants.</td></tr>
+</table>
+
+<h3 id="effects">Post-Processing Effects &amp; Solar Animation</h3>
+<table><tr><th>Control</th><th>Default</th><th>Description</th></tr>
+<tr><td><b>SSAO</b> (Screen-Space Ambient Occlusion)</td><td>On, radius 0.5</td><td>Adds contact shadows in crevices and building bases. Computed via <code>SSAOPass</code> in the <code>EffectComposer</code> pipeline. Noticeable performance impact on integrated GPUs — disable for smoother framerates.</td></tr>
+<tr><td><b>Bloom</b> (Unreal Bloom Pass)</td><td>Off</td><td>Adds a glow/bloom effect to bright surfaces. Useful for night scenes with lit windows. Threshold, strength, and radius configurable.</td></tr>
+<tr><td><b>Solar Animation</b></td><td>Off</td><td>Auto-rotates the sun direction at a configurable speed (hours per second). Creates a day-cycle animation from dawn to dusk. The sky colour, shadow direction, and ambient light update continuously.</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 7. ADVANCED FEATURES -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h2 id="narrative-tours">7. Web Viewer — Advanced Features</h2>
+
+<h3>Narrative Keyframe Tours</h3>
+<p>The viewer supports <b>narrative keyframe tours</b>: a sequence of camera positions, each with an optional text caption, that the viewer animates through. Tours are defined in a <code>planx_tour.json</code> file placed in <code>web/data/</code>. Each keyframe specifies:</p>
+<ul>
+  <li><code>position</code> — camera (x, y, z) in local scene coordinates.</li>
+  <li><code>target</code> — look-at point (x, y, z).</li>
+  <li><code>caption</code> — HTML text displayed as an overlay during this keyframe.</li>
+  <li><code>duration</code> — seconds to hold this keyframe before transitioning to the next.</li>
+  <li><code>transition</code> — easing function for the camera movement (linear, ease-in-out).</li>
+</ul>
+<p>Tours are created externally (via the <b>Narrative Studio</b> companion tool or hand-authored JSON) and loaded into the viewer. The viewer's tour player shows a progress bar, play/pause controls, and a keyframe list. The portable ZIP export optionally includes a tour file so recipients see the curated narrative.</p>
+
+<h3 id="mobility-wind">Mobility Mode (Walk) &amp; Wind Visualization</h3>
+<p><b>Mobility Mode</b> (Walk) switches the camera to a first-person perspective at 1.7 m eye height using <code>PointerLockControls</code>. WASD moves, mouse looks, Shift runs. The camera follows the terrain surface — climbing hills and descending into valleys. This mode is designed for immersive design review: "walk" through a proposed development at human scale.</p>
+<p><b>Wind Visualization:</b> An optional particle-based wind effect shows airflow direction and intensity across the scene. Particle count, speed, and direction are configurable. When combined with the building layer, it gives a qualitative sense of wind-channeling between tall buildings — useful for early-stage urban-design critique (not CFD-substitute accuracy).</p>
+
+<h3 id="model-studio">Model Studio (Custom GLB Models)</h3>
+<p>The <b>Model Studio</b> panel allows importing custom 3D models in GLB (glTF Binary) format. Models are uploaded through the viewer UI, stored as base64 in the scene state, and persisted to <code>web/data/models/</code> as <code>.glb</code> files via the <code>/api/scene-state</code> endpoint. Each model can be positioned, scaled, and rotated in the scene. Models survive export refreshes — when the scene state is reloaded, the GLB files are re-fetched. This is the mechanism for placing detailed landmark buildings, public art, or infrastructure elements that are beyond the scope of procedural extrusion.</p>
+
+<h3 id="statistics">Building Statistics &amp; Area Dashboard</h3>
+<p>The viewer's <b>Area Statistics</b> panel (toggle via the GUI) displays a real-time dashboard:</p>
+<ul>
+  <li><b>Total Buildings</b> — count of building features in the loaded GeoJSON.</li>
+  <li><b>Blocks</b> — count of block polygons.</li>
+  <li><b>Parcels</b> — count of parcel polygons.</li>
+  <li><b>Average Floors</b> — mean <code>floor_count</code> across all buildings.</li>
+  <li><b>Building Click Info</b> — clicking any building shows a CSS2D label with its function, floor count, building type, and footprint area.</li>
+</ul>
+
+<h3 id="scene-save">Scene State Save &amp; Portable Freeze</h3>
+<p>Every change to the viewer's GUI controls (layer visibility, colours, asset selections, sun position, etc.) triggers an automatic save to the local server via <code>POST /api/scene-state</code>. The server writes <code>web/data/planx_scene_state.json</code>. This file:</p>
+<ul>
+  <li><b>Survives re-exports:</b> when the user re-runs Export &amp; Launch with new data, the previous scene state is preserved (new layers are added, existing settings remain).</li>
+  <li><b>Travels with portable exports:</b> when creating a portable folder or ZIP, <code>planx_scene_state.json</code> is included, so the recipient opens the viewer to the same configuration the sender had — same camera angle, same layer visibility, same asset theme, same Model Studio models.</li>
+  <li><b>Handles large models:</b> the endpoint accepts up to 256 MB of base64-encoded GLB model data, sufficient for detailed landmark buildings.</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 8. DATA ACQUISITION -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h2 id="osm-importer">8. Data Acquisition Tools</h2>
+
+<h3>OpenStreetMap Importer</h3>
+<p>The OSM Importer (<code>osm_importer.py</code>) pulls building footprints, roads, green areas, and tree points from the <b>OpenStreetMap Overpass API</b> for a user-defined bounding box. It reprojects the results to a metric CRS and loads them as QGIS vector layers.</p>
+<h4>Workflow</h4>
+<ol>
+  <li>Draw a bounding box on the QGIS map canvas (or use the current view extent).</li>
+  <li>Open the OSM Importer from the plugin dialog.</li>
+  <li>The importer queries Overpass for: <code>building=*</code> (polygons), <code>highway=*</code> (lines), <code>landuse=grass/forest/recreation_ground</code> + <code>leisure=park/garden</code> + <code>natural=wood</code> (polygons), <code>natural=tree</code> (points).</li>
+  <li>Results are reprojected to a UTM zone appropriate for the bounding box centroid.</li>
+  <li>Layers are loaded into the QGIS project with default symbology.</li>
+</ol>
+<div class="callout warn"><b>Overpass is a shared resource.</b> The importer enforces a soft cap of ~5 km on the longer side of the bounding box. Larger areas should use regional OSM extracts (Geofabrik, BBBike) or the QuickOSM plugin. Overpass may rate-limit excessive or very large queries.</div>
+
+<h3 id="sample-generator">Synthetic Sample Dataset Generator</h3>
+<p>The Sample Generator (<code>sample_generator.py</code>) creates a tiny but complete DEM + vector dataset (600 m × 600 m, 3×3 city blocks) into a temporary folder and loads the layers into the current QGIS project. It lets a brand-new user try the plugin without preparing any data.</p>
+<h4>Generated Layers</h4>
+<table><tr><th>Layer</th><th>Content</th></tr>
+<tr><td>DEM</td><td>Synthetic GeoTIFF with a gentle central hill + Perlin-like noise (GDAL-generated, EPSG:32635).</td></tr>
+<tr><td>ROI</td><td>Rectangle covering the 600 m × 600 m extent.</td></tr>
+<tr><td>Buildings</td><td>~80 buildings with <code>floor_count</code> (2–8), <code>roof_shape</code> (flat/gable/hip), and <code>function</code> fields.</td></tr>
+<tr><td>Roads</td><td>Grid road network with arterial, collector, and local segments.</td></tr>
+<tr><td>Blocks</td><td>9 block polygons (3×3 grid).</td></tr>
+<tr><td>Trees</td><td>~200 tree points along streets and in open spaces.</td></tr>
+</table>
+<p>Access via: Welcome dialog → "Load Sample Project" button, or from the plugin menu.</p>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 9. PORTABLE EXPORT -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h2 id="portable-folder">9. Portable Export &amp; Deployment</h2>
+
+<h3>Portable Viewer (Folder Export)</h3>
+<p>Copies the entire <code>web/</code> directory — HTML, JavaScript, CSS, vendor libraries, assets, and the <code>data/</code> folder with all exported GeoJSON/GeoTIFF files — to a user-chosen folder. The resulting folder is a <b>self-contained static website</b>: open <code>src/index.html</code> in any browser (with a local web server, due to browser CORS restrictions on <code>file://</code> GeoJSON fetching).</p>
+<p>The folder is timestamped: <code>planx_3d_city_viewer_YYYYMMDD_HHMMSS</code>.</p>
+
+<h3 id="portable-zip">Portable Viewer (ZIP with Tour)</h3>
+<p>Same as the folder export, but packaged as a single ZIP archive. The dialog optionally prompts for a <code>planx_tour.json</code> narrative tour file to include. The ZIP can be emailed, uploaded to a CMS, or archived. Recipients extract and serve the folder with any static HTTP server (Python <code>http.server</code>, Node <code>serve</code>, or upload to GitHub Pages / Netlify).</p>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 10. STYLE TOOLS -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h2 id="style-tools">10. Building Styling Tools</h2>
+
+<h3>Building &amp; Block Style Field Tools</h3>
+<p>The Style panel (<code>style_tools.py</code>) provides QGIS attribute-editing shortcuts for preparing building and block layers before export:</p>
+<table><tr><th>Tool</th><th>Target Layer</th><th>Fields</th><th>Description</th></tr>
+<tr><td><b>Ensure Fields</b></td><td>Buildings</td><td><code>floor_count</code>, <code>roof_shape</code>, <code>function</code>, <code>building_type</code></td><td>Adds the standard PlanX 3D City fields to the layer if they don't exist.</td></tr>
+<tr><td><b>Ensure Fields</b></td><td>Blocks</td><td><code>block_id</code>, <code>name</code>, <code>land_use</code></td><td>Adds block-level identifier and classification fields.</td></tr>
+<tr><td><b>Apply to Selected</b></td><td>Buildings</td><td><code>floor_count</code>, <code>roof_shape</code>, <code>function</code></td><td>Batch-assigns values to the currently selected features in QGIS. Use to tag a group of buildings as "commercial, 4 floors, flat roof" in one action.</td></tr>
+</table>
+<p>These tools are convenience functions for the QGIS editing workflow. The actual 3D behaviour (extrusion height, roof geometry, function colour) is determined by the exporter and viewer reading these fields at export time.</p>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- APPENDICES -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h2 id="appendix-a">Appendix A: File Contract Reference</h2>
+<table><tr><th>File</th><th>Format</th><th>Produced By</th><th>Consumed By</th></tr>
+<tr><td><code>web/data/manifest.json</code></td><td>JSON</td><td>Exporter (auto)</td><td>Viewer (layer discovery)</td></tr>
+<tr><td><code>web/data/dem.tif</code></td><td>GeoTIFF</td><td>Exporter (from DEM layer)</td><td>Viewer (terrain mesh)</td></tr>
+<tr><td><code>web/data/roi.geojson</code></td><td>GeoJSON</td><td>Exporter (from ROI layer)</td><td>Viewer (terrain clip)</td></tr>
+<tr><td><code>web/data/buildings.geojson</code></td><td>GeoJSON</td><td>Exporter (from buildings layer)</td><td>Viewer (building extrusion)</td></tr>
+<tr><td><code>web/data/roads.geojson</code></td><td>GeoJSON</td><td>Exporter (from roads layer)</td><td>Viewer (road ribbons)</td></tr>
+<tr><td><code>web/data/blocks.geojson</code></td><td>GeoJSON</td><td>Exporter (from blocks layer)</td><td>Viewer (island plateau, block stats)</td></tr>
+<tr><td><code>web/data/parcels.geojson</code></td><td>GeoJSON</td><td>Exporter (from parcels layer)</td><td>Viewer (parcel boundaries)</td></tr>
+<tr><td><code>web/data/siteplan.tif</code></td><td>GeoTIFF</td><td>Exporter (from plan_texture)</td><td>Viewer (raster-texture terrain)</td></tr>
+<tr><td><code>web/data/basemap.png</code></td><td>PNG</td><td>Exporter (QGIS canvas render)</td><td>Viewer (optional basemap)</td></tr>
+<tr><td><code>web/data/trees.geojson</code></td><td>GeoJSON</td><td>Exporter (from trees layer)</td><td>Viewer (procedural trees)</td></tr>
+<tr><td><code>web/data/planx_scene_state.json</code></td><td>JSON</td><td>Viewer (auto-save)</td><td>Viewer (restore), Portable export</td></tr>
+<tr><td><code>web/data/planx_tour.json</code></td><td>JSON</td><td>Narrative Studio / hand-authored</td><td>Viewer (keyframe tour player)</td></tr>
+<tr><td><code>web/data/models/*.glb</code></td><td>glTF Binary</td><td>Viewer (Model Studio upload)</td><td>Viewer (custom 3D models)</td></tr>
+</table>
+
+<h2 id="appendix-b">Appendix B: Asset Theme Catalog</h2>
+<p>Six curated themes, each defining a coherent set of pedestrian, car, tree, light, bench, bin, bus stop, facade, roof, and paving variants. See <a href="#asset-themes">§6 — Asset Themes</a> for the selection table. The theme system is extensible: adding a new theme requires a new entry in <code>ASSET_THEME_PRESETS</code> in <code>exporter.py</code> and corresponding PNG/GLB assets in <code>web/src/assets/</code>.</p>
+
+<p><b>Tree species catalog</b> (8 variants, all themes draw from this pool): Street Linden, Plane, Compact Maple, Columnar, Olive, Cypress, Palm, Jacaranda, Pine, Broadleaf.</p>
+<p><b>Facade texture catalog:</b> The Modern Turkish theme includes 40 facade textures (4 families × 10 storey variants: Urban_TR_A through Urban_TR_D, each with 1–10 storey sub-variants). The ground floor has an entrance/commercial character; upper floors use repeatable apartment facade language. Other themes use 4–5 facade families without storey-specific variants.</p>
+
+<h2 id="appendix-c">Appendix C: Glossary</h2>
+<table><tr><th>Term</th><th>Definition</th></tr>
+<tr><td><b>Asset theme</b></td><td>A named collection of visual styles (trees, cars, pedestrians, furniture, facades, roofs, paving) applied coherently across the scene.</td></tr>
+<tr><td><b>Bloom</b></td><td>A post-processing effect that adds a glow/halo around bright areas. Implemented via Three.js <code>UnrealBloomPass</code>.</td></tr>
+<tr><td><b>CSS2DRenderer</b></td><td>A Three.js renderer that positions HTML/CSS elements in 3D space. Used for building info labels and the minimap overlay.</td></tr>
+<tr><td><b>DEM (Digital Elevation Model)</b></td><td>A raster where each pixel value is terrain elevation. Sampled into a Three.js <code>BufferGeometry</code> mesh.</td></tr>
+<tr><td><b>EffectComposer</b></td><td>Three.js post-processing framework. Chains <code>RenderPass</code> → <code>SSAOPass</code> → <code>UnrealBloomPass</code> for the final frame.</td></tr>
+<tr><td><b>GeoJSON</b></td><td>JSON-based geospatial vector format. The primary data interchange between QGIS export and the Three.js viewer.</td></tr>
+<tr><td><b>GLB (glTF Binary)</b></td><td>A self-contained 3D model format. Used by Model Studio for custom landmark models.</td></tr>
+<tr><td><b>Island plateau</b></td><td>A flat surface at the median DEM elevation of each block's footprint. Eliminates z-fighting between buildings and terrain inside blocks.</td></tr>
+<tr><td><b>Keyframe tour</b></td><td>A sequence of camera positions with captions, animated through by the viewer. Defined in <code>planx_tour.json</code>.</td></tr>
+<tr><td><b>OrbitControls</b></td><td>Three.js camera controller: left-drag = orbit, scroll = zoom, right-drag = pan.</td></tr>
+<tr><td><b>Overpass API</b></td><td>A read-only web API for querying OpenStreetMap data. Used by the OSM Importer.</td></tr>
+<tr><td><b>PointerLockControls</b></td><td>Three.js first-person camera controller. Used for Walk / Mobility Mode. Captures the mouse pointer.</td></tr>
+<tr><td><b>Portable export</b></td><td>A self-contained copy of the web viewer including all data files, usable on another computer without QGIS.</td></tr>
+<tr><td><b>ROI (Region of Interest)</b></td><td>A polygon defining the scene boundary. The terrain mesh is clipped to this polygon.</td></tr>
+<tr><td><b>Scene state</b></td><td>A JSON snapshot of all viewer settings (visibility, colours, assets, models). Auto-saved to <code>planx_scene_state.json</code>.</td></tr>
+<tr><td><b>SSAO</b></td><td>Screen-Space Ambient Occlusion — adds contact shadows in crevices. Computed per-frame via <code>SSAOPass</code>.</td></tr>
+<tr><td><b>Three.js</b></td><td>A JavaScript 3D library wrapping WebGL. The viewer's rendering engine.</td></tr>
+</table>
+
+<h2 id="appendix-d">Appendix D: Bibliography</h2>
+<p class="ref">Batty, M. (2013). <i>The New Science of Cities.</i> MIT Press, Cambridge, MA.</p>
+<p class="ref">Cabello, R. (2010). "Three.js — JavaScript 3D Library." <a href="https://threejs.org">threejs.org</a>. DOI: <a href="https://doi.org/10.5281/zenodo.14226494">10.5281/zenodo.14226494</a></p>
+<p class="ref">Döllner, J. &amp; Buchholz, H. (2005). "Continuous level-of-detail modeling of buildings in 3D city models." <i>Proceedings of the 13th ACM International Symposium on Advances in Geographic Information Systems (GIS)</i>, 173–181. DOI: <a href="https://doi.org/10.1145/1097064.1097089">10.1145/1097064.1097089</a></p>
+<p class="ref">Gröger, G. &amp; Plümer, L. (2012). "CityGML — interoperable semantic 3D city models." <i>ISPRS Journal of Photogrammetry and Remote Sensing</i>, 71, 12–33. DOI: <a href="https://doi.org/10.1016/j.isprsjprs.2012.04.004">10.1016/j.isprsjprs.2012.04.004</a></p>
+<p class="ref">Khronos Group. (2017). "glTF 2.0 Specification — The JSON-based Runtime Asset Delivery Format." <a href="https://registry.khronos.org/glTF/">https://registry.khronos.org/glTF/</a></p>
+<p class="ref">Müller, P., Wonka, P., Haegler, S., Ulmer, A. &amp; Van Gool, L. (2006). "Procedural modeling of buildings." <i>ACM Transactions on Graphics (SIGGRAPH)</i>, 25(3), 614–623. DOI: <a href="https://doi.org/10.1145/1141911.1141931">10.1145/1141911.1141931</a></p>
+<p class="ref">Open Geospatial Consortium. (2016). "GeoJSON Format." OGC Standard 17-069r2. DOI: <a href="https://doi.org/10.14457/5bz1-xz88">10.14457/5bz1-xz88</a></p>
+<p class="ref">OpenStreetMap Contributors. (2024). "OpenStreetMap Database." <a href="https://www.openstreetmap.org">openstreetmap.org</a>. ODbL 1.0.</p>
+<p class="ref">Preim, B. &amp; Dachselt, R. (2015). <i>Interaktive Systeme, Band 2: User Interface Engineering.</i> 2nd ed., Springer Vieweg, Berlin. DOI: <a href="https://doi.org/10.1007/978-3-642-45247-5">10.1007/978-3-642-45247-5</a></p>
+<p class="ref">Sellers, G., Wright Jr., R.S. &amp; Haemel, N. (2015). <i>OpenGL SuperBible: Comprehensive Tutorial and Reference.</i> 7th ed., Addison-Wesley.</p>
+
+<hr style="margin:2rem 0;border-color:var(--border);">
+<p style="text-align:center;color:var(--muted);font-size:.85em;">
+PlanX 3D City Viewer — Academic Reference Manual · v0.8.53<br>
+Yusuf Eminoğlu · August 2026 · <a href="https://github.com/YusufEminoglu/planx_3d_city">GitHub</a>
+</p>
+
+</main>
+
+<button id="back-to-top" title="Back to top">↑</button>
+<script>
+document.querySelectorAll('.toc-group-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const expanded = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', !expanded);
+  });
+});
+const searchInput = document.getElementById('search');
+searchInput.addEventListener('input', () => {
+  const query = searchInput.value.toLowerCase().trim();
+  document.querySelectorAll('.toc-algs li a').forEach(link => {
+    const name = (link.dataset.name || '').toLowerCase();
+    const display = (link.dataset.display || '').toLowerCase();
+    link.classList.toggle('hidden', !!(query && !name.includes(query) && !display.includes(query)));
+  });
+  document.querySelectorAll('.toc-group').forEach(group => {
+    const visible = group.querySelectorAll('.toc-algs li a:not(.hidden)');
+    if (query && visible.length > 0) group.querySelector('.toc-group-btn').setAttribute('aria-expanded', 'true');
+  });
+});
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); searchInput.focus(); }
+});
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      document.querySelectorAll('#toc a').forEach(a => a.classList.remove('active'));
+      const link = document.querySelector(`#toc a[href="#${entry.target.id}"]`);
+      if (link) link.classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+document.querySelectorAll('#content h2[id]').forEach(h2 => observer.observe(h2));
+const btt = document.getElementById('back-to-top');
+window.addEventListener('scroll', () => btt.classList.toggle('visible', window.scrollY > 400));
+btt.addEventListener('click', () => { document.getElementById('content').scrollTo({top:0,behavior:'smooth'}); window.scrollTo({top:0,behavior:'smooth'}); });
+</script>
+</body>
+</html>
