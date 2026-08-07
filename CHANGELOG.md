@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.54] - 2026-08-07
+
+- Expanded reference manual: 3D theory, rendering math, 17 DOI refs
+
 ## [0.8.53] - 2026-06-18
 
 - docs: add CITATION.cff for Zenodo DOI integration
