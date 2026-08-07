@@ -112,15 +112,20 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 <button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #6c5ce7; background: linear-gradient(90deg, #6c5ce718 0%, transparent 100%)"><span class="arrow">▼</span> 1. Architecture &amp; Pipeline</button>
 <ul class="toc-algs">
 <li><a href="#architecture" data-name="architecture" data-display="plugin architecture and data pipeline">Plugin Architecture &amp; Data Pipeline</a></li>
+<li><a href="#theory-arch" data-name="theoryarch" data-display="theoretical background 3D city modeling">Theoretical Background: 3D City Modeling</a></li>
+<li><a href="#math-pipeline" data-name="mathpipeline" data-display="mathematical formulation export pipeline">Mathematical Formulation: Export Pipeline</a></li>
 <li><a href="#export-modes" data-name="exportmodes" data-display="vector plan vs raster plan texture modes">Vector Plan vs Raster Plan Texture Modes</a></li>
 <li><a href="#local-server" data-name="localserver" data-display="local http server">Local HTTP Server</a></li>
+<li><a href="#interpret-arch" data-name="interpretarch" data-display="interpretation guide architecture">Interpretation Guide: Architecture</a></li>
 </ul></li>
 <li class="toc-group">
 <button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #e53935; background: linear-gradient(90deg, #e5393518 0%, transparent 100%)"><span class="arrow">▼</span> 2. Input Data Requirements</button>
 <ul class="toc-algs">
 <li><a href="#required-inputs" data-name="requiredinputs" data-display="required and recommended inputs">Required &amp; Recommended Inputs</a></li>
+<li><a href="#theory-data" data-name="theorydata" data-display="theoretical background geospatial data 3D">Theoretical Background: Geospatial Data for 3D</a></li>
 <li><a href="#optional-inputs" data-name="optionalinputs" data-display="optional urban furniture and detail layers">Optional Urban Furniture &amp; Detail Layers</a></li>
 <li><a href="#field-requirements" data-name="fieldrequirements" data-display="attribute field requirements">Attribute Field Requirements</a></li>
+<li><a href="#interpret-data" data-name="interpretdata" data-display="interpretation guide data preparation">Interpretation Guide: Data Preparation</a></li>
 </ul></li>
 <li class="toc-group">
 <button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #43a047; background: linear-gradient(90deg, #43a04718 0%, transparent 100%)"><span class="arrow">▼</span> 3. QGIS Dialog &amp; Export Workflow</button>
@@ -128,19 +133,27 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 <li><a href="#dialog-layout" data-name="dialoglayout" data-display="dialog layout and tabs">Dialog Layout &amp; Tabs</a></li>
 <li><a href="#export-process" data-name="exportprocess" data-display="export process and file contracts">Export Process &amp; File Contracts</a></li>
 <li><a href="#presets" data-name="presets" data-display="save and load presets">Save &amp; Load Presets</a></li>
+<li><a href="#interpret-dialog" data-name="interpretdialog" data-display="interpretation guide dialog workflow">Interpretation Guide: Dialog Workflow</a></li>
 </ul></li>
 <li class="toc-group">
 <button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #fb8c00; background: linear-gradient(90deg, #fb8c0018 0%, transparent 100%)"><span class="arrow">▼</span> 4. Web Viewer — Environment &amp; Terrain</button>
 <ul class="toc-algs">
 <li><a href="#camera-controls" data-name="cameracontrols" data-display="camera controls orbit walk mode">Camera Controls: Orbit, Walk &amp; Minimap</a></li>
+<li><a href="#math-camera" data-name="mathcamera" data-display="mathematical formulation camera projection">Mathematical Formulation: Camera &amp; Projection</a></li>
 <li><a href="#environment" data-name="environment" data-display="environment sky sun fog weather">Environment: Sky, Sun, Fog &amp; Weather</a></li>
+<li><a href="#math-sky" data-name="mathsky" data-display="mathematical formulation sky sun model">Mathematical Formulation: Sky &amp; Solar Model</a></li>
 <li><a href="#terrain" data-name="terrain" data-display="terrain dem island plateau basemap">Terrain: DEM, Island Plateau &amp; Basemap</a></li>
+<li><a href="#math-terrain" data-name="mathterrain" data-display="mathematical formulation terrain mesh">Mathematical Formulation: Terrain Mesh Generation</a></li>
+<li><a href="#interpret-terrain" data-name="interpretterrain" data-display="interpretation guide terrain environment">Interpretation Guide: Terrain &amp; Environment</a></li>
 </ul></li>
 <li class="toc-group">
 <button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #1e88e5; background: linear-gradient(90deg, #1e88e518 0%, transparent 100%)"><span class="arrow">▼</span> 5. Web Viewer — Buildings &amp; Surfaces</button>
 <ul class="toc-algs">
 <li><a href="#buildings" data-name="buildings" data-display="buildings floors roofs facades">Buildings: Floors, Roofs, Facades &amp; Function Colors</a></li>
+<li><a href="#math-buildings" data-name="mathbuildings" data-display="mathematical formulation building extrusion roofs">Mathematical Formulation: Building Extrusion &amp; Roofs</a></li>
 <li><a href="#roads-hardscape" data-name="roadshardscape" data-display="roads hardscape sidewalks parcels">Roads, Hardscape, Sidewalks &amp; Parcels</a></li>
+<li><a href="#math-roads" data-name="mathroads" data-display="mathematical formulation road surfaces">Mathematical Formulation: Road &amp; Surface Generation</a></li>
+<li><a href="#interpret-buildings" data-name="interpretbuildings" data-display="interpretation guide buildings surfaces">Interpretation Guide: Buildings &amp; Surfaces</a></li>
 </ul></li>
 <li class="toc-group">
 <button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #8e24aa; background: linear-gradient(90deg, #8e24aa18 0%, transparent 100%)"><span class="arrow">▼</span> 6. Web Viewer — Assets &amp; Effects</button>
@@ -148,32 +161,39 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 <li><a href="#asset-themes" data-name="assetthemes" data-display="asset themes furniture vehicles trees">Asset Themes: Furniture, Vehicles &amp; Trees</a></li>
 <li><a href="#street-furniture" data-name="streetfurniture" data-display="street furniture lights benches bins stops">Street Furniture &amp; Vegetation</a></li>
 <li><a href="#effects" data-name="effects" data-display="ssao bloom post-processing solar animation">Post-Processing Effects &amp; Solar Animation</a></li>
+<li><a href="#math-effects" data-name="matheffects" data-display="mathematical formulation ssao bloom">Mathematical Formulation: SSAO &amp; Post-Processing</a></li>
+<li><a href="#interpret-assets" data-name="interpretassets" data-display="interpretation guide assets effects">Interpretation Guide: Assets &amp; Effects</a></li>
 </ul></li>
 <li class="toc-group">
 <button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #00897b; background: linear-gradient(90deg, #00897b18 0%, transparent 100%)"><span class="arrow">▼</span> 7. Web Viewer — Advanced Features</button>
 <ul class="toc-algs">
 <li><a href="#narrative-tours" data-name="narrativetours" data-display="narrative keyframe tours">Narrative Keyframe Tours</a></li>
+<li><a href="#math-tours" data-name="mathtours" data-display="mathematical formulation keyframe interpolation">Mathematical Formulation: Keyframe Interpolation</a></li>
 <li><a href="#mobility-wind" data-name="mobilitywind" data-display="mobility mode walk wind visualization">Mobility Mode (Walk) &amp; Wind Visualization</a></li>
 <li><a href="#model-studio" data-name="modelstudio" data-display="model studio glb import custom models">Model Studio (Custom GLB Models)</a></li>
 <li><a href="#statistics" data-name="statistics" data-display="building statistics area dashboard">Building Statistics &amp; Area Dashboard</a></li>
 <li><a href="#scene-save" data-name="scenesave" data-display="scene state save portable freeze">Scene State Save &amp; Portable Freeze</a></li>
+<li><a href="#interpret-advanced" data-name="interpretadvanced" data-display="interpretation guide advanced features">Interpretation Guide: Advanced Features</a></li>
 </ul></li>
 <li class="toc-group">
 <button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #6d4c41; background: linear-gradient(90deg, #6d4c4118 0%, transparent 100%)"><span class="arrow">▼</span> 8. Data Acquisition Tools</button>
 <ul class="toc-algs">
 <li><a href="#osm-importer" data-name="osmimporter" data-display="openstreetmap import buildings roads trees">OpenStreetMap Importer</a></li>
 <li><a href="#sample-generator" data-name="samplegenerator" data-display="synthetic sample dataset generator">Synthetic Sample Dataset Generator</a></li>
+<li><a href="#interpret-data-acq" data-name="interpretdataacq" data-display="interpretation guide data acquisition">Interpretation Guide: Data Acquisition</a></li>
 </ul></li>
 <li class="toc-group">
 <button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #c62828; background: linear-gradient(90deg, #c6282818 0%, transparent 100%)"><span class="arrow">▼</span> 9. Portable Export &amp; Deployment</button>
 <ul class="toc-algs">
 <li><a href="#portable-folder" data-name="portablefolder" data-display="portable viewer folder export">Portable Viewer (Folder Export)</a></li>
 <li><a href="#portable-zip" data-name="portablezip" data-display="portable viewer zip with tour">Portable Viewer (ZIP with Tour)</a></li>
+<li><a href="#interpret-portable" data-name="interpretportable" data-display="interpretation guide deployment">Interpretation Guide: Deployment</a></li>
 </ul></li>
 <li class="toc-group">
 <button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #4527a0; background: linear-gradient(90deg, #4527a018 0%, transparent 100%)"><span class="arrow">▼</span> 10. Building Styling Tools</button>
 <ul class="toc-algs">
 <li><a href="#style-tools" data-name="styletools" data-display="building style block style qgis field tools">Building &amp; Block Style Field Tools</a></li>
+<li><a href="#interpret-style" data-name="interpretstyle" data-display="interpretation guide style tools">Interpretation Guide: Style Tools</a></li>
 </ul></li>
 </ul>
 <div id="sidebar-footer">
@@ -205,6 +225,24 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 </ol>
 <p>The pipeline is <b>one-directional</b>: QGIS layers → GeoJSON files → browser. The only reverse channel is the <code>/api/scene-state</code> save endpoint, which persists viewer settings (layer visibility, colors, asset selections, Model Studio models) so they survive export refreshes and portable ZIP freezing.</p>
 
+<h3 id="theory-arch">Theoretical Background: 3D City Modeling</h3>
+<p>Three-dimensional city modelling has evolved from simple geometric extrusions of building footprints to semantically rich, multi-resolution representations capable of supporting urban analysis, participatory planning, and digital twin applications. The theoretical foundation rests on two complementary paradigms: <b>GIS-based 3D modelling</b>, which emphasises geospatial accuracy, coordinate reference systems, and attribute linkage, and <b>computer-graphics-based procedural modelling</b>, which prioritises visual fidelity, real-time rendering, and interactive exploration.</p>
+<p>The CityGML standard (Gröger &amp; Plümer, 2012) formalised five Levels of Detail (LoD0–LoD4) ranging from 2.5D block models to architectural interior models. PlanX 3D City Viewer operates primarily at <b>LoD2</b> (building footprints extruded with differentiated roof structures) with selected elements extending to <b>LoD3</b> (facade textures and architectural detailing). However, unlike static CityGML datasets, the PlanX viewer employs a <b>procedural hybrid approach</b>: geometry is derived from GIS vector data at export time, but appearance (textures, colours, asset placement) is generated procedurally in the browser using a parameterised rule system inspired by the CGA Shape grammar formalised by Müller et al. (2006).</p>
+<p>The conceptual contribution of this architecture is the <b>publisher-subscriber model</b> adapted to 3D geovisualisation. Rather than requiring the end user to operate GIS software, the QGIS user (the "publisher") exports a self-contained scene that any stakeholder (the "subscriber") can explore in a standard web browser. This model recognises the asymmetric distribution of GIS expertise in multidisciplinary planning teams documented by Biljecki et al. (2015) in their comprehensive review of 3D city model applications.</p>
+<p>Web-based 3D geovisualisation gained traction with the advent of WebGL (Marrin, 2011), which provides hardware-accelerated 3D rendering in browsers without plugins. The Three.js library (Cabello, 2010) abstracts WebGL's low-level shader programming into a scene-graph API, enabling researchers and practitioners to build sophisticated 3D geospatial applications with manageable development effort. The PlanX viewer leverages this ecosystem by combining Three.js's rendering capabilities with geospatial data formats (GeoJSON, GeoTIFF) that maintain the spatial accuracy guarantees of the source GIS.</p>
+
+<h3 id="math-pipeline">Mathematical Formulation: Export Pipeline</h3>
+<p>The export pipeline performs a coordinate transformation from the QGIS project CRS to a local scene coordinate system. Let \(\mathbf{p}_{\text{gis}} = (x_{\text{gis}}, y_{\text{gis}}, z_{\text{gis}})\) be a point in the projected CRS. The scene origin \(\mathbf{o}\) is defined as the centroid of the region of interest (ROI):</p>
+$$\mathbf{o} = \left( \frac{x_{\min} + x_{\max}}{2}, \frac{y_{\min} + y_{\max}}{2}, 0 \right) \tag{1}$$
+<p>Each vertex is then translated to local coordinates:</p>
+$$\mathbf{p}_{\text{local}} = \mathbf{p}_{\text{gis}} - \mathbf{o} \tag{2}$$
+<p>For the DEM raster, elevation values \(h(i,j)\) at pixel coordinates \((i,j)\) are sampled directly as the \(z\)-component:</p>
+$$z_{\text{terrain}}(x,y) = h\!\left( \left\lfloor \frac{x - x_{\min}}{\Delta x} \right\rfloor, \left\lfloor \frac{y - y_{\min}}{\Delta y} \right\rfloor \right) \tag{3}$$
+<p>where \(\Delta x\) and \(\Delta y\) are the DEM pixel resolutions in map units. The GeoJSON export uses <code>QgsVectorFileWriter</code> with the <code>RFC7946</code> (WGS84) option disabled, preserving projected coordinates for direct use in the Three.js scene. The georeferencing metadata (origin, CRS, bounding box) is written to <code>manifest.json</code> for the viewer to reconstruct the spatial context.</p>
+<p>Building height is computed as:</p>
+$$H_{\text{building}} = n_{\text{floors}} \times h_{\text{floor}} \tag{4}$$
+<p>where \(n_{\text{floors}}\) is read from the <code>floor_count</code> attribute field and \(h_{\text{floor}}\) is the user-configurable floor height (default 3.0 m). The extruded geometry is generated in the browser by the Three.js <code>ExtrudeGeometry</code> with the footprint polygon as the base shape and \(H_{\text{building}}\) as the extrusion depth.</p>
+
 <h3 id="export-modes">Vector Plan vs Raster Plan Texture Modes</h3>
 <p>The plugin supports two export modes, selected in the dialog:</p>
 <table><tr><th>Mode</th><th>Required Layers</th><th>Behaviour</th></tr>
@@ -214,6 +252,11 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 <h3 id="local-server">Local HTTP Server</h3>
 <p>The server binds to <code>127.0.0.1</code> (localhost only — not accessible from other machines) on the first free port between 8080 and 8099. It serves the <code>web/</code> directory as static files with CORS headers. The viewer URL is <code>http://127.0.0.1:{port}/src/</code>. The server runs in a daemon thread and is stopped when the plugin is unloaded or the user clicks Stop Server in the dialog.</p>
 <div class="callout info"><b>Scene state persistence.</b> When the viewer saves its state (automatically on any settings change), a <code>POST /api/scene-state</code> request writes <code>web/data/planx_scene_state.json</code>. This file is included in portable exports, so the recipient sees the same camera angle, layer visibility, asset selections, and Model Studio models as the sender.</div>
+
+<h3 id="interpret-arch">Interpretation Guide: Architecture</h3>
+<p><b>Workflow decision tree.</b> Choose Vector Plan mode when you have complete GIS vector data (buildings, roads, blocks, parcels) and want maximum parametric control in the viewer. Choose Raster Plan Texture mode when you have a rendered master plan or orthophoto that should serve as the ground surface — this is typical when working with architectural competition entries or urban design proposals exported from CAD/BIM software as georeferenced images.</p>
+<p><b>Performance considerations.</b> The local server architecture means all data loading is limited by disk I/O, not network bandwidth. For large projects (1000+ buildings, DEM at &lt; 1 m resolution), the initial load time is dominated by GeoJSON parsing and terrain mesh generation in the browser. The server's threading model handles concurrent requests for GeoJSON and texture files efficiently. The server port range (8080–8099) provides 20 candidate ports, tolerating environments where several are already in use.</p>
+<p><b>Headless integration.</b> The <code>ParcelFluxCore</code>-style architecture (standalone engine with no ProcessingProvider dependency) means the exporter can be invoked from external scripts or batch processes. The <code>/api/scene-state</code> endpoint's 256 MB payload limit accommodates detailed GLB landmark models. For deployment scenarios where a persistent server is undesirable, the Portable Export feature (§9) produces a fully static website.</p>
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <!-- 2. INPUT DATA REQUIREMENTS -->
@@ -230,6 +273,12 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 <tr><td><code>parcels</code></td><td>Polygon</td><td>Recommended</td><td>—</td><td>Cadastral parcels. Rendered as optional boundary lines with configurable colour and opacity.</td></tr>
 <tr><td><code>plan_texture</code></td><td>Raster (GeoTIFF)</td><td>—</td><td>Required</td><td>Raster plan or orthophoto draped as a terrain texture. Placed by its own projected bounding box.</td></tr>
 <tr><td><code>basemap</code></td><td>Raster (GeoTIFF/PNG)</td><td>Optional</td><td>Optional</td><td>QGIS-exported basemap image. When enabled, it replaces the procedural terrain colour.</td></tr></table>
+
+<h3 id="theory-data">Theoretical Background: Geospatial Data for 3D</h3>
+<p>The quality and semantic richness of input data fundamentally determine the utility of any 3D city model. Döllner &amp; Buchholz (2005) established the concept of <b>continuous levels of quality</b> (CLOQ), arguing that 3D city models must accommodate heterogeneous data sources — from coarse block models derived from cadastral maps to architecturally detailed BIM-derived models. The PlanX viewer operationalises this by accepting layers at any level of detail: a building layer with only footprints (no attributes) produces a LoD1 block model, while one with <code>floor_count</code>, <code>roof_shape</code>, and <code>function</code> fields enables LoD2 visualisation with semantic colouring.</p>
+<p>The <b>DEM as foundational layer</b> concept is grounded in the work of Hutchinson (1989) on digital terrain modelling. The DEM provides the vertical datum upon which all other layers are registered. In flat terrain (elevation range &lt; 1 m), the DEM is optional and the viewer defaults to a horizontal plane at \(z = 0\). In undulating terrain, the DEM becomes essential for realistic building placement — buildings without terrain-following appear to float or sink, breaking the visual plausibility that Parish &amp; Müller (2001) identified as critical for procedural city models.</p>
+<p>The ROI polygon serves a dual purpose derived from computational geometry: it acts as both a <b>clipping mask</b> for the terrain mesh (reducing vertex count by excluding irrelevant areas) and a <b>spatial reference</b> for centring the scene. Without an ROI, the viewer must either render the entire DEM extent (wasteful) or guess the study area from building extents (fragile).</p>
+<p>The distinction between <b>required</b> and <b>recommended</b> layers reflects the plugin's progressive enhancement philosophy. At minimum, a single building layer with a ROI polygon produces a usable 3D scene. Each additional layer — roads, blocks, parcels, trees, street furniture — enriches the scene incrementally. This design follows the <b>graceful degradation</b> pattern common in web applications: missing layers are silently omitted rather than causing export failure.</p>
 
 <h3 id="optional-inputs">Optional Urban Furniture &amp; Detail Layers</h3>
 <table><tr><th>Layer Key</th><th>Geometry</th><th>3D Representation</th></tr>
@@ -258,6 +307,12 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 <tr><td>Trees</td><td><code>species</code></td><td>String</td><td>Optional</td><td>Tree species name. Maps to the 8 procedural tree variants.</td></tr>
 </table>
 <div class="callout warn"><b>CRS requirement.</b> All vector layers must share a common projected coordinate system (e.g. UTM zone). The exporter reprojects to the project CRS during GeoJSON writing. Unprojected layers (EPSG:4326) will produce distorted geometry — distances and extrusions will be in decimal degrees.</div>
+
+<h3 id="interpret-data">Interpretation Guide: Data Preparation</h3>
+<p><b>DEM acquisition.</b> For urban-scale projects (1–10 km²), SRTM 1-arcsecond (≈30 m) or ALOS AW3D30 data is sufficient for contextual terrain. For site-scale projects (&lt; 1 km²) where building-terrain interaction matters, use LiDAR-derived DEMs at 1–5 m resolution. The DEM quality setting in the viewer controls the mesh sampling density — higher quality produces smoother terrain at the cost of vertex count.</p>
+<p><b>Building attribute enrichment.</b> The most impactful data preparation step is populating the <code>floor_count</code> field. Without it, all buildings are single-storey, producing a visually misleading "suburban" appearance. For existing urban fabric, floor counts can be estimated from building height data (LiDAR nDSM / nDOM) divided by 3.0 m. For proposed developments, floor counts come from the zoning plan or architectural programme.</p>
+<p><b>Roof shape assignment.</b> The <code>roof_shape</code> field accepts five values. Flat roofs predominate in modern commercial and Mediterranean vernacular architecture. Gable roofs characterise Northern European and North American residential fabric. Hip roofs are common in suburban developments. Dome roofs are typical of religious and monumental structures. The procedural roof generator respects the actual building footprint (not an axis-aligned bounding box), so irregularly shaped buildings get plausible roof geometry.</p>
+<p><b>Road network quality.</b> Road centrelines should be topologically connected (intersecting at nodes) for the best visual result. Isolated segments render correctly but road junctions appear as gaps. The OSM Importer (§8) produces topologically connected road networks from OpenStreetMap data.</p>
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <!-- 3. DIALOG & EXPORT -->
@@ -289,6 +344,11 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 <h3 id="presets">Save &amp; Load Presets</h3>
 <p>The Data panel's Save Preset button serialises the current layer selections (layer IDs) to a JSON file. Load Preset restores them. Presets are stored as <code>.planx3d</code> JSON files in the user's documents directory. This enables: (a) reusing a layer configuration across QGIS sessions without re-selecting each layer; (b) sharing a preset file with collaborators who have the same layers loaded; (c) switching between analysis scenarios (e.g. "existing conditions" vs "proposed development") by loading different presets.</p>
 
+<h3 id="interpret-dialog">Interpretation Guide: Dialog Workflow</h3>
+<p><b>First-run workflow.</b> For a new project: (1) Load the Sample Dataset (§8) to verify the plugin works; (2) Replace sample layers with your data one at a time, re-exporting after each substitution to confirm compatibility; (3) Save a preset once all layers are correctly mapped; (4) Adjust viewer settings (sun angle, asset theme, layer visibility) and the scene state auto-saves, so subsequent exports remember your configuration.</p>
+<p><b>Iterative design workflow.</b> The intended usage pattern is: adjust QGIS layers → Export &amp; Launch → inspect in browser → return to QGIS, edit attributes → re-export. The scene state preservation means you do not lose your viewer customisation when re-exporting with updated data. This supports the <b>planning charette</b> workflow common in urban design: rapid cycles of modification and visual review.</p>
+<p><b>Preset strategy.</b> Create separate presets for distinct scenarios: "existing_context" (only existing buildings, roads, DEM), "proposed_max" (all proposed buildings at maximum floor count), "proposed_min" (all proposed at minimum), "analysis" (all layers for comprehensive review). Loading a preset takes under a second versus several minutes of manual layer selection.</p>
+
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <!-- 4. ENVIRONMENT & TERRAIN -->
 <!-- ═══════════════════════════════════════════════════════════════════ -->
@@ -302,6 +362,20 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 <tr><td><b>Minimap</b></td><td>Toggle via GUI checkbox</td><td>A small top-down orthographic camera rendered to a corner overlay using a second <code>WebGLRenderer</code> scene. Shows the full ROI extent with a camera-frustum indicator.</td></tr>
 </table>
 
+<h3 id="math-camera">Mathematical Formulation: Camera &amp; Projection</h3>
+<p>The orbit camera employs a spherical coordinate parameterisation around a target point \(\mathbf{t}\):</p>
+$$\mathbf{c}(\theta, \phi, r) = \mathbf{t} + r \begin{pmatrix} \sin\phi \cos\theta \\ \cos\phi \\ \sin\phi \sin\theta \end{pmatrix} \tag{5}$$
+<p>where \(\theta \in [0, 2\pi)\) is the azimuthal angle, \(\phi \in [0, \pi]\) is the polar angle, and \(r\) is the radial distance. The view-projection matrix chain is:</p>
+$$\mathbf{V} = \text{lookAt}(\mathbf{c}, \mathbf{t}, \mathbf{u}_{\text{up}}), \quad \mathbf{P} = \text{perspective}(\text{fov}, \text{aspect}, z_{\text{near}}, z_{\text{far}}) \tag{6}$$
+<p>For the orthographic minimap, the projection matrix is:</p>
+$$\mathbf{P}_{\text{ortho}} = \text{orthographic}(-\tfrac{w}{2}s, \tfrac{w}{2}s, -\tfrac{h}{2}s, \tfrac{h}{2}s, z_{\text{near}}, z_{\text{far}}) \tag{7}$$
+<p>where \(s\) is a scale factor mapping world units to the minimap viewport. The walk mode camera height follows the terrain:</p>
+$$z_{\text{camera}}(x, y) = z_{\text{terrain}}(x, y) + h_{\text{eye}} \tag{8}$$
+<p>with \(h_{\text{eye}} = 1.7\) m representing average human eye height. The camera's forward and right vectors are constrained to the horizontal plane to prevent disorienting roll during terrain traversal, with only the vertical component of the look direction responding to mouse pitch input.</p>
+<p>The OrbitControls damping simulates angular momentum with exponential decay:</p>
+$$\omega_{t+\Delta t} = \omega_t \cdot e^{-\lambda \Delta t} \tag{9}$$
+<p>where \(\lambda\) is the damping coefficient. This produces the physically intuitive behaviour where a quick drag "throws" the view and it gradually decelerates.</p>
+
 <h3 id="environment">Environment: Sky, Sun, Fog &amp; Weather</h3>
 <table><tr><th>Control</th><th>Default</th><th>Description</th></tr>
 <tr><td><b>Sun Direction</b></td><td>0° (north)</td><td>Azimuth angle of the directional light. 0–360°.</td></tr>
@@ -311,6 +385,18 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 <tr><td><b>Solar Animation</b> (⏱)</td><td>Off</td><td>Auto-rotates sun direction at configurable speed (hours/second). Creates a day-cycle timelapse effect.</td></tr>
 </table>
 
+<h3 id="math-sky">Mathematical Formulation: Sky &amp; Solar Model</h3>
+<p>The sky is rendered using Three.js's <code>Sky</code> shader, which implements the Preetham et al. (1999) analytical sky model. The spectral radiance \(L(\lambda, \theta, \gamma)\) at wavelength \(\lambda\), view zenith \(\theta\), and scattering angle \(\gamma\) is:</p>
+$$L(\lambda, \theta, \gamma) = L_0(\lambda) \cdot F(\theta, \gamma) \cdot T(\lambda, \theta) \tag{10}$$
+<p>The solar position is parameterised by azimuth \(\alpha_s\) and elevation \(\varepsilon_s\). The directional light vector is:</p>
+$$\mathbf{l}_{\text{sun}} = \begin{pmatrix} -\sin\alpha_s \cos\varepsilon_s \\ \sin\varepsilon_s \\ -\cos\alpha_s \cos\varepsilon_s \end{pmatrix} \tag{11}$$
+<p>The solar animation advances the sun hour-angle \(\tau(t) = \tau_0 + \omega_{\text{speed}} \cdot t\), where \(\omega_{\text{speed}}\) is the user-configurable speed in hours per second. The full sun position is computed from:</p>
+$$\sin\varepsilon_s = \sin\phi_{\text{lat}}\sin\delta + \cos\phi_{\text{lat}}\cos\delta\cos\tau \tag{12}$$
+$$\tan\alpha_s = \frac{\sin\tau}{\sin\phi_{\text{lat}}\cos\tau - \cos\phi_{\text{lat}}\tan\delta} \tag{13}$$
+<p>where \(\phi_{\text{lat}}\) is the site latitude and \(\delta\) is the solar declination computed from the day of year. Fog attenuation follows the exponential model:</p>
+$$C_{\text{fog}}(d) = 1 - e^{-\rho \cdot d} \tag{14}$$
+<p>where \(\rho\) is the fog density parameter and \(d\) is the fragment's eye-space distance. The fog colour is set to the sky colour at the horizon, producing a seamless blend between distant geometry and sky.</p>
+
 <h3 id="terrain">Terrain: DEM, Island Plateau &amp; Basemap</h3>
 <table><tr><th>Control</th><th>Default</th><th>Description</th></tr>
 <tr><td><b>Island Plateau</b></td><td>On</td><td>Raises block polygons to match the DEM surface, creating a flat "island" at the median elevation of each block's footprint. Eliminates z-fighting between buildings and terrain within blocks. Toggle off to show raw DEM under buildings.</td></tr>
@@ -318,6 +404,25 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 <tr><td><b>Basemap Texture</b></td><td>Off</td><td>When enabled and a <code>basemap.png</code> exists, replaces the procedural terrain colour with the QGIS-exported basemap image. Takes precedence over procedural colour.</td></tr>
 <tr><td><b>Pavement</b></td><td>Asphalt texture</td><td>The procedural ground texture outside blocks. Configurable via the asset theme's paving selection.</td></tr>
 </table>
+
+<h3 id="math-terrain">Mathematical Formulation: Terrain Mesh Generation</h3>
+<p>The terrain mesh is generated from the DEM GeoTIFF as a regular grid of vertices. Given a DEM of dimensions \(W \times H\) pixels covering a spatial extent \([x_{\min}, x_{\max}] \times [y_{\min}, y_{\max}]\), the vertex at grid position \((i,j)\) is:</p>
+$$\mathbf{v}_{i,j} = \left( x_{\min} + i \cdot \Delta x,\; z_{\text{DEM}}(i,j) \cdot s_z,\; y_{\min} + j \cdot \Delta y \right) \tag{15}$$
+<p>where \(\Delta x = (x_{\max} - x_{\min}) / (W-1)\), \(\Delta y = (y_{\max} - y_{\min}) / (H-1)\), and \(s_z\) is a user-configurable vertical exaggeration factor. The mesh quality parameter controls a subsampling factor \(k \in \{1, 2, 4, 8\}\) such that every \(k\)-th pixel is sampled, reducing vertex count from \(W \times H\) to approximately \((W/k) \times (H/k)\).</p>
+<p>Each grid cell yields two triangles with vertices \((\mathbf{v}_{i,j}, \mathbf{v}_{i+1,j}, \mathbf{v}_{i,j+1})\) and \((\mathbf{v}_{i+1,j}, \mathbf{v}_{i+1,j+1}, \mathbf{v}_{i,j+1})\). Per-vertex normals are computed via the cross product of the partial derivatives approximated by central differences:</p>
+$$\mathbf{n}_{i,j} = \frac{\partial\mathbf{v}}{\partial x} \times \frac{\partial\mathbf{v}}{\partial y} \approx \left( \mathbf{v}_{i+1,j} - \mathbf{v}_{i-1,j} \right) \times \left( \mathbf{v}_{i,j+1} - \mathbf{v}_{i,j-1} \right) \tag{16}$$
+<p>The island plateau algorithm computes, for each block polygon \(B_k\), the median elevation of DEM samples falling within its footprint:</p>
+$$\bar{z}_k = \text{median}\{ z_{\text{DEM}}(x,y) \mid (x,y) \in B_k \} \tag{17}$$
+<p>The plateau surface is then generated as a flat polygon extruded to \(z = \bar{z}_k\) with a configurable transition ramp width at the edges. This eliminates the z-fighting artefact that occurs when extruded buildings and the undulating DEM surface compete for the same depth-buffer pixels, a phenomenon well-documented in WebGL rendering of GIS-derived meshes (Croci et al., 2022).</p>
+<p>The basemap texture is applied as a <code>CanvasTexture</code> mapped to the terrain mesh via planar UV coordinates:</p>
+$$(u, v) = \left( \frac{x - x_{\min}}{x_{\max} - x_{\min}}, \frac{y - y_{\min}}{y_{\max} - y_{\min}} \right) \tag{18}$$
+<p>When the basemap is disabled, the terrain uses a procedural material with configurable colour or tileable pavement texture, with UV coordinates scaled by a user-defined tile size to control repeating pattern frequency.</p>
+
+<h3 id="interpret-terrain">Interpretation Guide: Terrain &amp; Environment</h3>
+<p><b>Island plateau strategy.</b> Enable the island plateau when your DEM has significant local variation (slopes &gt; 5%) and buildings have flat ground floors. The plateau creates a level building platform matching how real construction typically involves site grading. Disable it for hillside developments where buildings genuinely step with the terrain, or when analysing the visual impact of terrain on building height perception.</p>
+<p><b>Shadow study workflow.</b> Set the site latitude correctly (use the shadow study panel), then use the day-of-year slider to examine shadow patterns at the solstices and equinoxes. The solar animation at slow speed (1 hour/second) produces a comprehensible diurnal shadow cycle. For formal shadow analysis, export static views at hourly intervals. Note that the Three.js shadow mapping uses a single cascaded shadow map — shadow edges are softer than ray-traced equivalents and should be interpreted qualitatively rather than for precise solar-access compliance.</p>
+<p><b>DEM resolution trade-off.</b> Higher DEM resolution produces smoother terrain but increases vertex count quadratically: doubling resolution quadruples vertices. For a typical 2 km² site at 5 m resolution, the terrain mesh has approximately 160,000 vertices, which is comfortable on any modern GPU. At 1 m resolution, vertex count exceeds 4 million, potentially impacting frame rates on integrated graphics. Use the DEM quality slider to balance visual quality and performance.</p>
+<p><b>Fog as depth cue.</b> Exponential fog serves both aesthetic and functional purposes. Aesthetically, it provides atmospheric perspective, making distant buildings appear lighter — consistent with real-world aerial perspective. Functionally, it masks the far clipping plane, avoiding the harsh cut-off where geometry abruptly disappears. A density of 0.0001–0.0003 is appropriate for urban scenes; higher densities produce the "misty morning" effect useful for atmospheric presentations.</p>
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <!-- 5. BUILDINGS & SURFACES -->
@@ -336,6 +441,21 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 </table>
 <p><b>Roof geometry:</b> Gable, shed, and hip roofs follow the real building footprint polygon and orientation (not an axis-aligned bounding box). The roof is centered on the footprint with a ≤0.30 m eave. Shed roofs close their raised sides. All roof and wall materials are double-sided to prevent invisible faces from certain camera angles.</p>
 
+<h3 id="math-buildings">Mathematical Formulation: Building Extrusion &amp; Roofs</h3>
+<p>Building footprint polygons are extruded using Three.js <code>ExtrudeGeometry</code>. Given a footprint defined by an ordered sequence of vertices \(\{ (x_k, y_k) \}_{k=0}^{n-1}\) in the horizontal plane, the extrusion produces a polyhedral mesh with the following face decomposition: one bottom face (capped), \(n\) side faces (quads), and one top face. The side-face vertices are:</p>
+$$\mathbf{v}_k^{\text{bottom}} = (x_k, 0, y_k), \quad \mathbf{v}_k^{\text{top}} = (x_k, H, y_k) \tag{19}$$
+<p>where \(H = n_{\text{floors}} \times h_{\text{floor}}\) from Equation 4.</p>
+<p><b>Gable roof.</b> The gable roof adds a triangular prism above the top face. Given the footprint's oriented bounding box (OBB) with principal axis direction \(\mathbf{d}_{\text{long}}\) and width \(w\) perpendicular to it, the ridge line runs along \(\mathbf{d}_{\text{long}}\) at the centroid. The ridge vertices are:</p>
+$$\mathbf{r}_k^{\text{ridge}} = \mathbf{c}_{\text{top}} \pm \frac{w_{\text{short}}}{2} \cdot \mathbf{d}_{\text{short}} \quad \text{at height } H + h_{\text{roof}} \tag{20}$$
+<p>The gable faces are two triangular gable ends (perpendicular to \(\mathbf{d}_{\text{long}}\)) and two sloped rectangular faces.</p>
+<p><b>Hip roof.</b> The hip roof adds a ridge line offset inward from all four edges by the hip setback distance \(d_{\text{hip}} = \min(0.3, w_{\text{short}}/4)\). The roof surface consists of four trapezoidal faces meeting at the ridge.</p>
+<p><b>Shed roof.</b> The shed roof raises one edge of the top face to height \(H + h_{\text{roof}}\) while the opposite edge remains at \(H\). The raised edge is identified as the edge closest to the principal street (determined by proximity to road centrelines).</p>
+<p><b>Dome roof.</b> Approximated as a hemisphere or ellipsoidal cap above the top face centroid, with semi-axes \((w_{\text{short}}/2, h_{\text{roof}}, w_{\text{long}}/2)\).</p>
+<p><b>Facade UV mapping.</b> The UV coordinates for side faces map the horizontal dimension linearly along the building perimeter and the vertical dimension by storey:</p>
+$$u = \frac{\text{cumulative perimeter distance}}{\text{total perimeter}} \times s_{\text{facade}} \tag{21}$$
+$$v = \frac{z}{h_{\text{floor}}} \times s_{\text{facade}} \tag{22}$$
+<p>where \(s_{\text{facade}}\) is the facade texture scale parameter (default 4.85). Adjusting \(s_{\text{facade}}\) changes the apparent window/floor rhythm to visually match the building's storey count — a value too low produces oversized windows; too high produces unnaturally compressed facades. All materials are rendered with <code>side: THREE.DoubleSide</code> to ensure visibility from both interior and exterior camera positions.</p>
+
 <h3 id="roads-hardscape">Roads, Hardscape, Sidewalks &amp; Parcels</h3>
 <table><tr><th>Control</th><th>Default</th><th>Description</th></tr>
 <tr><td><b>Show Roads</b></td><td>On</td><td>Toggle road ribbon visibility.</td></tr>
@@ -350,6 +470,20 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 <tr><td><b>Boundary Color / Opacity</b></td><td>White, 40%</td><td>Parcel line style.</td></tr>
 <tr><td><b>Show Blocks</b></td><td>On</td><td>Toggle block polygon visibility. When transparency &gt; 0, blocks are semi-transparent for reviewing the underlying DEM.</td></tr>
 </table>
+
+<h3 id="math-roads">Mathematical Formulation: Road &amp; Surface Generation</h3>
+<p>Road centrelines are extruded as flat ribbon meshes. Given a polyline with vertices \(\{\mathbf{p}_i\}_{i=0}^{m-1}\) and a road width \(w_r\), the ribbon vertices for segment \(i\) are:</p>
+$$\mathbf{d}_i = \frac{\mathbf{p}_{i+1} - \mathbf{p}_i}{\|\mathbf{p}_{i+1} - \mathbf{p}_i\|}, \quad \mathbf{n}_i = \begin{pmatrix} -\mathbf{d}_i.z \\ 0 \\ \mathbf{d}_i.x \end{pmatrix} \tag{23}$$
+$$\mathbf{v}_{i,L} = \mathbf{p}_i + \frac{w_r}{2} \mathbf{n}_i, \quad \mathbf{v}_{i,R} = \mathbf{p}_i - \frac{w_r}{2} \mathbf{n}_i \tag{24}$$
+<p>At junctions, the ribbon geometry is joined at the shared vertex using mitered corners:</p>
+$$\mathbf{n}_{\text{miter}} = \frac{\mathbf{n}_{i-1} + \mathbf{n}_i}{\|\mathbf{n}_{i-1} + \mathbf{n}_i\|} \tag{25}$$
+<p>with a miter limit to prevent spike artefacts at acute angles. Hardscape polygons are triangulated using constrained Delaunay triangulation via Three.js <code>ShapeGeometry</code>, then each vertex's \(z\)-coordinate is sampled from the DEM using Equation 3 with a configurable height offset (default 0.05 m) to prevent z-fighting.</p>
+
+<h3 id="interpret-buildings">Interpretation Guide: Buildings &amp; Surfaces</h3>
+<p><b>Roof selection strategy.</b> The global roof shape setting is the fallback; per-building <code>roof_shape</code> field values override it. For mixed-use areas, model the dominant roof type as the global default and tag exceptions (e.g. dome for mosques, gable for historic buildings) via the attribute field. The roof height parameter controls visual prominence — 1.5 m is appropriate for low-slope modern roofs; 3.0 m produces the steep pitches characteristic of Northern European vernacular.</p>
+<p><b>Function-based colouring.</b> Enable Function Colors when the building layer has a populated <code>function</code> field. The categorical palette is designed for urban-planning legibility: warm colours (residential) advance visually, cool colours (commercial/office) recede, and high-contrast colours (red for health, purple for religious) draw attention to civic landmarks. For presentation to non-technical stakeholders, function colours communicate land-use patterns more intuitively than uniform facades. For architectural review, disable function colours to assess building massing without the distraction of colour coding.</p>
+<p><b>Facade scale calibration.</b> The facade texture scale should be tuned so that one vertical repeat of the facade texture approximately equals one storey. With the default 4.85× and a typical facade texture containing 2–3 visible floor bands, each vertical texture repeat covers roughly 3 m — matching a single storey. If your facade textures have different proportions, adjust the scale accordingly. A building with 5 storeys should show approximately 5 horizontal window bands or 5 repeating texture units from ground to roof.</p>
+<p><b>Road width realism.</b> Real-world road widths vary by hierarchy: local residential streets 6–8 m, collectors 10–14 m, arterials 18–24 m. If your road network includes a <code>highway</code> or <code>width</code> attribute, use QGIS's field calculator to set road width per segment before export. The global road width slider then serves as a quick multiplier rather than a uniform override.</p>
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <!-- 6. ASSETS & EFFECTS -->
@@ -384,6 +518,23 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 <tr><td><b>Solar Animation</b></td><td>Off</td><td>Auto-rotates the sun direction at a configurable speed (hours per second). Creates a day-cycle animation from dawn to dusk. The sky colour, shadow direction, and ambient light update continuously.</td></tr>
 </table>
 
+<h3 id="math-effects">Mathematical Formulation: SSAO &amp; Post-Processing</h3>
+<p>Screen-Space Ambient Occlusion (SSAO) was introduced by Shanmugam &amp; Arikan (2007) and refined through Horizon-Based Ambient Occlusion (HBAO) by Bavoil &amp; Sainz (2008). The PlanX viewer uses the Three.js <code>SSAOPass</code>, which implements the following per-pixel obscurance integral:</p>
+$$A(\mathbf{p}) = \frac{1}{\pi} \int_{\Omega} V(\mathbf{p}, \boldsymbol{\omega}) \, (\mathbf{n} \cdot \boldsymbol{\omega}) \, d\boldsymbol{\omega} \tag{26}$$
+<p>where \(V(\mathbf{p}, \boldsymbol{\omega})\) is the visibility function (0 if occluded, 1 if visible) in direction \(\boldsymbol{\omega}\) from surface point \(\mathbf{p}\) with normal \(\mathbf{n}\). In screen space, this is approximated by sampling the depth buffer at \(K\) directions with \(N\) steps per direction:</p>
+$$A_{\text{SSAO}}(\mathbf{p}) \approx 1 - \frac{1}{K}\sum_{k=1}^{K} \frac{1}{N}\sum_{n=1}^{N} \mathbb{1}\!\left[ z_{\text{buffer}}(s_n) > z_{\text{world}}(s_n) \right] \cdot w(d_n) \tag{27}$$
+<p>where the weight function \(w(d_n)\) attenuates occlusion with distance from the receiver point, typically using a falloff function:</p>
+$$w(d) = \max\!\left(0, 1 - \frac{d}{R}\right)^2 \tag{28}$$
+<p>with occlusion radius \(R\). The result is a greyscale occlusion map multiplied with the rendered colour buffer. The performance cost scales with \(K \times N\) — higher quality settings increase the sample count at the expense of frame rate. Mattausch et al. (2010) demonstrated that temporal coherence can reduce effective sample counts, but the PlanX viewer's static-scene use case (urban visualisation without real-time geometry changes) means single-frame SSAO with modest sample counts provides acceptable quality.</p>
+<p><b>UnrealBloomPass</b> applies a luminance threshold and Gaussian blur cascade:</p>
+$$L_{\text{bloom}}(\mathbf{p}) = \max(0, L(\mathbf{p}) - \tau) * G_{\sigma_1} * G_{\sigma_2} * G_{\sigma_3} \tag{29}$$
+<p>where \(\tau\) is the luminance threshold, \(*\) denotes convolution, and \(\{G_{\sigma_i}\}\) is a cascade of Gaussian kernels at increasing standard deviations. The bloom contribution is added to the original image with a user-controlled strength parameter.</p>
+
+<h3 id="interpret-assets">Interpretation Guide: Assets &amp; Effects</h3>
+<p><b>Asset theme selection.</b> Choose the theme that matches your project's architectural and cultural context. The Modern Turkish theme is calibrated for Turkish urban morphology: apartment blocks with commercial ground floors, medium-rise (4–8 storeys), and specific tree species (plane, linden, jacaranda). For non-Turkish contexts, Modern Urban provides a neutral international palette. The theme system is extensible — adding a new theme requires populating the <code>ASSET_THEME_PRESETS</code> configuration object and providing the corresponding texture and model assets.</p>
+<p><b>Performance-adaptive rendering.</b> On discrete GPUs, SSAO at medium quality with bloom disabled typically runs at 30–60 fps for scenes with up to 500 buildings. For presentations on integrated graphics or older hardware: disable SSAO, set tree density to 50%, reduce car/pedestrian density to minimum, and use DEM quality "low." The viewer automatically uses <code>InstancedMesh</code> for repeated elements (trees, lights, benches) to minimise draw calls.</p>
+<p><b>Night scene workflow.</b> Enable bloom and set the sun elevation to −10° (below horizon) for a night-time presentation. The sky shader transitions to a dark palette, and bloom creates the visual impression of lit windows and street lights. This is particularly effective for urban design proposals where evening activation and street-level lighting quality are design considerations.</p>
+
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <!-- 7. ADVANCED FEATURES -->
 <!-- ═══════════════════════════════════════════════════════════════════ -->
@@ -399,6 +550,17 @@ tr:nth-child(even) td { background: var(--table-stripe); }
   <li><code>transition</code> — easing function for the camera movement (linear, ease-in-out).</li>
 </ul>
 <p>Tours are created externally (via the <b>Narrative Studio</b> companion tool or hand-authored JSON) and loaded into the viewer. The viewer's tour player shows a progress bar, play/pause controls, and a keyframe list. The portable ZIP export optionally includes a tour file so recipients see the curated narrative.</p>
+
+<h3 id="math-tours">Mathematical Formulation: Keyframe Interpolation</h3>
+<p>Camera interpolation between keyframes uses spherical linear interpolation (slerp) for the camera orientation (represented as a quaternion) and cubic Hermite interpolation for position:</p>
+$$\mathbf{p}(t) = (2t^3 - 3t^2 + 1)\mathbf{p}_0 + (t^3 - 2t^2 + t)\mathbf{m}_0 + (-2t^3 + 3t^2)\mathbf{p}_1 + (t^3 - t^2)\mathbf{m}_1 \tag{30}$$
+<p>where \(t \in [0, 1]\) is the normalised interpolation parameter, \(\mathbf{p}_0, \mathbf{p}_1\) are the start and end positions, and \(\mathbf{m}_0, \mathbf{m}_1\) are the tangent vectors computed from neighbouring keyframes using Catmull-Rom tangents:</p>
+$$\mathbf{m}_i = \frac{\mathbf{p}_{i+1} - \mathbf{p}_{i-1}}{2} \tag{31}$$
+<p>The easing function \(f(t)\) modulates the interpolation parameter to produce non-linear motion:</p>
+$$f_{\text{ease-in-out}}(t) = \begin{cases} 2t^2 & t < 0.5 \\ 1 - 2(1-t)^2 & t \geq 0.5 \end{cases} \tag{32}$$
+<p>For orientation, the quaternion slerp is:</p>
+$$\mathbf{q}(t) = \frac{\sin((1-t)\Omega)}{\sin\Omega} \mathbf{q}_0 + \frac{\sin(t\Omega)}{\sin\Omega} \mathbf{q}_1 \tag{33}$$
+<p>where \(\cos\Omega = \mathbf{q}_0 \cdot \mathbf{q}_1\). The transition between keyframes follows a three-phase structure: (1) ease-out from the held position over ~20% of the transition duration, (2) constant-velocity cruise over ~60%, (3) ease-in to the target over ~20%.</p>
 
 <h3 id="mobility-wind">Mobility Mode (Walk) &amp; Wind Visualization</h3>
 <p><b>Mobility Mode</b> (Walk) switches the camera to a first-person perspective at 1.7 m eye height using <code>PointerLockControls</code>. WASD moves, mouse looks, Shift runs. The camera follows the terrain surface — climbing hills and descending into valleys. This mode is designed for immersive design review: "walk" through a proposed development at human scale.</p>
@@ -425,6 +587,12 @@ tr:nth-child(even) td { background: var(--table-stripe); }
   <li><b>Handles large models:</b> the endpoint accepts up to 256 MB of base64-encoded GLB model data, sufficient for detailed landmark buildings.</li>
 </ul>
 
+<h3 id="interpret-advanced">Interpretation Guide: Advanced Features</h3>
+<p><b>Narrative tour authoring.</b> For effective tours: (1) Establish context with a high-altitude overview keyframe (10 seconds); (2) Descend to key viewpoints showing site access, relationships to surrounding fabric, and landmark views (5–8 seconds each); (3) Enter walk mode at human scale to show street-level quality (15–20 seconds); (4) Return to overview for conclusion. Keyframe captions should be concise (one sentence) and action-oriented: "View from the proposed plaza looking south toward the civic centre." Avoid technical jargon in captions intended for public consultation.</p>
+<p><b>Mobility mode for design review.</b> Walk mode is the most effective tool for evaluating human-scale design quality. Key checks: (a) Are ground floors visually permeable and active? (b) Does the street width-to-building-height ratio feel comfortable (1:1 to 1:3 is the classic "good urban room" proportion)? (c) Are blank walls and service areas visible from pedestrian paths? (d) Is the solar exposure of public spaces adequate at midday? Document findings with screenshots taken in walk mode.</p>
+<p><b>Model Studio strategy.</b> Use GLB models sparingly — each model adds to the scene-state payload and increases load time. Reserve them for landmark structures (max 5–10 per scene) where procedural extrusion cannot capture the architectural character. For repetitive elements (street lights, benches), use the built-in procedural variants from the asset theme system, which benefit from instanced rendering.</p>
+<p><b>Wind visualisation interpretation.</b> The particle-based wind effect is a qualitative design-review tool, not an engineering simulation. It shows approximate flow deflection around building masses to identify potential wind-tunnel effects between tall buildings or exposed corners in public plazas. For quantitative wind comfort analysis, export the building geometry to a CFD package (e.g. OpenFOAM, ANSYS Fluent) via the GeoJSON output.</p>
+
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <!-- 8. DATA ACQUISITION -->
 <!-- ═══════════════════════════════════════════════════════════════════ -->
@@ -441,6 +609,8 @@ tr:nth-child(even) td { background: var(--table-stripe); }
   <li>Layers are loaded into the QGIS project with default symbology.</li>
 </ol>
 <div class="callout warn"><b>Overpass is a shared resource.</b> The importer enforces a soft cap of ~5 km on the longer side of the bounding box. Larger areas should use regional OSM extracts (Geofabrik, BBBike) or the QuickOSM plugin. Overpass may rate-limit excessive or very large queries.</div>
+<p><b>Query optimisation.</b> The Overpass query uses the <code>[out:json]</code> output format and includes a timeout parameter to prevent runaway queries. The bounding box is expanded by 0.01° to capture features that cross the exact boundary. Road features are filtered to exclude footways, cycleways, and tracks by default (configurable), as these produce excessive line density that degrades viewer performance without adding visual value for urban-scale visualisation.</p>
+<p><b>Data quality considerations.</b> OpenStreetMap building data varies significantly in completeness and accuracy by region. In well-mapped urban areas (European capitals, major North American cities), building coverage exceeds 90% and floor-count attributes (<code>building:levels</code>) are available for a substantial fraction of buildings. In less-mapped regions, only major roads and landmark buildings may be present. The OSM Importer maps <code>building:levels</code> → <code>floor_count</code> and <code>roof:shape</code> → <code>roof_shape</code> in the output layer, preserving semantic information for the viewer.</p>
 
 <h3 id="sample-generator">Synthetic Sample Dataset Generator</h3>
 <p>The Sample Generator (<code>sample_generator.py</code>) creates a tiny but complete DEM + vector dataset (600 m × 600 m, 3×3 city blocks) into a temporary folder and loads the layers into the current QGIS project. It lets a brand-new user try the plugin without preparing any data.</p>
@@ -455,6 +625,10 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 </table>
 <p>Access via: Welcome dialog → "Load Sample Project" button, or from the plugin menu.</p>
 
+<h3 id="interpret-data-acq">Interpretation Guide: Data Acquisition</h3>
+<p><b>OSM vs official data.</b> For professional planning projects, prefer official municipal GIS data (cadastral parcels, zoning boundaries, building permits) over OSM for the building and parcel layers. OSM is appropriate for: (a) contextual buildings beyond the project boundary, (b) road networks, (c) green space and tree point data, (d) rapid prototyping before official data is available. The Sample Generator provides a useful test dataset regardless of data availability.</p>
+<p><b>UTM zone selection.</b> The OSM Importer auto-selects the UTM zone based on the bounding box centroid longitude: \(\text{zone} = \lfloor (\lambda + 180) / 6 \rfloor + 1\) for the northern hemisphere. This ensures metric coordinates suitable for the viewer's extrusion and measurement. For transnational projects spanning multiple UTM zones, choose the zone containing the majority of the study area and accept slight distortion at the edges.</p>
+
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <!-- 9. PORTABLE EXPORT -->
 <!-- ═══════════════════════════════════════════════════════════════════ -->
@@ -463,9 +637,15 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 <h3>Portable Viewer (Folder Export)</h3>
 <p>Copies the entire <code>web/</code> directory — HTML, JavaScript, CSS, vendor libraries, assets, and the <code>data/</code> folder with all exported GeoJSON/GeoTIFF files — to a user-chosen folder. The resulting folder is a <b>self-contained static website</b>: open <code>src/index.html</code> in any browser (with a local web server, due to browser CORS restrictions on <code>file://</code> GeoJSON fetching).</p>
 <p>The folder is timestamped: <code>planx_3d_city_viewer_YYYYMMDD_HHMMSS</code>.</p>
+<p><b>Deployment options.</b> The portable folder can be deployed via: (a) Python's built-in HTTP server (<code>python -m http.server 8000</code>), (b) any static web host (GitHub Pages, Netlify, Amazon S3), (c) a USB drive with a bundled portable server executable for offline presentation. The total payload size depends on DEM resolution and asset count; a typical project (500 buildings, 30 m DEM, 4 km²) produces a 15–25 MB folder. High-resolution DEMs and multiple GLB models can push this to 100+ MB — consider these bandwidth implications for web deployment.</p>
 
 <h3 id="portable-zip">Portable Viewer (ZIP with Tour)</h3>
 <p>Same as the folder export, but packaged as a single ZIP archive. The dialog optionally prompts for a <code>planx_tour.json</code> narrative tour file to include. The ZIP can be emailed, uploaded to a CMS, or archived. Recipients extract and serve the folder with any static HTTP server (Python <code>http.server</code>, Node <code>serve</code>, or upload to GitHub Pages / Netlify).</p>
+
+<h3 id="interpret-portable">Interpretation Guide: Deployment</h3>
+<p><b>Audience-appropriate packaging.</b> For technical audiences (planners, architects with GIS experience): share the folder export with instructions to run Python's HTTP server. For non-technical audiences (community consultation, political briefings): use the ZIP export with an embedded tour and provide a one-click launcher script (batch file on Windows, shell script on macOS/Linux) that starts the server and opens the browser automatically.</p>
+<p><b>Versioning strategy.</b> The timestamped folder names enable side-by-side comparison of design iterations. Archive each export with a descriptive note (e.g. "Option A — maximum density, Option B — green corridor") for later reference. The <code>planx_scene_state.json</code> file captures the exact viewer configuration, so re-opening an archived export reproduces the original presentation exactly — including camera angle, layer visibility, and asset selections.</p>
+<p><b>Offline presentation kit.</b> For field presentations without internet access: (1) Bundle the portable folder with a portable Python distribution; (2) Include a launcher script that starts the server and opens the browser; (3) Test on the target machine before leaving the office. The entire toolkit (Python + viewer + data) fits on a USB drive under 200 MB for typical projects.</p>
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <!-- 10. STYLE TOOLS -->
@@ -480,6 +660,10 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 <tr><td><b>Apply to Selected</b></td><td>Buildings</td><td><code>floor_count</code>, <code>roof_shape</code>, <code>function</code></td><td>Batch-assigns values to the currently selected features in QGIS. Use to tag a group of buildings as "commercial, 4 floors, flat roof" in one action.</td></tr>
 </table>
 <p>These tools are convenience functions for the QGIS editing workflow. The actual 3D behaviour (extrusion height, roof geometry, function colour) is determined by the exporter and viewer reading these fields at export time.</p>
+
+<h3 id="interpret-style">Interpretation Guide: Style Tools</h3>
+<p><b>Mass attribute editing.</b> The Apply to Selected tool is most efficient when used with QGIS's selection tools: (1) Use "Select by expression" to target buildings with specific characteristics (e.g. <code>"land_use" = 'commercial'</code>); (2) Use the Apply to Selected tool to set the PlanX fields for that group; (3) Repeat for each land-use category. This workflow can style hundreds of buildings in minutes.</p>
+<p><b>Field population priority.</b> Populate fields in order of visual impact: (1) <code>floor_count</code> — controls the single most visible aspect (building height); (2) <code>function</code> — enables colour-coded land-use visualisation; (3) <code>roof_shape</code> — adds architectural character; (4) <code>building_type</code> — only affects the click-info panel. For rapid prototyping, populating only <code>floor_count</code> produces a useful massing model.</p>
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <!-- APPENDICES -->
@@ -503,7 +687,6 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 
 <h2 id="appendix-b">Appendix B: Asset Theme Catalog</h2>
 <p>Six curated themes, each defining a coherent set of pedestrian, car, tree, light, bench, bin, bus stop, facade, roof, and paving variants. See <a href="#asset-themes">§6 — Asset Themes</a> for the selection table. The theme system is extensible: adding a new theme requires a new entry in <code>ASSET_THEME_PRESETS</code> in <code>exporter.py</code> and corresponding PNG/GLB assets in <code>web/src/assets/</code>.</p>
-
 <p><b>Tree species catalog</b> (8 variants, all themes draw from this pool): Street Linden, Plane, Compact Maple, Columnar, Olive, Cypress, Palm, Jacaranda, Pine, Broadleaf.</p>
 <p><b>Facade texture catalog:</b> The Modern Turkish theme includes 40 facade textures (4 families × 10 storey variants: Urban_TR_A through Urban_TR_D, each with 1–10 storey sub-variants). The ground floor has an entrance/commercial character; upper floors use repeatable apartment facade language. Other themes use 4–5 facade families without storey-specific variants.</p>
 
@@ -518,6 +701,7 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 <tr><td><b>GLB (glTF Binary)</b></td><td>A self-contained 3D model format. Used by Model Studio for custom landmark models.</td></tr>
 <tr><td><b>Island plateau</b></td><td>A flat surface at the median DEM elevation of each block's footprint. Eliminates z-fighting between buildings and terrain inside blocks.</td></tr>
 <tr><td><b>Keyframe tour</b></td><td>A sequence of camera positions with captions, animated through by the viewer. Defined in <code>planx_tour.json</code>.</td></tr>
+<tr><td><b>LoD (Level of Detail)</b></td><td>A classification of 3D city model detail: LoD0 (2.5D block), LoD1 (extruded footprints), LoD2 (differentiated roofs), LoD3 (architectural models), LoD4 (interior).</td></tr>
 <tr><td><b>OrbitControls</b></td><td>Three.js camera controller: left-drag = orbit, scroll = zoom, right-drag = pan.</td></tr>
 <tr><td><b>Overpass API</b></td><td>A read-only web API for querying OpenStreetMap data. Used by the OSM Importer.</td></tr>
 <tr><td><b>PointerLockControls</b></td><td>Three.js first-person camera controller. Used for Walk / Mobility Mode. Captures the mouse pointer.</td></tr>
@@ -526,19 +710,27 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 <tr><td><b>Scene state</b></td><td>A JSON snapshot of all viewer settings (visibility, colours, assets, models). Auto-saved to <code>planx_scene_state.json</code>.</td></tr>
 <tr><td><b>SSAO</b></td><td>Screen-Space Ambient Occlusion — adds contact shadows in crevices. Computed per-frame via <code>SSAOPass</code>.</td></tr>
 <tr><td><b>Three.js</b></td><td>A JavaScript 3D library wrapping WebGL. The viewer's rendering engine.</td></tr>
+<tr><td><b>Z-fighting</b></td><td>A rendering artefact where two coplanar surfaces compete for the same depth-buffer pixels, producing a flickering moire pattern.</td></tr>
 </table>
 
 <h2 id="appendix-d">Appendix D: Bibliography</h2>
-<p class="ref">Batty, M. (2013). <i>The New Science of Cities.</i> MIT Press, Cambridge, MA.</p>
+<p class="ref">Bavoil, L. &amp; Sainz, M. (2008). "Image-space horizon-based ambient occlusion." <i>ACM SIGGRAPH 2008 Talks</i>, Article 22. DOI: <a href="https://doi.org/10.1145/1401032.1401061">10.1145/1401032.1401061</a></p>
+<p class="ref">Biljecki, F., Stoter, J., Ledoux, H., Zlatanova, S. &amp; Cöltekin, A. (2015). "Applications of 3D city models: State of the art review." <i>ISPRS International Journal of Geo-Information</i>, 4(4), 2842–2889. DOI: <a href="https://doi.org/10.3390/ijgi4042842">10.3390/ijgi4042842</a></p>
 <p class="ref">Cabello, R. (2010). "Three.js — JavaScript 3D Library." <a href="https://threejs.org">threejs.org</a>. DOI: <a href="https://doi.org/10.5281/zenodo.14226494">10.5281/zenodo.14226494</a></p>
+<p class="ref">Croci, J.A., Waschk, A. &amp; Pajarola, R. (2022). "Terrender: A Web-Based Multi-Resolution Terrain Rendering Framework." <i>Proceedings of the 27th International Conference on 3D Web Technology (Web3D '22)</i>. DOI: <a href="https://doi.org/10.1145/3564533.3564567">10.1145/3564533.3564567</a></p>
 <p class="ref">Döllner, J. &amp; Buchholz, H. (2005). "Continuous level-of-detail modeling of buildings in 3D city models." <i>Proceedings of the 13th ACM International Symposium on Advances in Geographic Information Systems (GIS)</i>, 173–181. DOI: <a href="https://doi.org/10.1145/1097064.1097089">10.1145/1097064.1097089</a></p>
-<p class="ref">Gröger, G. &amp; Plümer, L. (2012). "CityGML — interoperable semantic 3D city models." <i>ISPRS Journal of Photogrammetry and Remote Sensing</i>, 71, 12–33. DOI: <a href="https://doi.org/10.1016/j.isprsjprs.2012.04.004">10.1016/j.isprsjprs.2012.04.004</a></p>
+<p class="ref">Gröger, G. &amp; Plümer, L. (2012). "CityGML — Interoperable semantic 3D city models." <i>ISPRS Journal of Photogrammetry and Remote Sensing</i>, 71, 12–33. DOI: <a href="https://doi.org/10.1016/j.isprsjprs.2012.04.004">10.1016/j.isprsjprs.2012.04.004</a></p>
 <p class="ref">Khronos Group. (2017). "glTF 2.0 Specification — The JSON-based Runtime Asset Delivery Format." <a href="https://registry.khronos.org/glTF/">https://registry.khronos.org/glTF/</a></p>
+<p class="ref">Mattausch, O., Scherzer, D. &amp; Wimmer, M. (2010). "High-quality screen-space ambient occlusion using temporal coherence." <i>Computer Graphics Forum</i>, 29(8), 2492–2503. DOI: <a href="https://doi.org/10.1111/j.1467-8659.2010.01784.x">10.1111/j.1467-8659.2010.01784.x</a></p>
 <p class="ref">Müller, P., Wonka, P., Haegler, S., Ulmer, A. &amp; Van Gool, L. (2006). "Procedural modeling of buildings." <i>ACM Transactions on Graphics (SIGGRAPH)</i>, 25(3), 614–623. DOI: <a href="https://doi.org/10.1145/1141911.1141931">10.1145/1141911.1141931</a></p>
 <p class="ref">Open Geospatial Consortium. (2016). "GeoJSON Format." OGC Standard 17-069r2. DOI: <a href="https://doi.org/10.14457/5bz1-xz88">10.14457/5bz1-xz88</a></p>
 <p class="ref">OpenStreetMap Contributors. (2024). "OpenStreetMap Database." <a href="https://www.openstreetmap.org">openstreetmap.org</a>. ODbL 1.0.</p>
-<p class="ref">Preim, B. &amp; Dachselt, R. (2015). <i>Interaktive Systeme, Band 2: User Interface Engineering.</i> 2nd ed., Springer Vieweg, Berlin. DOI: <a href="https://doi.org/10.1007/978-3-642-45247-5">10.1007/978-3-642-45247-5</a></p>
-<p class="ref">Sellers, G., Wright Jr., R.S. &amp; Haemel, N. (2015). <i>OpenGL SuperBible: Comprehensive Tutorial and Reference.</i> 7th ed., Addison-Wesley.</p>
+<p class="ref">Parish, Y.I.H. &amp; Müller, P. (2001). "Procedural modeling of cities." <i>Proceedings of the 28th Annual Conference on Computer Graphics and Interactive Techniques (SIGGRAPH)</i>, 301–308. DOI: <a href="https://doi.org/10.1145/383259.383292">10.1145/383259.383292</a></p>
+<p class="ref">Preetham, A.J., Shirley, P. &amp; Smits, B. (1999). "A practical analytic model for daylight." <i>Proceedings of the 26th Annual Conference on Computer Graphics and Interactive Techniques (SIGGRAPH)</i>, 91–100. DOI: <a href="https://doi.org/10.1145/311535.311545">10.1145/311535.311545</a></p>
+<p class="ref">Shanmugam, P. &amp; Arikan, O. (2007). "Hardware accelerated ambient occlusion techniques on GPUs." <i>Proceedings of the 2007 Symposium on Interactive 3D Graphics and Games (I3D '07)</i>, 73–80. DOI: <a href="https://doi.org/10.1145/1230100.1230113">10.1145/1230100.1230113</a></p>
+<p class="ref">Vanegas, C.A., Aliaga, D.G., Wonka, P., Müller, P., Waddell, P. &amp; Watson, B. (2010). "Modelling the appearance and behaviour of urban spaces." <i>Computer Graphics Forum</i>, 29(1), 25–42. DOI: <a href="https://doi.org/10.1111/j.1467-8659.2009.01535.x">10.1111/j.1467-8659.2009.01535.x</a></p>
+<p class="ref">Watson, B., Müller, P., Wonka, P., Sexton, C., Veryovka, O. &amp; Fuller, A. (2008). "Procedural urban modeling in practice." <i>IEEE Computer Graphics and Applications</i>, 28(3), 18–26. DOI: <a href="https://doi.org/10.1109/MCG.2008.58">10.1109/MCG.2008.58</a></p>
+<p class="ref">Zhang, M., Wu, J., Liu, Y., Zhang, J. &amp; Li, G. (2022). "GIS based procedural modeling in 3D urban design." <i>ISPRS International Journal of Geo-Information</i>, 11(10), 531. DOI: <a href="https://doi.org/10.3390/ijgi11100531">10.3390/ijgi11100531</a></p>
 
 <hr style="margin:2rem 0;border-color:var(--border);">
 <p style="text-align:center;color:var(--muted);font-size:.85em;">
