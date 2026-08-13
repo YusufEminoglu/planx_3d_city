@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
+import contextlib
 import os
 import unicodedata
 
@@ -1012,10 +1013,16 @@ class PlanX3DCityDialog(QDialog):
         if hasattr(self, "flatten_islands_check") and "flatten_islands" in data:
             self.flatten_islands_check.setChecked(bool(data["flatten_islands"]))
         if hasattr(self, "plateau_transition_spin") and "island_plateau_transition" in data:
-            try:
+            with contextlib.suppress(TypeError, ValueError):
                 self.plateau_transition_spin.setValue(float(data["island_plateau_transition"]))
-            except (TypeError, ValueError):
-                pass
+        if hasattr(self, "road_access_field_combo") and "road_access_field" in data:
+            idx = self.road_access_field_combo.findData(str(data["road_access_field"] or ""))
+            if idx >= 0:
+                self.road_access_field_combo.setCurrentIndex(idx)
+        if hasattr(self, "road_no_car_values") and "road_no_car_values" in data:
+            self.road_no_car_values.setText(str(data["road_no_car_values"] or ""))
+        if hasattr(self, "road_vehicle_values") and "road_vehicle_values" in data:
+            self.road_vehicle_values.setText(str(data["road_vehicle_values"] or ""))
         if hasattr(self, "basemap_size_combo") and "basemap_export_size" in data:
             idx = self.basemap_size_combo.findData(int(data["basemap_export_size"]))
             if idx >= 0:
@@ -1023,10 +1030,9 @@ class PlanX3DCityDialog(QDialog):
         if hasattr(self, "tree_randomize_check") and "tree_randomize_enabled" in data:
             self.tree_randomize_check.setChecked(bool(data["tree_randomize_enabled"]))
         if hasattr(self, "tree_random_variant_count_combo") and "tree_random_variant_count" in data:
-            try:
+            count = TREE_VARIANT_DEFAULT_COUNT
+            with contextlib.suppress(TypeError, ValueError):
                 count = int(data["tree_random_variant_count"])
-            except (TypeError, ValueError):
-                count = TREE_VARIANT_DEFAULT_COUNT
             idx = self.tree_random_variant_count_combo.findData(count)
             if idx >= 0:
                 self.tree_random_variant_count_combo.setCurrentIndex(idx)
@@ -1464,7 +1470,7 @@ class PlanX3DCityDialog(QDialog):
     def _set_tree_variants(self, values: list[str]) -> None:
         if not hasattr(self, "tree_variant_list"):
             return
-        chosen = {str(v) for v in values}
+        chosen = {str(v) for v in (values or [])}
         self.tree_variant_list.blockSignals(True)
         try:
             for i in range(self.tree_variant_list.count()):

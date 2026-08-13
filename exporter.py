@@ -603,8 +603,8 @@ def _road_access_manifest(layer_map: dict) -> Optional[dict]:
     field = (layer_map.get("road_access_field") or "").strip()
     if not field:
         return None
-    no_car_values = layer_map.get("road_no_car_values") or "yaya,pedestrian,foot,walk,path"
-    vehicle_values = layer_map.get("road_vehicle_values") or "tasit,taşıt,vehicle,car,arac,araç,motorlu"
+    no_car_values = str(layer_map.get("road_no_car_values") or "yaya,pedestrian,foot,walk,path")
+    vehicle_values = str(layer_map.get("road_vehicle_values") or "tasit,taşıt,vehicle,car,arac,araç,motorlu")
     return {
         "field": field,
         "noCarKeywords": [v.strip() for v in no_car_values.split(",") if v.strip()],

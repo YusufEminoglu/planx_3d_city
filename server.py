@@ -135,10 +135,8 @@ class QuietCorsHandler(http.server.SimpleHTTPRequestHandler):
         # Prune model files that are no longer part of the snapshot.
         for stale in models_dir.glob("*.glb"):
             if stale.name not in keep:
-                try:
+                with contextlib.suppress(OSError):
                     stale.unlink()
-                except OSError:
-                    pass
         return refs
 
 

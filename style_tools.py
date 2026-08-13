@@ -60,5 +60,6 @@ def apply_values_to_selected(layer, values: dict[str, str]) -> int:
     for fid in selected_ids:
         for idx, value in updates.items():
             layer.changeAttributeValue(fid, idx, value)
+    layer.commitChanges()
     layer.triggerRepaint()
     return len(selected_ids)

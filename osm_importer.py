@@ -13,6 +13,7 @@ side) and surfaces clear errors when Overpass rate-limits or returns nothing.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import math
 import tempfile
@@ -128,16 +129,12 @@ def _building_floors(tags: dict) -> int:
     for key in ("building:levels", "levels"):
         value = tags.get(key)
         if value:
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 return max(1, int(float(str(value).split(";")[0])))
-            except (ValueError, TypeError):
-                pass
     height = tags.get("height")
     if height:
-        try:
+        with contextlib.suppress(ValueError, TypeError):
             return max(1, int(round(float(str(height).rstrip(" m")) / 3.0)))
-        except (ValueError, TypeError):
-            pass
     return 3
 
 
@@ -224,7 +221,8 @@ def _make_layer(name: str, wkb_type: str, epsg_dest: int, fields_def):
 
 def _project_feature(feat: QgsFeature, transform: QgsCoordinateTransform) -> QgsFeature | None:
     geom = QgsGeometry(feat.geometry())
-    if geom.transform(transform):
+    res = geom.transform(transform)
+    if res != 0:
         return None
     feat.setGeometry(geom)
     return feat
