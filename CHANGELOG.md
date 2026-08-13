@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.0] - 2026-08-13
+
+- PlanX 3D City Viewer v1.0.0 Flagship Official Release
+
 ## [0.8.69] - 2026-08-13
 
 - TR-UIP 3D Style Assistant, Volumetric GFA & Population Calculator, GeoTIFF Edge Blending, and Keyboard Shortcuts HUD
