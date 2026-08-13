@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.69] - 2026-08-13
+
+- TR-UIP 3D Style Assistant, Volumetric GFA & Population Calculator, GeoTIFF Edge Blending, and Keyboard Shortcuts HUD
+
 ## [0.8.68] - 2026-08-13
 
 - Metadata percent fix and release build v0.8.68

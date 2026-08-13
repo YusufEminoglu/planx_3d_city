@@ -405,6 +405,31 @@
 
     <div id="scene-state-indicator" title="Scene auto-saved to the project so the portable ZIP can freeze it">💾 <span data-i18n="sceneSaved">Scene saved</span></div>
 
-    <script type="module" src="app.js?v=0.8.52"></script>
+    <!-- Keyboard Shortcuts Modal -->
+    <div id="shortcuts-modal" class="modal-overlay hidden">
+        <div class="glass-modal">
+            <div class="modal-head" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.15); padding-bottom:10px; margin-bottom:14px;">
+                <h3 style="margin:0; color:#5eead4; font-size:1.1rem;" data-i18n="shortcutsTitle">Keyboard Shortcuts HUD</h3>
+                <button id="shortcuts-close" class="dock-close" style="background:none; border:none; color:#94a3b8; font-size:1.4rem; cursor:pointer;">×</button>
+            </div>
+            <div class="shortcuts-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <div class="shortcut-section">
+                    <h4 style="margin:0 0 8px; color:#cbd5e1; font-size:0.85rem;" data-i18n="shortcutCatNav">Navigation &amp; Solar</h4>
+                    <div class="shortcut-row" style="display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:0.8rem;"><kbd style="background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); border-radius:4px; padding:2px 6px; font-family:monospace; color:#5eead4; font-weight:bold;">W</kbd> <span data-i18n="scWalk">Walk Mode</span></div>
+                    <div class="shortcut-row" style="display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:0.8rem;"><kbd style="background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); border-radius:4px; padding:2px 6px; font-family:monospace; color:#5eead4; font-weight:bold;">Space</kbd> <span data-i18n="scSolar">Toggle Solar Play/Pause</span></div>
+                    <div class="shortcut-row" style="display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:0.8rem;"><kbd style="background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); border-radius:4px; padding:2px 6px; font-family:monospace; color:#5eead4; font-weight:bold;">P</kbd> <span data-i18n="scPresentation">Toggle Presentation Mode</span></div>
+                    <div class="shortcut-row" style="display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:0.8rem;"><kbd style="background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); border-radius:4px; padding:2px 6px; font-family:monospace; color:#5eead4; font-weight:bold;">Esc</kbd> <span data-i18n="scExit">Close / Exit</span></div>
+                </div>
+                <div class="shortcut-section">
+                    <h4 style="margin:0 0 8px; color:#cbd5e1; font-size:0.85rem;" data-i18n="shortcutCatDocks">Docks &amp; View</h4>
+                    <div class="shortcut-row" style="display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:0.8rem;"><kbd style="background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); border-radius:4px; padding:2px 6px; font-family:monospace; color:#5eead4; font-weight:bold;">L</kbd> <span data-i18n="scLayerDock">Toggle Layer Dock</span></div>
+                    <div class="shortcut-row" style="display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:0.8rem;"><kbd style="background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); border-radius:4px; padding:2px 6px; font-family:monospace; color:#5eead4; font-weight:bold;">S</kbd> <span data-i18n="scSceneDock">Toggle Scene Dock</span></div>
+                    <div class="shortcut-row" style="display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:0.8rem;"><kbd style="background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); border-radius:4px; padding:2px 6px; font-family:monospace; color:#5eead4; font-weight:bold;">H / ?</kbd> <span data-i18n="scHelp">Shortcuts HUD</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="app.js?v=0.8.69"></script>
 </body>
 </html>

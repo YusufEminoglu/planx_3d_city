@@ -9517,14 +9517,78 @@ window.addEventListener('click', (e) => {
   shootStone();
 });
 
+function togglePresentationMode(forceState) {
+  const isPresenting = forceState !== undefined 
+    ? forceState 
+    : !document.body.classList.contains('presentation-mode');
+  
+  document.body.classList.toggle('presentation-mode', isPresenting);
+
+  let indicator = document.getElementById('scene-state-indicator');
+  if (indicator && isPresenting) {
+    indicator.textContent = 'Clean Presentation Mode (Press P or Esc to exit)';
+    indicator.classList.add('visible');
+    setTimeout(() => indicator.classList.remove('visible'), 3000);
+  }
+}
+
+document.addEventListener('click', (e) => {
+  if (e.target && e.target.id === 'shortcuts-close') {
+    document.getElementById('shortcuts-modal')?.classList.add('hidden');
+  }
+});
+
 document.addEventListener('keydown', (e) => {
+  // Input safety guard for form fields
+  const tag = document.activeElement?.tagName?.toUpperCase();
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+  const shortcutsModal = document.getElementById('shortcuts-modal');
+  const isModalOpen = shortcutsModal && !shortcutsModal.classList.contains('hidden');
+
+  if ((e.code === 'KeyH' || e.key === '?') && !e.repeat && !isWalkMode) {
+    e.preventDefault();
+    shortcutsModal?.classList.toggle('hidden');
+    return;
+  }
+
+  if (e.code === 'Escape') {
+    if (isModalOpen) { shortcutsModal.classList.add('hidden'); return; }
+    if (document.body.classList.contains('presentation-mode')) { togglePresentationMode(false); return; }
+    if (isWalkMode) { walkControls.unlock(); return; }
+    document.querySelectorAll('.dock-panel').forEach(d => d.classList.remove('open'));
+    return;
+  }
+
+  if (e.code === 'KeyP' && !isWalkMode && !isModalOpen) {
+    e.preventDefault();
+    togglePresentationMode();
+    return;
+  }
+
+  if (e.code === 'KeyL' && !isWalkMode && !isModalOpen) {
+    e.preventDefault();
+    document.getElementById('layer-dock')?.classList.toggle('open');
+    return;
+  }
+
+  if (e.code === 'KeyS' && !isWalkMode && !isModalOpen && !e.ctrlKey) {
+    e.preventDefault();
+    document.getElementById('scene-dock')?.classList.toggle('open');
+    return;
+  }
+
+  if (e.code === 'Space' && !e.ctrlKey && !isWalkMode && !isModalOpen) {
+    e.preventDefault();
+    settings.autoTime = !settings.autoTime;
+    checkTimeChange();
+    updateDockControls();
+    return;
+  }
+
   // W enters walk mode from orbit mode; inside walk mode it remains forward movement.
   if (e.code === 'KeyW' && !e.repeat && !isWalkMode) {
     walkControls.lock();
-    return;
-  }
-  if (e.code === 'Escape' && isWalkMode) {
-    walkControls.unlock();
     return;
   }
   // Ctrl+Space = stop recording from anywhere (including pointer-lock)

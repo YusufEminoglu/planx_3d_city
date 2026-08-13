@@ -1659,3 +1659,36 @@ body {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
 }
+
+/* Shortcuts Modal & Presentation Mode */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(12px);
+    z-index: 2000;
+    display: flex; align-items: center; justify-content: center;
+}
+.modal-overlay.hidden { display: none !important; }
+
+.glass-modal {
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(94, 234, 212, 0.35);
+    border-radius: 16px;
+    padding: 24px; width: 500px; max-width: 90vw;
+    color: #f8fafc; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+}
+
+body.presentation-mode #ui-container,
+body.presentation-mode .dock-panel,
+body.presentation-mode #minimap-wrap,
+body.presentation-mode #scale-bar,
+body.presentation-mode #compass-wrap,
+body.presentation-mode #fps-chip,
+body.presentation-mode #scene-state-indicator,
+body.presentation-mode .bldg-hover-tip,
+body.presentation-mode .lil-gui {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: opacity 0.3s ease-in-out;
+}

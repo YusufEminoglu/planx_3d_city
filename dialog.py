@@ -15,6 +15,7 @@ from qgis.PyQt.QtWidgets import (
     QDialogButtonBox,
     QApplication,
     QDoubleSpinBox,
+    QSpinBox,
     QFormLayout,
     QFrame,
     QGridLayout,
@@ -252,6 +253,12 @@ class PlanX3DCityDialog(QDialog):
             payload["asset_theme"] = self.asset_theme_combo.currentData() or "Modern Urban"
         if hasattr(self, "atmosphere_preset_combo"):
             payload["atmosphere_preset"] = self.atmosphere_preset_combo.currentText() or "Midday Sunlight Clean"
+        if hasattr(self, "edge_feather_spin"):
+            payload["terrain_edge_feather_meters"] = float(self.edge_feather_spin.value())
+        if hasattr(self, "dem_z_scale_spin"):
+            payload["dem_z_scale"] = float(self.dem_z_scale_spin.value())
+        if hasattr(self, "raster_alpha_check"):
+            payload["raster_alpha_blending"] = bool(self.raster_alpha_check.isChecked())
         if hasattr(self, "flatten_islands_check"):
             payload["flatten_islands"] = bool(self.flatten_islands_check.isChecked())
         if hasattr(self, "plateau_transition_spin"):
@@ -836,6 +843,60 @@ class PlanX3DCityDialog(QDialog):
         terrain_root.addLayout(plateau_row)
         root.addWidget(terrain_group)
 
+        # TR-UIP Standards Assistant
+        uip_group = QGroupBox("Turkish Planning Standards (TR-UIP) Assistant")
+        uip_layout = QVBoxLayout(uip_group)
+        uip_desc = QLabel(
+            "Auto-style buildings by land-use function according to Turkish Spatial Planning Regulations "
+            "(Mekansal Planlar Yapim Yonetmeligi: Konut, Ticaret, Karma, Sanayi, Park, Egitim, Saglik, Ibadet, Resmi)."
+        )
+        uip_desc.setWordWrap(True)
+        uip_layout.addWidget(uip_desc)
+        self.apply_uip_btn = QPushButton("Apply TR-UIP Standard Styles")
+        uip_layout.addWidget(self.apply_uip_btn)
+        root.addWidget(uip_group)
+
+        # Volumetric GFA & Population Calculator
+        gfa_group = QGroupBox("Volumetric GFA & Population Calculator")
+        gfa_layout = QFormLayout(gfa_group)
+        self.gfa_default_floors_spin = QSpinBox()
+        self.gfa_default_floors_spin.setRange(1, 100)
+        self.gfa_default_floors_spin.setValue(4)
+        self.gfa_dwelling_m2_spin = QDoubleSpinBox()
+        self.gfa_dwelling_m2_spin.setRange(30.0, 500.0)
+        self.gfa_dwelling_m2_spin.setValue(100.0)
+        self.gfa_dwelling_m2_spin.setSuffix(" m²")
+        self.gfa_household_spin = QDoubleSpinBox()
+        self.gfa_household_spin.setRange(1.0, 8.0)
+        self.gfa_household_spin.setValue(3.14)
+        self.gfa_household_spin.setSingleStep(0.1)
+        self.calc_gfa_btn = QPushButton("Calculate GFA & Population")
+        gfa_layout.addRow("Default storeys", self.gfa_default_floors_spin)
+        gfa_layout.addRow("Avg unit area", self.gfa_dwelling_m2_spin)
+        gfa_layout.addRow("Household size", self.gfa_household_spin)
+        gfa_layout.addRow(self.calc_gfa_btn)
+        root.addWidget(gfa_group)
+
+        # GeoTIFF & Terrain Edge Blending Controls
+        blend_group = QGroupBox("GeoTIFF & Terrain Edge Blending Controls")
+        blend_layout = QFormLayout(blend_group)
+        self.edge_feather_spin = QDoubleSpinBox()
+        self.edge_feather_spin.setRange(0.0, 100.0)
+        self.edge_feather_spin.setValue(15.0)
+        self.edge_feather_spin.setSuffix(" m")
+        self.edge_feather_spin.setToolTip("Smoothly fades plan texture and DEM terrain edges over this distance.")
+        self.dem_z_scale_spin = QDoubleSpinBox()
+        self.dem_z_scale_spin.setRange(0.1, 5.0)
+        self.dem_z_scale_spin.setSingleStep(0.1)
+        self.dem_z_scale_spin.setValue(1.0)
+        self.dem_z_scale_spin.setToolTip("Vertical elevation exaggeration multiplier.")
+        self.raster_alpha_check = QCheckBox("Enable GeoTIFF alpha feathering & transparent nodata")
+        self.raster_alpha_check.setChecked(True)
+        blend_layout.addRow("Edge feathering distance", self.edge_feather_spin)
+        blend_layout.addRow("DEM Z-Scale (Exaggeration)", self.dem_z_scale_spin)
+        blend_layout.addRow(self.raster_alpha_check)
+        root.addWidget(blend_group)
+
         quick = QGroupBox("Quick style for selected features")
         form = QFormLayout(quick)
         self.block_texture_combo = QComboBox()
@@ -883,6 +944,8 @@ class PlanX3DCityDialog(QDialog):
         self.apply_buildings_btn.clicked.connect(self._apply_building_style)
         self.color_btn.clicked.connect(lambda: self._pick_color("color"))
         self.roof_color_btn.clicked.connect(lambda: self._pick_color("roof"))
+        self.apply_uip_btn.clicked.connect(self._apply_uip_standards)
+        self.calc_gfa_btn.clicked.connect(self._calculate_gfa_and_population)
         return page
 
     def _make_publish_page(self) -> QWidget:
@@ -1453,6 +1516,48 @@ class PlanX3DCityDialog(QDialog):
     def _prepare_block_fields(self) -> None:
         added = ensure_fields(self.selected_layers().get("blocks"), BLOCK_STYLE_FIELDS)
         self._style_message("Blocks", added)
+
+    def _apply_uip_standards(self) -> None:
+        layer = self.selected_layers().get("buildings") or self.selected_layers().get("blocks")
+        if layer is None:
+            QMessageBox.information(self, "TR-UIP Assistant", "Please select a Buildings or Blocks layer first.")
+            return
+        fn_field = self.field_mapping_combos.get("landuse_function_field")
+        fn_name = fn_field.currentData() if fn_field else "uipfonksiyon"
+        if not fn_name:
+            fn_name = "uipfonksiyon"
+        from .style_tools import apply_uip_standards_to_layer
+        res = apply_uip_standards_to_layer(layer, fn_name)
+        msg = f"TR-UIP Styles applied: {res.get('updated', 0)} of {res.get('total', 0)} features updated."
+        self._style_message("TR-UIP Assistant", [msg])
+
+    def _calculate_gfa_and_population(self) -> None:
+        layer = self.selected_layers().get("buildings")
+        if layer is None:
+            QMessageBox.information(self, "GFA Calculator", "Please select a Buildings layer first.")
+            return
+        flr_field = self.field_mapping_combos.get("building_floors_field")
+        flr_name = flr_field.currentData() if flr_field else "katadedi"
+        from .style_tools import calculate_building_gfa_and_population
+        res = calculate_building_gfa_and_population(
+            layer,
+            floors_field=flr_name,
+            default_floors=int(self.gfa_default_floors_spin.value()),
+            avg_dwelling_m2=float(self.gfa_dwelling_m2_spin.value()),
+            household_size=float(self.gfa_household_spin.value()),
+        )
+        msg = f"Calculated: {res.get('features', 0)} features, Total GFA: {res.get('total_gfa', 0):,.2f} m², Total Pop: {res.get('total_pop', 0):,}"
+        self._style_message("GFA Calculator", [msg])
+        if "building_floor_area_field" in self.field_mapping_combos:
+            combo = self.field_mapping_combos["building_floor_area_field"]
+            idx = combo.findData("planx_gfa")
+            if idx >= 0:
+                combo.setCurrentIndex(idx)
+        if "building_population_field" in self.field_mapping_combos:
+            combo = self.field_mapping_combos["building_population_field"]
+            idx = combo.findData("planx_pop")
+            if idx >= 0:
+                combo.setCurrentIndex(idx)
 
     def _reset_asset_theme_defaults(self) -> None:
         if hasattr(self, "asset_theme_combo"):
