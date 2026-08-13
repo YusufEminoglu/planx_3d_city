@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.61] - 2026-08-13
+
+- Add Auto-detect attributes button in Field Mapping section
+
 ## [0.8.60] - 2026-08-13
 
 - Auto QGIS map canvas extent zoom on sample data load and OSM import

@@ -509,9 +509,22 @@ class PlanX3DCityDialog(QDialog):
         root.addWidget(required_group)
 
         mapping_group = QGroupBox("Field mapping / Analysis attributes")
-        mapping_grid = QGridLayout(mapping_group)
+        mapping_layout = QVBoxLayout(mapping_group)
+        mapping_top = QHBoxLayout()
+        mapping_info = QLabel("Attribute fields auto-detect matching column names (e.g. katadedi, nufus, floors, genislik).")
+        mapping_info.setWordWrap(True)
+        mapping_info.setStyleSheet("color: #64748b; font-weight: normal;")
+        self.auto_field_btn = QPushButton("Auto-detect attributes")
+        self.auto_field_btn.setToolTip("Scan current layers and auto-select matching attribute fields.")
+        self.auto_field_btn.clicked.connect(self._auto_detect_fields_clicked)
+        mapping_top.addWidget(mapping_info, 1)
+        mapping_top.addWidget(self.auto_field_btn)
+        mapping_layout.addLayout(mapping_top)
+
+        mapping_grid = QGridLayout()
         for row, (key, layer_key, label, help_text) in enumerate(FIELD_MAPPING_DEFS):
             self._add_field_mapping_row(mapping_grid, row, key, layer_key, label, help_text)
+        mapping_layout.addLayout(mapping_grid)
         root.addWidget(mapping_group)
 
         basemap_group = QGroupBox("Optional QGIS basemap / XYZ background")
@@ -1567,6 +1580,14 @@ class PlanX3DCityDialog(QDialog):
         idx = self.road_access_field_combo.findData(current)
         self.road_access_field_combo.setCurrentIndex(idx if idx >= 0 else 0)
         self.road_access_field_combo.blockSignals(False)
+
+    def _auto_detect_fields_clicked(self) -> None:
+        """Clear current field mappings and re-run smart field auto-detection."""
+        for combo in getattr(self, "field_mapping_combos", {}).values():
+            combo.setCurrentIndex(0)
+        self._sync_field_mapping_fields()
+        self._refresh_report()
+        self.set_status("Attribute fields auto-detected from selected layers.")
 
     def _sync_field_mapping_fields(self) -> None:
         if not getattr(self, "field_mapping_combos", None):
