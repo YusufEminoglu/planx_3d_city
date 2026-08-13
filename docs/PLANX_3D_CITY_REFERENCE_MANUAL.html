@@ -264,6 +264,29 @@ $$H_{\text{building}} = n_{\text{floors}} \times h_{\text{floor}} \tag{4}$$
 <p><b>Performance considerations.</b> The local server architecture means all data loading is limited by disk I/O, not network bandwidth. For large projects (1000+ buildings, DEM at &lt; 1 m resolution), the initial load time is dominated by GeoJSON parsing and terrain mesh generation in the browser. The server's threading model handles concurrent requests for GeoJSON and texture files efficiently. The server port range (8080–8099) provides 20 candidate ports, tolerating environments where several are already in use.</p>
 <p><b>Headless integration.</b> The <code>ParcelFluxCore</code>-style architecture (standalone engine with no ProcessingProvider dependency) means the exporter can be invoked from external scripts or batch processes. The <code>/api/scene-state</code> endpoint's 256 MB payload limit accommodates detailed GLB landmark models. For deployment scenarios where a persistent server is undesirable, the Portable Export feature (§9) produces a fully static website.</p>
 
+<h3 id="step-by-step-guide">Step-by-Step Visual Workflow Guide (v1.0 Flagship)</h3>
+<p>Follow these 4 simple steps to transform your QGIS GIS layers into an interactive 3D web cockpit:</p>
+
+<div class="callout info">
+  <h4>Step 1: Data Preparation &amp; Auto-Matching (1 Data Tab)</h4>
+  <p>Select your DEM raster and vector layers (Buildings, Roads, Blocks, Parcels, Vegetation, Urban Furniture). Or click <b>"Import from OpenStreetMap"</b> to harvest a 10-layer urban dataset in 1 click.</p>
+</div>
+
+<div class="callout info">
+  <h4>Step 2: Verification &amp; Performance Audit (2 Check Tab)</h4>
+  <p>Click <b>"Generate quality report"</b> to review your <b>0-100% Scene Readiness Score</b> and pre-flight <b>WebGL Performance Tier Estimator</b> (60+ FPS predictor).</p>
+</div>
+
+<div class="callout info">
+  <h4>Step 3: Turkish Planning Standards (TR-UIP) &amp; Atmosphere Styling (3 Style Tab)</h4>
+  <p>Click <b>"Apply TR-UIP Standard Styles"</b> to auto-theme buildings by land-use function, run <b>"Volumetric GFA &amp; Population Calculator"</b>, and choose an <b>Atmosphere Preset</b> (Golden Hour, Midday, Overcast, Night Glow, Morning Mist).</p>
+</div>
+
+<div class="callout info">
+  <h4>Step 4: Interactive Web Cockpit &amp; Portable Package (4 Publish Tab)</h4>
+  <p>Click <b>"Export and open 3D Viewer"</b> to launch the browser cockpit. Press <b>H</b> for Keyboard Shortcuts, <b>W</b> for Walk Mode, and <b>P</b> for Clean Presentation Mode.</p>
+</div>
+
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <!-- 2. INPUT DATA REQUIREMENTS -->
 <!-- ═══════════════════════════════════════════════════════════════════ -->

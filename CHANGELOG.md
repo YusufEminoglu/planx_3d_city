@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.2] - 2026-08-13
+
+- Connect Guide button directly to online GitHub Pages documentation and add Step-by-Step guide
+
 ## [1.0.1] - 2026-08-13
 
 - Purge unused vendor JS files for optimal release package size

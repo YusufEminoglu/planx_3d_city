@@ -471,12 +471,17 @@ class PlanX3DCityDialog(QDialog):
         return os.path.join(os.path.dirname(__file__), "docs", "user_guide.html")
 
     def _open_html_guide(self) -> None:
+        url = QUrl("https://yusufeminoglu.github.io/planx_3d_city/")
+        QDesktopServices.openUrl(url)
+        self.set_status("Opened official PlanX 3D City documentation (https://yusufeminoglu.github.io/planx_3d_city/) in browser.")
+
+    def _open_offline_guide(self) -> None:
         path = self._guide_path()
         if not os.path.exists(path):
-            self.set_status(f"Guide file was not found: {path}", error=True)
+            self.set_status(f"Offline guide file not found: {path}", error=True)
             return
         QDesktopServices.openUrl(QUrl.fromLocalFile(path))
-        self.set_status("Opened the PlanX 3D City HTML user guide in your browser.")
+        self.set_status("Opened offline local HTML user guide in browser.")
 
     def _make_guide_page(self) -> QWidget:
         page = QWidget()
@@ -487,20 +492,34 @@ class PlanX3DCityDialog(QDialog):
         summary = QTextBrowser()
         summary.setOpenExternalLinks(True)
         summary.setHtml(
-            "<h2>PlanX 3D City Viewer Guide</h2>"
-            "<p>This plugin can publish a complete vector city model, a DEM-only terrain scene, "
-            "or a DEM-less flat presentation plane. The full HTML guide explains layer preparation, "
-            "OpenStreetMap import, terrain and ROI texture behavior, styling, publishing, portable export, "
-            "and troubleshooting.</p>"
-            "<p><b>Recommended reading order:</b> quick start, data contracts, terrain strategy, "
-            "style controls, publish workflow, then troubleshooting.</p>"
+            "<h2>PlanX 3D City Viewer — Online & Offline Documentation Guide</h2>"
+            "<p>PlanX 3D City Viewer converts your QGIS vector layers, DEM terrain, and plan textures into an "
+            "interactive Three.js 3D city cockpit. The official documentation is hosted live at "
+            "<a href='https://yusufeminoglu.github.io/planx_3d_city/'><b>yusufeminoglu.github.io/planx_3d_city</b></a> "
+            "with step-by-step guides, interactive diagrams, and parameter references.</p>"
+            "<p><b>Step-by-step quick start workflow:</b></p>"
+            "<ol>"
+            "<li><b>1 Data:</b> Select your QGIS layers or click <i>Import from OpenStreetMap</i> / <i>Try with sample data</i>.</li>"
+            "<li><b>2 Check:</b> Click <i>Generate quality report</i> to inspect Readiness Score and WebGL performance tier.</li>"
+            "<li><b>3 Style:</b> Apply <i>TR-UIP Planning Standards</i>, calculate <i>Volumetric GFA</i>, or pick visual <i>Atmosphere Presets</i>.</li>"
+            "<li><b>4 Publish:</b> Click <i>Export and open 3D Viewer</i> to launch the 3D cockpit or generate a portable ZIP package.</li>"
+            "</ol>"
         )
         summary.setMinimumHeight(GUIDE_SUMMARY_MIN_HEIGHT)
-        self.open_guide_button = QPushButton("Open full HTML guide")
+        
+        btn_layout = QHBoxLayout()
+        self.open_guide_button = QPushButton("🌐 Open Online User Guide (GitHub Pages)")
         self.open_guide_button.setObjectName("primaryButton")
         self.open_guide_button.clicked.connect(self._open_html_guide)
+        
+        self.open_offline_button = QPushButton("📁 Open Offline Local Guide")
+        self.open_offline_button.clicked.connect(self._open_offline_guide)
+
+        btn_layout.addWidget(self.open_guide_button)
+        btn_layout.addWidget(self.open_offline_button)
+
         guide_layout.addWidget(summary)
-        guide_layout.addWidget(self.open_guide_button)
+        guide_layout.addLayout(btn_layout)
         root.addWidget(guide_group)
         root.addStretch(1)
         return page
