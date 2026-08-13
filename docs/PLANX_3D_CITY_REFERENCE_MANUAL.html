@@ -96,6 +96,8 @@ tr:nth-child(even) td { background: var(--table-stripe); }
   #content { max-width: none; padding: 0; }
   h2 { page-break-before: always; }
 }
+.video-embed { position: relative; width: 100%; padding-top: 56.25%; margin: 4px 0 28px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); background: #000; }
+.video-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 </style>
 </head>
 <body>
@@ -207,6 +209,10 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 <main id="content">
 
 <h1>PlanX 3D City Viewer</h1>
+<div class="video-embed">
+  <iframe src="https://www.youtube-nocookie.com/embed/eBUEsKhlvlc" title="PlanX 3D City Viewer &mdash; video walkthrough" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+</div>
+
 <h1 class="subtitle">Comprehensive Academic Reference Manual · v0.8.53</h1>
 <p style="color:var(--muted);font-size:.9em;">Yusuf Eminoğlu · August 2026 · <a href="https://github.com/YusufEminoglu/planx_3d_city">github.com/YusufEminoglu/planx_3d_city</a></p>
 
