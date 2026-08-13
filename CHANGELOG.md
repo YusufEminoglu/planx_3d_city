@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.1] - 2026-08-13
+
+- Purge unused vendor JS files for optimal release package size
+
 ## [1.0.0] - 2026-08-13
 
 - PlanX 3D City Viewer v1.0.0 Flagship Official Release
