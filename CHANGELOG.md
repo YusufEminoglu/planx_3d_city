@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.65] - 2026-08-13
+
+- Expand 1-click OSM harvester to fetch waterlines, streetlights, benches, bus stops, and trash bins
+
 ## [0.8.64] - 2026-08-13
 
 - Nav tab icons, geographic CRS reprojection guidance in quality report, and UI polish

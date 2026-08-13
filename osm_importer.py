@@ -87,7 +87,13 @@ def _overpass_query(min_lat: float, min_lon: float, max_lat: float, max_lon: flo
   way["leisure"~"park|garden|playground|pitch"]({bbox});
   way["landuse"~"forest|grass|meadow|recreation_ground|cemetery"]({bbox});
   way["natural"~"wood|scrub"]({bbox});
+  way["waterway"]({bbox});
+  way["natural"="water"]({bbox});
   node["natural"="tree"]({bbox});
+  node["highway"="bus_stop"]({bbox});
+  node["highway"="street_lamp"]({bbox});
+  node["amenity"="bench"]({bbox});
+  node["amenity"="waste_basket"]({bbox});
 );
 out body geom;
 """.strip()
@@ -285,6 +291,26 @@ def import_osm_bbox(min_lon: float, min_lat: float, max_lon: float, max_lat: flo
         f"OSM Trees ({suffix})", "Point", epsg_dest,
         [("osm_id", QVariant.String), ("height", QVariant.Double)],
     )
+    waterlines_layer, w_pr = _make_layer(
+        f"OSM Waterlines ({suffix})", "LineString", epsg_dest,
+        [("osm_id", QVariant.String), ("name", QVariant.String), ("width", QVariant.Double)],
+    )
+    lights_layer, l_pr = _make_layer(
+        f"OSM Lights ({suffix})", "Point", epsg_dest,
+        [("osm_id", QVariant.String), ("name", QVariant.String)],
+    )
+    benches_layer, bn_pr = _make_layer(
+        f"OSM Benches ({suffix})", "Point", epsg_dest,
+        [("osm_id", QVariant.String), ("name", QVariant.String)],
+    )
+    busstops_layer, bs_pr = _make_layer(
+        f"OSM Bus Stops ({suffix})", "Point", epsg_dest,
+        [("osm_id", QVariant.String), ("name", QVariant.String)],
+    )
+    trashbins_layer, tb_pr = _make_layer(
+        f"OSM Trash Bins ({suffix})", "Point", epsg_dest,
+        [("osm_id", QVariant.String), ("name", QVariant.String)],
+    )
 
     roi_min_x, roi_min_y, roi_max_x, roi_max_y = reproject_bbox(
         min_lon, min_lat, max_lon, max_lat, src_crs, dst_crs
@@ -304,7 +330,7 @@ def import_osm_bbox(min_lon: float, min_lat: float, max_lon: float, max_lat: flo
     roi_pr.addFeatures([roi_feat])
     roi_layer.updateExtents()
 
-    counts = {"buildings": 0, "roads": 0, "greens": 0, "trees": 0, "skipped": 0}
+    counts = {"buildings": 0, "roads": 0, "greens": 0, "trees": 0, "waterlines": 0, "lights": 0, "benches": 0, "busstops": 0, "trashbins": 0, "skipped": 0}
     for element in elements:
         etype = element.get("type")
         tags = element.get("tags") or {}
@@ -324,6 +350,55 @@ def import_osm_bbox(min_lon: float, min_lat: float, max_lon: float, max_lat: flo
                 feat.setAttributes([str(element.get("id", "")), round(height_val, 1)])
                 target_pr = t_pr
                 counts["trees"] += 1
+
+        elif etype == "node" and tags.get("highway") == "street_lamp":
+            geom = _node_point(element)
+            if geom:
+                feat = QgsFeature()
+                feat.setGeometry(geom)
+                feat.setAttributes([str(element.get("id", "")), tags.get("name", "")])
+                target_pr = l_pr
+                counts["lights"] += 1
+
+        elif etype == "node" and tags.get("amenity") == "bench":
+            geom = _node_point(element)
+            if geom:
+                feat = QgsFeature()
+                feat.setGeometry(geom)
+                feat.setAttributes([str(element.get("id", "")), tags.get("name", "")])
+                target_pr = bn_pr
+                counts["benches"] += 1
+
+        elif etype == "node" and tags.get("highway") == "bus_stop":
+            geom = _node_point(element)
+            if geom:
+                feat = QgsFeature()
+                feat.setGeometry(geom)
+                feat.setAttributes([str(element.get("id", "")), tags.get("name", "")])
+                target_pr = bs_pr
+                counts["busstops"] += 1
+
+        elif etype == "node" and tags.get("amenity") == "waste_basket":
+            geom = _node_point(element)
+            if geom:
+                feat = QgsFeature()
+                feat.setGeometry(geom)
+                feat.setAttributes([str(element.get("id", "")), tags.get("name", "")])
+                target_pr = tb_pr
+                counts["trashbins"] += 1
+
+        elif etype == "way" and tags.get("waterway"):
+            geom = _way_polyline(element)
+            if geom:
+                feat = QgsFeature()
+                feat.setGeometry(geom)
+                width_val = 4.0
+                if tags.get("width"):
+                    with contextlib.suppress(ValueError, TypeError):
+                        width_val = float(str(tags["width"]).rstrip(" m"))
+                feat.setAttributes([str(element.get("id", "")), tags.get("name", ""), width_val])
+                target_pr = w_pr
+                counts["waterlines"] += 1
 
         elif etype in ("way", "relation") and tags.get("building"):
             geom = _way_polygon(element)
@@ -367,7 +442,7 @@ def import_osm_bbox(min_lon: float, min_lat: float, max_lon: float, max_lat: flo
                 continue
             target_pr.addFeatures([projected])
 
-    for layer in (buildings_layer, roads_layer, blocks_layer, trees_layer):
+    for layer in (buildings_layer, roads_layer, blocks_layer, trees_layer, waterlines_layer, lights_layer, benches_layer, busstops_layer, trashbins_layer):
         layer.updateExtents()
 
     # Optionally persist as GeoJSON next to other PlanX exports.
@@ -382,7 +457,7 @@ def import_osm_bbox(min_lon: float, min_lat: float, max_lon: float, max_lat: flo
 
     if add_to_project:
         project = QgsProject.instance()
-        for layer in (roi_layer, blocks_layer, buildings_layer, roads_layer, trees_layer):
+        for layer in (roi_layer, blocks_layer, buildings_layer, roads_layer, trees_layer, waterlines_layer, lights_layer, benches_layer, busstops_layer, trashbins_layer):
             if layer.featureCount() > 0:
                 project.addMapLayer(layer)
 
@@ -396,6 +471,11 @@ def import_osm_bbox(min_lon: float, min_lat: float, max_lon: float, max_lat: flo
             "buildings": buildings_layer if buildings_layer.featureCount() else None,
             "roads": roads_layer if roads_layer.featureCount() else None,
             "trees": trees_layer if trees_layer.featureCount() else None,
+            "waterlines": waterlines_layer if waterlines_layer.featureCount() else None,
+            "lights": lights_layer if lights_layer.featureCount() else None,
+            "benches": benches_layer if benches_layer.featureCount() else None,
+            "busstops": busstops_layer if busstops_layer.featureCount() else None,
+            "trashbins": trashbins_layer if trashbins_layer.featureCount() else None,
         },
         "bbox_km": (round(width_km, 2), round(height_km, 2)),
     }

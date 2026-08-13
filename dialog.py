@@ -1089,10 +1089,11 @@ class PlanX3DCityDialog(QDialog):
         counts = result.get("counts", {})
         bw, bh = result.get("bbox_km", (0, 0))
         summary = (
-            f"OSM data loaded (EPSG:{result.get('epsg')}, ~{bw}x{bh} km). "
+            f"OSM 3D data harvested (EPSG:{result.get('epsg')}, ~{bw}x{bh} km). "
             f"Buildings {counts.get('buildings', 0)}, roads {counts.get('roads', 0)}, "
-            f"greens {counts.get('greens', 0)}, trees {counts.get('trees', 0)}. "
-            "Add your own DEM, then export."
+            f"greens {counts.get('greens', 0)}, trees {counts.get('trees', 0)}, "
+            f"water {counts.get('waterlines', 0)}, lights {counts.get('lights', 0)}, "
+            f"benches {counts.get('benches', 0)}. Add DEM, then export!"
         )
         self.set_status(summary)
 
