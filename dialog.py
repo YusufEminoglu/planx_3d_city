@@ -210,6 +210,7 @@ class PlanX3DCityDialog(QDialog):
         self.setWindowTitle("PlanX 3D City Publisher")
         self.resize(*DIALOG_DEFAULT_SIZE)
         self._build_ui()
+        self._auto_match_layers_quiet()
         self._refresh_report()
 
     def selected_layers(self) -> dict:
@@ -380,15 +381,26 @@ class PlanX3DCityDialog(QDialog):
         content = QVBoxLayout()
         content.setSpacing(8)
         hero = QVBoxLayout()
+        title_row = QHBoxLayout()
         title = QLabel("PlanX 3D City Publisher")
         title.setObjectName("heroTitle")
+
+        self.hero_export_btn = QPushButton("Export & Open 3D Viewer")
+        self.hero_export_btn.setObjectName("primaryButton")
+        self.hero_export_btn.setToolTip("Export currently mapped layers and open the 3D City Viewer in your browser.")
+        self.hero_export_btn.clicked.connect(lambda: self.exportRequested.emit(self.selected_layers()))
+
+        title_row.addWidget(title)
+        title_row.addStretch(1)
+        title_row.addWidget(self.hero_export_btn)
+
         subtitle = QLabel(
             "Validate QGIS layers, map attributes, style selected features and publish the 3D viewer in one workflow. "
             "Turkish guidance is included as secondary text where it helps data preparation."
         )
         subtitle.setObjectName("heroSub")
         subtitle.setWordWrap(True)
-        hero.addWidget(title)
+        hero.addLayout(title_row)
         hero.addWidget(subtitle)
         content.addLayout(hero)
 
@@ -1139,6 +1151,23 @@ class PlanX3DCityDialog(QDialog):
         self.set_status(
             f"Sample data generated and loaded ({folder}). Click 'Export and open 3D Viewer' to publish."
         )
+
+    def _auto_match_layers_quiet(self) -> None:
+        """Run auto-matching on dialog opening if no layer is currently selected."""
+        if any(box.currentLayer() is not None for box in self.layer_boxes.values()):
+            return
+        layers = list(QgsProject.instance().mapLayers().values())
+        used_ids = set()
+        matched = []
+        for key in ("dem", "plan_texture", "basemap", "roi", "roads", "buildings", "blocks", "parcels") + OPTIONAL_INPUTS:
+            candidate = self._best_layer_match(key, layers, used_ids)
+            if candidate is None:
+                continue
+            self.layer_boxes[key].setLayer(candidate)
+            used_ids.add(candidate.id())
+            matched.append(LABELS[key])
+        if matched:
+            self.set_status("Auto-matched layers from current project: " + ", ".join(matched[:5]) + ("..." if len(matched) > 5 else "") + ". Ready to export!")
 
     def _auto_match_layers(self) -> None:
         layers = list(QgsProject.instance().mapLayers().values())

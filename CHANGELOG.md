@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.57] - 2026-08-13
+
+- User friendliness pass, header quick export button, auto-match on open, and root cleanup
+
 ## [0.8.56] - 2026-08-07
 
 - Added online user manual link (https://yusufeminoglu.github.io/planx_3d_city/) and GitHub repository star call-to-action.

@@ -80,7 +80,11 @@ class PlanX3DCityPlugin:
     def export_and_launch(self, layer_map: dict):
         missing = validate_inputs(layer_map)
         if missing:
-            self._message("Missing required data", "Please select these inputs:\n- " + "\n- ".join(missing), QMessageBox.Icon.Warning)
+            msg = (
+                "Please choose these required inputs:\n- " + "\n- ".join(missing) +
+                "\n\nTip: Click 'Auto-match layers' on the Data page to pair layers from your project, or click 'Try with sample data' for an instant test scene."
+            )
+            self._message("Missing required data", msg, QMessageBox.Icon.Warning)
             if self.dialog:
                 self.dialog.set_status("Missing required data: " + ", ".join(missing), error=True)
             return
