@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.67] - 2026-08-13
+
+- Visual 0-100% Readiness Gauge and WebGL Performance Tier Estimator in Quality Report
+
 ## [0.8.66] - 2026-08-13
 
 - Atmosphere & Lighting Studio presets (Golden Hour, Midday, Overcast, Night Glow, Morning Mist)

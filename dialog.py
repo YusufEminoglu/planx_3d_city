@@ -1358,6 +1358,41 @@ class PlanX3DCityDialog(QDialog):
                     if field.lower() not in names:
                         warnings.append(f"Recommended building field is missing: {field}.")
 
+        # Readiness score (0-100)
+        score = 0
+        if layer_map.get("buildings") is not None:
+            score += 25
+        if layer_map.get("dem") is not None:
+            score += 20
+        if layer_map.get("building_floors_field"):
+            score += 10
+        if layer_map.get("landuse_function_field"):
+            score += 10
+        if crs_values and not any("4326" in c for c in crs_values):
+            score += 15
+        for extra_key in ("roads", "blocks", "waterlines", "trees", "lights", "benches"):
+            if layer_map.get(extra_key) is not None:
+                score += 4
+        score = min(100, score)
+
+        if score >= 80:
+            readiness_badge = f"<span style='background:#dcfce7; color:#166534; padding:4px 10px; border-radius:12px; font-weight:bold;'>Ready for Production ({score}%)</span>"
+        elif score >= 50:
+            readiness_badge = f"<span style='background:#fef9c3; color:#854d0e; padding:4px 10px; border-radius:12px; font-weight:bold;'>Good Base Scene ({score}%)</span>"
+        else:
+            readiness_badge = f"<span style='background:#ffe4e6; color:#be123c; padding:4px 10px; border-radius:12px; font-weight:bold;'>Incomplete Data ({score}%)</span>"
+
+        # WebGL Performance Tier Estimator
+        bld_count = self._feature_count(layer_map.get("buildings")) if layer_map.get("buildings") else 0
+        tree_count = self._feature_count(layer_map.get("trees")) if layer_map.get("trees") else 0
+        est_tris = (bld_count * 36) + (tree_count * 180)
+        if est_tris < 150000:
+            perf_tier = "<span style='color:#166534; font-weight:bold;'>🚀 Ultra (60+ FPS)</span>"
+        elif est_tris < 500000:
+            perf_tier = "<span style='color:#0284c7; font-weight:bold;'>⚡ High Performance</span>"
+        else:
+            perf_tier = "<span style='color:#b91c1c; font-weight:bold;'>⚠️ Dense Urban Scene</span>"
+
         mapped_summary = []
         for key, _layer_key, label, _help in FIELD_MAPPING_DEFS:
             mapped_val = layer_map.get(key)
@@ -1378,7 +1413,7 @@ class PlanX3DCityDialog(QDialog):
         warn_html = "".join(f"<li>{w}</li>" for w in warnings) if warnings else "<li>No critical warning.</li>"
         html = f"""
         <h2>PlanX 3D City quality report</h2>
-        <p><b>Language note:</b> English is the primary interface language; Turkish hints are secondary where they help local data preparation.</p>
+        <p><b>Scene Readiness:</b> {readiness_badge} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Predicted Performance:</b> {perf_tier}</p>
         <p><b>Mapped Attribute Fields:</b><br>{mapped_html}</p>
         <table border="0" cellspacing="0" cellpadding="6">
           <tr><th>Input</th><th>Role</th><th>Status</th><th>Features</th><th>Geometry</th><th>CRS</th></tr>
