@@ -1330,6 +1330,13 @@ class PlanX3DCityDialog(QDialog):
                     if field.lower() not in names:
                         warnings.append(f"Recommended building field is missing: {field}.")
 
+        mapped_summary = []
+        for key, _layer_key, label, _help in FIELD_MAPPING_DEFS:
+            mapped_val = layer_map.get(key)
+            if mapped_val:
+                mapped_summary.append(f"<b>{label}:</b> <code>{mapped_val}</code>")
+        mapped_html = "<br>".join(mapped_summary) if mapped_summary else "<i>Auto / fallback aliases active.</i>"
+
         unique_crs = sorted({c for c in crs_values if c and c != "No CRS"})
         if len(unique_crs) > 1:
             warnings.append("Possible CRS mismatch: " + ", ".join(unique_crs))
@@ -1338,12 +1345,11 @@ class PlanX3DCityDialog(QDialog):
             f"<tr><td>{a}</td><td>{b}</td><td>{c}</td><td>{d}</td><td>{e}</td><td>{f}</td></tr>"
             for a, b, c, d, e, f in rows
         )
-        warn_html = "".join(f"<li>{w}</li>" for w in warnings) or "<li>No critical warning.</li>"
-        if not warnings:
-            warn_html = "<li>No critical warning.</li>"
+        warn_html = "".join(f"<li>{w}</li>" for w in warnings) if warnings else "<li>No critical warning.</li>"
         html = f"""
         <h2>PlanX 3D City quality report</h2>
         <p><b>Language note:</b> English is the primary interface language; Turkish hints are secondary where they help local data preparation.</p>
+        <p><b>Mapped Attribute Fields:</b><br>{mapped_html}</p>
         <table border="0" cellspacing="0" cellpadding="6">
           <tr><th>Input</th><th>Role</th><th>Status</th><th>Features</th><th>Geometry</th><th>CRS</th></tr>
           {table}

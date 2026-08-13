@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.62] - 2026-08-13
+
+- Display active attribute field mappings summary in quality report
+
 ## [0.8.61] - 2026-08-13
 
 - Add Auto-detect attributes button in Field Mapping section
