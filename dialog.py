@@ -184,6 +184,14 @@ SMART_FIELD_ALIASES = {
     "waterline_width_field": ("width", "genislik", "genişlik", "stream_width"),
 }
 
+ATMOSPHERE_PRESET_OPTIONS = (
+    "Midday Sunlight Clean",
+    "Golden Hour Architectural",
+    "Overcast Soft Studio",
+    "Night Lights & Glow",
+    "Morning Mist",
+)
+
 
 def _is_qgis4() -> bool:
     return int(getattr(Qgis, "QGIS_VERSION_INT", 0)) >= 40000
@@ -242,6 +250,8 @@ class PlanX3DCityDialog(QDialog):
             payload[key] = combo.currentData() or ""
         if hasattr(self, "asset_theme_combo"):
             payload["asset_theme"] = self.asset_theme_combo.currentData() or "Modern Urban"
+        if hasattr(self, "atmosphere_preset_combo"):
+            payload["atmosphere_preset"] = self.atmosphere_preset_combo.currentText() or "Midday Sunlight Clean"
         if hasattr(self, "flatten_islands_check"):
             payload["flatten_islands"] = bool(self.flatten_islands_check.isChecked())
         if hasattr(self, "plateau_transition_spin"):
@@ -705,6 +715,17 @@ class PlanX3DCityDialog(QDialog):
         prep_row.addWidget(self.prepare_block_fields_btn)
         prep_row.addWidget(self.prepare_building_fields_btn)
         root.addWidget(prep)
+
+        atmo_group = QGroupBox("Atmosphere & Lighting Studio / Gunisigi ve Atmosfer Studyo")
+        atmo_root = QVBoxLayout(atmo_group)
+        atmo_row = QHBoxLayout()
+        atmo_row.addWidget(QLabel("Lighting Preset"))
+        self.atmosphere_preset_combo = QComboBox()
+        for preset in ATMOSPHERE_PRESET_OPTIONS:
+            self.atmosphere_preset_combo.addItem(preset, preset)
+        atmo_row.addWidget(self.atmosphere_preset_combo, 1)
+        atmo_root.addLayout(atmo_row)
+        root.addWidget(atmo_group)
 
         asset_group = QGroupBox("Asset Theme / Material Pool")
         asset_root = QVBoxLayout(asset_group)

@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.66] - 2026-08-13
+
+- Atmosphere & Lighting Studio presets (Golden Hour, Midday, Overcast, Night Glow, Morning Mist)
+
 ## [0.8.65] - 2026-08-13
 
 - Expand 1-click OSM harvester to fetch waterlines, streetlights, benches, bus stops, and trash bins

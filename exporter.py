@@ -656,7 +656,9 @@ def _viewer_defaults_manifest(layer_map: dict) -> dict:
     tree_render_mode = str(layer_map.get("tree_render_mode") or "Stylized").strip() or "Stylized"
     if tree_render_mode not in ("Stylized", "Realistic"):
         tree_render_mode = "Stylized"
+    atmo_name = str(layer_map.get("atmosphere_preset") or "Midday Sunlight Clean").strip()
     return {
+        "atmospherePreset": atmo_name,
         "showTerrainSides": True,
         "terrainSideDrop": 5.0,
         "terrainSideColor": "#d9fbf5",
