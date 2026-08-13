@@ -2,7 +2,7 @@
 name=PlanX 3D City Viewer
 qgisMinimumVersion=3.28
 description=Export QGIS layers and launch the interactive PlanX 3D City web viewer.
-version=0.8.67
+version=0.8.68
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 about=PlanX 3D City Viewer maps user-exported DEM, ROI, road, building, block, parcel, optional urban furniture layers, and optional raster plan texture workflows to a browser-based Three.js city cockpit with narrative keyframes, terrain quality controls, mobility, wind impact, and building statistics overlays. Developed with feedback from educational workflows at Dokuz Eylul University, Department of City and Regional Planning. Online User Manual & Documentation: https://yusufeminoglu.github.io/planx_3d_city/ | If you find this plugin helpful, please consider starring the repository on GitHub (https://github.com/YusufEminoglu/planx_3d_city)!
@@ -19,268 +19,23 @@ hasProcessingProvider=no
 plugin_dependencies=
 license=MIT
 changelog=
-    PlanX 3D City Viewer 0.8.47 - Mappable building floor-count field.
-        - Added a Building floor count field mapping to the QGIS publisher; building height = floor count x floor height. Previously the floor count was read only from a hard-coded katadedi column.
-        - The viewer now resolves the floor count from the mapped field first, then common Turkish/English fallbacks (katadedi, kat, kat_sayisi, floors, levels, storeys, ...); building extrusion, facade rows, ledges, stats and tooltips all use the resolved count.
-        - Updated the viewer module cache key to app.js?v=0.8.47.
-    PlanX 3D City Viewer 0.8.46 - Rotation control for street furniture in Model Transform.
-        - Added a Rotation slider to the Model Studio Model Transform panel for the light, bench, trash bin and bus stop categories (previously only mosque and tumulus had one).
-        - Furniture rotation is applied as a manual offset on top of the existing road-aligned / attribute-based orientation, so 0 keeps the current auto-alignment.
-        - Updated the viewer module cache key to app.js?v=0.8.46.
-    PlanX 3D City Viewer 0.8.45 - Per-placement tumulus customization (parity with mosques).
-        - Added a Tumulus Placements & Overrides section to Model Studio mirroring the mosque cards: per-tumulus model (global / procedural mound / uploaded GLB), color tint, scale X/Y/Z, rotation and elevation, persisted in browser storage.
-        - Tumulus rendering now applies these per-placement overrides on top of the global category transform, with per-feature attribute scale/rotation still honored as fallbacks.
-        - Updated the viewer module cache key to app.js?v=0.8.45.
-    PlanX 3D City Viewer 0.8.44 - Model Studio polish and language-aware panels.
-        - Model Studio's dynamic panels (Library Models, Tree Model Pool, Model Transform, Mosque placements) now re-render on language toggle so their labels follow the English/Turkish switch while the dock stays open.
-        - Optimized tumulus rendering to build a single template (uploaded GLB or the default procedural mound) and clone it per feature, sharing geometry/materials.
-        - Minor cleanups: hoisted tree scale lookups out of the per-tree loop and removed an unused i18n key.
-        - Updated the viewer module cache key to app.js?v=0.8.44.
-    PlanX 3D City Viewer 0.8.43 - Model Transform rotation control and English changelog cleanup.
-        - Added a Rotation slider to the Model Studio Model Transform panel for the mosque and tumulus categories; the tumulus global rotation now drives placement (instead of a pseudo-random angle) so uploaded tumulus GLB models can be oriented.
-        - Converted the remaining changelog entries to English so the release notes are uniformly English.
-        - Updated the viewer module cache key to app.js?v=0.8.43.
-    PlanX 3D City Viewer 0.8.42 - Model Studio per-category scale controls.
-        - Added a Model Transform panel to Model Studio with a category selector (mosque, tumulus, tree, light, bench, bin, bus stop) exposing Elevation and Scale X/Y/Z sliders per category, especially useful for tumulus and mosque sizing.
-        - Global mosque/tumulus/tree/furniture scale now multiplies with per-feature attribute or per-placement overrides so the category sliders always take effect.
-        - Updated the viewer module cache key to app.js?v=0.8.42.
-    PlanX 3D City Viewer 0.8.41 - Tumulus layer, per-model elevation, and random tree model pool.
-        - Added a Tumulus optional point layer to the QGIS publisher (mytumulus.geojson) and the web viewer, with a Model Studio Tumulus category; uploaded GLB models are used when provided, otherwise a default procedural burial-mound model (earthen dome + stone retaining ring) is rendered. Added a Tumulus visibility toggle to the Layers panel.
-        - Added a Model Elevation (Y offset) slider per category (mosque, tumulus, tree, light, bench, bin, bus stop) so models that sink below the terrain (e.g. mosque) can be raised. Mosque placement cards also gained a per-feature elevation control.
-        - Added a Tree Model Pool to Model Studio: upload 2-3 tree GLB models and trees are placed by deterministic random selection from the pool; the default stylized trees remain when the pool is empty.
-        - Updated the viewer module cache key to app.js?v=0.8.41.
-    PlanX 3D City Viewer 0.8.18 - Sidewalk visibility, inner-block pedestrian paths, and raster building clamping release.
-        - Fixed exported sidewalk polygon rendering in the web viewer by passing the scene build token into the sidewalk polygon builder and raising sidewalk surfaces above road meshes with their own layer offset.
-        - Added an optional Pedestrian paths input (mypedestrian_paths.geojson) for inner-block paths/walkways; accepts line or polygon layers, appears in the QGIS publisher, exports in both Vector Plan and Raster Plan Texture modes, and has a dedicated viewer visibility toggle.
-        - Pedestrian animation now uses both road-side sidewalk curves and the new inner-block path curves, with path walkers clamped to the path surface instead of the road surface.
-        - Raster Plan Texture Mode building bases now use a low raster-specific ground offset so buildings sit on the textured DEM surface instead of floating, while Vector Plan building offsets remain unchanged.
-        - Updated the viewer module cache key to app.js?v=0.8.18.
-    PlanX 3D City Viewer 0.8.17 - Modern Turkish facade asset release.
-        - Added 40 new realistic Turkish urban facade PNG textures: Urban_TR_A_1 through Urban_TR_D_10, covering four modern apartment / mixed-use facade families across 1-10 storeys.
-        - Added a Modern Turkish asset theme in the QGIS publisher and web viewer.
-        - Turkish facade families auto-resolve to the building floor count, so choosing Urban_TR_A applies Urban_TR_A_1..10 according to katadedi / parsed levels.
-        - Ground floors are drawn as entrance/commercial/lobby floors while upper storeys use repeatable residential facade language.
-        - Updated the viewer module cache key to app.js?v=0.8.17.
-    PlanX 3D City Viewer 0.8.16 - Raster plan texture georeference alignment hotfix.
-        - Fixed Raster Plan Texture Mode placement: siteplan.tif is now drawn into a terrain-sized atlas using its own GeoTIFF bounding box, so the plan texture lands at its projected map position instead of being stretched across the whole DEM extent.
-        - Preserved the 0.8.15 scene-wide left/right orientation fix; vector layers, DEM sampling, and raster plan texture now share the same corrected local axes.
-        - Raised the plan texture processing cap to 4096 px so wide DEM context does not excessively blur a smaller ROI/siteplan texture.
-        - Updated the viewer module cache key to app.js?v=0.8.16.
-    PlanX 3D City Viewer 0.8.15 - Scene-wide left/right orientation hotfix.
-        - Fixed the web viewer's projected-coordinate to local-coordinate mapping so Vector Plan and Raster Plan Texture modes no longer render the entire city mirrored left/right.
-        - DEM sampling now uses the same inverse local-to-projected transform, keeping terrain heights, island plateaus, buildings, hardscape, roads, furniture, walk mode, and the terrain cache aligned after the orientation correction.
-        - Raster plan GeoTIFF orientation now follows the corrected local X axis, so siteplan textures stay aligned with vector layers after the scene-wide fix.
-        - Updated the viewer module cache key to app.js?v=0.8.15.
-    PlanX 3D City Viewer 0.8.14 - Raster plan texture orientation hotfix.
-        - Fixed Raster Plan Texture Mode in the web viewer: siteplan GeoTIFF pixels are now normalized from their georeferenced X/Y resolution signs before becoming a CanvasTexture, so south-up or west-flipped rasters no longer appear mirrored on the DEM terrain.
-        - Basemap PNG texture orientation is unchanged.
-        - Updated the viewer module cache key to app.js?v=0.8.14.
-    PlanX 3D City Viewer 0.8.13 - QGIS Hub security and quality scan cleanup.
-        - Hardened the OpenStreetMap Overpass fetcher for Bandit B310 by validating the endpoint scheme before urlopen and documenting the narrow nosec suppression.
-        - Removed the unused typing import in osm_importer.py.
-        - Cleaned Flake8 style findings in the QGIS OSM import dialog and exporter spacing.
-        - Updated the viewer module cache key to app.js?v=0.8.13.
-    PlanX 3D City Viewer 0.8.12 - Viewer loader resilience hotfix.
-        - Hardened the web viewer scene build so one problematic vector layer cannot leave the app stuck at "Processing city layers...".
-        - Layer builds now fail soft: the broken layer is cleared/skipped, the rest of the DEM, basemap, terrain and available layers continue to render, and the status text reports which layer was skipped.
-        - Catastrophic scene errors now hide the loading overlay and show a scene-state warning instead of leaving an infinite spinner.
-        - Updated the viewer module cache key to app.js?v=0.8.12.
-    PlanX 3D City Viewer 0.8.11 - Final beta-exit polish: optional outside-ROI terrain.
-        - Added an Outside ROI terrain toggle to the Layers and Scene panels. When enabled, wide DEM context remains visible with the blank outside colour; when disabled, the terrain surface is clipped to the ROI mask.
-        - The outside-ROI toggle works with basemap, plan texture, pavement, elevation tint, and slope tint modes.
-        - Persisted and exported the new outside-ROI terrain setting so projects reopen with the same presentation intent.
-        - Updated the viewer module cache key to app.js?v=0.8.11.
-    PlanX 3D City Viewer 0.8.10 - Layer dock authority, basemap-only terrain workflow, and block opacity controls.
-        - Fixed stale async rebuilds so Layers panel visibility toggles are authoritative; buildings no longer reappear after being disabled from the dock.
-        - Added Blocks visibility to the Layers panel and Advanced controls.
-        - Added Block transparency control with a default of 0, meaning blocks render fully opaque unless the user chooses transparency.
-        - Made QGIS basemap texture take priority when enabled, so users can reliably view satellite/basemap imagery directly on DEM terrain without vector layers.
-        - Island plateau now skips hidden block-only presentation states when no block-dependent visible content is active, preserving pure DEM plus basemap review.
-        - Updated the viewer module cache key to app.js?v=0.8.10.
-    PlanX 3D City Viewer 0.8.9 - Release-readiness pass for facade scale, hardscape drape, polygon holes, and settings migration.
-        - Tuned facade texture scale back 45 percent from the 8x enlargement target to a 4.85x default and exposed it as a viewer Building panel control.
-        - Added settings schema migration so older browser-local settings cannot silently keep island plateau disabled after upgrading.
-        - Subdivided hardscape slabs before draping them to the final terrain surface, reducing long-triangle instability between paved surfaces and islands.
-        - Added polygon hole support for islands, hardscape, and building footprints/extrusions so courtyards and donut polygons render correctly.
-        - Updated the viewer module cache key to app.js?v=0.8.9.
-    PlanX 3D City Viewer 0.8.8 - Plateau defaults, road/hardscape Z stability, facade scale, and HTML guide.
-        - Re-enabled island plateau by default in the QGIS publisher, export manifest, and viewer defaults so blocks flatten their underlying terrain again unless the user disables the cleanup toggle.
-        - Separated hardscape, parcel, road, and vehicle elevation offsets and added road polygon offset to keep OSM roads and hardscape slabs above the final terrain surface without z-fighting.
-        - Enlarged building facade texture scale by 8x so procedural windows and floor lines read at presentation distance.
-        - Reordered the Data page actions and moved Save preset / Load preset to the right side of the action row.
-        - Added a new 0 Guide panel that opens a detailed English HTML user guide bundled with the plugin.
-        - Updated the viewer module cache key to app.js?v=0.8.8.
-    PlanX 3D City Viewer 0.8.7 - Stable terrain surface, DEM-less viewer, and ROI-only texture overlay.
-        - Added a stable terrain surface cache built from the final terrain mesh after DEM smoothing, boundary cleanup and optional island plateau passes. Islands, buildings, roads, trees and street furniture now clamp to the same visible surface instead of re-sampling unstable raw DEM values.
-        - Added DEM smoothing controls: smooth passes, smooth strength and max slope clamp. These damp abrupt elevation jumps that were tearing island drapes and causing unstable Z placement.
-        - Vector Plan Mode can now export without a DEM. The browser falls back to a dummy flat presentation plane and continues rendering available vector layers.
-        - Wide DEM exports now keep surrounding topography visible while clipping the active texture to the ROI: outside the ROI the terrain remains visible with a configurable blank color, inside the ROI the selected plan/basemap/pavement texture is shown normally.
-        - Updated the viewer module cache key to app.js?v=0.8.7.
-    PlanX 3D City Viewer 0.8.6 - Flexible DEM-only exports and source-folder repair.
-        - Restored the released 0.8.5 source tree into the plugin folder after the working directory had only vendor/data directories and an incomplete .git directory.
-        - Viewer GeoJSON loading now follows manifest requiredInputs: in Vector Plan Mode, blocks, parcels, buildings, roads and ROI are optional and load as empty layers when absent; Raster Plan Texture Mode still treats its declared inputs as required.
-        - DEM-only Vector scenes now derive terrain bounds from the DEM raster extent instead of using the old -500..500 placeholder, so a project with only mydem.tif opens over the real georeferenced raster.
-        - Added defensive empty-layer guards for minimap, hardscape, roads, sidewalks, crosswalks, trees and ROI boundary rendering.
-        - Publisher manifests now write the current metadata version dynamically and include flexibleInputs=true for Vector Plan Mode.
-        - Island plateau defaults are consistently off in the publisher and viewer, keeping the DEM visible unless the user enables plateau flattening.
-        - The viewer module script now carries a version query (app.js?v=0.8.6) so browser cache does not hold an older cockpit after plugin updates.
-    PlanX 3D City Viewer 0.8.5 - Conforming island subdivision and camera bookmarks.
-        - Rewrote the island subdivision as a conforming 4-1 (Loop-style) split. Earlier we bisected only the longest edge per triangle, which left T-vertex cracks where neighbours disagreed on the midpoint and produced the stuttering / broken-up drape the user reported. Now every shared edge gets the same midpoint from both sides, so the DEM drape lands on a watertight, continuous mesh.
-        - Added Camera Bookmarks under the Scene dock: Save current view, jump-to and delete buttons; bookmarks are persisted in browser local storage and ride the existing fly-to animation. Useful for jury walk-throughs and classroom comparisons.
-    PlanX 3D City Viewer 0.8.4 - Smooth island drape and recipe-aware facade UV scale.
-        - Island drape rebuilt: finer 4 m subdivision plus a new indexAndMergeNonIndexed pass collapses coincident vertices so computeVertexNormals can do smooth shading. Removes the faceted/stuttering look that appeared in flat-DEM mode.
-        - Per-building facade UV repeat now follows the procedural FACADE_RECIPES floor count (levels / textureFloorRows). A 4-storey building shows 4 floor rows instead of squashing the whole texture into ~1.3 rows. Horizontal repeat raised from 0.22 to 0.5 so the window columns read at human scale.
-    PlanX 3D City Viewer 0.8.3 - User-controlled terrain texture tile size.
-        - Renamed the internal terrainTextureScale to terrainTileMeters and exposed it as a slider in the Style dock (5-300 m per tile, default 60 m). Users can now dial in the right ground-texture density for their site instead of relying on a hard-coded constant. Persisted in browser local storage.
-    PlanX 3D City Viewer 0.8.2 - Cumulative shadow heatmap, project presets, quick time + theme.
-        - Cumulative shadow heatmap in the Analysis dock: ray-casts 6 hours of the day across a 48x48 ground grid using the v0.7.9 NOAA solar model and renders a colour overlay above the terrain (golden = full sun, deep blue = full shade). Compute + Clear buttons; runs asynchronously with progress feedback.
-        - Project preset save/load on the Data page: stores layer names, mode, asset theme, field mappings, plateau and basemap selections into a portable .planx JSON file and matches it back against the layers of any QGIS project.
-        - Quick time-of-day presets (Dawn 6, Noon 12, Sunset 19, Night 22) right under the Time slider for one-click solar tests.
-        - Theme selector in the Scene dock with Auto / Light / Dark modes — persisted in browser local storage and applied via a [data-theme] attribute that overrides the OS preference.
-    PlanX 3D City Viewer 0.8.1 - Scale and ground-clamp fixes plus per-feature road width.
-        - DEM elevation now visible by default: flattenIslands default switched to off so the underlying terrain stays readable; users still toggle plateau on per project. The DEM-less render path already worked and is the default when no DEM is provided.
-        - Terrain pavement texture repeat scaled 10x larger (width/600, depth/600) so the asphalt/stone tile reads as actual paving instead of a tight checker.
-        - Street furniture (lights, benches, bins, bus stops) now sits on the terrain instead of ~1 m above it; removed the accumulated LAYER.content + LAYER.road offset. New setting furnitureGroundOffset = 0.02 m (anti z-fight only).
-        - Road width default raised to 8 m; slider range widened to 5-20 m. New optional 'Road width field (metres)' mapping subtracts ~3 m for sidewalks (1.5 m each side) and clamps to 5-20 m, so a 15 m right-of-way draws as a 12 m road surface.
-        - Park and sport materials now read parkColor + parkTexture + sportColor from settings, with matching swatches in the Terrain panel. ParkGreen is the new default park texture.
-        - Increased the procedural facade UV repeat (0.22 -> 0.55) so 4-storey buildings look like 4 storeys instead of two. Floor-height slider range widened to 2.5-5.0 m so users can also tune it manually.
-    PlanX 3D City Viewer 0.8.0 - Modern cockpit UI, FPS HUD and Shadow Study.
-        - Added a modern cockpit theme to the web viewer: design tokens (CSS variables), unified glassmorphism for every dock and panel, polished form controls (range sliders, focus rings, scrollbars), accent-aware buttons, automatic dark-mode follow, and a reduced-motion fallback.
-        - Added a live FPS chip in the top-right HUD that colours yellow under 45 fps and red under 25 fps so users can spot when the scene needs lighter settings.
-        - Added Shadow Study to the Analysis dock: one-click presets for Winter Solstice, Spring Equinox, Summer Solstice and Autumn Equinox (jumps Day of Year + clamps time to noon), Play day / Stop buttons that animate sunrise→sunset, and a Day-playback speed slider. Built on the v0.7.9 NOAA solar model so shadows are physically correct for the site latitude.
-    PlanX 3D City Viewer 0.7.9 - OpenStreetMap importer and astronomical solar model.
-        - Added "Import from OpenStreetMap" on the Data page: enter a small bounding box (WGS84) or pull it from the current QGIS canvas; the plugin fetches buildings, roads, parks/greens and trees via the Overpass API, reprojects them to the local UTM zone, and adds them as named layers ready to publish. Building floors, function, road class and tree height are mapped automatically.
-        - Replaced the simple sine sun model with a proper NOAA-style solar position calculator. New viewer sliders for Day of year (1-365) and Latitude (deg) move the sun realistically with season + location. Sunrise/sunset, golden-hour intensity ramp and night detection now follow the actual solar elevation.
-        - The compass widget gains a small live sun marker on the ring, showing the sun's true bearing from the camera.
-        - The QGIS publisher writes the derived project latitude (from the DEM bbox centroid in WGS84) and a default day-of-year into planx_manifest.json so the viewer starts at a sensible solar pose.
-    PlanX 3D City Viewer 0.7.8 - Plugin Hub security/quality scan cleanup.
-        - Removed unused imports and stray local variables flagged by Flake8 in dialog.py, main_plugin.py, and sample_generator.py.
-        - Excluded plugin-level .zipignore from the released package so the Plugin Hub suspicious-file scanner no longer flags a hidden file. .zipignore stays in the repository for build hygiene.
-        - No functional changes to the viewer or QGIS publisher.
-    PlanX 3D City Viewer 0.7.7 - Terrain low-edge stability, first-run onboarding, and a built-in sample dataset.
-        - Added a median + MAD clamp to terrain vertices so low-elevation outliers no longer pull edge triangles upward. Removes the persistent spike line along the DEM/ROI low-elevation contour.
-        - Added a first-run welcome dialog with a quick-start guide, a sample-project shortcut, and an online documentation link.
-        - Added an in-plugin synthetic sample-project generator (DEM, ROI, blocks, buildings, roads, trees) so new users can publish the 3D viewer with zero data preparation.
-        - Made Required / Recommended / Optional roles update live when the publish mode changes; Vector mode now only stars the DEM as required.
-    PlanX 3D City Viewer 0.7.6 - Island plateau alignment and flexible Vector Plan Mode inputs.
-        - Added Island Plateau: under each block polygon, DEM vertices are pulled to the block's local median height with a configurable transition ramp (default 6 m) toward the surrounding terrain. Eliminates the remaining DEM/island interpenetration.
-        - The plateau cache is shared with terrainLocalYAt() so buildings, trees, and street furniture inside a block also clamp to the plateau height instead of the underlying raw DEM.
-        - New viewer toggles: "Flatten DEM under islands" (default on) and "Plateau edge ramp (m)" slider in the Terrain panel.
-        - Vector Plan Mode now requires only the DEM; ROI, blocks, parcels, buildings, and roads are reclassified as recommended but optional. The viewer skips empty layers gracefully so minimal exports (DEM-only, DEM + buildings, etc.) render cleanly.
-        - QGIS publisher quality report now distinguishes Required / Recommended / Optional roles and warns when recommended Vector layers are missing without blocking export.
-        - Bounds derivation in the viewer falls back through ROI -> blocks -> roads -> buildings -> parcels so any single vector layer is enough to anchor the scene.
-    PlanX 3D City Viewer 0.7.5 - DEM edge stability, island layer overhaul, and themed facade textures release.
-        - Hardened terrain edge cleanup further: widened the boundary blend band, strengthened the spike clamp toward the local median, increased the boundary median sampling radius, and out-of-ROI vertices snap to a robust DEM average so the raster halo around the export window no longer pulls triangles up or down.
-        - Reused a single ROI polygon cache between the terrain vertex pass and the boundary spike limiter for faster terrain rebuilds.
-        - Islands now render as a clean second layer above the DEM: raised the island elevation offset, subdivided block polygons so they drape across DEM curvature instead of cutting through it, and removed the unused island alpha-mask code path and its stale comment.
-        - Added four themed island materials: ParkGreen, ResidentialBeige, CivicGravel, and CoastalSand.
-        - Rewrote procedural facade textures for theme facades (CampusGlass, EcoTimber, CivicStone, DenseBrick, CoastalWhite, MediterraneanStucco, UrbanE) with real window grids, floor lines, optional ground-floor shopfronts, and per-theme column patterns.
-        - UrbanA-D PNG facades remain unchanged for backwards-compatible feature-level styling.
-    PlanX 3D City Viewer 0.7.4 - Security scan compliance and vendor cleanup release.
-        - Removed unused Draco codec, zstddec, and other unreferenced Three.js vendor libraries that triggered false-positive secret detections on the QGIS Plugin Hub.
-        - Added detect-secrets pragma allowlist comments to the bundled GeoTIFF library to suppress false-positive high-entropy string warnings.
-        - Stripped unused Three.js build variants, source maps, loader modules, and large binary assets to reduce the plugin package size significantly.
-        - No functional changes to the viewer or QGIS publisher.
-    PlanX 3D City Viewer 0.7.3 - English-first bilingual interface and publisher polish release.
-        - Makes English the primary default language in both the QGIS publisher and browser cockpit, with Turkish available as the secondary language.
-        - Extends browser i18n coverage to dashboard metrics, tooltips, camera controls, Narrative Studio, Walk HUD, minimap, status pills, and placeholders.
-        - Updates the QGIS publisher wording, reports, publish summaries, overwrite prompts, portable export messages, and style assistant to English-first labels with Turkish guidance where useful.
-        - Adds a language note to quality reports and keeps project workflow terminology consistent between QGIS and the web viewer.
-    PlanX 3D City Viewer 0.7.2 - Terrain boundary stability and portable tour ZIP release.
-        - Hardens DEM sampling at raster and ROI boundaries so edge pixels are no longer repeated into artificial upward triangle spikes.
-        - Adds a terrain boundary spike limiter around DEM edges and ROI clip edges to smooth isolated elevation outliers without flattening the whole terrain.
-        - Adds a QGIS Portable ZIP command for complete viewer handoff, including app files, vendor libraries, exported data, launch scripts, and optional planx_tour.json.
-        - Lets the browser auto-load data/planx_tour.json from a portable package so Narrative Studio keyframes travel cleanly to another computer.
-    PlanX 3D City Viewer 0.7.1 - Expanded procedural material library and offline viewer polish.
-        - Expands the curated asset theme library with Civic Heritage and Coastal Light themes.
-        - Adds more procedural street furniture variants including heritage lanterns, bollards, campus lights, stone seats, eco benches, compact stops, steel canopies, and solar bins.
-        - Adds procedural facade, roof, paving, hardscape, and road textures so the viewer no longer depends on external texture URLs.
-        - Improves theme switching so roof, paving, street furniture, and function facade defaults follow the selected asset theme.
-    PlanX 3D City Viewer 0.7.0 - Portable viewer folder export release.
-        - Adds a QGIS Publish page command to create a portable viewer folder for classroom, review, and presentation handoff.
-        - Copies the embedded viewer app, bundled vendor libraries, exported project data, and launch instructions into one timestamped folder.
-        - Adds Windows launch scripts inside the portable folder for easier student and jury review.
-        - Clarifies that Narrative Studio JSON stores camera/tour/viewer state only and must travel with the viewer data for a complete scene handoff.
-    PlanX 3D City Viewer 0.6.9 - Procedural pedestrians and curated asset theme release.
-        - Adds a QGIS Asset Theme / Material Pool selector with curated themes and active variant counts.
-        - Writes assetTheme, assetPools, and pedestrianStyle metadata into planx_manifest.json.
-        - Upgrades pedestrians from body/head markers to low-poly procedural people with arms, legs, shoes, and walk-cycle limb motion.
-        - Uses theme-aware restrained palettes for pedestrians, cars, trees, and street furniture style fallbacks.
-    PlanX 3D City Viewer 0.6.8 - Stable reference release and ROI-clipped terrain/base imagery.
-        - Marks the 0.6.7 render-loop fix as the first verified stable cockpit baseline.
-        - Clips the terrain, raster plan texture, and QGIS basemap texture visually to the exported ROI boundary.
-        - Keeps the terrain opaque inside the ROI while hiding untrimmed DEM/basemap pixels outside the study area.
-    PlanX 3D City Viewer 0.6.7 - Render loop startup hotfix.
-        - Moves the recording state initialization before the animation loop starts.
-        - Fixes the blank blue viewer regression where dashboard statistics loaded but the 3D scene did not render.
-        - Confirms dock activation works after the render loop fix.
-    PlanX 3D City Viewer 0.6.6 - Viewer visibility and dock activation hotfix.
-        - Keeps the vector-mode terrain surface opaque so exported projects do not collapse into a blank blue background when island masks hide the ground.
-        - Makes dock button activation more robust with delegated click handling for Scene, Layers, Analysis, Style, Mobility, Street Furniture, and Narrative panels.
-        - Raises dock and toolbar z-index values so viewer controls stay clickable above the 3D canvas.
-    PlanX 3D City Viewer 0.6.5 - Terrain texture smoothing, basemap resolution, and recording stability release.
-        - Applies robust median DEM sampling and percentile clamping to terrain mesh vertices, not only ROI model-base sides.
-        - Smooths terrain vertices near the study-area boundary to reduce DEM edge spikes under plan and basemap textures.
-        - Adds a QGIS basemap export size selector with 1024, 2048, 4096, and 8192 pixel options.
-        - Writes selected basemap texture size into the manifest.
-        - Stabilizes WebM recording by using a consistent non-postprocessed render path while recording.
-    PlanX 3D City Viewer 0.6.4 - Premium icon and QGIS basemap texture export release.
-        - Replaced the plugin icon with a more polished PlanX 3D City mark while keeping it as a lightweight SVG.
-        - Added an optional QGIS basemap/XYZ raster layer selector in the publisher dialog.
-        - Renders the selected QGIS basemap layer to web/data/texture/basemap.png during export.
-        - Adds basemap texture metadata so the browser viewer can drape the rendered QGIS basemap over the terrain.
-    PlanX 3D City Viewer 0.6.3 - Tree height mapping and clean ROI model-base edge release.
-        - Added QGIS field mapping for tree height so tree sizes can be controlled from a selected attribute field.
-        - Updated the viewer to read mapped tree height fields with safe fallback aliases.
-        - Stabilized ROI model-base side heights with median DEM sampling, percentile clamping, and smoothed boundary profiles.
-        - Reduced DEM boundary spikes that previously made the model base look broken near the study-area edge.
-    PlanX 3D City Viewer 0.6.2 - Surface alignment, walk mode, global modes, and dialog usability release.
-        - Improved building and street-furniture ground clamping so objects stay on the terrain, road, or sidewalk surface.
-        - Replaced fully random car and pedestrian colors with restrained urban palettes.
-        - Improved walk mode with smoother terrain following, sprint/crouch controls, and a compact help HUD.
-        - Added scrollable QGIS publisher pages for smaller windows and mouse-wheel navigation.
-        - Clarified Narrative Studio JSON export scope and documented portable viewer export as the next package workflow.
-        - Added viewer controls for building footprint/extrusion modes and DEM topography tint modes.
-    PlanX 3D City Viewer 0.6.1 - Corrected ROI model base, dock completeness, language consistency, and placement fixes.
-        - Reworked build-sides into a solid ROI model base with a bottom polygon at DEM minimum minus the configured drop.
-        - Added missing advanced controls into the new dock system while keeping lil-gui available from Advanced.
-        - Improved Turkish/English dock label consistency across the browser viewer.
-        - Corrected vehicle elevation so cars stay attached to the road surface.
-        - Improved street furniture orientation with explicit angle fields and road-based fallback rotations for lights, benches, bins, and bus stops.
-    PlanX 3D City Viewer 0.6.0 - Professional cockpit, Narrative Studio, terrain, and orientation release.
-        - Reorganized the viewer into Scene, Layers, Analysis, and Narrative docks while keeping advanced controls secondary.
-        - Added Narrative Studio keyframes for camera, target, layer states, analysis states, sun time, captions, local storage, and JSON import/export.
-        - Added manifest field mappings for building statistics, land-use, odor/noise sources, and furniture orientation fields.
-        - Improved ROI-based terrain build-sides as a solid negative extrusion from the valid DEM minimum minus the configured side drop.
-        - Added DEM mesh quality control inspired by terrain resampling workflows for smoother terrain surfaces.
-        - Improved building base placement on sloped DEM by using footprint terrain samples so buildings do not hover above the terrain.
-        - Added automatic furniture alignment to the nearest road direction when no explicit angle field is provided.
-    PlanX 3D City Viewer 0.5.5 - Corrected terrain build-sides to follow ROI geometry instead of the rectangular scene extent.
-        - Build-sides now use the exported ROI polygon boundary as the primary side-wall footprint.
-        - Falls back to the DEM/terrain extent only when ROI geometry is unavailable.
-    PlanX 3D City Viewer 0.5.4 - Made terrain build-sides fully opaque.
-        - Removed side transparency/softness control and renders build-sides as solid light teal model-base walls.
-    PlanX 3D City Viewer 0.5.3 - Added soft terrain build-sides around the DEM surface.
-        - Added a default light teal terrain side skirt to give exported scenes a finished model-base appearance.
-        - Computes the side base elevation from the minimum valid DEM pixel value minus the configured drop, defaulting to 5 meters.
-        - Added Style Dock and GUI controls for build-sides visibility, side drop, color, and opacity/softness.
-    PlanX 3D City Viewer 0.5.2 - Removed embedded sample/export data from the plugin package and added first planning analysis overlays.
-        - Excluded generated web/data DEM and settlement exports from the source package to reduce Plugin Hub zip size.
-        - Added road analysis coloring modes for amenity-distance and access/traffic reading.
-        - Added wind plume screening overlay for industrial/waste-like source functions and prevailing wind direction.
-        - Enriched building click details with estimated floor area, dwellings, population, and vehicles where source fields are missing.
-    PlanX 3D City Viewer 0.5.1 - Fixed raster plan texture orientation and added sidewalk/road access controls.
-        - Corrected CanvasTexture orientation so clipped site plan GeoTIFFs no longer appear mirrored on the DEM terrain.
-        - Added optional sidewalk polygon input exported as web/data/yerlesim/mysidewalks.geojson.
-        - Added optional road access field metadata so cars can be blocked from pedestrian-only roads while pedestrian/crosswalk logic remains available.
-    PlanX 3D City Viewer 0.5.0 - Added Raster Plan Texture Mode for publishing a clipped 2D plan GeoTIFF as the DEM terrain texture.
-        - Added Vector Plan and Raster Plan Texture publishing modes in the QGIS dialog.
-        - Added plan texture GeoTIFF export to web/data/texture/siteplan.tif and manifest mode metadata.
-        - Made blocks and parcels optional in raster texture mode while keeping buildings, roads, ROI, DEM, and plan texture required.
-        - Updated the browser viewer to read RGB/RGBA or single-band GeoTIFF plan textures and apply opacity, brightness, and contrast controls.
-    PlanX 3D City Viewer 0.4.2 - Added DEU educational context to Plugin Hub metadata and refreshed the stable release package.
-    PlanX 3D City Viewer 0.4.1 - Fixed QGIS Hub metadata links and marked the plugin stable.
-    PlanX 3D City Viewer 0.4.0 - Added auto layer matching, export manifest, viewer project metadata panel, and persisted cockpit settings.
-    PlanX 3D City Viewer 0.3.0 - Productized the QGIS publisher workflow with quality reports, style assistant, viewer dashboard, and layer/style docks.
-    PlanX 3D City Viewer 0.2.0 - Added guided QGIS interface and per-feature styling fields for blocks and buildings.
-    PlanX 3D City Viewer 0.1.0 - Initial QGIS launcher/exporter for PlanX 3D City.
+    PlanX 3D City Viewer 0.8.67 - Visual readiness gauge and WebGL performance tier estimator.
+        - Added dynamic 0-100 percent Scene Readiness Score and Pre-Flight WebGL Performance Tier predictor (Ultra 60+ FPS, High Performance, Heavy Urban Scene) to quality report.
+    PlanX 3D City Viewer 0.8.66 - Atmosphere & Lighting Studio presets.
+        - Added 5 visual lighting presets (Midday Sunlight Clean, Golden Hour Architectural, Overcast Soft Studio, Night Lights & Glow, Morning Mist) to QGIS publisher.
+    PlanX 3D City Viewer 0.8.65 - Full 1-click OSM urban harvester expansion.
+        - Expanded Overpass harvester to fetch waterlines, streetlights, benches, bus stops, and trash bins in 1 click alongside buildings, roads, greens, and trees.
+    PlanX 3D City Viewer 0.8.64 - Nav tab visual icons and geographic CRS reprojection advice.
+        - Added visual tab icons (0 Guide, 1 Data, 2 Check, 3 Style, 4 Publish) and automatic UTM reprojection guidance to quality report.
+    PlanX 3D City Viewer 0.8.63 - Master AI audit fixes.
+        - Cleaned Bandit B110 try/except pass occurrences, added vector layer commitChanges on attribute edits, and preserved road access keywords in presets.
+    PlanX 3D City Viewer 0.8.62 - Mapped attribute fields summary in quality report.
+        - Quality report displays active attribute column mappings (floors, population, road width, tree height, function).
+    PlanX 3D City Viewer 0.8.61 - Auto-detect attributes button.
+        - Added a 1-click Auto-detect attributes button to re-scan smart column aliases.
+    PlanX 3D City Viewer 0.8.60 - Auto QGIS map canvas extent zoom.
+        - QGIS map canvas auto-zooms to imported sample dataset or harvested OSM boundary.
+    PlanX 3D City Viewer 0.8.59 - Smart attribute field auto-detection.
+        - Automatic pairing for katadedi, nufus, floors, genislik, and function columns.
+    PlanX 3D City Viewer 0.8.58 - Hero header quick export button and unneeded root file cleanup.
+        - 1-click Export & Open 3D Viewer button in dialog hero header and cleaned residual root files.

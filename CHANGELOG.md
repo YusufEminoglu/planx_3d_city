@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.68] - 2026-08-13
+
+- Metadata percent fix and release build v0.8.68
+
 ## [0.8.67] - 2026-08-13
 
 - Visual 0-100% Readiness Gauge and WebGL Performance Tier Estimator in Quality Report
