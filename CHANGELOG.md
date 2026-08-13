@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.59] - 2026-08-13
+
+- Smart field mapping auto-detection for katadedi, nufus, floors, etc.
+
 ## [0.8.58] - 2026-08-13
 
 - Update README.md release notes for 0.8.57/0.8.58

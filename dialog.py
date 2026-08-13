@@ -170,6 +170,19 @@ AUTO_MATCH_ALIASES = {
     "tumulus": ("tumulus", "tumuli", "tumulusler", "tümülüs", "tumulus noktalari", "hoyuk", "höyük", "mytumulus"),
 }
 
+SMART_FIELD_ALIASES = {
+    "building_floors_field": ("katadedi", "kat", "kat_sayisi", "floors", "levels", "storeys", "floor_count"),
+    "building_population_field": ("nufus", "nüfus", "population", "pop", "bina_nufus"),
+    "building_dwelling_field": ("daire", "konut", "dwelling", "dwellings", "housing_units"),
+    "building_floor_area_field": ("aream2", "area_m2", "floor_area", "insaat_alani", "gfa"),
+    "tree_height_field": ("height", "boy", "yukseklik", "yükseklik", "tree_height"),
+    "road_width_field": ("genislik", "genişlik", "width", "yol_genisligi", "right_of_way"),
+    "landuse_function_field": ("uipfonksiyon", "fonksiyon", "landuse", "function", "kullanim", "kullanım"),
+    "block_category_field": ("ada_kategori", "kategori", "block_type", "category"),
+    "road_hierarchy_field": ("yol_turu", "yol_tipi", "hierarchy", "road_type", "class"),
+    "waterline_width_field": ("width", "genislik", "genişlik", "stream_width"),
+}
+
 
 def _is_qgis4() -> bool:
     return int(getattr(Qgis, "QGIS_VERSION_INT", 0)) >= 40000
@@ -1545,11 +1558,19 @@ class PlanX3DCityDialog(QDialog):
             combo.blockSignals(True)
             combo.clear()
             combo.addItem("Auto / fallback", "")
+            matched_field = None
             if layer is not None and hasattr(layer, "fields"):
-                for field in layer.fields():
-                    name = field.name()
+                field_names = [f.name() for f in layer.fields()]
+                for name in field_names:
                     combo.addItem(name, name)
-            idx = combo.findData(current)
+                if not current and key in SMART_FIELD_ALIASES:
+                    aliases = SMART_FIELD_ALIASES[key]
+                    for name in field_names:
+                        norm = self._normalize_name(name)
+                        if any(self._normalize_name(alias) == norm for alias in aliases):
+                            matched_field = name
+                            break
+            idx = combo.findData(current or matched_field or "")
             combo.setCurrentIndex(idx if idx >= 0 else 0)
             combo.blockSignals(False)
 
