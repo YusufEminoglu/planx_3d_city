@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.64] - 2026-08-13
+
+- Nav tab icons, geographic CRS reprojection guidance in quality report, and UI polish
+
 ## [0.8.63] - 2026-08-13
 
 - Master AI audit fixes: B110 try/except pass cleanups, layer commitChanges, preset road access keywords, and type guards

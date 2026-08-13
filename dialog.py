@@ -387,7 +387,7 @@ class PlanX3DCityDialog(QDialog):
         shell.setSpacing(10)
         self.nav = QListWidget()
         self.nav.setFixedWidth(NAV_WIDTH)
-        for label in ("0 Guide", "1 Data", "2 Check", "3 Style", "4 Publish"):
+        for label in ("0 📖 Guide", "1 🗺️ Data", "2 🔍 Check", "3 🎨 Style", "4 🚀 Publish"):
             QListWidgetItem(label, self.nav)
         self.nav.setCurrentRow(0)
         shell.addWidget(self.nav)
@@ -1346,6 +1346,8 @@ class PlanX3DCityDialog(QDialog):
         unique_crs = sorted({c for c in crs_values if c and c != "No CRS"})
         if len(unique_crs) > 1:
             warnings.append("Possible CRS mismatch: " + ", ".join(unique_crs))
+        if any("4326" in c for c in crs_values):
+            warnings.append("Geographic CRS (EPSG:4326) detected. PlanX auto-reprojects all layers to a local metric projection (UTM) during export for accurate 3D meter dimensions.")
 
         table = "".join(
             f"<tr><td>{a}</td><td>{b}</td><td>{c}</td><td>{d}</td><td>{e}</td><td>{f}</td></tr>"
