@@ -213,8 +213,48 @@ tr:nth-child(even) td { background: var(--table-stripe); }
   <iframe src="https://www.youtube-nocookie.com/embed/eBUEsKhlvlc" title="PlanX 3D City Viewer &mdash; video walkthrough" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
 </div>
 
-<h1 class="subtitle">Comprehensive Academic Reference Manual · v0.8.53</h1>
+<h1 class="subtitle">Comprehensive Academic Reference Manual · v1.0.0 Flagship Edition</h1>
 <p style="color:var(--muted);font-size:.9em;">Yusuf Eminoğlu · August 2026 · <a href="https://github.com/YusufEminoglu/planx_3d_city">github.com/YusufEminoglu/planx_3d_city</a></p>
+
+<!-- Step-by-Step Workflow Guide -->
+<section id="step-by-step-guide" style="background:var(--table-stripe); border:1px solid var(--accent); border-radius:12px; padding:24px; margin:24px 0 36px;">
+  <h2 style="margin-top:0; border-bottom:none; color:var(--accent);">🚀 Step-by-Step User Guide (v1.0 Flagship)</h2>
+  <p style="margin-bottom:16px;">Transform your QGIS GIS layers into an interactive 3D web cockpit in 4 simple steps:</p>
+  
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
+    <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:16px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <span style="background:#5eead4; color:#0f172a; border-radius:50%; width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; font-weight:bold;">1</span>
+        <h4 style="margin:0; font-size:1.05rem; color:var(--fg);">1 Data — Layer Preparation &amp; OSM Harvester</h4>
+      </div>
+      <p style="font-size:0.88rem; color:var(--muted); margin:0;">Select your DEM raster and vector layers (Buildings, Roads, Blocks, Parcels, Vegetation, Urban Furniture). Click <b>"Import from OpenStreetMap"</b> to harvest a 10-layer dataset in 1 click, or <b>"Try with sample data"</b> for instant demo testing.</p>
+    </div>
+
+    <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:16px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <span style="background:#38bdf8; color:#0f172a; border-radius:50%; width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; font-weight:bold;">2</span>
+        <h4 style="margin:0; font-size:1.05rem; color:var(--fg);">2 Check — Readiness &amp; WebGL FPS Estimator</h4>
+      </div>
+      <p style="font-size:0.88rem; color:var(--muted); margin:0;">Click <b>"Generate quality report"</b> to inspect your <b>0-100% Scene Readiness Score</b>, CRS reprojection advice, and pre-flight <b>WebGL Performance Tier</b> (60+ FPS predictor) before exporting.</p>
+    </div>
+
+    <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:16px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <span style="background:#c084fc; color:#0f172a; border-radius:50%; width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; font-weight:bold;">3</span>
+        <h4 style="margin:0; font-size:1.05rem; color:var(--fg);">3 Style — TR-UIP Assistant &amp; GFA Calculator</h4>
+      </div>
+      <p style="font-size:0.88rem; color:var(--muted); margin:0;">Click <b>"Apply TR-UIP Standard Styles"</b> to auto-theme buildings by land-use function, run <b>"Volumetric GFA &amp; Population Calculator"</b>, and select an <b>Atmosphere Preset</b> (Golden Hour, Midday, Night Glow, Morning Mist).</p>
+    </div>
+
+    <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:16px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <span style="background:#f472b6; color:#0f172a; border-radius:50%; width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; font-weight:bold;">4</span>
+        <h4 style="margin:0; font-size:1.05rem; color:var(--fg);">4 Publish — Interactive Web Cockpit &amp; ZIP</h4>
+      </div>
+      <p style="font-size:0.88rem; color:var(--muted); margin:0;">Click <b>"Export and open 3D Viewer"</b> to launch the browser cockpit. Press <b>H</b> for Keyboard Shortcuts, <b>W</b> for Walk Mode, and <b>P</b> for Clean Presentation Mode. Export a portable ZIP for presentation handoff.</p>
+    </div>
+  </div>
+</section>
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <!-- 1. ARCHITECTURE & PIPELINE -->
