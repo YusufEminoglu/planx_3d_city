@@ -1065,6 +1065,7 @@ class PlanX3DCityDialog(QDialog):
             box = self.layer_boxes.get(key)
             if box is not None and layer is not None:
                 box.setLayer(layer)
+        self._zoom_canvas_to_layers(layers)
         self._refresh_report()
         counts = result.get("counts", {})
         bw, bh = result.get("bbox_km", (0, 0))
@@ -1159,11 +1160,33 @@ class PlanX3DCityDialog(QDialog):
             box = self.layer_boxes.get(key)
             if box is not None and layer is not None:
                 box.setLayer(layer)
+        self._zoom_canvas_to_layers(layers)
         self._refresh_report()
         folder = result.get("folder", "")
         self.set_status(
             f"Sample data generated and loaded ({folder}). Click 'Export and open 3D Viewer' to publish."
         )
+
+    def _zoom_canvas_to_layers(self, layers: dict) -> None:
+        """Zoom the QGIS map canvas to fit the combined extent of loaded layers."""
+        if not hasattr(self, "iface") or self.iface is None:
+            return
+        canvas = self.iface.mapCanvas()
+        if canvas is None:
+            return
+        combined = None
+        for layer in layers.values():
+            if layer is not None and hasattr(layer, "extent"):
+                ext = layer.extent()
+                if ext is None or ext.isEmpty():
+                    continue
+                if combined is None:
+                    combined = ext
+                else:
+                    combined.combineExtentWith(ext)
+        if combined is not None and not combined.isEmpty():
+            canvas.setExtent(combined)
+            canvas.refresh()
 
     def _auto_match_layers_quiet(self) -> None:
         """Run auto-matching on dialog opening if no layer is currently selected."""

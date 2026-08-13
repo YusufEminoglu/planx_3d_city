@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.60] - 2026-08-13
+
+- Auto QGIS map canvas extent zoom on sample data load and OSM import
+
 ## [0.8.59] - 2026-08-13
 
 - Smart field mapping auto-detection for katadedi, nufus, floors, etc.
