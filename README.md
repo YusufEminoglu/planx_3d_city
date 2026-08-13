@@ -33,6 +33,13 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 
 ## Latest Release Notes
 
+### 0.8.57
+
+- Added automatic layer auto-matching on dialog opening so matching QGIS layers (DEM, Buildings, Roads, ROI, Blocks, Trees, etc.) are paired instantly.
+- Added a prominent hero header quick export button (`🚀 Export & Open 3D Viewer`) to launch the browser cockpit directly without switching tab pages.
+- Improved missing input error messages with actionable tips (`Auto-match layers`, `Try with sample data`).
+- Removed orphaned root files and cleaned unneeded residual data folders.
+
 ### 0.8.29
 
 - Fixed roofs and walls that could turn invisible from some camera angles (and flip while orbiting); building wall and roof materials are now double-sided.

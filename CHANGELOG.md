@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.58] - 2026-08-13
+
+- Update README.md release notes for 0.8.57/0.8.58
+
 ## [0.8.57] - 2026-08-13
 
 - User friendliness pass, header quick export button, auto-match on open, and root cleanup
