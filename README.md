@@ -10,7 +10,7 @@
 [![Version](https://img.shields.io/github/v/tag/YusufEminoglu/planx_3d_city?label=version&color=blue)](https://gitlab.com/geospacephilo/EasyFillet/releases)
 [![License](https://img.shields.io/badge/license-MIT-orange)](LICENSE)
 [![QGIS Plugin Hub](https://img.shields.io/badge/QGIS%20Hub-install-589632?logo=qgis&logoColor=white)](https://plugins.qgis.org/plugins/planx_3d_city/)
-[![Documentation](https://img.shields.io/badge/📖_Reference_Manual-13a0a0)](https://geophilo.pages.dev/planx_3d_city/)
+[![Documentation](https://img.shields.io/badge/📖_Reference_Manual-13a0a0)](https://geophilo.com/planx_3d_city/)
 
 </div>
 
@@ -20,7 +20,7 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 
 ## 📖 Documentation
 
-**[Comprehensive Academic Reference Manual](https://geophilo.pages.dev/planx_3d_city/)** — complete documentation of every feature, parameter, data contract, and workflow. Hosted on Web Documentation.
+**[Comprehensive Academic Reference Manual](https://geophilo.com/planx_3d_city/)** — complete documentation of every feature, parameter, data contract, and workflow. Hosted on Web Documentation.
 
 ## Requirements
 
