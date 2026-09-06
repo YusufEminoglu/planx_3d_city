@@ -7,10 +7,10 @@
 **Turn QGIS layers into an interactive Three.js city — DEM terrain, buildings, mobility, wind and narrative keyframe tours in the browser.**
 
 [![QGIS](https://img.shields.io/badge/QGIS-3.28%2B-93b023?logo=qgis&logoColor=white)](https://plugins.qgis.org/plugins/planx_3d_city/)
-[![Version](https://img.shields.io/github/v/tag/YusufEminoglu/planx_3d_city?label=version&color=blue)](https://github.com/YusufEminoglu/planx_3d_city/releases)
+[![Version](https://img.shields.io/github/v/tag/YusufEminoglu/planx_3d_city?label=version&color=blue)](https://gitlab.com/geospacephilo/EasyFillet/releases)
 [![License](https://img.shields.io/badge/license-MIT-orange)](LICENSE)
 [![QGIS Plugin Hub](https://img.shields.io/badge/QGIS%20Hub-install-589632?logo=qgis&logoColor=white)](https://plugins.qgis.org/plugins/planx_3d_city/)
-[![Documentation](https://img.shields.io/badge/📖_Reference_Manual-13a0a0)](https://yusufeminoglu.github.io/planx_3d_city/)
+[![Documentation](https://img.shields.io/badge/📖_Reference_Manual-13a0a0)](https://geophilo.pages.dev/planx_3d_city/)
 
 </div>
 
@@ -20,7 +20,7 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 
 ## 📖 Documentation
 
-**[Comprehensive Academic Reference Manual](https://yusufeminoglu.github.io/planx_3d_city/)** — complete documentation of every feature, parameter, data contract, and workflow. Hosted on GitHub Pages.
+**[Comprehensive Academic Reference Manual](https://geophilo.pages.dev/planx_3d_city/)** — complete documentation of every feature, parameter, data contract, and workflow. Hosted on Web Documentation.
 
 ## Requirements
 
@@ -413,12 +413,12 @@ This plugin is one of 15 open-source QGIS plugins for urban planning by the same
 
 | Planning & analysis | CAD & production | 3D & visualization |
 |---|---|---|
-| [PlanX](https://github.com/YusufEminoglu/PlanX) — spatial-planning suite | [PlanX CAD Toolset](https://github.com/YusufEminoglu/PlanX-CAD) — drafting-grade CAD | [PlanX 3D City](https://github.com/YusufEminoglu/planx_3d_city) — Three.js city viewer |
-| [GeoStats Lab](https://github.com/YusufEminoglu/planx_geostats) — spatial statistics | [EasyFillet](https://github.com/YusufEminoglu/EasyFillet) — tangent-arc fillet | [3D OSM Model](https://github.com/YusufEminoglu/osm_3d_model) — OSM → 3D city in browser |
-| [Suitability Lab](https://github.com/YusufEminoglu/planx_suitability_lab) — raster MCDA | [Settlement Toolset](https://github.com/YusufEminoglu/PlanX-Settlement) — 9-stage settlement plans | [OSM Quick 3D](https://github.com/YusufEminoglu/osm_quick_3d) — OSM → native QGIS 3D |
-| [DataCube Lab](https://github.com/YusufEminoglu/planx_datacube) — spatiotemporal cubes | [UIP Toolset](https://github.com/YusufEminoglu/PlanX-UIP) — Turkish master-plan automation | [Urban Procedural 3D](https://github.com/YusufEminoglu/planx_urban_procedural_3d) — parametric zoning lab |
-| [Urban Resilience](https://github.com/YusufEminoglu/planx_urban_resilience) — 28 resilience tools | [ParcelFlux](https://github.com/YusufEminoglu/parcelflux) — parcel subdivision | [CartoLab](https://github.com/YusufEminoglu/planx_cartolab) — publication cartography |
+| [PlanX](https://gitlab.com/geospacephilo/EasyFillet) — spatial-planning suite | [PlanX CAD Toolset](https://gitlab.com/geospacephilo/EasyFillet) — drafting-grade CAD | [PlanX 3D City](https://gitlab.com/geospacephilo/EasyFillet) — Three.js city viewer |
+| [GeoStats Lab](https://gitlab.com/geospacephilo/EasyFillet) — spatial statistics | [EasyFillet](https://gitlab.com/geospacephilo/EasyFillet) — tangent-arc fillet | [3D OSM Model](https://gitlab.com/geospacephilo/EasyFillet) — OSM → 3D city in browser |
+| [Suitability Lab](https://gitlab.com/geospacephilo/EasyFillet) — raster MCDA | [Settlement Toolset](https://gitlab.com/geospacephilo/EasyFillet) — 9-stage settlement plans | [OSM Quick 3D](https://gitlab.com/geospacephilo/EasyFillet) — OSM → native QGIS 3D |
+| [DataCube Lab](https://gitlab.com/geospacephilo/EasyFillet) — spatiotemporal cubes | [UIP Toolset](https://gitlab.com/geospacephilo/EasyFillet) — Turkish master-plan automation | [Urban Procedural 3D](https://gitlab.com/geospacephilo/EasyFillet) — parametric zoning lab |
+| [Urban Resilience](https://gitlab.com/geospacephilo/EasyFillet) — 28 resilience tools | [ParcelFlux](https://gitlab.com/geospacephilo/EasyFillet) — parcel subdivision | [CartoLab](https://gitlab.com/geospacephilo/EasyFillet) — publication cartography |
 
 ## 📜 License & author
 
-MIT © [Yusuf Eminoğlu](https://github.com/YusufEminoglu) — bug reports and feature requests welcome in [Issues](https://github.com/YusufEminoglu/planx_3d_city/issues).
+MIT © [Yusuf Eminoğlu](https://github.com/YusufEminoglu) — bug reports and feature requests welcome in [Issues](https://gitlab.com/geospacephilo/EasyFillet/-/issues).
