@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.3] - 2026-09-16
+
+- Redesign plugin icon to high-end 3D tactile brand design with circular teal pedestal, zero margin, and refreshed documentation links.
+
 ## [1.0.2] - 2026-08-13
 
 - Connect Guide button directly to online GitHub Pages documentation and add Step-by-Step guide
