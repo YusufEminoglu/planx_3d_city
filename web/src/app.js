@@ -9,6 +9,10 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { SSAOPass } from 'three/addons/postprocessing/SSAOPass.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import {
+  SLAB_NAME, batchBuildingGroup, buildingHitData, buildingHitKey, buildingPickTargets,
+  setBatchedBuildingNight, setHoveredBuildingId
+} from './building_batch.js';
 
 let currentLang = 'EN';
 const urlParams = new URLSearchParams(window.location.search);
@@ -3282,6 +3286,7 @@ let lastTimeOfDay = -1;
 // Does NOT rebuild terrain, geometry or DEM.
 function rebuildLightingOnly() {
   const isNight = (_solarCache.elevationDeg ?? 30) < -3;
+  setBatchedBuildingNight(buildingGroup, isNight);
   buildingGroup.children.forEach(mesh => {
     if (!Array.isArray(mesh.material) || mesh.material.length < 2) return;
     const mat = mesh.material[1];
@@ -7687,6 +7692,8 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
             if (minSlabY !== 0) slabGeom.translate(0, -minSlabY, 0);
 
             const slabMesh = new THREE.Mesh(slabGeom, slabMat);
+            slabMesh.name = SLAB_NAME;
+            slabMesh.userData = buildingData;
             slabMesh.position.y = slabY - slabThickness / 2;
             slabMesh.castShadow = true;
             slabMesh.receiveShadow = true;
@@ -7708,6 +7715,10 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
       }
     }
   }
+  if (isSceneBuildStale(buildToken)) return;
+  _hoveredBldg = null;
+  setHoveredBuildingId(-1);
+  batchBuildingGroup(buildingGroup, { isNight: (_solarCache.elevationDeg ?? 30) < -3 });
 }
 function buildZoningEnvelopesLayer(yapilar) {
   clearGroup(zoningGroup);
@@ -9284,15 +9295,28 @@ addGui();
 
 // Building hover highlight helpers
 function _unhoverBuilding() {
-  if (!_hoveredBldg) return;
+  if (_hoveredBldg === null) return;
+  if (typeof _hoveredBldg === 'number') {
+    setHoveredBuildingId(-1);
+    _hoveredBldg = null;
+    return;
+  }
   const mat = Array.isArray(_hoveredBldg.material) ? _hoveredBldg.material[1] : _hoveredBldg.material;
   mat.emissive.copy(_hovEmissive);
   mat.emissiveIntensity = _hovEmissiveIntensity;
   _hoveredBldg = null;
 }
-function _doHoverBuilding(mesh) {
-  if (mesh === _hoveredBldg) return;
+function _doHoverBuilding(hit) {
+  const key = buildingHitKey(hit);
+  if (key === _hoveredBldg) return;
   _unhoverBuilding();
+  if (typeof key === 'number') {
+    if (key < 0) return;
+    _hoveredBldg = key;
+    setHoveredBuildingId(key);
+    return;
+  }
+  const mesh = key;
   _hoveredBldg = mesh;
   const mat = Array.isArray(mesh.material) ? mesh.material[1] : mesh.material;
   _hovEmissive.copy(mat.emissive);
@@ -9315,16 +9339,16 @@ window.addEventListener('mousemove', (e) => {
 
   const mouse = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   rc.setFromCamera(mouse, camera);
-  const hits = rc.intersectObjects(buildingGroup.children);
+  const hits = rc.intersectObjects(buildingPickTargets(buildingGroup));
 
   if (!hits.length) {
     _unhoverBuilding();
     if (hoverTip) hoverTip.style.display = 'none';
     return;
   }
-  _doHoverBuilding(hits[0].object);
+  _doHoverBuilding(hits[0]);
   if (hoverTip) {
-    const p = hits[0].object.userData || {};
+    const p = buildingHitData(hits[0]);
     const icon = getFunctionIcon(p.uipfonksiyon || '');
     const floorVal = buildingLevelsRaw(p);
     const floors = floorVal != null ? `${floorVal} ${t('biKat').toLowerCase()}` : '-';
@@ -9348,13 +9372,13 @@ window.addEventListener('click', (e) => {
 
   const mouse = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   rc.setFromCamera(mouse, camera);
-  const hits = rc.intersectObjects(buildingGroup.children);
+  const hits = rc.intersectObjects(buildingPickTargets(buildingGroup));
 
   if (!hits.length) {
     if (detailTip) { detailTip.style.display = 'none'; _detailOpen = false; }
     return;
   }
-  const p = hits[0].object.userData || {};
+  const p = buildingHitData(hits[0]);
   const icon = getFunctionIcon(p.uipfonksiyon || '');
   const areaStr = p.aream2 ? `${parseFloat(p.aream2).toFixed(0)} m²` : '-';
   const calcFootprintArea = parseNumberProp(p, ['planx_calc_footprint_area', 'taban_alani', 'footprint_area'], null);
@@ -9395,7 +9419,7 @@ window.addEventListener('dblclick', (e) => {
   if (e.target.closest('#ui-container') || e.target.closest('.lil-gui') || e.target.closest('#recording-container')) return;
   const mouse = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   rc.setFromCamera(mouse, camera);
-  const hits = rc.intersectObjects(buildingGroup.children);
+  const hits = rc.intersectObjects(buildingPickTargets(buildingGroup));
   if (!hits.length) return;
   const pt = hits[0].point.clone();
   const dir = camera.position.clone().sub(pt).normalize();
@@ -9837,6 +9861,68 @@ function animate() {
     }
   }
 }
+
+// Performance probe for benchmarks and the ?perf=1 overlay. Read-only apart
+// from timeRender(), which renders synchronously to measure frame cost.
+window.__planxPerf = {
+  info() {
+    let meshes = 0;
+    scene.traverse((o) => { if (o.isMesh) meshes++; });
+    return {
+      fps: _fpsValue,
+      calls: renderer.info.render.calls,
+      triangles: renderer.info.render.triangles,
+      geometries: renderer.info.memory.geometries,
+      textures: renderer.info.memory.textures,
+      programs: renderer.info.programs?.length || 0,
+      meshes
+    };
+  },
+  timeRender(frames = 10) {
+    const gl = renderer.getContext();
+    const px = new Uint8Array(4);
+    renderer.render(scene, camera);
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    const t0 = performance.now();
+    for (let i = 0; i < frames; i++) renderer.render(scene, camera);
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    return (performance.now() - t0) / frames;
+  },
+  // Average cost of a building pick (hover/click raycast) over a fixed grid of
+  // screen points; the first pass includes any lazy acceleration setup.
+  timePick(grid = 8) {
+    const targets = typeof buildingPickTargets === 'function' ? buildingPickTargets(buildingGroup) : buildingGroup.children;
+    const run = () => {
+      let hits = 0;
+      const t0 = performance.now();
+      for (let i = 0; i < grid; i++) {
+        for (let j = 0; j < grid; j++) {
+          rc.setFromCamera(new THREE.Vector2((i + 0.5) / grid * 2 - 1, (j + 0.5) / grid * 2 - 1), camera);
+          if (rc.intersectObjects(targets).length) hits++;
+        }
+      }
+      return { ms: (performance.now() - t0) / (grid * grid), hits };
+    };
+    const cold = run();
+    const warm = run();
+    return { coldMs: cold.ms, warmMs: warm.ms, hits: warm.hits };
+  },
+  // Average synchronous frame cost over a full orbit around the current target.
+  timeOrbit(steps = 8) {
+    const start = camera.position.clone();
+    const offset = new THREE.Vector3();
+    let total = 0;
+    for (let i = 0; i < steps; i++) {
+      offset.copy(start).sub(controls.target).applyAxisAngle(new THREE.Vector3(0, 1, 0), (i / steps) * Math.PI * 2);
+      camera.position.copy(controls.target).add(offset);
+      camera.lookAt(controls.target);
+      total += this.timeRender(2);
+    }
+    camera.position.copy(start);
+    camera.lookAt(controls.target);
+    return total / steps;
+  }
+};
 
 function updateHtmlLang() {
   document.documentElement.lang = currentLang === 'TR' ? 'tr' : 'en';
