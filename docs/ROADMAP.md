@@ -102,6 +102,21 @@ somut bir dosyaya/fonksiyona bağlanır ve ölçülebilir bir hedefle biter.
 
 **Hedef:** Dışa aktarım süresi ve boyutu 5× azalsın.
 
+> **Durum (Ekim 2026):**
+> - **1. DEM:** yerel DEM, görüntüleyicinin sahne sınırına (+32 px + %2 pay)
+>   kırpılıp DEFLATE/PREDICTOR/TILED olarak yazılıyor; GDAL hatasında eski
+>   kopyalamaya dönülüyor. Örnek: 4,6 MB → 327 KB, görüntü aynı. Yeniden
+>   örnekleme (çözünürlük seçimi) yapılmadı.
+> - **2. GeoJSON:** `COORDINATE_PRECISION=3` (mm). Alan budama yapılmadı:
+>   ipuçları ve stil alanları keyfi öznitelik okuyor.
+> - **5. Artımlı export:** dosya tabanlı OGR katmanları ve DEM parmak izi
+>   ile atlanıyor (`web/data/.planx_export_cache.json`).
+> - **4. QgsTask — ertelendi:** katmanlara iş parçacığından erişim güvenli
+>   değil; QGIS içinde test edilmeden yapılmamalı.
+> - **6. Gzip — gerek yok:** sunucu yalnızca localhost; GitHub Pages vb.
+>   zaten sıkıştırıyor.
+> - **3. İkili format:** worker'lı geometri üretimiyle (Faz 2) öncelik düştü.
+
 1. **DEM'i ROI + tampon ile kırp ve yeniden örnekle (B6)** — `gdal.Translate`/`QgsRasterPipe` ile `-projwin`, hedef çözünürlük (örn. 1–5 m seçilebilir), `COMPRESS=DEFLATE`, `PREDICTOR=3`, `TILED=YES`.
 2. **GeoJSON küçültme** — `COORDINATE_PRECISION=2` (metrik CRS'de cm), `WRITE_BBOX`, kullanılmayan alanları at (`field_mappings` zaten biliniyor).
 3. **İkili format** — opsiyonel olarak binaları sunucu tarafında önceden üçgenleyip **glTF/GLB (meshopt + Draco)** veya FlatGeobuf olarak yaz → tarayıcıda parse/extrude süresi sıfıra iner.
