@@ -436,12 +436,16 @@ camera.position.set(0, 420, 580);
 // No preserveDrawingBuffer: screenshots render and read back in the same task,
 // and recording uses captureStream, so neither needs the buffer kept.
 const renderer = new THREE.WebGLRenderer({ antialias: true });
+// Count draw calls per frame across all passes (shadows, SSAO, bloom);
+// animate() resets the counters before each frame it draws.
+renderer.info.autoReset = false;
 // Adaptive resolution: while the view moves and the frame rate drops, the
 // pixel ratio steps down (to 0.75 at most); full resolution comes back for
 // the settled frame and while the frame rate has headroom.
 const MAX_PIXEL_RATIO = Math.min(window.devicePixelRatio, 2);
 const MIN_PIXEL_RATIO = 0.75;
 let _dynPixelRatio = MAX_PIXEL_RATIO;
+let _pendingPixelRatio = null;
 renderer.setPixelRatio(MAX_PIXEL_RATIO);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
@@ -9465,14 +9469,14 @@ window.addEventListener('resize', () => {
   labelRenderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Pass redraw = false when the caller renders right away.
-function setDynamicPixelRatio(ratio, redraw = true) {
+// Callers render right after this, in the same task: resizing the canvas
+// clears it, and a frame composited in between would flash blank.
+function setDynamicPixelRatio(ratio) {
   const next = Math.max(MIN_PIXEL_RATIO, Math.min(MAX_PIXEL_RATIO, ratio));
   if (Math.abs(next - _dynPixelRatio) < 0.01) return;
   _dynPixelRatio = next;
   renderer.setPixelRatio(next);
   composer.setPixelRatio(next);
-  if (redraw) requestRender(); // resizing the canvas clears it
 }
 
 
@@ -9830,17 +9834,24 @@ function animate() {
     || settings.autoOrbit || settings.autoTime || tourState.playing;
   const _useComposer = settings.enableSSAO;
   if (isRecording || _hasAnim || _camMoving || _now < _renderKeepAliveUntil) {
+    if (_pendingPixelRatio !== null) setDynamicPixelRatio(_pendingPixelRatio);
+    _pendingPixelRatio = null;
+    renderer.info.reset();
     renderer.render(scene, camera);
     _lastFrameRender = _now;
     _composerSettled = false;
   } else if (_useComposer && !_composerSettled) {
-    setDynamicPixelRatio(MAX_PIXEL_RATIO, false);
+    setDynamicPixelRatio(MAX_PIXEL_RATIO);
+    _pendingPixelRatio = null;
+    renderer.info.reset();
     composer.render();
     _lastSSAORender = _now;
     _lastFrameRender = _now;
     _composerSettled = true;
   } else if (_now - _lastFrameRender > RENDER_HEARTBEAT_MS) {
-    setDynamicPixelRatio(MAX_PIXEL_RATIO, false);
+    setDynamicPixelRatio(MAX_PIXEL_RATIO);
+    _pendingPixelRatio = null;
+    renderer.info.reset();
     if (_useComposer) composer.render(); else renderer.render(scene, camera);
     _lastFrameRender = _now;
     _fpsLastSample = _now;
@@ -9916,9 +9927,10 @@ function animate() {
     _fpsValue = Math.round((_fpsFrames * 1000) / (time - _fpsLastSample));
     _fpsFrames = 0;
     _fpsLastSample = time;
+    // Applied right before the next draw: resizing clears the canvas.
     if (!isRecording) {
-      if (_fpsValue < 40) setDynamicPixelRatio(_dynPixelRatio - 0.25);
-      else if (_fpsValue > 55) setDynamicPixelRatio(_dynPixelRatio + 0.25);
+      if (_fpsValue < 40) _pendingPixelRatio = _dynPixelRatio - 0.25;
+      else if (_fpsValue > 55) _pendingPixelRatio = _dynPixelRatio + 0.25;
     }
     const chip = document.getElementById('fps-chip');
     if (chip) {
@@ -9952,7 +9964,10 @@ window.__planxPerf = {
     renderer.render(scene, camera);
     gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
     const t0 = performance.now();
-    for (let i = 0; i < frames; i++) renderer.render(scene, camera);
+    for (let i = 0; i < frames; i++) {
+      renderer.info.reset();
+      renderer.render(scene, camera);
+    }
     gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
     return (performance.now() - t0) / frames;
   },
@@ -9991,6 +10006,22 @@ window.__planxPerf = {
     return total / steps;
   }
 };
+
+// ?perf=1 shows a small live readout of window.__planxPerf.info().
+if (new URLSearchParams(location.search).get('perf') === '1') {
+  const hud = document.createElement('pre');
+  hud.id = 'planx-perf-hud';
+  hud.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:9999;margin:0;padding:6px 8px;'
+    + 'font:11px/1.35 ui-monospace,monospace;color:#e2e8f0;background:rgba(15,23,42,0.82);'
+    + 'border-radius:6px;pointer-events:none;white-space:pre';
+  document.body.appendChild(hud);
+  setInterval(() => {
+    const i = window.__planxPerf.info();
+    hud.textContent = `fps ${_fpsValue || 'idle'}  px ${i.pixelRatio}\n`
+      + `calls ${i.calls}  tris ${(i.triangles / 1000).toFixed(0)}k\n`
+      + `meshes ${i.meshes}  geo ${i.geometries}  tex ${i.textures}  prog ${i.programs}`;
+  }, 500);
+}
 
 function updateHtmlLang() {
   document.documentElement.lang = currentLang === 'TR' ? 'tr' : 'en';
@@ -10177,7 +10208,7 @@ function takeScreenshot() {
   // Render one clean frame first (without UI)
   uiContainer.style.visibility = 'hidden';
   if (globalGui) globalGui.domElement.style.visibility = 'hidden';
-  setDynamicPixelRatio(MAX_PIXEL_RATIO, false);
+  setDynamicPixelRatio(MAX_PIXEL_RATIO);
   if (settings.enableSSAO) composer.render(); else renderer.render(scene, camera);
 
   const canvas = document.querySelector('canvas');
