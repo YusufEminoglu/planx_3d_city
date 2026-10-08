@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Turkish removed: the viewer and the QGIS dialog are English-only (no TR language toggle or bilingual text); the Modern Turkish theme, Urban_TR facades, TurkishTile roof and TR-UIP assistant are gone; attribute lookups use English/OSM column names (`floors`, `building:levels`, `function`, `landuse`, `population`, `width`...). Projects with Turkish column names need them mapped in the field mapping. Exported vector data now lives in `web/data/vector` (was `web/data/yerlesim`); re-export existing projects.
 - Viewer performance (roadmap phase 1): buildings are merged into shared-material tiles (10k buildings: 44,249 -> 1,848 draw calls), building picking uses a BVH, layers and the DEM load in parallel, the scene renders only when something changes, and the pixel ratio adapts while the view moves.
 - `?perf=1` performance overlay and a headless benchmark under `tests/bench`.
 - Fixes: the effect composer and label renderer now follow window resizes; the SSAO view no longer flickers with plain frames when the camera is still.
