@@ -80,7 +80,7 @@ export function batchBuildingGroup(group, { isNight = false } = {}) {
     classify: (mesh, mi, multi) => (mesh.name === SLAB_NAME ? 'slab' : (multi && mi === 1 ? 'wall' : 'other')),
     // Night glow lives in planxGlow, so emissive must not split buckets.
     keyOptions: { ignoreEmissive: true },
-    attributes: ['planxId', 'planxGlow'],
+    attributes: ['planxId', { name: 'planxGlow', unit: true }],
     perPiece: (mesh, centre) => {
       const data = mesh.userData;
       let rid = -1;

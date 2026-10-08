@@ -633,6 +633,35 @@ let terrainHeightStats = { min: 0, max: 0, avg: 0, p02: 0, p98: 0 };
 let terrainSurfaceCache = null;
 let sceneBuildToken = 0;
 const islandPlateauCache = [];
+// Uniform-grid index over islandPlateauCache bboxes. terrainLocalYAt runs for
+// every vertex of roads, sidewalks and building bases, and scanning every
+// block per call made scene builds quadratic in the block count. Rebuilt
+// lazily after the cache changes; candidates keep cache order, so the first
+// matching plateau wins exactly as with the linear scan.
+const PLATEAU_CELL = 64;
+let plateauGrid = null;
+function invalidatePlateauIndex() { plateauGrid = null; }
+function plateauCandidates(localX, localZ) {
+  if (!plateauGrid) {
+    plateauGrid = new Map();
+    for (const cache of islandPlateauCache) {
+      const t = cache.transition || 0;
+      const x0 = Math.floor((cache.bbox.minX - t) / PLATEAU_CELL);
+      const x1 = Math.floor((cache.bbox.maxX + t) / PLATEAU_CELL);
+      const z0 = Math.floor((cache.bbox.minZ - t) / PLATEAU_CELL);
+      const z1 = Math.floor((cache.bbox.maxZ + t) / PLATEAU_CELL);
+      for (let cx = x0; cx <= x1; cx++) {
+        for (let cz = z0; cz <= z1; cz++) {
+          const key = cx * 1048576 + cz;
+          let list = plateauGrid.get(key);
+          if (!list) plateauGrid.set(key, (list = []));
+          list.push(cache);
+        }
+      }
+    }
+  }
+  return plateauGrid.get(Math.floor(localX / PLATEAU_CELL) * 1048576 + Math.floor(localZ / PLATEAU_CELL));
+}
 
 // --- Performance ---
 const rc = new THREE.Raycaster();
@@ -4739,6 +4768,7 @@ function shouldApplyIslandPlateaus(adalar) {
 
 function applyIslandPlateaus(pos, segments, width, depth, adalar, transitionM) {
   islandPlateauCache.length = 0;
+  invalidatePlateauIndex();
   if (!adalar?.features?.length) return;
   const count = pos.count;
 
@@ -4807,6 +4837,7 @@ function applyIslandPlateaus(pos, segments, width, depth, adalar, transitionM) {
       }
     }
 
+    invalidatePlateauIndex();
     islandPlateauCache.push({
       feature,
       localRings: localPolys,
@@ -4897,6 +4928,7 @@ async function buildTerrain(adalar, buildToken = sceneBuildToken) {
     applyIslandPlateaus(pos, segments, width, depth, adalar, settings.islandPlateauTransition);
   } else {
     islandPlateauCache.length = 0;
+    invalidatePlateauIndex();
   }
   const finalStats = terrainHeightStatsFromPositions(pos);
   terrainHeightStats = finalStats;
@@ -4993,7 +5025,7 @@ async function buildTerrain(adalar, buildToken = sceneBuildToken) {
 let _lastTerrainY = 0;
 function terrainLocalYAt(localX, localZ) {
   if (islandPlateauCache.length) {
-    for (const cache of islandPlateauCache) {
+    for (const cache of plateauCandidates(localX, localZ) || []) {
       const t = cache.transition || 0;
       if (localX < cache.bbox.minX - t || localX > cache.bbox.maxX + t) continue;
       if (localZ < cache.bbox.minZ - t || localZ > cache.bbox.maxZ + t) continue;
@@ -5597,6 +5629,7 @@ function buildWaterlinesLayer(waterlines) {
 async function buildIslandLayer(adalar, buildToken = sceneBuildToken) {
   clearGroup(islandGroup);
   if (!adalar?.features?.length) return;
+  const plateauByFeature = new Map(islandPlateauCache.map((c) => [c.feature, c]));
   
   const categories = [...new Set(adalar.features.map(f => String(blockCategoryValue(f.properties))))];
   categories.forEach((cat, i) => {
@@ -5639,7 +5672,7 @@ async function buildIslandLayer(adalar, buildToken = sceneBuildToken) {
       if (!shape) continue;
       const rawGeo = new THREE.ShapeGeometry(shape);
       rawGeo.rotateX(Math.PI / 2);
-      const cacheEntry = settings.flattenIslands ? islandPlateauCache.find((c) => c.feature === f) : null;
+      const cacheEntry = settings.flattenIslands ? plateauByFeature.get(f) : null;
       const plateauY = cacheEntry?.plateauY;
       let g;
       if (plateauY != null) {

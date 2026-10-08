@@ -15,6 +15,10 @@ const MERGEABLE_TYPES = new Set([
 const OTHER_MAPS = ['alphaMap', 'aoMap', 'bumpMap', 'displacementMap', 'emissiveMap', 'envMap', 'lightMap',
   'metalnessMap', 'normalMap', 'roughnessMap', 'specularMap', 'clearcoatMap', 'sheenColorMap'];
 
+function toByte(v) {
+  return v <= 0 ? 0 : (v >= 1 ? 255 : Math.round(v * 255));
+}
+
 export function isInvisible(mat) {
   return !mat || mat.visible === false || (mat.transparent && mat.opacity <= 0.001);
 }
@@ -87,7 +91,9 @@ export function sharedMaterialFrom(src, textures) {
  *   classify(mesh, materialIndex, isMultiMaterial) -> kind string, or null to drop the range
  *   keyOptions     - passed to materialLookKey
  *   perPiece(mesh, centre) -> { [attrName]: number } constant float attributes per mesh
- *   attributes     - names of the perPiece attributes, in a fixed order
+ *   attributes     - perPiece attributes, in a fixed order: names, or
+ *                    { name, unit: true } for values in [0, 1] (stored as
+ *                    normalized bytes)
  *   makeMaterial(sourceMaterial, kind) -> THREE.Material
  *   onMesh(mergedMesh, bucket) - final touches (raycast, userData)
  * @returns {{ merged: THREE.Mesh[], consumed: THREE.Mesh[] }} consumed meshes
@@ -95,7 +101,7 @@ export function sharedMaterialFrom(src, textures) {
  */
 export function mergeMeshes(meshes, opt) {
   const tileSize = opt.tileSize || 0;
-  const attrNames = opt.attributes || [];
+  const attrSpecs = (opt.attributes || []).map((a) => (typeof a === 'string' ? { name: a } : a));
   const buckets = new Map();
   const nonIndexed = new Map();
   const consumed = [];
@@ -147,12 +153,15 @@ export function mergeMeshes(meshes, opt) {
   const uvMatrix = new THREE.Matrix3();
   const merged = [];
   for (const b of buckets.values()) {
+    // Compact storage: merged city meshes run to millions of vertices.
+    // Normals as normalized int16, colours as normalized bytes, and UVs only
+    // when the material samples a texture.
     const n = b.vertexCount;
     const pos = new Float32Array(n * 3);
-    const nor = new Float32Array(n * 3);
-    const uv = new Float32Array(n * 2);
-    const col = new Float32Array(n * 3);
-    const extras = attrNames.map(() => new Float32Array(n));
+    const nor = new Int16Array(n * 3);
+    const uv = b.source.map ? new Float32Array(n * 2) : null;
+    const col = new Uint8Array(n * 3);
+    const extras = attrSpecs.map((a) => (a.unit ? new Uint8Array(n) : new Float32Array(n)));
     let o = 0;
     for (const p of b.pieces) {
       // Direct typed-array access: this loop touches every merged vertex.
@@ -169,7 +178,7 @@ export function mergeMeshes(meshes, opt) {
         for (let i = p.start, j = o * 3; i < end; i++, j += 3) {
           pos[j] = P[i * 3] + tx; pos[j + 1] = P[i * 3 + 1] + ty; pos[j + 2] = P[i * 3 + 2] + tz;
         }
-        nor.set(N.subarray(p.start * 3, end * 3), o * 3);
+        for (let i = p.start * 3, j = o * 3; i < end * 3; i++, j++) nor[j] = Math.round(N[i] * 32767);
       } else {
         normalMatrix.getNormalMatrix(p.matrix);
         const nm = normalMatrix.elements;
@@ -182,11 +191,11 @@ export function mergeMeshes(meshes, opt) {
           const mx = nm[0] * nx + nm[3] * ny + nm[6] * nz;
           const my = nm[1] * nx + nm[4] * ny + nm[7] * nz;
           const mz = nm[2] * nx + nm[5] * ny + nm[8] * nz;
-          const len = Math.hypot(mx, my, mz) || 1;
-          nor[j] = mx / len; nor[j + 1] = my / len; nor[j + 2] = mz / len;
+          const len = (Math.hypot(mx, my, mz) || 1) / 32767;
+          nor[j] = Math.round(mx / len); nor[j + 1] = Math.round(my / len); nor[j + 2] = Math.round(mz / len);
         }
       }
-      if (U) {
+      if (U && uv) {
         const map = p.mat.map;
         if (map) {
           if (map.matrixAutoUpdate) map.updateMatrix();
@@ -204,24 +213,26 @@ export function mergeMeshes(meshes, opt) {
       const { r, g, b: bl } = p.mat.color;
       if (C) {
         for (let i = p.start, j = o * 3; i < end; i++, j += 3) {
-          col[j] = C.getX(i) * r; col[j + 1] = C.getY(i) * g; col[j + 2] = C.getZ(i) * bl;
+          col[j] = toByte(C.getX(i) * r); col[j + 1] = toByte(C.getY(i) * g); col[j + 2] = toByte(C.getZ(i) * bl);
         }
       } else {
+        const R = toByte(r), G = toByte(g), B = toByte(bl);
         for (let j = o * 3, k = 0; k < p.count; k++, j += 3) {
-          col[j] = r; col[j + 1] = g; col[j + 2] = bl;
+          col[j] = R; col[j + 1] = G; col[j + 2] = B;
         }
       }
-      for (let a = 0; a < attrNames.length; a++) {
-        extras[a].fill(p.extra?.[attrNames[a]] ?? 0, o, o + p.count);
+      for (let a = 0; a < attrSpecs.length; a++) {
+        const v = p.extra?.[attrSpecs[a].name] ?? 0;
+        extras[a].fill(attrSpecs[a].unit ? toByte(v) : v, o, o + p.count);
       }
       o += p.count;
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-    geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    attrNames.forEach((name, a) => geo.setAttribute(name, new THREE.BufferAttribute(extras[a], 1)));
+    geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3, true));
+    if (uv) geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3, true));
+    attrSpecs.forEach((a, k) => geo.setAttribute(a.name, new THREE.BufferAttribute(extras[k], 1, !!a.unit)));
     geo.computeBoundingBox();
     geo.computeBoundingSphere();
     const mesh = new THREE.Mesh(geo, opt.makeMaterial(b.source, b.kind));
