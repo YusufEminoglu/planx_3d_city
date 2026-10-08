@@ -85,22 +85,22 @@ EXPECTED_GEOMETRIES = {
 RECOMMENDED_BUILDING_FIELDS = ("katadedi", "uipfonksiyon")
 
 FIELD_MAPPING_DEFS = (
-    ("road_hierarchy_field", "roads", "Road hierarchy/type field", "Road class such as arterial, street, service road, pedestrian way. / Yol sinif bilgisi."),
-    ("road_width_field", "roads", "Road width field (metres)", "Per-feature road width in metres. Sidewalks subtract ~3 m total (1.5 m each side) and final width is clamped to 5-20 m. / Metre cinsinden yol genisligi; kaldirim payi cikarilir."),
-    ("building_population_field", "buildings", "Building population field", "Optional population value; otherwise the viewer estimates from dwellings and area. / Bina nufusu."),
-    ("building_dwelling_field", "buildings", "Building dwelling field", "Dwelling or housing-unit count. / Daire veya konut birimi sayisi."),
-    ("building_vehicle_field", "buildings", "Building vehicle field", "Estimated or calculated vehicle count. / Tahmini ya da hesapli arac sayisi."),
-    ("building_floors_field", "buildings", "Building floor count field", "Number of storeys; building height = floor count x floor height. Fallback column names include katadedi, kat, floors, levels. / Kat sayisi; bina yuksekligi = kat sayisi x kat yuksekligi. Varsayilan sutun adlari: katadedi, kat."),
-    ("building_floor_area_field", "buildings", "Building gross floor area field", "Gross floor area or FAR-derived area. / Toplam insaat ya da emsal alani."),
-    ("landuse_function_field", "buildings", "Land-use/function field", "Building use/function; used when uipfonksiyon is not available. / Kullanim fonksiyonu."),
-    ("odor_source_field", "buildings", "Odor/noise source field", "Helps detect industry, waste, storage or treatment sources for wind/noise screening. / Koku-gurultu kaynak ipucu."),
-    ("tree_height_field", "trees", "Tree height field", "Tree height in meters; fallback names include height, boy and yukseklik. / Agac boyu."),
-    ("light_angle_field", "lights", "Light direction field", "Direction angle in degrees; otherwise aligned to the nearest road axis. / Yon acisi."),
-    ("bench_angle_field", "benches", "Bench direction field", "Direction angle in degrees; otherwise aligned beside the nearest road axis. / Bank yonu."),
-    ("trashbin_angle_field", "trashbins", "Trash bin direction field", "Direction angle in degrees; otherwise aligned to the nearest road axis. / Cop kutusu yonu."),
-    ("busstop_angle_field", "busstops", "Bus stop direction field", "Direction angle in degrees; otherwise aligned beside the nearest road axis. / Durak yonu."),
-    ("block_category_field", "blocks", "Block category field", "Field containing block functions or landuse categories (e.g. residential, park, school, sport, water). / Ada kategori sutunu."),
-    ("waterline_width_field", "waterlines", "Waterline width field (metres)", "Per-feature stream/waterline width in metres. / Akarsu/su hattı genişlik sütunu."),
+    ("road_hierarchy_field", "roads", "Road hierarchy/type field", "Road class such as arterial, street, service road, pedestrian way."),
+    ("road_width_field", "roads", "Road width field (metres)", "Per-feature road width in metres. Sidewalks subtract ~3 m total (1.5 m each side) and final width is clamped to 5-20 m."),
+    ("building_population_field", "buildings", "Building population field", "Optional population value; otherwise the viewer estimates from dwellings and area."),
+    ("building_dwelling_field", "buildings", "Building dwelling field", "Dwelling or housing-unit count."),
+    ("building_vehicle_field", "buildings", "Building vehicle field", "Estimated or calculated vehicle count."),
+    ("building_floors_field", "buildings", "Building floor count field", "Number of storeys; building height = floor count x floor height. Fallback column names include katadedi, kat, floors, levels."),
+    ("building_floor_area_field", "buildings", "Building gross floor area field", "Gross floor area or FAR-derived area."),
+    ("landuse_function_field", "buildings", "Land-use/function field", "Building use/function; used when uipfonksiyon is not available."),
+    ("odor_source_field", "buildings", "Odor/noise source field", "Helps detect industry, waste, storage or treatment sources for wind/noise screening."),
+    ("tree_height_field", "trees", "Tree height field", "Tree height in meters; fallback names include height, boy and yukseklik."),
+    ("light_angle_field", "lights", "Light direction field", "Direction angle in degrees; otherwise aligned to the nearest road axis."),
+    ("bench_angle_field", "benches", "Bench direction field", "Direction angle in degrees; otherwise aligned beside the nearest road axis."),
+    ("trashbin_angle_field", "trashbins", "Trash bin direction field", "Direction angle in degrees; otherwise aligned to the nearest road axis."),
+    ("busstop_angle_field", "busstops", "Bus stop direction field", "Direction angle in degrees; otherwise aligned beside the nearest road axis."),
+    ("block_category_field", "blocks", "Block category field", "Field containing block functions or landuse categories (e.g. residential, park, school, sport, water)."),
+    ("waterline_width_field", "waterlines", "Waterline width field (metres)", "Per-feature stream/waterline width in metres."),
 )
 
 ASSET_THEME_OPTIONS = (
@@ -426,8 +426,7 @@ class PlanX3DCityDialog(QDialog):
         title_row.addWidget(self.hero_export_btn)
 
         subtitle = QLabel(
-            "Validate QGIS layers, map attributes, style selected features and publish the 3D viewer in one workflow. "
-            "Turkish guidance is included as secondary text where it helps data preparation."
+            "Validate QGIS layers, map attributes, style selected features and publish the 3D viewer in one workflow."
         )
         subtitle.setObjectName("heroSub")
         subtitle.setWordWrap(True)
@@ -528,11 +527,10 @@ class PlanX3DCityDialog(QDialog):
         page = QWidget()
         root = QVBoxLayout(page)
 
-        required_group = QGroupBox("Data layers / Veri katmanlari")
+        required_group = QGroupBox("Data layers")
         required_grid = QGridLayout(required_group)
         mode_label = QLabel(
-            "<b>Publish mode</b><br><span style='color:#64748b'>Vector plan workflow or raster plan texture workflow. / "
-            "Vektor plan veya raster plan texture akisi.</span>"
+            "<b>Publish mode</b><br><span style='color:#64748b'>Vector plan workflow or raster plan texture workflow.</span>"
         )
         self.mode_combo = QComboBox()
         self.mode_combo.addItem("Vector Plan Mode", MODE_VECTOR)
@@ -545,7 +543,7 @@ class PlanX3DCityDialog(QDialog):
         self._add_road_access_row(required_grid, 8)
         root.addWidget(required_group)
 
-        mapping_group = QGroupBox("Field mapping / Analysis attributes")
+        mapping_group = QGroupBox("Field mapping")
         mapping_layout = QVBoxLayout(mapping_group)
         mapping_top = QHBoxLayout()
         mapping_info = QLabel("Attribute fields auto-detect matching column names (e.g. katadedi, nufus, floors, genislik).")
@@ -568,8 +566,7 @@ class PlanX3DCityDialog(QDialog):
         basemap_grid = QGridLayout(basemap_group)
         self._add_layer_row(basemap_grid, 0, "basemap", required=False)
         basemap_size_label = QLabel(
-            "<b>Basemap export size</b><br><span style='color:#64748b'>Higher values are sharper but slower and produce larger PNG textures. / "
-            "Yuksek deger daha net ama daha yavas ve buyuk PNG uretir.</span>"
+            "<b>Basemap export size</b><br><span style='color:#64748b'>Higher values are sharper but slower and produce larger PNG textures.</span>"
         )
         basemap_size_label.setWordWrap(True)
         self.basemap_size_combo = QComboBox()
@@ -581,7 +578,7 @@ class PlanX3DCityDialog(QDialog):
         basemap_grid.addWidget(QLabel("Optional"), 1, 2)
         root.addWidget(basemap_group)
 
-        optional_group = QGroupBox("Optional enrichment layers / Opsiyonel zenginlestirme")
+        optional_group = QGroupBox("Optional enrichment layers")
         optional_grid = QGridLayout(optional_group)
         for row, key in enumerate(OPTIONAL_INPUTS):
             self._add_layer_row(optional_grid, row, key, required=False)
@@ -648,8 +645,7 @@ class PlanX3DCityDialog(QDialog):
     def _add_road_access_row(self, grid: QGridLayout, row: int) -> None:
         label = QLabel(
             "<b>Road access field</b><br>"
-            "<span style='color:#64748b'>Optional field with pedestrian/vehicle access values. If selected, cars avoid no-car pedestrian roads. / "
-            "Yaya-tasit bilgisini iceren sutun; secilirse arabalar yaya yollarindan gecmez.</span>"
+            "<span style='color:#64748b'>Optional field with pedestrian/vehicle access values. If selected, cars avoid no-car pedestrian roads.</span>"
         )
         label.setWordWrap(True)
         box = QComboBox()
@@ -661,8 +657,7 @@ class PlanX3DCityDialog(QDialog):
 
         values_label = QLabel(
             "<b>No-car / vehicle keywords</b><br>"
-            "<span style='color:#64748b'>Separate with commas. No-car keywords block vehicles unless a vehicle keyword is present. / "
-            "Virgulle ayirin; yaya anahtari arac uretimini engeller.</span>"
+            "<span style='color:#64748b'>Separate with commas. No-car keywords block vehicles unless a vehicle keyword is present.</span>"
         )
         values_label.setWordWrap(True)
         editors = QVBoxLayout()
@@ -728,8 +723,7 @@ class PlanX3DCityDialog(QDialog):
         root = QVBoxLayout(page)
 
         intro = QLabel(
-            "Write PlanX style fields to selected blocks or buildings only. Re-export the viewer to see the result. "
-            "Bu islem yalniz secili feature'lari etkiler."
+            "Write PlanX style fields to selected blocks or buildings only. Re-export the viewer to see the result."
         )
         intro.setWordWrap(True)
         root.addWidget(intro)
@@ -742,7 +736,7 @@ class PlanX3DCityDialog(QDialog):
         prep_row.addWidget(self.prepare_building_fields_btn)
         root.addWidget(prep)
 
-        atmo_group = QGroupBox("Atmosphere & Lighting Studio / Gunisigi ve Atmosfer Studyo")
+        atmo_group = QGroupBox("Atmosphere & Lighting Studio")
         atmo_root = QVBoxLayout(atmo_group)
         atmo_row = QHBoxLayout()
         atmo_row.addWidget(QLabel("Lighting Preset"))
@@ -757,8 +751,7 @@ class PlanX3DCityDialog(QDialog):
         asset_root = QVBoxLayout(asset_group)
         asset_intro = QLabel(
             "Theme selection controls only the visual variant pool in the web viewer; it never edits GIS geometry "
-            "or attribute data. Viewer uses only the selected theme and active variant counts. / "
-            "Tema yalniz gorsel havuzu belirler."
+            "or attribute data. Viewer uses only the selected theme and active variant counts."
         )
         asset_intro.setWordWrap(True)
         asset_root.addWidget(asset_intro)
@@ -838,12 +831,11 @@ class PlanX3DCityDialog(QDialog):
 
         root.addWidget(asset_group)
 
-        terrain_group = QGroupBox("Terrain shaping / Arazi sekillendirme")
+        terrain_group = QGroupBox("Terrain shaping")
         terrain_root = QVBoxLayout(terrain_group)
         terrain_intro = QLabel(
             "Optional viewer defaults for how block polygons sit on the DEM. The viewer can flatten the DEM under each block "
-            "(plateau) and ramp back to surrounding terrain so blocks no longer interpenetrate sloped DEM. / "
-            "Adalar altinda DEM duzlesir; kenarda yumusak ramp ile cevreye baglanir."
+            "(plateau) and ramp back to surrounding terrain so blocks no longer interpenetrate sloped DEM."
         )
         terrain_intro.setWordWrap(True)
         terrain_root.addWidget(terrain_intro)
@@ -1715,27 +1707,27 @@ class PlanX3DCityDialog(QDialog):
 
     def _input_label_html(self, key: str, role: str) -> str:
         descriptions = {
-            "dem": "GeoTIFF/raster elevation model. / Yukseklik modeli.",
-            "plan_texture": "Clipped 2D site-plan GeoTIFF draped over the DEM. / DEM uzerine kaplanacak plan texture.",
-            "basemap": "Open QGIS XYZ/raster basemap rendered as PNG texture during export. / QGIS altligi.",
-            "roi": "Study-area boundary polygon. / Calisma alani siniri.",
-            "roads": "Road centerlines and mobility attributes. / Yol akslari.",
-            "buildings": "Building footprints, floors and function attributes. / Bina tabanlari.",
-            "blocks": "Block polygons and block style fields. / Ada poligonlari.",
-            "parcels": "Parcel boundaries. / Parsel sinirlari.",
-            "trees": "Tree points; height field can be mapped above. / Agac noktalari.",
-            "hardscape": "Hardscape polygons. / Sert zemin poligonlari.",
-            "sidewalks": "Sidewalk polygons; used instead of auto-sidewalks when selected. / Kaldirim poligonlari.",
-            "pedestrian_paths": "Inner-block pedestrian paths or walkway polygons. / Ada ici patika veya yaya yolu katmani.",
-            "bike_lanes": "Dedicated bicycle lane layer; bike simulation runs only on this layer. / Ayri bisiklet yolu katmani; simulasyon yalnizca bunun uzerinde calisir.",
-            "lights": "Light fixture points. / Aydinlatma noktalari.",
-            "benches": "Bench points. / Bank noktalari.",
-            "trashbins": "Trash-bin points. / Cop kutusu noktalari.",
-            "busstops": "Bus-stop points. / Otobus duragi noktalari.",
-            "fences": "Fence or boundary wall polygons. / Cit veya bahce/sinir duvari poligonlari.",
-            "waterlines": "Water lines or streams. / Akarsu veya su hatlari.",
-            "mosques": "Mosque point features. / Cami nokta katmani.",
-            "tumulus": "Tumulus / burial mound point features; a default mound model is used when no GLB is uploaded. / Tumulus (hoyuk) nokta katmani; GLB yuklenmezse varsayilan hoyuk modeli kullanilir.",
+            "dem": "GeoTIFF/raster elevation model.",
+            "plan_texture": "Clipped 2D site-plan GeoTIFF draped over the DEM.",
+            "basemap": "Open QGIS XYZ/raster basemap rendered as PNG texture during export.",
+            "roi": "Study-area boundary polygon.",
+            "roads": "Road centerlines and mobility attributes.",
+            "buildings": "Building footprints, floors and function attributes.",
+            "blocks": "Block polygons and block style fields.",
+            "parcels": "Parcel boundaries.",
+            "trees": "Tree points; height field can be mapped above.",
+            "hardscape": "Hardscape polygons.",
+            "sidewalks": "Sidewalk polygons; used instead of auto-sidewalks when selected.",
+            "pedestrian_paths": "Inner-block pedestrian paths or walkway polygons.",
+            "bike_lanes": "Dedicated bicycle lane layer; bike simulation runs only on this layer.",
+            "lights": "Light fixture points.",
+            "benches": "Bench points.",
+            "trashbins": "Trash-bin points.",
+            "busstops": "Bus-stop points.",
+            "fences": "Fence or boundary wall polygons.",
+            "waterlines": "Water lines or streams.",
+            "mosques": "Mosque point features.",
+            "tumulus": "Tumulus / burial mound point features; a default mound model is used when no GLB is uploaded.",
         }
         if role == "required":
             mark = " <span style='color:#b91c1c'>*</span>"

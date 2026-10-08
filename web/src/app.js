@@ -17,42 +17,9 @@ import { buildBuildingsParallel, lastBuildWorkers } from './building_workers.js'
 import { insetShapeFromRings, shapeFromRings } from './building_geometry.js';
 import { batchStaticGroup } from './mesh_merge.js';
 
-let currentLang = 'EN';
 const urlParams = new URLSearchParams(window.location.search);
 const isPortableMode = urlParams.has('portable') || urlParams.get('portable') === '1';
 const i18n = {
-  TR: {
-    guiTitle: 'Kentsel Kontroller',
-    env: 'Çevre', fog: 'Sis', sunDir: 'Güneş Yönü', sunElev: 'Güneş Yük.',
-    terrain: 'Zemin & Yüzey', pavement: 'Yol Kaplaması', showHardscape: 'Sert Zemin Göster',
-    hardTex: 'Sert Zemin Dokusu', hardH: 'Sert Zemin Yüksekliği', islCol: 'Ada Rengi', islTex: 'Ada Dokusu',
-    parkCol: 'Park Rengi', parkTex: 'Park Dokusu', sportCol: 'Spor Alani Rengi',
-    parcels: 'Parseller', showParcels: 'Parselleri Göster', boundCol: 'Sınır Rengi', boundOp: 'Sınır Opaklığı',
-    bld: 'Binalar', floorH: 'Kat Yüksekliği (m)', roofShape: 'Çatı Tipi', roofTex: 'Çatı Dokusu', roofH: 'Çatı Yüksekliği (m)',
-    roads: 'Yollar & Trafik', showCars: 'Arabaları Göster', showRoads: 'Yolları Göster', roadCol: 'Yol Rengi', sidewalkCol: 'Kaldirim Rengi',
-    roadW: 'Yol Genişliği', trafficSpd: 'Trafik Hızı',
-    funcCol: 'Kullanım Renkleri', funcFac: 'Kullanım Cepheleri',
-    demWait: 'DEM bekleniyor...', demFail: 'DEM yüklenemedi. Düz zeminle devam.',
-    loadingData: 'Veri yükleniyor...', processing: 'Katmanlar işleniyor...',
-    clickDesc: 'Fonksiyon: {f} <br> Kat: {k} <br> Nizam: {n}',
-    htmlTitle: '🏛️ PlanX 3D City',
-    htmlDesc: 'Gerçekçi kentsel görselleştirme. DEM yükselti, bina, yol ve ağaç katmanları.',
-    help1: 'Sol tık + sürükle: Döndür', help2: 'Scroll: Yakınlaştır / Uzaklaştır',
-    help3: 'Sağ tık + sürükle: Kaydır', help4: 'Binaya tıkla: Bilgi göster',
-    statsTitle: 'Alan İstatistikleri',
-    statBld: 'Toplam Bina:', statBlock: 'Ada:', statParcel: 'Parsel:', statFlr: 'Ort. Kat:',
-    carDensity: 'Araç Yoğunluğu', 
-    sfFolder: 'Sokak Elemanları', sfLights: 'Aydınlatma', sfBenches: 'Banklar', sfBins: 'Çöp Kutuları', sfStops: 'Duraklar',
-    fxFolder: 'Zaman & Efektler', timeOfDay: 'Zaman (Saat)', sSsa: 'SSAO (Gölgeler)', sBloom: 'Bloom (Parlama)',
-    pedDensity: 'Yaya Yoğunluğu',
-    weather: 'Hava Durumu',
-    showSidewalks: 'Kaldırımlar', showCrosswalks: 'Yaya Geçitleri', showPedestrianPaths: 'Ada İçi Patikalar',
-    binaInfo: 'Bina Bilgisi', biFonk: 'Fonksiyon', biKat: 'Kat Sayısı', biNiz: 'Nizam', biAlan: 'Alan',
-    sapanMode: 'Sapan Modu', sapanHit: 'Vuruş! +1', sapanScoreLbl: 'Skor',
-    autoTime: '⏱ Güneş Animasyonu', autoTimeSpd: 'Hız (sa/s)',
-    minimap: 'Mini Harita',
-    sceneSaved: 'Sahne kaydedildi'
-  },
   EN: {
     guiTitle: 'Urban Controls',
     env: 'Environment', fog: 'Fog', sunDir: 'Sun Direction', sunElev: 'Sun Elevation',
@@ -86,107 +53,7 @@ const i18n = {
     sceneSaved: 'Scene saved'
   }
 };
-function t(key) { return i18n[currentLang]?.[key] ?? i18n.EN?.[key] ?? key; }
-
-Object.assign(i18n.TR, {
-  dockLayers: 'Katmanlar', dockScene: 'Sahne', dockStyle: 'Stil', dockMobility: 'Hareketlilik',
-  dockBike: 'Bisiklet Yollari', dockFurniture: 'Kent Mobilyalari', dockAnalysis: 'Analiz',
-  lblRoads: 'Yollar', lblSidewalks: 'Kaldirimlar', lblCrosswalks: 'Yaya gecitleri', lblPedestrianPaths: 'Ada ici patikalar',
-  lblBikeLanes: 'Bisiklet yollari', lblBikes: 'Bisikletler',
-  lblBlocks: 'Adalar / bloklar', lblParcels: 'Parseller', lblHardscape: 'Sert zemin', lblBuildings: 'Binalar',
-  lblFences: 'Çitler / Sınırlar', lblWaterlines: 'Su Hatları / Akarsular', lblWaterlineWidth: 'Akarsu genişliği',
-  dockFences: 'Çitler & Sınırlar', lblShowFences: 'Çitleri Göster', lblFenceHeight: 'Çit Yüksekliği',
-  lblFenceThickness: 'Çit Kalınlığı', lblFenceTexture: 'Çit Dokusu', lblFenceColor: 'Çit Rengi',
-  fenceWall: 'Beton Duvar', fenceSteel: 'Metal Çit', fencePipeline: 'Sanayi Borusu', fenceWood: 'Ahşap Çit / Koruma Alanı',
-  lblBlockStyles: 'Ada Kategorileri', dockTitleFences: 'Çit paneli',
-  lblTrees: 'Agaclar', lblFurniture: 'Kent mobilyalari', lblCars: 'Araclar', lblPedestrians: 'Yayalar',
-  lblMosques: 'Camiler',
-  lblMosqueSettings: 'Cami Ayarları',
-  lblMosqueScaleX: 'Ölçek X',
-  lblMosqueScaleY: 'Ölçek Y',
-  lblMosqueScaleZ: 'Ölçek Z',
-  lblMosqueRotation: 'Açı (Derece)',
-  lblPlanTexture: 'Plan texture', lblOutsideRoiTerrain: 'ROI disi zemin', lblTextureOpacity: 'Texture opakligi',
-  lblTextureBrightness: 'Texture parlakligi', lblTextureContrast: 'Texture kontrasti',
-  lblModelBase: 'ROI model altligi', lblSideDrop: 'Altlik dususu', lblSideColor: 'Altlik rengi',
-  lblDemQuality: 'DEM mesh kalitesi', lblFog: 'Sis', lblTime: 'Zaman',
-  flattenIslands: 'Ada alti duzlestirme', islandPlateauTransition: 'Plato kenar rampi (m)',
-  dayOfYear: 'Yilin gunu (1-365)', latitude: 'Enlem (derece)',
-  shadowStudyTitle: 'Golge analizi',
-  shadowStudyNote: 'Gundonum ve ekinokslara atla, sonra günü oynat ki golgelerin nasil hareket ettigini gor.',
-  shadowWinter: 'Kıs gundonumu', shadowSpring: 'Bahar ekinoksu',
-  shadowSummer: 'Yaz gundonumu', shadowAutumn: 'Güz ekinoksu',
-  shadowPlayDay: 'Günü oynat (gündogumu-günbatimi)', shadowStop: 'Durdur',
-  shadowPlaySpeed: 'Gün-oynat hizi',
-  shadowCompute: 'Gunluk golge haritasi hesapla', shadowClear: 'Haritayi temizle',
-  timeDawn: 'Şafak 6', timeNoon: 'Öğle 12', timeSunset: 'Günbatımı 19', timeNight: 'Gece 22',
-  lblThemeMode: 'Tema', themeAuto: 'Otomatik (sistem)', themeLight: 'Aydınlık', themeDark: 'Karanlık',
-  lblTerrainTileMeters: 'Doku karo boyutu (m)',
-  lblBookmarks: 'Kamera yer imleri', bookmarkSave: 'Bu görünümü kaydet',
-  bookmarkEmpty: 'Henüz kaydedilmiş görünüm yok.',
-  bookmarkPrompt: 'Görünüm için bir isim verin:',
-  bookmarkGotoTitle: 'Bu görünüme uç', bookmarkDeleteTitle: 'Yer imini sil',
-  lblAutoTime: 'Gunes animasyonu', lblAutoTimeSpeed: 'Animasyon hizi',
-  lblWeather: 'Hava', lblSSAO: 'Golge kalitesi', lblBloom: 'Bloom/parlama',
-  lblIslandColor: 'Ada rengi', lblIslandTexture: 'Ada dokusu', lblIslandTransparency: 'Ada transparanligi',
-  lblParcelColor: 'Parsel sinir rengi', lblParcelOpacity: 'Parsel sinir opakligi',
-  lblRoadColor: 'Yol rengi', lblSidewalkColor: 'Kaldirim rengi', lblRoadStyle: 'Yol dokusu', lblPavementStyle: 'Zemin dokusu',
-  lblHardscapeStyle: 'Sert zemin dokusu', lblHardscapeHeight: 'Sert zemin yuksekligi',
-  lblBuildingMode: 'Bina modu', lblFacadeTextureScale: 'Cephe olcegi', lblTerrainAnalysis: 'Topoğrafya görünümü', lblAssetTheme: 'Asset theme',
-  lblTreeRenderMode: 'Agac render modu',
-  lblTreeRandomize: 'Agaclari rastgele dagit', lblTreeVariantCount: 'Agac cesit sayisi', lblTreeHeightRandom: 'Agac yukseklik ifadesi',
-  lblXyzTiles: 'QGIS basemap altligi', lblXyzUrl: 'XYZ URL sablonu',
-  lblFloorHeight: 'Kat yuksekligi', lblRoofShape: 'Cati tipi', lblRoofHeight: 'Cati yuksekligi',
-  lblRoofTexture: 'Cati dokusu', lblRoofColor: 'Cati rengi', lblFunctionStyles: 'Kullanim renkleri ve cepheleri',
-  lblRoadAnalysis: 'Yol analizi', lblRoadWidth: 'Yol genisligi',
-  lblTrafficSpeed: 'Trafik hizi', lblCarDensity: 'Arac yogunlugu', lblPedDensity: 'Yaya yogunlugu',
-  lblBikeLaneWidth: 'Bisiklet yolu genisligi', lblBikeLaneColor: 'Bisiklet yolu rengi',
-  lblBikeDensity: 'Bisiklet yogunlugu', lblBikeSpeed: 'Bisiklet hizi',
-  lblLights: 'Aydinlatmalar', lblLightStyle: 'Aydinlatma tipi', lblBenches: 'Banklar',
-  lblBenchStyle: 'Bank tipi', lblBins: 'Cop kutulari', lblBinStyle: 'Cop kutusu tipi',
-  lblStops: 'Duraklar', lblStopStyle: 'Durak tipi', lblWindPlumes: 'Ruzgar etki zonu',
-  lblWindDirection: 'Ruzgar yonu', lblPlumeDistance: 'Etki mesafesi',
-  lblSolarReview: 'Solar inceleme', lblUrbanComfort: 'Kentsel konfor taramasi',
-  analysisNote: 'Planlama taramasi / tasarim kontrolu. Bu katmanlar muhendislik simulasyonu degildir.',
-  dockTitleModelStudio: 'Model Laboratuvarı',
-  modelUploadTitle: 'Özel Model Yükle (.glb)',
-  lblModelCategory: 'Kategori',
-  catMosque: 'Cami',
-  catTree: 'Ağaç',
-  catLight: 'Sokak Lambası',
-  catBench: 'Bank',
-  catBin: 'Çöp Kutusu',
-  catBusStop: 'Otobüs Durağı',
-  catTumulus: 'Tümülüs',
-  lblTumulus: 'Tümülüsler',
-  modelTransformTitle: 'Model Dönüşümü (Yükseklik & Ölçek)',
-  lblTransformCategory: 'Kategori',
-  treePoolTitle: 'Ağaç Model Havuzu (rastgele)',
-  treePoolNote: '2-3 ağaç modeli ekleyin; ağaçlar bunlar arasından rastgele seçilir. Havuz boşsa varsayılan stilize ağaçlar kullanılır.',
-  btnInPool: '✓ Havuzda',
-  btnAddPool: '+ Havuza ekle',
-  lblElevation: 'Yükseklik',
-  uploadedModelsTitle: 'Model Kütüphanesi',
-  mosqueCustomTitle: 'Cami Konumlandırma & Özelleştirme',
-  tumulusCustomTitle: 'Tümülüs Konumlandırma & Özelleştirme',
-  noTumulusInProject: 'Bu projede tümülüs objesi bulunamadı.',
-  lblModel: 'Model',
-  lblColor: 'Renk',
-  lblScaleX: 'Ölçek X',
-  lblScaleY: 'Ölçek Y',
-  lblScaleZ: 'Ölçek Z',
-  lblRotation: 'Döndürme',
-  catGlobal: 'Genel Varsayılan',
-  catProcedural: 'Yorumsal (Procedural)',
-  noModelsUploaded: 'Henüz model yüklenmedi.',
-  btnUse: 'Kullan',
-  btnReset: 'Sıfırla',
-  confirmDeleteModel: 'Bu modeli silmek istediğinize emin misiniz?',
-  noMosquesInProject: 'Bu projede cami objesi bulunamadı.',
-  statusParsing: 'GLB model ayrıştırılıyor...',
-  statusSuccess: 'Başarıyla yüklendi!',
-  statusError: 'Hata: '
-});
+function t(key) { return i18n.EN[key] ?? key; }
 
 Object.assign(i18n.EN, {
   dockLayers: 'Layers', dockScene: 'Scene', dockStyle: 'Style', dockMobility: 'Mobility',
@@ -323,7 +190,6 @@ Object.assign(i18n.EN, {
   record: 'Record',
   stop: 'Stop',
   togglePanel: 'Toggle dashboard',
-  toggleLanguage: 'Switch to Turkish',
   dockTitleScene: 'Scene dock',
   dockTitleLayers: 'Layer dock',
   dockTitleStyle: 'Style dock',
@@ -356,76 +222,6 @@ Object.assign(i18n.EN, {
   basemapFail: 'QGIS basemap texture could not be loaded; using the default ground material.',
   funcStylesPending: 'Function styles appear after data is loaded.',
   minimap: 'Minimap'
-});
-
-Object.assign(i18n.TR, {
-  title: 'PlanX 3D City',
-  desc: 'DEM, plan, yol, ada, parsel, bina ve sokak yasami verileri icin uretim hazir 3B kent kokpiti.',
-  htmlTitle: 'PlanX 3D City',
-  loadingData: 'Proje verisi yukleniyor...',
-  processing: 'Kent katmanlari isleniyor...',
-  scenePreparing: 'Hazirlaniyor',
-  sceneLoading: 'Veri yukleniyor',
-  sceneGeojson: 'GeoJSON yukleniyor',
-  sceneDem: 'DEM okunuyor',
-  scenePlanTexture: 'Plan texture',
-  sceneBasemap: 'Basemap',
-  sceneTerrain: 'Terrain',
-  sceneLayers: 'Katmanlar',
-  sceneReady: 'Hazir',
-  metricBuildings: 'Bina',
-  metricBlocks: 'Ada',
-  metricParcels: 'Parsel',
-  metricFloors: 'Ort. kat',
-  metricPopulation: 'Nufus',
-  metricDwellings: 'Daire',
-  metricVehicles: 'Arac',
-  projectWaiting: 'Proje bilgisi bekleniyor',
-  manifestMissing: 'Manifest yok: bu eski bir export olabilir, viewer yine de yuklemeyi dener.',
-  crsUnknown: 'CRS bilgisi yok',
-  emptyExport: 'bos export',
-  notAvailable: 'yok',
-  statsLoading: 'Yukleniyor...',
-  cameraPanel: 'Kamera paneli',
-  screenshot: 'Fotograf',
-  orbit: 'Orbit',
-  walkSpeedShort: 'Yurume hizi',
-  record: 'Kayit',
-  stop: 'Dur',
-  togglePanel: 'Dashboard panelini ac/kapat',
-  toggleLanguage: 'Ingilizceye gec',
-  dockTitleScene: 'Sahne paneli',
-  dockTitleLayers: 'Katman paneli',
-  dockTitleStyle: 'Stil paneli',
-  dockTitleMobility: 'Hareketlilik paneli',
-  dockTitleBike: 'Bisiklet yolu paneli',
-  dockTitleFurniture: 'Kent mobilyalari paneli',
-  dockTitleAnalysis: 'Analiz paneli',
-  dockTitleNarrative: 'Narrative Studio',
-  dockTitleAdvanced: 'Gelistirilmis kontroller',
-  dockTitleWalk: 'Walk mode',
-  dockTitleGame: 'Sapan modu',
-  narrativeNote1: 'Kamera, katman, gunes ve analiz durumlarini keyframe olarak kaydedin; turu kamera panelinden kaydedin.',
-  narrativeNote2: 'Tour JSON yalniz rota ve durumlari saklar. Goruntu, DEM, GeoJSON veya tam viewer paketini icine gommez.',
-  tourDuration: 'Tur suresi',
-  loopTour: 'Turu donguye al',
-  tourCaptionPlaceholder: 'Baslik / sahne notu',
-  addKeyframe: 'Keyframe ekle',
-  updateKeyframe: 'Guncelle',
-  deleteKeyframe: 'Sil',
-  playTour: 'Oynat',
-  pauseTour: 'Duraklat',
-  exportJson: 'JSON export',
-  tourEmpty: 'Henuz keyframe yok.',
-  tourLoaded: 'Narrative tur portable paketten yuklendi.',
-  walkHud: 'WASD hareket · Shift hizli · C alcak · Esc cikis',
-  gameHint: 'Sol tik: tas at',
-  demLoading: 'DEM yukleniyor...',
-  demLoaded: 'DEM yuklendi',
-  planTextureFail: 'Plan texture yuklenemedi; varsayilan zeminle devam ediliyor.',
-  basemapFail: 'QGIS basemap texture yuklenemedi; varsayilan zeminle devam ediliyor.',
-  funcStylesPending: 'Fonksiyon stilleri veri yuklendikten sonra gorunur.',
-  minimap: 'Mini Harita'
 });
 
 
@@ -8532,7 +8328,7 @@ async function rebuildScene() {
       setSceneState('scenePlanTexture');
       terrainTexture = await loadTerrainTextureFromGeoTiff();
     } catch (err) {
-      console.warn('Plan texture yuklenemedi, pavement ile devam ediliyor.', err);
+      console.warn('Plan texture could not be loaded; continuing with pavement.', err);
       setStatus(t('planTextureFail'));
     }
   }
@@ -8542,7 +8338,7 @@ async function rebuildScene() {
       setSceneState('sceneBasemap');
       baseMapTexture = await loadBaseMapTexture();
     } catch (err) {
-      console.warn('QGIS basemap texture yuklenemedi, zemin dokusu ile devam ediliyor.', err);
+      console.warn('QGIS basemap texture could not be loaded; continuing with the ground texture.', err);
       setStatus(t('basemapFail'));
     }
   }
@@ -9064,10 +8860,10 @@ window.addEventListener('click', (e) => {
   const calcDwellings = parseNumberProp(p, ['planx_calc_dwellings', 'daire', 'daire_sayisi', 'dwellings'], null);
   const calcVehicles = parseNumberProp(p, ['planx_calc_vehicles', 'arac', 'araç', 'vehicle', 'cars'], null);
   const styleRows = [
-    ['Renk', p.planx_color || p.renk],
-    ['Cephe', p.planx_facade],
-    ['Cati', p.planx_roof_shape],
-    ['Cati doku', p.planx_roof_texture],
+    ['Color', p.planx_color || p.color],
+    ['Facade', p.planx_facade],
+    ['Roof', p.planx_roof_shape],
+    ['Roof texture', p.planx_roof_texture],
   ].filter(([, value]) => value);
   if (detailTip) {
     detailTip.innerHTML = `
@@ -9077,12 +8873,12 @@ window.addEventListener('click', (e) => {
       <div class="tooltip-row"><span>${t('biNiz')}</span><span>${p.nizam || '-'}</span></div>
       ${p.taks != null ? `<div class="tooltip-row"><span>TAKS</span><span>${p.taks}</span></div>` : ''}
       ${p.kaks != null ? `<div class="tooltip-row"><span>KAKS</span><span>${p.kaks}</span></div>` : ''}
-      <div class="tooltip-row"><span>Taban alanı</span><span>${areaStr}</span></div>
-      ${calcFootprintArea ? `<div class="tooltip-row"><span>Hesaplanan taban</span><span>${calcFootprintArea.toFixed(0)} m²</span></div>` : ''}
-      ${calcFloorArea ? `<div class="tooltip-row"><span>Toplam inşaat</span><span>${calcFloorArea.toFixed(0)} m²</span></div>` : ''}
-      ${calcPopulation !== null ? `<div class="tooltip-row"><span>Tahmini nüfus</span><span>${calcPopulation.toFixed(0)}</span></div>` : ''}
-      ${calcDwellings !== null ? `<div class="tooltip-row"><span>Tahmini daire</span><span>${calcDwellings.toFixed(0)}</span></div>` : ''}
-      ${calcVehicles !== null ? `<div class="tooltip-row"><span>Tahmini araç</span><span>${calcVehicles.toFixed(0)}</span></div>` : ''}
+      <div class="tooltip-row"><span>Footprint area</span><span>${areaStr}</span></div>
+      ${calcFootprintArea ? `<div class="tooltip-row"><span>Calculated footprint</span><span>${calcFootprintArea.toFixed(0)} m²</span></div>` : ''}
+      ${calcFloorArea ? `<div class="tooltip-row"><span>Gross floor area</span><span>${calcFloorArea.toFixed(0)} m²</span></div>` : ''}
+      ${calcPopulation !== null ? `<div class="tooltip-row"><span>Estimated population</span><span>${calcPopulation.toFixed(0)}</span></div>` : ''}
+      ${calcDwellings !== null ? `<div class="tooltip-row"><span>Estimated dwellings</span><span>${calcDwellings.toFixed(0)}</span></div>` : ''}
+      ${calcVehicles !== null ? `<div class="tooltip-row"><span>Estimated vehicles</span><span>${calcVehicles.toFixed(0)}</span></div>` : ''}
       ${styleRows.map(([label, value]) => `<div class="tooltip-row"><span>${label}</span><span>${value}</span></div>`).join('')}
     `;
     detailTip.style.display = 'block';
@@ -9707,7 +9503,7 @@ if (new URLSearchParams(location.search).get('perf') === '1') {
 }
 
 function updateHtmlLang() {
-  document.documentElement.lang = currentLang === 'TR' ? 'tr' : 'en';
+  document.documentElement.lang = 'en';
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     const value = t(key);
@@ -9723,11 +9519,6 @@ function updateHtmlLang() {
     const value = t(key);
     if (value !== key) el.setAttribute('placeholder', value);
   });
-  const langBtn = document.getElementById('lang-toggle');
-  if (langBtn) {
-    langBtn.innerText = currentLang === 'TR' ? 'EN' : 'TR';
-    langBtn.setAttribute('aria-label', t('toggleLanguage'));
-  }
   const scenePill = document.getElementById('scene-state');
   if (scenePill?.dataset.sceneI18n) scenePill.textContent = t(scenePill.dataset.sceneI18n);
   renderFunctionStyleDock();
@@ -9748,15 +9539,6 @@ if (panelToggleBtn) {
   panelToggleBtn.addEventListener('click', () => {
     const mainPanel = document.getElementById('main-panel');
     if (mainPanel) mainPanel.classList.toggle('collapsed');
-  });
-}
-
-const langToggleBtn = document.getElementById('lang-toggle');
-if (langToggleBtn) {
-  langToggleBtn.addEventListener('click', () => {
-    currentLang = currentLang === 'TR' ? 'EN' : 'TR';
-    updateHtmlLang();
-    addGui(); // Rebuild GUI with new language
   });
 }
 
@@ -9799,7 +9581,7 @@ if (btnToggleRec && recordingPanel) {
 }
 
 // Elements hidden during recording (everything except recording-container)
-const _recHideEls = ['panel-toggle','lang-toggle','scene-toggle','layers-toggle','style-toggle','mobility-toggle','furniture-toggle','analysis-toggle','narrative-toggle','advanced-toggle','walk-toggle','game-toggle','main-panel','layer-dock','scene-dock','style-dock','mobility-dock','furniture-dock','analysis-dock','narrative-dock'];
+const _recHideEls = ['panel-toggle','scene-toggle','layers-toggle','style-toggle','mobility-toggle','furniture-toggle','analysis-toggle','narrative-toggle','advanced-toggle','walk-toggle','game-toggle','main-panel','layer-dock','scene-dock','style-dock','mobility-dock','furniture-dock','analysis-dock','narrative-dock'];
 
 function _recHideUi() {
   _recHideEls.forEach(id => {

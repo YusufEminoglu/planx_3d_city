@@ -96,71 +96,64 @@ ul {
     transform: scale(1.05);
 }
 
-.lang-btn {
-    left: 50px;
-    font-size: 0.9rem;
-    font-weight: bold;
-    font-family: 'Montserrat', sans-serif;
-}
-
 .scene-btn {
-    left: 90px;
+    left: 70px;
     font-size: 1rem;
 }
 
 .layers-btn {
-    left: 140px;
+    left: 120px;
     font-size: 1rem;
     font-weight: 800;
 }
 
 .analysis-btn {
-    left: 290px;
+    left: 270px;
     font-size: 1rem;
     font-weight: 800;
 }
 
 .style-btn {
-    left: 190px;
+    left: 170px;
     font-size: 1rem;
     font-weight: 800;
 }
 
 .mobility-btn {
-    left: 240px;
+    left: 220px;
     font-size: 1rem;
     font-weight: 800;
 }
 
 .furniture-btn {
-    left: 340px;
+    left: 320px;
     font-size: 1rem;
     font-weight: 800;
 }
 
 .narrative-btn {
-    left: 390px;
+    left: 370px;
     font-size: 0.95rem;
     font-weight: 800;
 }
 
 .advanced-btn {
-    left: 440px;
+    left: 420px;
     font-size: 1rem;
 }
 
 .walk-btn {
-    left: 490px;
+    left: 470px;
     font-size: 1.1rem;
     padding-bottom: 2px;
 }
 
 .game-btn {
-    left: 540px;
+    left: 520px;
     font-size: 1.1rem;
 }
 .fences-btn {
-    left: 590px;
+    left: 570px;
     font-size: 1.1rem;
 }
 
@@ -672,11 +665,11 @@ ul {
     to { transform: rotate(360deg); }
 }
 
-/* Recording Panel Container — walk butonunun sağında */
+/* Recording panel container, in the toolbar slot after the mobility button */
 #recording-container {
     position: absolute;
     top: 0;
-    left: 290px;
+    left: 270px;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -1497,11 +1490,11 @@ body {
 }
 
 .model-studio-btn {
-    left: 640px;
+    left: 620px;
     font-size: 1.15rem;
 }
 .bike-btn {
-    left: 690px;
+    left: 670px;
     font-size: 1.1rem;
 }
 #model-studio-dock {
