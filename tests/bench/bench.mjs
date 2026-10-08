@@ -106,7 +106,8 @@ try {
     const ms = window.__planxPerf.timeRender(10);
     const info = window.__planxPerf.info();
     const pick = window.__planxPerf.timePick ? window.__planxPerf.timePick(8) : null;
-    return { ms, orbitMs: window.__planxPerf.timeOrbit ? window.__planxPerf.timeOrbit(8) : null, pick, ...info };
+    const timings = window.__planxPerf.timings ? window.__planxPerf.timings() : null;
+    return { timings, ms, orbitMs: window.__planxPerf.timeOrbit ? window.__planxPerf.timeOrbit(8) : null, pick, ...info };
   });
 
   const idle = await sample(3000);
@@ -126,6 +127,7 @@ try {
     calls: probe?.calls ?? null,
     triangles: probe?.triangles ?? null,
     meshes: probe?.meshes ?? null,
+    layerMs: probe?.timings ?? null,
     pageErrors: errors.length
   };
   console.log(JSON.stringify(result));

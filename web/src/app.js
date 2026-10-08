@@ -7722,17 +7722,29 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
           side: THREE.DoubleSide
         });
 
+        // Every floor of a building shares one slab outline per setback (at
+        // most two: podium and tower), so extrude each outline once.
+        const slabGeoms = new Map();
+        const slabGeomFor = (setback) => {
+          if (!slabGeoms.has(setback)) {
+            const outsetShape = shapeFromInsetPolygon(poly, setback);
+            let geom = null;
+            if (outsetShape) {
+              geom = new THREE.ExtrudeGeometry(outsetShape, { depth: slabThickness, bevelEnabled: false });
+              geom.rotateX(Math.PI / 2);
+              geom.computeBoundingBox();
+              const minSlabY = geom.boundingBox ? geom.boundingBox.min.y : 0;
+              if (minSlabY !== 0) geom.translate(0, -minSlabY, 0);
+            }
+            slabGeoms.set(setback, geom);
+          }
+          return slabGeoms.get(setback);
+        };
         for (let i = 1; i < levels; i++) {
           const slabY = baseY + i * featureFloorHeight;
           const slabSetback = ((i === 1 && podiumHeight > 0) ? 0 : (podiumHeight > 0 ? featureSetback : 0)) - settings.ledgeProjection;
-          const outsetShape = shapeFromInsetPolygon(poly, slabSetback);
-          if (outsetShape) {
-            const slabGeom = new THREE.ExtrudeGeometry(outsetShape, { depth: slabThickness, bevelEnabled: false });
-            slabGeom.rotateX(Math.PI / 2);
-            slabGeom.computeBoundingBox();
-            const minSlabY = slabGeom.boundingBox ? slabGeom.boundingBox.min.y : 0;
-            if (minSlabY !== 0) slabGeom.translate(0, -minSlabY, 0);
-
+          const slabGeom = slabGeomFor(slabSetback);
+          if (slabGeom) {
             const slabMesh = new THREE.Mesh(slabGeom, slabMat);
             slabMesh.name = SLAB_NAME;
             slabMesh.userData = buildingData;
@@ -7760,7 +7772,9 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
   if (isSceneBuildStale(buildToken)) return;
   _hoveredBldg = null;
   setHoveredBuildingId(-1);
+  const tBatch = performance.now();
   batchBuildingGroup(buildingGroup, { isNight: (_solarCache.elevationDeg ?? 30) < -3 });
+  layerBuildTimings['Buildings: batch'] = Math.round(performance.now() - tBatch);
 }
 function buildZoningEnvelopesLayer(yapilar) {
   clearGroup(zoningGroup);
@@ -8728,9 +8742,13 @@ function hideLoadingOverlay(delay = 450) {
   setTimeout(() => { loading.style.display = 'none'; }, delay);
 }
 
+// Per-layer build durations of the last scene build (ms), for __planxPerf.
+const layerBuildTimings = {};
 async function runLayerBuild(label, buildFn, clearFn = null) {
+  const t0 = performance.now();
   try {
     await buildFn();
+    layerBuildTimings[label] = Math.round(performance.now() - t0);
     return true;
   } catch (err) {
     console.warn(`${label} layer skipped`, err);
@@ -8742,6 +8760,7 @@ async function runLayerBuild(label, buildFn, clearFn = null) {
 
 async function rebuildScene() {
   const buildToken = ++sceneBuildToken;
+  const tScene = performance.now();
   await ensureUploadedModelsLoaded();
   const loadingText = document.getElementById('loading-text');
   loadingText.innerText = t('loadingData');
@@ -8824,6 +8843,7 @@ async function rebuildScene() {
   const fences = layerDataCache.fences ? asFeatureCollection(layerDataCache.fences, 'Fences') : null;
   const waterlines = layerDataCache.waterlines ? asFeatureCollection(layerDataCache.waterlines, 'Water lines') : null;
   Object.assign(layerDataCache, { adalar, yapilar, yollar, agaclar, parseller, hardscape, sidewalks, pedestrianPaths, bikeLanes, fences, waterlines, mosques, tumulus });
+  layerBuildTimings['Load: data'] = Math.round(performance.now() - tScene);
   updateDashboard(layerDataCache);
 
   // Calculate and update stats
@@ -8917,7 +8937,9 @@ async function rebuildScene() {
   }
   loadingText.innerText = t('sceneTerrain') + '...';
   setSceneState('sceneTerrain');
+  const tTerrain = performance.now();
   const terrainBuilt = await buildTerrain(adalar, buildToken);
+  layerBuildTimings.Terrain = Math.round(performance.now() - tTerrain);
   if (!terrainBuilt || isSceneBuildStale(buildToken)) return;
 
   loadingText.innerText = t('processing');
@@ -9043,17 +9065,21 @@ async function rebuildScene() {
   } else {
     clearGroup(waterlineGroup);
   }
+  const tUi = performance.now();
   rebuildMinimapBg();
+  layerBuildTimings['UI: minimap'] = Math.round(performance.now() - tUi);
   updateDockControls();
   renderBlockCategoryStyleDock();
   renderFunctionStyleDock();
   updateDashboard(layerDataCache);
+  layerBuildTimings['UI: total'] = Math.round(performance.now() - tUi);
   if (typeof renderMosqueCustomizationsList === 'function') {
     renderMosqueCustomizationsList();
   }
   if (typeof renderTumulusCustomizationsList === 'function') {
     renderTumulusCustomizationsList();
   }
+  layerBuildTimings['Scene: total'] = Math.round(performance.now() - tScene);
   setSceneState('sceneReady');
 
   hideLoadingOverlay();
@@ -9944,6 +9970,9 @@ function animate() {
 // Performance probe for benchmarks and the ?perf=1 overlay. Read-only apart
 // from timeRender(), which renders synchronously to measure frame cost.
 window.__planxPerf = {
+  timings() {
+    return { ...layerBuildTimings };
+  },
   info() {
     let meshes = 0;
     scene.traverse((o) => { if (o.isMesh) meshes++; });

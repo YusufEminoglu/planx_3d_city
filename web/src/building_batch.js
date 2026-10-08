@@ -168,7 +168,6 @@ export function batchBuildingGroup(group, { isNight = false } = {}) {
   }
 
   const normalMatrix = new THREE.Matrix3();
-  const v = new THREE.Vector3();
   const merged = [];
   for (const b of buckets.values()) {
     const n = b.vertexCount;
@@ -180,30 +179,57 @@ export function batchBuildingGroup(group, { isNight = false } = {}) {
     const glow = new Float32Array(n);
     let o = 0;
     for (const p of b.pieces) {
-      const P = p.geo.attributes.position;
-      const N = p.geo.attributes.normal;
-      const U = p.geo.attributes.uv;
+      // Direct typed-array access: this loop touches every vertex of the city.
+      const P = p.geo.attributes.position.array;
+      const N = p.geo.attributes.normal.array;
+      const U = p.geo.attributes.uv?.array;
+      const e = p.matrix.elements;
+      const rigid = e[0] === 1 && e[5] === 1 && e[10] === 1 && e[1] === 0 && e[2] === 0
+        && e[4] === 0 && e[6] === 0 && e[8] === 0 && e[9] === 0;
       normalMatrix.getNormalMatrix(p.matrix);
+      const nm = normalMatrix.elements;
       if (p.map) {
         if (p.map.matrixAutoUpdate) p.map.updateMatrix();
         uvMatrix.copy(p.map.matrix);
       } else {
         uvMatrix.identity();
       }
-      const { r, g, b: bl } = p.color;
-      for (let i = p.start; i < p.start + p.count; i++, o++) {
-        v.fromBufferAttribute(P, i).applyMatrix4(p.matrix);
-        pos[o * 3] = v.x; pos[o * 3 + 1] = v.y; pos[o * 3 + 2] = v.z;
-        v.fromBufferAttribute(N, i).applyMatrix3(normalMatrix).normalize();
-        nor[o * 3] = v.x; nor[o * 3 + 1] = v.y; nor[o * 3 + 2] = v.z;
-        if (U) {
-          v.set(U.getX(i), U.getY(i), 1).applyMatrix3(uvMatrix);
-          uv[o * 2] = v.x; uv[o * 2 + 1] = v.y;
+      const um = uvMatrix.elements;
+      const end = p.start + p.count;
+      if (rigid) {
+        const tx = e[12], ty = e[13], tz = e[14];
+        for (let i = p.start, j = o * 3; i < end; i++, j += 3) {
+          pos[j] = P[i * 3] + tx; pos[j + 1] = P[i * 3 + 1] + ty; pos[j + 2] = P[i * 3 + 2] + tz;
         }
-        col[o * 3] = r; col[o * 3 + 1] = g; col[o * 3 + 2] = bl;
-        ids[o] = p.rid;
-        glow[o] = p.glow;
+        nor.set(N.subarray(p.start * 3, end * 3), o * 3);
+      } else {
+        for (let i = p.start, j = o * 3; i < end; i++, j += 3) {
+          const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2];
+          pos[j] = e[0] * x + e[4] * y + e[8] * z + e[12];
+          pos[j + 1] = e[1] * x + e[5] * y + e[9] * z + e[13];
+          pos[j + 2] = e[2] * x + e[6] * y + e[10] * z + e[14];
+          const nx = N[i * 3], ny = N[i * 3 + 1], nz = N[i * 3 + 2];
+          const mx = nm[0] * nx + nm[3] * ny + nm[6] * nz;
+          const my = nm[1] * nx + nm[4] * ny + nm[7] * nz;
+          const mz = nm[2] * nx + nm[5] * ny + nm[8] * nz;
+          const len = Math.hypot(mx, my, mz) || 1;
+          nor[j] = mx / len; nor[j + 1] = my / len; nor[j + 2] = mz / len;
+        }
       }
+      if (U) {
+        for (let i = p.start, j = o * 2; i < end; i++, j += 2) {
+          const u0 = U[i * 2], v0 = U[i * 2 + 1];
+          uv[j] = um[0] * u0 + um[3] * v0 + um[6];
+          uv[j + 1] = um[1] * u0 + um[4] * v0 + um[7];
+        }
+      }
+      const { r, g, b: bl } = p.color;
+      for (let j = o * 3, k = o; k < o + p.count; k++, j += 3) {
+        col[j] = r; col[j + 1] = g; col[j + 2] = bl;
+      }
+      ids.fill(p.rid, o, o + p.count);
+      glow.fill(p.glow, o, o + p.count);
+      o += p.count;
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -227,8 +253,15 @@ export function batchBuildingGroup(group, { isNight = false } = {}) {
   // with the facade/roof caches and the canonical textures).
   const disposedGeos = new Set();
   const disposedMats = new Set();
+  // Detach in one pass: group.remove() per child is indexOf + splice, which
+  // is quadratic over tens of thousands of meshes.
+  const removed = new Set(meshes);
+  const kept = group.children.filter((c) => !removed.has(c));
+  group.children.length = 0;
+  group.children.push(...kept);
   for (const mesh of meshes) {
-    group.remove(mesh);
+    mesh.parent = null;
+    mesh.dispatchEvent({ type: 'removed' });
     if (!disposedGeos.has(mesh.geometry)) { mesh.geometry.dispose(); disposedGeos.add(mesh.geometry); }
     for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
       if (m && !disposedMats.has(m)) { m.dispose(); disposedMats.add(m); }
