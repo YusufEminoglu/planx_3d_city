@@ -50,6 +50,24 @@ somut bir dosyaya/fonksiyona bağlanır ve ölçülebilir bir hedefle biter.
 
 **Hedef:** 100.000+ bina, ilçe ölçeğinde DEM; tarayıcı donmadan.
 
+> **Durum (Ekim 2026, ilk tur):** Ölçüm önce geldi (`__planxPerf.timings()` /
+> `breakdown()`), ve asıl yükün beklenen yerde olmadığı görüldü:
+> - Bina katmanı 13,7 sn → ~4 sn: döşemeler her kat için yeniden extrude
+>   ediliyordu (artık bina başına bir kez), birleştirme döngüsü typed-array'e
+>   geçti, 85 bin mesh'in `remove()` ile karesel ayrılması doğrusal oldu.
+> - Üçgenlerin çoğu binalarda değil **yollardaydı** (1,84M / toplam 2,9M):
+>   şeritler metre başına bir quad üretiyordu → 3 m'de bir. Yollar 0,61M.
+> - Döşeme karoları 550 m'den uzakta gizleniyor (2. madde, kısmi).
+> - 4. madde yerine **görünüme oturan tek gölge kamerası**: gölgeler aslında
+>   hiç çizilmiyordu (güneş 1300 m, gölge kamerası `far` 500 m; harita da
+>   sahne yüklendikten sonra yenilenmiyordu). Artık yakın planda keskin.
+> - 5. madde: 9 fotoğrafik doku WebP (8,2 MB → 1,5 MB). Boyutları küçük
+>   (768–1024 px) olduğundan KTX2'nin VRAM kazancı önemsiz.
+>
+> 10.000 bina, orijinal → şimdi: sahne hazır 32,8 sn → 9,3 sn, kare 3,7 sn →
+> 1,5 sn, üçgen 2,88M → 1,17M, draw call 44.249 → 1.763.
+> Sırada: 1 (worker), 3 (terrain LOD), yolların da birleştirilmesi.
+
 1. **Web Worker pipeline (B5)** — GeoJSON parse + üçgenleme (earcut) + extrude + merge worker'da; ana thread'e `Transferable` `ArrayBuffer` gelir. GeoTIFF decode `geotiff.js` pool ile worker'da.
 2. **Mekânsal tiling + LOD** — veri 250 m'lik karolara bölünür; uzak karolar LOD1 (düz kutu, dokusuz), yakın karolar LOD2 (çatı tipi, cephe dokusu, döşeme). Kamera frustum'una göre karo yükle/boşalt.
 3. **Terrain LOD** — DEM için quadtree / chunked LOD (yakında yüksek çözünürlük, uzakta seyrek), etek (skirt) ile çatlaksız.

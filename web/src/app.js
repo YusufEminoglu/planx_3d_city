@@ -10014,8 +10014,9 @@ function animate() {
 // Performance probe for benchmarks and the ?perf=1 overlay. Read-only apart
 // from timeRender(), which renders synchronously to measure frame cost.
 window.__planxPerf = {
+  // (typeof guards keep this probe usable when pasted into older builds for A/B runs.)
   timings() {
-    return { ...layerBuildTimings };
+    return typeof layerBuildTimings === 'undefined' ? {} : { ...layerBuildTimings };
   },
   // Static triangle and mesh counts per top-level scene group.
   breakdown() {
@@ -10056,7 +10057,7 @@ window.__planxPerf = {
   timeRender(frames = 10) {
     const gl = renderer.getContext();
     const px = new Uint8Array(4);
-    updateBuildingLod(buildingGroup, camera);
+    if (typeof updateBuildingLod === 'function') updateBuildingLod(buildingGroup, camera);
     renderer.render(scene, camera);
     gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
     const t0 = performance.now();
