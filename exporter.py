@@ -60,18 +60,6 @@ ASSET_THEME_PRESETS = {
         "roofs": ["RoofA", "RoofB", "GermanTile", "USShingle", "StandingSeam"],
         "paving": ["Asphalt", "StoneA", "Cobble", "Concrete", "PlazaGranite"],
     },
-    "Modern Turkish": {
-        "pedestrians": ["Commuter", "Urban Casual", "Office", "Student", "Visitor"],
-        "cars": ["White", "Graphite", "Silver", "Navy", "Slate", "Burgundy"],
-        "trees": ["Plane", "Street Linden", "Compact Maple", "Columnar", "Olive", "Cypress", "Jacaranda", "Pine"],
-        "lights": ["Modern Arc", "Slim Post", "Dual Head", "Classic Post"],
-        "benches": ["Wood Plank", "Concrete Slab", "Slim Urban", "Stone Seat"],
-        "bins": ["Square Box", "Dual Recycle", "Cylinder", "Compact"],
-        "busstops": ["Glass Shelter", "Steel Canopy", "Minimal Canopy", "Compact Marker"],
-        "facades": ["Urban_TR_A", "Urban_TR_B", "Urban_TR_C", "Urban_TR_D"],
-        "roofs": ["TurkishTile", "CeramicLight", "StandingSeam", "RoofA"],
-        "paving": ["Concrete", "StoneA", "WarmStone", "Asphalt", "PlazaGranite"],
-    },
     "Mediterranean": {
         "pedestrians": ["Casual Linen", "Warm Neutral", "Student", "Visitor"],
         "cars": ["Ivory", "Terracotta", "Olive", "Slate", "Sand"],
@@ -81,7 +69,7 @@ ASSET_THEME_PRESETS = {
         "bins": ["Cylinder", "Square Box", "Dual Recycle", "Compact"],
         "busstops": ["Minimal Canopy", "Wood Cabin", "Glass Shelter", "Compact Marker"],
         "facades": ["MediterraneanStucco", "UrbanB", "UrbanD", "CoastalWhite"],
-        "roofs": ["TurkishTile", "CeramicLight", "GermanTile", "RoofA"],
+        "roofs": ["RoofC", "CeramicLight", "GermanTile", "RoofA"],
         "paving": ["StoneA", "WarmStone", "Cobble", "Concrete"],
     },
     "Campus": {
@@ -105,7 +93,7 @@ ASSET_THEME_PRESETS = {
         "bins": ["Dual Recycle", "Compact", "Cylinder", "Solar Compactor"],
         "busstops": ["Wood Cabin", "Minimal Canopy", "Glass Shelter"],
         "facades": ["EcoTimber", "UrbanD", "UrbanB", "UrbanA"],
-        "roofs": ["GreenRoof", "SolarRoof", "RoofA", "TurkishTile"],
+        "roofs": ["GreenRoof", "SolarRoof", "RoofA", "RoofC"],
         "paving": ["Permeable", "Cobble", "StoneA", "Concrete"],
     },
     "Dense Urban": {
@@ -129,7 +117,7 @@ ASSET_THEME_PRESETS = {
         "bins": ["Cylinder", "Square Box", "Dual Recycle", "Compact"],
         "busstops": ["Steel Canopy", "Glass Shelter", "Minimal Canopy"],
         "facades": ["CivicStone", "MediterraneanStucco", "UrbanB", "UrbanC"],
-        "roofs": ["GermanTile", "CeramicLight", "TurkishTile", "StandingSeam"],
+        "roofs": ["GermanTile", "CeramicLight", "RoofC", "StandingSeam"],
         "paving": ["WarmStone", "StoneA", "Cobble", "PlazaGranite"],
     },
     "Coastal Light": {
@@ -141,7 +129,7 @@ ASSET_THEME_PRESETS = {
         "bins": ["Cylinder", "Dual Recycle", "Compact", "Square Box"],
         "busstops": ["Minimal Canopy", "Glass Shelter", "Wood Cabin"],
         "facades": ["CoastalWhite", "MediterraneanStucco", "UrbanD", "CampusGlass"],
-        "roofs": ["CeramicLight", "RoofA", "SolarRoof", "TurkishTile"],
+        "roofs": ["CeramicLight", "RoofA", "SolarRoof", "RoofC"],
         "paving": ["WarmStone", "Permeable", "StoneA", "Concrete"],
     },
 }

@@ -105,7 +105,6 @@ FIELD_MAPPING_DEFS = (
 
 ASSET_THEME_OPTIONS = (
     "Modern Urban",
-    "Modern Turkish",
     "Mediterranean",
     "Campus",
     "Eco",
@@ -500,7 +499,7 @@ class PlanX3DCityDialog(QDialog):
             "<ol>"
             "<li><b>1 Data:</b> Select your QGIS layers or click <i>Import from OpenStreetMap</i> / <i>Try with sample data</i>.</li>"
             "<li><b>2 Check:</b> Click <i>Generate quality report</i> to inspect Readiness Score and WebGL performance tier.</li>"
-            "<li><b>3 Style:</b> Apply <i>TR-UIP Planning Standards</i>, calculate <i>Volumetric GFA</i>, or pick visual <i>Atmosphere Presets</i>.</li>"
+            "<li><b>3 Style:</b> Calculate <i>Volumetric GFA</i> or pick visual <i>Atmosphere Presets</i>.</li>"
             "<li><b>4 Publish:</b> Click <i>Export and open 3D Viewer</i> to launch the 3D cockpit or generate a portable ZIP package.</li>"
             "</ol>"
         )
@@ -854,19 +853,6 @@ class PlanX3DCityDialog(QDialog):
         terrain_root.addLayout(plateau_row)
         root.addWidget(terrain_group)
 
-        # TR-UIP Standards Assistant
-        uip_group = QGroupBox("Turkish Planning Standards (TR-UIP) Assistant")
-        uip_layout = QVBoxLayout(uip_group)
-        uip_desc = QLabel(
-            "Auto-style buildings by land-use function according to Turkish Spatial Planning Regulations "
-            "(Mekansal Planlar Yapim Yonetmeligi: Konut, Ticaret, Karma, Sanayi, Park, Egitim, Saglik, Ibadet, Resmi)."
-        )
-        uip_desc.setWordWrap(True)
-        uip_layout.addWidget(uip_desc)
-        self.apply_uip_btn = QPushButton("Apply TR-UIP Standard Styles")
-        uip_layout.addWidget(self.apply_uip_btn)
-        root.addWidget(uip_group)
-
         # Volumetric GFA & Population Calculator
         gfa_group = QGroupBox("Volumetric GFA & Population Calculator")
         gfa_layout = QFormLayout(gfa_group)
@@ -917,7 +903,7 @@ class PlanX3DCityDialog(QDialog):
         self.roof_shape_combo = QComboBox()
         self.roof_shape_combo.addItems(["", "Flat", "Pyramid", "Gable", "Cone", "Prism"])
         self.roof_texture_combo = QComboBox()
-        self.roof_texture_combo.addItems(["", "RoofA", "GermanTile", "TurkishTile", "USShingle"])
+        self.roof_texture_combo.addItems(["", "RoofA", "RoofC", "GermanTile", "USShingle"])
         self.color_btn = QPushButton("Pick color")
         self.roof_color_btn = QPushButton("Pick roof color")
         self.color_value = ""
@@ -955,7 +941,6 @@ class PlanX3DCityDialog(QDialog):
         self.apply_buildings_btn.clicked.connect(self._apply_building_style)
         self.color_btn.clicked.connect(lambda: self._pick_color("color"))
         self.roof_color_btn.clicked.connect(lambda: self._pick_color("roof"))
-        self.apply_uip_btn.clicked.connect(self._apply_uip_standards)
         self.calc_gfa_btn.clicked.connect(self._calculate_gfa_and_population)
         return page
 
@@ -1527,20 +1512,6 @@ class PlanX3DCityDialog(QDialog):
     def _prepare_block_fields(self) -> None:
         added = ensure_fields(self.selected_layers().get("blocks"), BLOCK_STYLE_FIELDS)
         self._style_message("Blocks", added)
-
-    def _apply_uip_standards(self) -> None:
-        layer = self.selected_layers().get("buildings") or self.selected_layers().get("blocks")
-        if layer is None:
-            QMessageBox.information(self, "TR-UIP Assistant", "Please select a Buildings or Blocks layer first.")
-            return
-        fn_field = self.field_mapping_combos.get("landuse_function_field")
-        fn_name = fn_field.currentData() if fn_field else "uipfonksiyon"
-        if not fn_name:
-            fn_name = "uipfonksiyon"
-        from .style_tools import apply_uip_standards_to_layer
-        res = apply_uip_standards_to_layer(layer, fn_name)
-        msg = f"TR-UIP Styles applied: {res.get('updated', 0)} of {res.get('total', 0)} features updated."
-        self._style_message("TR-UIP Assistant", [msg])
 
     def _calculate_gfa_and_population(self) -> None:
         layer = self.selected_layers().get("buildings")

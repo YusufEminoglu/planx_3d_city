@@ -848,7 +848,6 @@ const textureSets = {
     RoofC: 'RoofC',
     RoofD: 'RoofD',
     GermanTile: 'GermanTile',
-    TurkishTile: 'TurkishTile',
     USShingle: 'USShingle',
     StandingSeam: 'StandingSeam',
     GreenRoof: 'GreenRoof',
@@ -856,21 +855,6 @@ const textureSets = {
     CeramicLight: 'CeramicLight'
   }
 };
-
-const TURKISH_FACADE_TYPES = ['A', 'B', 'C', 'D', 'E', 'F'];
-const TURKISH_FACADE_BASE_KEYS = TURKISH_FACADE_TYPES.map((type) => `Urban_TR_${type}`);
-const TURKISH_FACADE_ASSETS = {
-  A: 'assets/facade_tr_a.webp',
-  B: 'assets/facade_tr_b.webp',
-  C: 'assets/facade_tr_c.webp',
-  D: 'assets/facade_tr_d.webp',
-  E: 'assets/facade_tr_e.webp',
-  F: 'assets/facade_tr_f.webp'
-};
-for (const type of TURKISH_FACADE_TYPES) {
-  const baseKey = `Urban_TR_${type}`;
-  textureSets.facade[baseKey] = TURKISH_FACADE_ASSETS[type];
-}
 
 const assetThemePresets = {
   'Modern Urban': {
@@ -885,18 +869,6 @@ const assetThemePresets = {
     roofs: ['RoofA', 'RoofB', 'GermanTile', 'USShingle', 'StandingSeam'],
     paving: ['Asphalt', 'StoneA', 'Cobble', 'Concrete', 'PlazaGranite']
   },
-  'Modern Turkish': {
-    pedestrians: ['Commuter', 'Urban Casual', 'Office', 'Student', 'Visitor'],
-    cars: ['White', 'Graphite', 'Silver', 'Navy', 'Slate', 'Burgundy'],
-    trees: ['Plane', 'Street Linden', 'Compact Maple', 'Columnar', 'Olive', 'Cypress', 'Jacaranda', 'Pine'],
-    lights: ['Modern Arc', 'Slim Post', 'Dual Head', 'Classic Post'],
-    benches: ['Wood Plank', 'Concrete Slab', 'Slim Urban', 'Stone Seat'],
-    bins: ['Square Box', 'Dual Recycle', 'Cylinder', 'Compact'],
-    busstops: ['Glass Shelter', 'Steel Canopy', 'Minimal Canopy', 'Compact Marker'],
-    facades: TURKISH_FACADE_BASE_KEYS,
-    roofs: ['TurkishTile', 'CeramicLight', 'StandingSeam', 'RoofA'],
-    paving: ['Concrete', 'StoneA', 'WarmStone', 'Asphalt', 'PlazaGranite']
-  },
   Mediterranean: {
     pedestrians: ['Casual Linen', 'Warm Neutral', 'Student', 'Visitor'],
     cars: ['Ivory', 'Terracotta', 'Olive', 'Slate', 'Sand'],
@@ -906,7 +878,7 @@ const assetThemePresets = {
     bins: ['Cylinder', 'Square Box', 'Dual Recycle', 'Compact'],
     busstops: ['Minimal Canopy', 'Wood Cabin', 'Glass Shelter', 'Compact Marker'],
     facades: ['MediterraneanStucco', 'UrbanB', 'UrbanD', 'CoastalWhite'],
-    roofs: ['TurkishTile', 'CeramicLight', 'GermanTile', 'RoofA'],
+    roofs: ['RoofC', 'CeramicLight', 'GermanTile', 'RoofA'],
     paving: ['StoneA', 'WarmStone', 'Cobble', 'Concrete']
   },
   Campus: {
@@ -930,7 +902,7 @@ const assetThemePresets = {
     bins: ['Dual Recycle', 'Compact', 'Cylinder', 'Solar Compactor'],
     busstops: ['Wood Cabin', 'Minimal Canopy', 'Glass Shelter'],
     facades: ['EcoTimber', 'UrbanD', 'UrbanB', 'UrbanA'],
-    roofs: ['GreenRoof', 'SolarRoof', 'RoofA', 'TurkishTile'],
+    roofs: ['GreenRoof', 'SolarRoof', 'RoofA', 'RoofC'],
     paving: ['Permeable', 'Cobble', 'StoneA', 'Concrete']
   },
   'Dense Urban': {
@@ -954,7 +926,7 @@ const assetThemePresets = {
     bins: ['Cylinder', 'Square Box', 'Dual Recycle', 'Compact'],
     busstops: ['Steel Canopy', 'Glass Shelter', 'Minimal Canopy'],
     facades: ['CivicStone', 'MediterraneanStucco', 'UrbanB', 'UrbanC'],
-    roofs: ['GermanTile', 'CeramicLight', 'TurkishTile', 'StandingSeam'],
+    roofs: ['GermanTile', 'CeramicLight', 'RoofC', 'StandingSeam'],
     paving: ['WarmStone', 'StoneA', 'Cobble', 'PlazaGranite']
   },
   'Coastal Light': {
@@ -966,7 +938,7 @@ const assetThemePresets = {
     bins: ['Cylinder', 'Dual Recycle', 'Compact', 'Square Box'],
     busstops: ['Minimal Canopy', 'Glass Shelter', 'Wood Cabin'],
     facades: ['CoastalWhite', 'MediterraneanStucco', 'UrbanD', 'CampusGlass'],
-    roofs: ['CeramicLight', 'RoofA', 'SolarRoof', 'TurkishTile'],
+    roofs: ['CeramicLight', 'RoofA', 'SolarRoof', 'RoofC'],
     paving: ['WarmStone', 'Permeable', 'StoneA', 'Concrete']
   }
 };
@@ -1051,34 +1023,17 @@ function uniqueAssetVariants(category, fallback = []) {
   return values;
 }
 
-function turkishFacadeMatch(key) {
-  return /^Urban_TR_([A-F])(?:_(\d{1,2}))?$/i.exec(String(key || ''));
-}
-
 function normalizeFacadeKey(key) {
   const raw = String(key || '').trim();
   if (!raw) return 'UrbanA';
   const exact = Object.keys(textureSets.facade).find((name) => name.toLowerCase() === raw.toLowerCase());
   if (exact) return exact;
-  const tr = turkishFacadeMatch(raw);
-  if (tr) {
-    const normalized = `Urban_TR_${tr[1].toUpperCase()}`;
-    if (Object.prototype.hasOwnProperty.call(textureSets.facade, normalized)) return normalized;
-  }
   // Legacy fallback: keep the scene drawable even when stored facade keys are stale.
   return 'UrbanA';
 }
 
 function resolveFacadeForLevels(key, _levels) {
-  const normalized = normalizeFacadeKey(key);
-  const match = turkishFacadeMatch(normalized);
-  if (!match) return normalized;
-  const type = match[1].toUpperCase();
-  return `Urban_TR_${type}`;
-}
-
-function isTurkishFacadeFamily(key) {
-  return !!turkishFacadeMatch(key);
+  return normalizeFacadeKey(key);
 }
 
 function facadeTextureFloorRows(_key, fallback = 10) {
@@ -5722,7 +5677,7 @@ function createRoofPresetTexture(name) {
   const ctx = c.getContext('2d');
   const bg = {
     RoofA: '#9a7b61', RoofB: '#6f7885', RoofC: '#8e5a49', RoofD: '#5e6368',
-    GermanTile: '#3d4a5c', TurkishTile: '#b94a1a', USShingle: '#2d3340',
+    GermanTile: '#3d4a5c', USShingle: '#2d3340',
     StandingSeam: '#506070', GreenRoof: '#587642', SolarRoof: '#26364c', CeramicLight: '#d1a16d'
   }[name] || '#9a7b61';
   ctx.fillStyle = bg;
@@ -5772,32 +5727,6 @@ function createRoofPresetTexture(name) {
         // highlight top edge
         ctx.strokeStyle = 'rgba(100,120,150,0.3)';
         ctx.beginPath(); ctx.moveTo(x + 1, y + 1); ctx.lineTo(x + tw - 1, y + 1); ctx.stroke();
-      }
-    }
-  } else if (name === 'TurkishTile') {
-    // Terracotta curved tiles (Ottoman/Marsilya kiremit)
-    ctx.fillStyle = '#b94a1a';
-    ctx.fillRect(0, 0, 256, 256);
-    const tw = 28, th = 22;
-    for (let row = 0; row * th < 280; row++) {
-      const offset = (row % 2) * (tw / 2);
-      for (let col = -1; col * tw < 270; col++) {
-        const x = col * tw + offset, y = row * th;
-        // Base tile body
-        const shade = 160 + (row * 11 + col * 7) % 40;
-        ctx.fillStyle = `rgb(${shade},${Math.floor(shade * 0.42)},${Math.floor(shade * 0.12)})`;
-        ctx.fillRect(x, y, tw, th);
-        // Curved ridge (arc overlay for the concave tile look)
-        const grad = ctx.createLinearGradient(x, y, x + tw, y);
-        grad.addColorStop(0,   'rgba(80,25,5,0.5)');
-        grad.addColorStop(0.5, 'rgba(220,100,40,0.15)');
-        grad.addColorStop(1,   'rgba(80,25,5,0.5)');
-        ctx.fillStyle = grad;
-        ctx.beginPath(); ctx.ellipse(x + tw / 2, y + th / 2, tw / 2, th / 2, 0, 0, Math.PI * 2); ctx.fill();
-        // Shadow line between rows
-        ctx.strokeStyle = 'rgba(60,18,4,0.55)';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(x, y + th - 1); ctx.lineTo(x + tw, y + th - 1); ctx.stroke();
       }
     }
   } else if (name === 'USShingle') {
@@ -6983,7 +6912,6 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
   for (const fn of functions) {
     const style = ensureFunctionBuildingStyle(fn, functions.indexOf(fn));
     const key = normalizeFacadeKey(style.facade);
-    if (isTurkishFacadeFamily(key)) continue;
     if (!facadeCache[key]) {
       const scale = Math.max(1, Math.min(8, Number(style.facadeScale) || FACADE_TEXTURE_SCALE_MULTIPLIER));
       facadeCache[key] = await textureFromSet('facade', key, 0.55 / scale, 0.55 / scale);
