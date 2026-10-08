@@ -141,7 +141,9 @@ export function batchBuildingGroup(group, { isNight = false } = {}) {
     if (!geo.boundingBox) geo.computeBoundingBox();
     tmpBox.copy(geo.boundingBox).applyMatrix4(mesh.matrix).getCenter(tmpCenter);
     const tile = `${Math.floor(tmpCenter.x / TILE_SIZE)}:${Math.floor(tmpCenter.z / TILE_SIZE)}`;
-    const glow = glowFor(mesh.position.x, mesh.position.z);
+    // Builder meshes sit at x = z = 0 (geometry is in scene coordinates), so
+    // hash the footprint centre rather than the mesh position.
+    const glow = glowFor(tmpCenter.x, tmpCenter.z);
 
     const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
     const total = geo.attributes.position.count;
@@ -217,8 +219,7 @@ export function batchBuildingGroup(group, { isNight = false } = {}) {
     mesh.castShadow = b.mesh.castShadow;
     mesh.receiveShadow = b.mesh.receiveShadow;
     mesh.renderOrder = b.mesh.renderOrder;
-    // Floor slabs are thin and numerous; leave them out of picking.
-    mesh.userData = { planxBatch: true, planxPickable: b.kind !== 'slab' };
+    mesh.userData = { planxBatch: true };
     merged.push(mesh);
   }
 
@@ -270,5 +271,5 @@ export function setBatchedBuildingNight(group, isNight) {
 }
 
 export function buildingPickTargets(group) {
-  return group.children.filter((c) => !c.userData?.planxBatch || c.userData.planxPickable);
+  return group.children;
 }

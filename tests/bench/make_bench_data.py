@@ -105,6 +105,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--buildings", type=int, default=2000)
     ap.add_argument("--dem", action="store_true", help="also write web/data/dem/mydem.tif")
+    ap.add_argument("--no-roads", action="store_true", help="no roads, hence no traffic: measures an idle scene")
     args = ap.parse_args()
     rng = LCG(42)
 
@@ -158,7 +159,7 @@ def main():
             "geometry": {"type": "Polygon", "coordinates": rect(ORIGIN_X - STREET, ORIGIN_Y - STREET, ORIGIN_X + extent, ORIGIN_Y + extent)}}]
     write("mybuildings.geojson", fc("mybuildings", buildings))
     write("myblocks.geojson", fc("myblocks", blocks))
-    write("myroads.geojson", fc("myroads", roads))
+    write("myroads.geojson", fc("myroads", [] if args.no_roads else roads))
     write("mytrees.geojson", fc("mytrees", trees))
     write("roi.geojson", fc("roi", roi))
     for name in ("myparcels", "myhardscape", "mysidewalks", "mypedestrian_paths", "mybikelanes", "mylights",

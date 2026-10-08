@@ -433,7 +433,9 @@ scene.fog = new THREE.FogExp2(0xcee4ef, 0.0003);
 const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 20000);
 camera.position.set(0, 420, 580);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+// No preserveDrawingBuffer: screenshots render and read back in the same task,
+// and recording uses captureStream, so neither needs the buffer kept.
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
@@ -598,6 +600,23 @@ const rc = new THREE.Raycaster();
 rc.firstHitOnly = true;
 let _lastCameraMove = 0;
 let _lastSSAORender = 0;
+
+// On-demand rendering. A frame is drawn while something moves (camera,
+// traffic, weather, tours, fly-to, time-lapse) or shortly after any input or
+// scene change; otherwise the last frame stays on screen and the GPU idles.
+// The SSAO/bloom composite is drawn once when the view settles, and a slow
+// heartbeat repaints anything that changed without going through here.
+const RENDER_HEARTBEAT_MS = 1000;
+let _renderKeepAliveUntil = 0;
+let _lastFrameRender = 0;
+let _composerSettled = false;
+function requestRender(ms = 600) {
+  _renderKeepAliveUntil = Math.max(_renderKeepAliveUntil, performance.now() + ms);
+  _composerSettled = false;
+}
+for (const type of ['pointerdown', 'pointermove', 'pointerup', 'wheel', 'keydown', 'keyup', 'input', 'change', 'click', 'resize']) {
+  window.addEventListener(type, () => requestRender(), { passive: true, capture: true });
+}
 let isRecording = false;
 
 // --- Hover / highlight ---
@@ -9047,6 +9066,7 @@ let globalGui = null;
 let functionGuiRefs = null;
 
 function setSceneState(textOrKey, kind = 'ok') {
+  requestRender();
   const pill = document.getElementById('scene-state');
   if (!pill) return;
   const translated = t(textOrKey);
@@ -9788,14 +9808,36 @@ function animate() {
   const _now = performance.now();
   const _camMoving = (_now - _lastCameraMove) < 300;
   const _hasAnim = isWalkMode || cars.length > 0 || bikes.length > 0 || pedestrians.length > 0
-    || settings.weather !== 'Clear' || stoneProjectiles.length > 0 || _flyT < 1.0;
-  if (isRecording) {
+    || settings.weather !== 'Clear' || stoneProjectiles.length > 0 || _flyT < 1.0
+    || settings.autoOrbit || settings.autoTime || tourState.playing;
+  const _useComposer = settings.enableSSAO;
+  if (isRecording || _hasAnim || _camMoving || _now < _renderKeepAliveUntil) {
     renderer.render(scene, camera);
-  } else if (settings.enableSSAO && !_camMoving && !_hasAnim && (_now - _lastSSAORender) > 120) {
+    _lastFrameRender = _now;
+    _composerSettled = false;
+  } else if (_useComposer && !_composerSettled) {
     composer.render();
     _lastSSAORender = _now;
+    _lastFrameRender = _now;
+    _composerSettled = true;
+  } else if (_now - _lastFrameRender > RENDER_HEARTBEAT_MS) {
+    if (_useComposer) composer.render(); else renderer.render(scene, camera);
+    _lastFrameRender = _now;
+    _fpsLastSample = _now;
+    return;
   } else {
-    renderer.render(scene, camera);
+    // Idle: nothing to draw, and the compass/minimap only follow the camera.
+    if (_fpsFrames || _fpsValue) {
+      _fpsFrames = 0;
+      _fpsValue = 0;
+      const chip = document.getElementById('fps-chip');
+      if (chip) {
+        chip.textContent = 'idle';
+        chip.classList.remove('warn', 'bad');
+      }
+    }
+    _fpsLastSample = _now;
+    return;
   }
 
   // Compass
