@@ -11,7 +11,7 @@ import { SSAOPass } from 'three/addons/postprocessing/SSAOPass.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import {
   SLAB_NAME, batchBuildingGroup, buildingHitData, buildingHitKey, buildingPickTargets,
-  setBatchedBuildingNight, setHoveredBuildingId
+  setBatchedBuildingNight, setHoveredBuildingId, updateBuildingLod
 } from './building_batch.js';
 
 let currentLang = 'EN';
@@ -7969,7 +7969,7 @@ function buildBikeLaneStrip(coords, width, mat, buildToken) {
   if (!settings.showBikeLanes) return;
 
   const curveLen = Math.max(1, curve.getLength());
-  const centers = curve.getPoints(Math.max(16, Math.ceil(curveLen / 3) * 3));
+  const centers = curve.getPoints(Math.max(16, Math.ceil(curveLen / 3))); // ~3 m per quad
   const positions = [];
   const uvs = [];
   const indices = [];
@@ -8165,7 +8165,9 @@ async function buildRoadsAndTraffic(yollar, buildToken = sceneBuildToken) {
     const curve = new THREE.CatmullRomCurve3(terrainPts, false, 'centripetal');
     roadCurves.push(curve);
     if (roadAllowsCars(f)) vehicleRoadCurves.push(curve);
-    const segments = Math.max(24, terrainPts.length * 3);
+    // One ribbon vertex per terrain sample: the samples already carry the DEM
+    // height, and subdividing them 3x only interpolated the spline (~1 quad/m).
+    const segments = Math.max(24, terrainPts.length);
     const centers = curve.getPoints(segments);
     const left = [];
     const right = [];
@@ -8506,7 +8508,7 @@ function buildProceduralSidewalkStrips(yollar, buildToken = sceneBuildToken) {
       wPts.push(tp);
     }
     const curve = new THREE.CatmullRomCurve3(wPts, false, 'centripetal');
-    const segments = Math.max(24, wPts.length * 3);
+    const segments = Math.max(24, wPts.length * 2); // ~3 m per quad (samples are 6 m apart)
     const centers = curve.getPoints(segments);
 
     for (const side of [-1, 1]) {
@@ -8590,7 +8592,7 @@ function buildPedestrianPathStrip(coords, width, mat, buildToken) {
   }
   const curve = new THREE.CatmullRomCurve3(terrainPts, false, 'centripetal');
   pedestrianPathCurves.push(curve);
-  const centers = curve.getPoints(Math.max(16, terrainPts.length * 3));
+  const centers = curve.getPoints(Math.max(16, terrainPts.length)); // one quad per 3 m sample
   const positions = [];
   const uvs = [];
   const indices = [];
@@ -9859,6 +9861,7 @@ function animate() {
     || settings.weather !== 'Clear' || stoneProjectiles.length > 0 || _flyT < 1.0
     || settings.autoOrbit || settings.autoTime || tourState.playing;
   const _useComposer = settings.enableSSAO;
+  updateBuildingLod(buildingGroup, camera);
   if (isRecording || _hasAnim || _camMoving || _now < _renderKeepAliveUntil) {
     if (_pendingPixelRatio !== null) setDynamicPixelRatio(_pendingPixelRatio);
     _pendingPixelRatio = null;
@@ -9973,6 +9976,28 @@ window.__planxPerf = {
   timings() {
     return { ...layerBuildTimings };
   },
+  // Static triangle and mesh counts per top-level scene group.
+  breakdown() {
+    const out = {};
+    const tris = (g) => {
+      if (!g) return 0;
+      const n = g.index ? g.index.count : (g.attributes.position?.count || 0);
+      return n / 3;
+    };
+    for (const root of [...world.children, ...scene.children.filter((c) => c !== world)]) {
+      let t = 0;
+      let m = 0;
+      root.traverse((o) => {
+        if (!o.isMesh || !o.visible) return;
+        m++;
+        t += tris(o.geometry) * (o.isInstancedMesh ? o.count : 1);
+      });
+      if (!m) continue;
+      const name = root.name || [buildingGroup, 'buildings', terrainMesh, 'terrain', treeGroup, 'trees', roadGroup, 'roads', islandGroup, 'blocks', sidewalkGroup, 'sidewalks', carGroup, 'cars', pedestrianGroup, 'pedestrians'].reduce((acc, v, i, arr) => (i % 2 === 0 && v === root ? arr[i + 1] : acc), null) || root.type + root.id;
+      out[name] = { meshes: m, ktris: Math.round(t / 1000) };
+    }
+    return out;
+  },
   info() {
     let meshes = 0;
     scene.traverse((o) => { if (o.isMesh) meshes++; });
@@ -9990,6 +10015,7 @@ window.__planxPerf = {
   timeRender(frames = 10) {
     const gl = renderer.getContext();
     const px = new Uint8Array(4);
+    updateBuildingLod(buildingGroup, camera);
     renderer.render(scene, camera);
     gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
     const t0 = performance.now();

@@ -245,7 +245,7 @@ export function batchBuildingGroup(group, { isNight = false } = {}) {
     mesh.castShadow = b.mesh.castShadow;
     mesh.receiveShadow = b.mesh.receiveShadow;
     mesh.renderOrder = b.mesh.renderOrder;
-    mesh.userData = { planxBatch: true };
+    mesh.userData = { planxBatch: true, planxLodSlab: b.kind === 'slab' };
     merged.push(mesh);
   }
 
@@ -305,4 +305,18 @@ export function setBatchedBuildingNight(group, isNight) {
 
 export function buildingPickTargets(group) {
   return group.children;
+}
+
+// Floor slabs are thin ledges: past SLAB_LOD_DISTANCE they are sub-pixel but
+// still make up a large share of the triangles, so their tiles are hidden.
+const SLAB_LOD_DISTANCE = 550;
+const lodSphere = new THREE.Sphere();
+export function updateBuildingLod(group, camera) {
+  for (const mesh of group.children) {
+    if (!mesh.userData?.planxLodSlab) continue;
+    const bs = mesh.geometry.boundingSphere;
+    if (!bs) continue;
+    lodSphere.copy(bs).applyMatrix4(mesh.matrixWorld);
+    mesh.visible = camera.position.distanceTo(lodSphere.center) - lodSphere.radius < SLAB_LOD_DISTANCE;
+  }
 }
