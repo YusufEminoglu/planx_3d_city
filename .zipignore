@@ -18,5 +18,6 @@ web/data
 docs/PLANX_3D_CITY_REFERENCE_MANUAL.html
 docs/index.html
 docs/build_screenshots.py
+docs/ROADMAP.md
 docs/assets
 .github
