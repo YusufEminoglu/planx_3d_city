@@ -10,9 +10,11 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { SSAOPass } from 'three/addons/postprocessing/SSAOPass.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import {
-  SLAB_NAME, batchBuildingGroup, buildingHitData, buildingHitKey, buildingPickTargets,
+  BUILDING_TILE_SIZE, addBuildingBuckets, buildingHitData, buildingHitKey, buildingPickTargets,
   setBatchedBuildingNight, setHoveredBuildingId, updateBuildingLod
 } from './building_batch.js';
+import { buildBuildingsParallel, lastBuildWorkers } from './building_workers.js';
+import { insetShapeFromRings, shapeFromRings } from './building_geometry.js';
 import { batchStaticGroup } from './mesh_merge.js';
 
 let currentLang = 'EN';
@@ -678,6 +680,7 @@ const RENDER_HEARTBEAT_MS = 1000;
 let _renderKeepAliveUntil = 0;
 let _lastFrameRender = 0;
 let _composerSettled = false;
+const _loadingEl = document.getElementById('loading');
 function requestRender(ms = 600) {
   _renderKeepAliveUntil = Math.max(_renderKeepAliveUntil, performance.now() + ms);
   _composerSettled = false;
@@ -4625,123 +4628,20 @@ function pointInLocalPolys(x, z, localPolys) {
   return false;
 }
 
-function shapeFromLocalPolygon(poly) {
-  const outer = poly?.[0];
-  if (!outer || outer.length < 3) return null;
-  const shape = new THREE.Shape();
-  outer.forEach((c, i) => {
-    const [x, z] = metersToLocal(c[0], c[1]);
-    if (i === 0) shape.moveTo(x, z); else shape.lineTo(x, z);
-  });
-  for (let h = 1; h < poly.length; h++) {
-    const ring = poly[h];
-    if (!ring || ring.length < 3) continue;
-    const path = new THREE.Path();
-    ring.forEach((c, i) => {
-      const [x, z] = metersToLocal(c[0], c[1]);
-      if (i === 0) path.moveTo(x, z); else path.lineTo(x, z);
-    });
-    shape.holes.push(path);
-  }
-  return shape;
+// Projected GeoJSON rings -> local [x, z] rings (invalid points kept as-is
+// for the geometry helpers to skip).
+function toLocalRings(poly) {
+  return poly.map((ring) => (ring || []).map((c) => (c && c.length >= 2 ? metersToLocal(c[0], c[1]) : c)));
 }
 
-function offsetRing(ring, distance, isHole) {
-  if (!ring || !Array.isArray(ring)) return null;
-  const pts = [];
-  for (const pt of ring) {
-    if (!pt || pt.length < 2) continue;
-    const [x, z] = metersToLocal(pt[0], pt[1]);
-    if (!Number.isFinite(x) || !Number.isFinite(z)) continue;
-    const v = new THREE.Vector2(x, z);
-    if (pts.length === 0 || pts[pts.length - 1].distanceTo(v) > 0.001) {
-      pts.push(v);
-    }
-  }
-  if (pts.length > 2 && pts[0].distanceTo(pts[pts.length - 1]) < 0.001) {
-    pts.pop();
-  }
-  const n = pts.length;
-  if (n < 3) return null;
-  let area = 0;
-  for (let i = 0; i < n; i++) {
-    const p1 = pts[i];
-    const p2 = pts[(i + 1) % n];
-    area += (p1.x * p2.y - p2.x * p1.y);
-  }
-  const ccw = area > 0;
-  const dirSign = (ccw !== isHole) ? 1 : -1;
-  const newPts = [];
-  for (let i = 0; i < n; i++) {
-    const prev = pts[(i - 1 + n) % n];
-    const curr = pts[i];
-    const next = pts[(i + 1) % n];
-    
-    const len1 = curr.distanceTo(prev);
-    const len2 = next.distanceTo(curr);
-    if (len1 < 0.001 || len2 < 0.001) {
-      newPts.push(new THREE.Vector2(curr.x, curr.y));
-      continue;
-    }
-    
-    const d1 = new THREE.Vector2().subVectors(curr, prev).divideScalar(len1);
-    const d2 = new THREE.Vector2().subVectors(next, curr).divideScalar(len2);
-    const n1 = new THREE.Vector2(-d1.y, d1.x);
-    const n2 = new THREE.Vector2(-d2.y, d2.x);
-    
-    const sum = new THREE.Vector2().addVectors(n1, n2);
-    let bisector;
-    if (sum.lengthSq() < 0.0001) {
-      bisector = new THREE.Vector2(n1.x, n1.y);
-    } else {
-      bisector = sum.normalize();
-    }
-    
-    const cosHalf = bisector.dot(n1);
-    const scale = cosHalf > 0.1 ? 1 / cosHalf : 1.0;
-    const offset = new THREE.Vector2().addScaledVector(bisector, distance * scale * dirSign).add(curr);
-    newPts.push(offset);
-  }
-  return newPts;
+function shapeFromLocalPolygon(poly) {
+  if (!poly?.[0] || poly[0].length < 3) return null;
+  return shapeFromRings(toLocalRings(poly));
 }
 
 function shapeFromInsetPolygon(poly, distance) {
   if (!poly || !poly.length) return null;
-  if (distance <= 0) return shapeFromLocalPolygon(poly);
-  const outerLocal = offsetRing(poly[0], distance, false);
-  if (!outerLocal || outerLocal.length < 3) return null;
-  const hasNan = outerLocal.some(pt => !Number.isFinite(pt.x) || !Number.isFinite(pt.y));
-  if (hasNan) return null;
-  
-  let area = 0;
-  const n = outerLocal.length;
-  for (let i = 0; i < n; i++) {
-    const p1 = outerLocal[i];
-    const p2 = outerLocal[(i + 1) % n];
-    area += (p1.x * p2.y - p2.x * p1.y);
-  }
-  if (Math.abs(area) < 5.0) {
-    return shapeFromLocalPolygon(poly);
-  }
-  const shape = new THREE.Shape();
-  outerLocal.forEach((pt, i) => {
-    if (i === 0) shape.moveTo(pt.x, pt.y); else shape.lineTo(pt.x, pt.y);
-  });
-  for (let h = 1; h < poly.length; h++) {
-    const ring = poly[h];
-    if (!ring || ring.length < 3) continue;
-    const holeLocal = offsetRing(ring, distance, true);
-    if (!holeLocal || holeLocal.length < 3) continue;
-    const holeHasNan = holeLocal.some(pt => !Number.isFinite(pt.x) || !Number.isFinite(pt.y));
-    if (holeHasNan) continue;
-    
-    const path = new THREE.Path();
-    holeLocal.forEach((pt, i) => {
-      if (i === 0) path.moveTo(pt.x, pt.y); else path.lineTo(pt.x, pt.y);
-    });
-    shape.holes.push(path);
-  }
-  return shape;
+  return insetShapeFromRings(toLocalRings(poly), distance);
 }
 
 function isSceneBuildStale(token) {
@@ -6205,281 +6105,6 @@ function createRoofPresetTexture(name) {
   return t;
 }
 
-function polygonCentroid(points) {
-  if (!points.length) return new THREE.Vector3(0, 0, 0);
-  let signedArea = 0;
-  let cx = 0;
-  let cz = 0;
-  for (let i = 0; i < points.length; i++) {
-    const p0 = points[i];
-    const p1 = points[(i + 1) % points.length];
-    const a = p0.x * p1.z - p1.x * p0.z;
-    signedArea += a;
-    cx += (p0.x + p1.x) * a;
-    cz += (p0.z + p1.z) * a;
-  }
-  if (Math.abs(signedArea) < 1e-7) {
-    const c = new THREE.Vector3();
-    points.forEach((p) => c.add(p));
-    c.multiplyScalar(1 / points.length);
-    return c;
-  }
-  const k = 1 / (3 * signedArea);
-  return new THREE.Vector3(cx * k, 0, cz * k);
-}
-
-function convexHull2D(points) {
-  const ps = points.map((p) => ({ x: p.x, z: p.z }))
-    .sort((a, b) => (a.x - b.x) || (a.z - b.z));
-  if (ps.length < 3) return ps;
-  const cross = (o, a, b) => (a.x - o.x) * (b.z - o.z) - (a.z - o.z) * (b.x - o.x);
-  const lower = [];
-  for (const p of ps) {
-    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop();
-    lower.push(p);
-  }
-  const upper = [];
-  for (let i = ps.length - 1; i >= 0; i--) {
-    const p = ps[i];
-    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop();
-    upper.push(p);
-  }
-  lower.pop();
-  upper.pop();
-  return lower.concat(upper);
-}
-
-// Minimum-area oriented bounding rectangle of a footprint ring in the X-Z plane.
-// Aligns the box to a footprint edge instead of the world axes, so pitched roofs
-// follow the building's real orientation/size rather than its axis-aligned bbox.
-function orientedRoofBox(ring) {
-  const hull = convexHull2D(ring);
-  let best = null;
-  if (hull.length >= 3) {
-    for (let i = 0; i < hull.length; i++) {
-      const a = hull[i];
-      const b = hull[(i + 1) % hull.length];
-      const len = Math.hypot(b.x - a.x, b.z - a.z) || 1;
-      const ux = (b.x - a.x) / len;
-      const uz = (b.z - a.z) / len;
-      let uMin = Infinity, uMax = -Infinity, vMin = Infinity, vMax = -Infinity;
-      for (const p of hull) {
-        const u = p.x * ux + p.z * uz;
-        const v = -p.x * uz + p.z * ux;
-        if (u < uMin) uMin = u;
-        if (u > uMax) uMax = u;
-        if (v < vMin) vMin = v;
-        if (v > vMax) vMax = v;
-      }
-      const area = (uMax - uMin) * (vMax - vMin);
-      if (!best || area < best.area) best = { area, ux, uz, uMin, uMax, vMin, vMax };
-    }
-  }
-  if (!best) {
-    const bb = new THREE.Box3().setFromPoints(ring);
-    best = { ux: 1, uz: 0, uMin: bb.min.x, uMax: bb.max.x, vMin: bb.min.z, vMax: bb.max.z };
-  }
-  return best;
-}
-
-// Offset a footprint ring outward by `dist` (miter join) so a roof can keep a
-// small eave that follows the polygon shape. Winding-agnostic: keeps whichever
-// direction grows the area. Sharp corners are clamped to avoid long spikes.
-function offsetRingOutward(ring, dist) {
-  const n = ring.length;
-  if (n < 3 || dist <= 1e-6) return ring.map((p) => p.clone());
-  const area = (pts) => {
-    let s = 0;
-    for (let i = 0; i < pts.length; i++) {
-      const a = pts[i];
-      const b = pts[(i + 1) % pts.length];
-      s += a.x * b.z - b.x * a.z;
-    }
-    return Math.abs(s);
-  };
-  const build = (sign) => {
-    const out = [];
-    for (let i = 0; i < n; i++) {
-      const prev = ring[(i - 1 + n) % n];
-      const cur = ring[i];
-      const next = ring[(i + 1) % n];
-      const l1 = Math.hypot(cur.x - prev.x, cur.z - prev.z) || 1;
-      const l2 = Math.hypot(next.x - cur.x, next.z - cur.z) || 1;
-      const n1x = -(cur.z - prev.z) / l1;
-      const n1z = (cur.x - prev.x) / l1;
-      const n2x = -(next.z - cur.z) / l2;
-      const n2z = (next.x - cur.x) / l2;
-      let mx = (n1x + n2x) * sign;
-      let mz = (n1z + n2z) * sign;
-      const ml = Math.hypot(mx, mz) || 1;
-      mx /= ml;
-      mz /= ml;
-      let cos = Math.abs(mx * n1x + mz * n1z);
-      if (cos < 0.3) cos = 0.3;
-      const s = dist / cos;
-      out.push(new THREE.Vector3(cur.x + mx * s, 0, cur.z + mz * s));
-    }
-    return out;
-  };
-  const plus = build(1);
-  return area(plus) >= area(ring) ? plus : build(-1);
-}
-
-function roofGeometryFromTriangles(points, faces) {
-  const verts = [];
-  const uvs = [];
-  const bb = new THREE.Box2();
-  points.forEach((p) => bb.expandByPoint(new THREE.Vector2(p.x, p.z)));
-  const sx = Math.max(1e-6, bb.max.x - bb.min.x);
-  const sz = Math.max(1e-6, bb.max.y - bb.min.y);
-  const pushVertex = (p) => {
-    verts.push(p.x, p.y, p.z);
-    uvs.push((p.x - bb.min.x) / sx, (p.z - bb.min.y) / sz);
-  };
-  faces.forEach((face) => {
-    if (face.length === 3) {
-      face.forEach(pushVertex);
-    } else if (face.length === 4) {
-      pushVertex(face[0]); pushVertex(face[1]); pushVertex(face[2]);
-      pushVertex(face[0]); pushVertex(face[2]); pushVertex(face[3]);
-    }
-  });
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  geo.computeVertexNormals();
-  return geo;
-}
-
-function roofMeshFor(shape, footprintPoints, hBase, height, roofShape = settings.roofShape, roofHeight = settings.roofHeight) {
-  const ring = footprintPoints.filter((_, i) => i === 0 || footprintPoints[i - 1].distanceTo(footprintPoints[i]) > 1e-6);
-  const safeShape = roofShapeValue(roofShape, 'Pyramid');
-  const rh = Math.max(0, Number(roofHeight) || 0);
-  let roofGeo;
-
-  if (safeShape === 'Flat' || rh <= 0.05 || ring.length < 3) {
-    roofGeo = new THREE.ShapeGeometry(shape);
-    roofGeo.rotateX(Math.PI / 2);
-  } else if (safeShape === 'Pyramid') {
-    const center = polygonCentroid(ring);
-    center.y = rh;
-    const faces = ring.map((a, i) => [a, ring[(i + 1) % ring.length], center]);
-    roofGeo = roofGeometryFromTriangles(ring.concat([center]), faces);
-  } else {
-    // Footprint-following roofs (like Pyramid): eaves are the real polygon edges,
-    // not a bounding box. Orientation/ridge axis comes from the OBB; the eave is
-    // the footprint offset outward by a small amount.
-    const box = orientedRoofBox(ring);
-    let ax = box.ux;
-    let az = box.uz;
-    let bx = -box.uz;
-    let bz = box.ux;
-    const c0 = polygonCentroid(ring);
-    let a0Half = 0;
-    let b0Half = 0;
-    for (const p of ring) {
-      const da = Math.abs((p.x - c0.x) * ax + (p.z - c0.z) * az);
-      const db = Math.abs((p.x - c0.x) * bx + (p.z - c0.z) * bz);
-      if (da > a0Half) a0Half = da;
-      if (db > b0Half) b0Half = db;
-    }
-    const eave = Math.min(0.3, 0.2 * Math.min(a0Half, b0Half));
-    const eaveRing = offsetRingOutward(ring, eave);
-
-    const C = polygonCentroid(eaveRing);
-    let aHalf = 0;
-    let bHalf = 0;
-    for (const p of eaveRing) {
-      const da = Math.abs((p.x - C.x) * ax + (p.z - C.z) * az);
-      const db = Math.abs((p.x - C.x) * bx + (p.z - C.z) * bz);
-      if (da > aHalf) aHalf = da;
-      if (db > bHalf) bHalf = db;
-    }
-    // Ridge runs along the longer axis.
-    if (bHalf > aHalf) {
-      let t;
-      t = ax; ax = bx; bx = t;
-      t = az; az = bz; bz = t;
-      t = aHalf; aHalf = bHalf; bHalf = t;
-    }
-
-    if (safeShape === 'Shed') {
-      // Single tilted plane over the real footprint (low at -b, high at +b),
-      // plus vertical skirt faces so the raised sides are not left open.
-      const span = Math.max(0.1, 2 * bHalf);
-      const shedH = (px, pz) => rh * Math.max(0, Math.min(1, ((px - C.x) * bx + (pz - C.z) * bz + bHalf) / span));
-      const ring2 = eaveRing.slice();
-      const contour = ring2.map((p) => new THREE.Vector2(p.x, p.z));
-      if (THREE.ShapeUtils.isClockWise(contour)) { ring2.reverse(); contour.reverse(); }
-      const top = ring2.map((p) => new THREE.Vector3(p.x, shedH(p.x, p.z), p.z));
-      const points = [];
-      const faces = [];
-      for (const tri of THREE.ShapeUtils.triangulateShape(contour, [])) {
-        points.push(top[tri[0]], top[tri[1]], top[tri[2]]);
-        faces.push([top[tri[0]], top[tri[1]], top[tri[2]]]);
-      }
-      for (let i = 0; i < ring2.length; i++) {
-        const p = ring2[i];
-        const q = ring2[(i + 1) % ring2.length];
-        const hp = shedH(p.x, p.z);
-        const hq = shedH(q.x, q.z);
-        if (Math.max(hp, hq) < 1e-4) continue;
-        const pBase = new THREE.Vector3(p.x, 0, p.z);
-        const qBase = new THREE.Vector3(q.x, 0, q.z);
-        const qTop = new THREE.Vector3(q.x, hq, q.z);
-        const pTop = new THREE.Vector3(p.x, hp, p.z);
-        points.push(pBase, qBase, qTop, pTop);
-        faces.push([pBase, qBase, qTop, pTop]);
-      }
-      roofGeo = roofGeometryFromTriangles(points, faces);
-    } else {
-      // Gable / Hip: loft the footprint outline up to a ridge line at height rh.
-      // Gable -> ridge spans the full length (vertical gable ends).
-      // Hip   -> ridge inset from each end by the half-width (sloped hip ends).
-      const ridgeHalf = safeShape === 'Gable' ? aHalf : Math.max(0, aHalf - bHalf);
-      const ridgeOf = (p) => {
-        let pa = (p.x - C.x) * ax + (p.z - C.z) * az;
-        pa = Math.max(-ridgeHalf, Math.min(ridgeHalf, pa));
-        return new THREE.Vector3(C.x + ax * pa, rh, C.z + az * pa);
-      };
-      const points = [];
-      const faces = [];
-      for (let i = 0; i < eaveRing.length; i++) {
-        const a = eaveRing[i];
-        const b = eaveRing[(i + 1) % eaveRing.length];
-        const a0 = new THREE.Vector3(a.x, 0, a.z);
-        const b0 = new THREE.Vector3(b.x, 0, b.z);
-        const ra = ridgeOf(a);
-        const rb = ridgeOf(b);
-        points.push(a0, b0, ra, rb);
-        if (ra.distanceTo(rb) < 1e-6) {
-          faces.push([a0, b0, ra]);
-        } else {
-          faces.push([a0, b0, rb, ra]);
-        }
-      }
-      roofGeo = roofGeometryFromTriangles(points, faces);
-    }
-  }
-
-  roofGeo.computeBoundingBox();
-  const minY = roofGeo.boundingBox ? roofGeo.boundingBox.min.y : 0;
-  if (minY !== 0) roofGeo.translate(0, -minY, 0);
-
-  const roof = new THREE.Mesh(roofGeo, new THREE.MeshStandardMaterial({
-    color: 0xc8b089,
-    roughness: 0.85,
-    side: THREE.DoubleSide,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2
-  }));
-  roof.position.y = hBase + height + 0.04;
-  roof.castShadow = true;
-  roof.renderOrder = 36;
-  return roof;
-}
-
 // Legacy tree renderer retained only for regression reference.
 function buildTreeLayerLegacy(agaclar) {
   clearGroup(treeGroup);
@@ -7571,6 +7196,80 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
   }
   // Per-building texture scale cache keyed by (facade_type + floor_count)
   const facadeScaleCache = {};
+  const scaledFacadeTexture = (facadeKey, texLevels, texHeight, scale) => {
+    const key = `${facadeKey}_${texLevels}_${texHeight.toFixed(2)}_${scale.toFixed(2)}`;
+    if (!facadeScaleCache[key]) {
+      const base = facadeCache[facadeKey];
+      if (base) {
+        const recipe = (typeof FACADE_RECIPES !== 'undefined') ? FACADE_RECIPES[facadeKey] : null;
+        const textureFloorRows = facadeTextureFloorRows(facadeKey, recipe?.floorRows || 10);
+        const repeatV = Math.max(0.025, Math.min(3.0, texLevels / textureFloorRows / scale));
+        const t = base.clone();
+        t.repeat.set(0.5 / scale, repeatV);
+        t.needsUpdate = true;
+        facadeScaleCache[key] = t;
+      }
+    }
+    return facadeScaleCache[key] || facadeCache[facadeKey];
+  };
+
+  // Geometry is built from plain specs (in workers when available) and merged
+  // per (look, tile). A look is one template material per distinct
+  // appearance; each building's colour and texture transform travel with its
+  // spec and end up in vertex colours and UVs.
+  const looks = [];
+  const lookIds = new Map();
+  const lookFor = (key, makeMaterial, flags) => {
+    if (!lookIds.has(key)) {
+      lookIds.set(key, looks.length);
+      looks.push({ material: makeMaterial(), ...flags });
+    }
+    return lookIds.get(key);
+  };
+  const linear = (hex) => {
+    const c = new THREE.Color(hex);
+    return [c.r, c.g, c.b];
+  };
+  const uvTransform = (tex) => {
+    if (!tex) return null;
+    if (tex.matrixAutoUpdate) tex.updateMatrix();
+    return Array.from(tex.matrix.elements);
+  };
+  const texId = (tex) => (tex ? tex.source.uuid : '-');
+  const solid = { castShadow: true, receiveShadow: true, renderOrder: 0 };
+  const wallLook = (tex, color) => ({
+    id: lookFor(`wall|${texId(tex)}`, () => new THREE.MeshStandardMaterial({ map: tex, roughness: 0.72, side: THREE.DoubleSide }), { kind: 'wall', ...solid }),
+    color: linear(color),
+    uv: uvTransform(tex)
+  });
+  const capLook = (tex, color) => ({
+    id: lookFor(`cap|${texId(tex)}`, () => new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, side: THREE.DoubleSide }), { kind: 'other', ...solid }),
+    color: linear(color),
+    uv: uvTransform(tex)
+  });
+  const roofLook = (tex, color) => ({
+    id: lookFor(`roof|${texId(tex)}`, () => new THREE.MeshStandardMaterial({
+      map: tex, roughness: 0.85, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
+    }), { kind: 'other', castShadow: true, receiveShadow: false, renderOrder: 36 }),
+    color: linear(color),
+    uv: uvTransform(tex)
+  });
+  const slabLook = {
+    id: lookFor('slab', () => new THREE.MeshStandardMaterial({ roughness: 0.85, side: THREE.DoubleSide }), { kind: 'slab', ...solid }),
+    color: linear(0xe2e8f0),
+    uv: null
+  };
+  const footprintLook = (color) => ({
+    id: lookFor('footprint', () => new THREE.MeshStandardMaterial({ roughness: 0.82, side: THREE.DoubleSide }), { kind: 'other', castShadow: false, receiveShadow: true, renderOrder: 34 }),
+    color: linear(color),
+    uv: null
+  });
+
+  const mode = settings.buildingMode === 'Footprint only'
+    ? 'footprint'
+    : (settings.buildingMode === 'Extruded + roof' ? 'extrude+roof' : 'extrude');
+  const specs = [];
+  const records = [];
 
   for (const f of yapilar.features) {
     const props = f.properties || {};
@@ -7587,24 +7286,19 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
     const featureFacade = resolveFacadeForLevels(selectedFacade, levels);
     const featureFacadeScale = Math.max(1, Math.min(8, parseNumberProp(props, ['planx_facade_scale', 'facade_scale', 'cephe_olcegi'], fnStyle.facadeScale)));
     const featureRoofTexture = presetValue(propFirst(props, ['planx_roof_texture', 'roof_texture', 'cati_doku', 'cati_texture']), textureSets.roof, fnStyle.roofTexture);
-    const featureRoofShape = roofShapeValue(propFirst(props, ['planx_roof_shape', 'roof_shape', 'cati_tipi']), fnStyle.roofShape);
+    const featureRoofShape = roofShapeValue(roofShapeValue(propFirst(props, ['planx_roof_shape', 'roof_shape', 'cati_tipi']), fnStyle.roofShape), 'Pyramid');
     const featureRoofHeight = parseNumberProp(props, ['planx_roof_height', 'roof_height', 'cati_yuksekligi', 'çatı_yüksekliği'], fnStyle.roofHeight);
     const featureRoofColor = normalizeHexColor(propFirst(props, ['planx_roof_color', 'roof_color', 'cati_renk']), fnStyle.roofColor);
 
     for (const poly of getPolygonRings(f.geometry)) {
       const outer = poly[0];
       if (!outer || outer.length < 3) continue;
-      const shape = shapeFromLocalPolygon(poly);
-      if (!shape) continue;
-      const footprint = [];
-      let sx = 0;
-      let sy = 0;
-      for (let i = 0; i < outer.length; i++) {
-        const [x, z] = metersToLocal(outer[i][0], outer[i][1]);
-        sx += outer[i][0];
-        sy += outer[i][1];
-        footprint.push(new THREE.Vector3(x, 0, z));
-      }
+      const rings = poly.map((ring) => (ring || []).map((c) => (c && c.length >= 2 ? metersToLocal(c[0], c[1]) : c)));
+      let cx = 0;
+      let cz = 0;
+      for (const [x, z] of rings[0]) { cx += x; cz += z; }
+      cx /= rings[0].length;
+      cz /= rings[0].length;
 
       const baseY = buildingBaseYForOuterRing(outer);
       const footprintArea = parseNumberProp(props, ['taban_alani', 'footprint_area', 'aream2'], polygonAreaGeo(outer));
@@ -7612,22 +7306,27 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
       const dwellings = parseNumberProp(props, namesWithMapping('building_dwelling_field', ['daire', 'daire_sayisi', 'dwelling', 'dwellings']), Math.max(1, Math.round(floorArea / 115)));
       const population = parseNumberProp(props, ['nufus', 'nüfus', 'population', 'pop'], Math.round(dwellings * 3.1));
       const vehicles = parseNumberProp(props, ['arac', 'araç', 'vehicle', 'cars'], Math.round(dwellings * 0.7));
+      const rid = records.length;
+      records.push({
+        ...(f.properties || {}),
+        planx_calc_footprint_area: footprintArea,
+        planx_calc_floor_area: floorArea,
+        planx_calc_dwellings: dwellings,
+        planx_calc_population: population,
+        planx_calc_vehicles: vehicles
+      });
+      const spec = {
+        rid,
+        tile: `${Math.floor(cx / BUILDING_TILE_SIZE)}:${Math.floor(cz / BUILDING_TILE_SIZE)}`,
+        centre: [cx, cz],
+        rings,
+        baseY,
+        mode
+      };
 
-      if (settings.buildingMode === 'Footprint only') {
-        const fpGeo = new THREE.ShapeGeometry(shape);
-        fpGeo.rotateX(Math.PI / 2);
-        const fpMat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(featureColor),
-          roughness: 0.82,
-          side: THREE.DoubleSide
-        });
-        const fp = new THREE.Mesh(fpGeo, fpMat);
-        fp.position.y = baseY + 0.035;
-        fp.receiveShadow = true;
-        fp.renderOrder = 34;
-        fp.userData = { ...(f.properties || {}), planx_calc_footprint_area: footprintArea, planx_calc_floor_area: floorArea, planx_calc_dwellings: dwellings, planx_calc_population: population, planx_calc_vehicles: vehicles };
-        if (isSceneBuildStale(buildToken)) return;
-        buildingGroup.add(fp);
+      if (mode === 'footprint') {
+        spec.looks = { footprint: footprintLook(featureColor) };
+        specs.push(spec);
         continue;
       }
 
@@ -7635,58 +7334,28 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
         facadeCache[featureFacade] = await textureFromSet('facade', featureFacade, 0.5 / featureFacadeScale, 0.5 / featureFacadeScale);
         if (isSceneBuildStale(buildToken)) return;
       }
-      const texKey = `${featureFacade}_${levels}_${height.toFixed(2)}_${featureFacadeScale.toFixed(2)}`;
-      if (!facadeScaleCache[texKey]) {
-        const base = facadeCache[featureFacade];
-        if (base) {
-          const recipe = (typeof FACADE_RECIPES !== 'undefined') ? FACADE_RECIPES[featureFacade] : null;
-          const textureFloorRows = facadeTextureFloorRows(featureFacade, recipe?.floorRows || 10);
-          const repeatV = Math.max(0.025, Math.min(3.0, levels / textureFloorRows / featureFacadeScale));
-          const t = base.clone();
-          t.repeat.set(0.5 / featureFacadeScale, repeatV);
-          t.needsUpdate = true;
-          facadeScaleCache[texKey] = t;
-        }
-      }
-      const facadeTex = facadeScaleCache[texKey] || facadeCache[featureFacade];
+      const facadeTex = scaledFacadeTexture(featureFacade, levels, height, featureFacadeScale);
       if (!roofTextureCache[featureRoofTexture]) {
         roofTextureCache[featureRoofTexture] = createRoofPresetTexture(featureRoofTexture);
       }
       const featureRoofTex = roofTextureCache[featureRoofTexture];
-      const isNight = (_solarCache.elevationDeg ?? 30) < -3;
-      const matRoof = new THREE.MeshStandardMaterial({ map: featureRoofTex, color: new THREE.Color(featureRoofColor), roughness: 0.85, side: THREE.DoubleSide });
-      const matHiddenCap = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
-      const matWall = new THREE.MeshStandardMaterial({
-        map: facadeTex,
-        color: new THREE.Color(featureColor),
-        roughness: 0.72,
-        side: THREE.DoubleSide,
-        emissive: isNight ? new THREE.Color(0x333322) : new THREE.Color(0x000000),
-        emissiveIntensity: isNight ? (Math.random() * 0.8 + 0.2) : 0
-      });
-
-      const useSeparateRoofMesh = settings.buildingMode === 'Extruded + roof';
-      
       const podiumHeight = (levels > 2 && featureSetback > 0) ? featureFloorHeight : 0;
-      let finalTowerShape = shape;
-      let finalTowerFootprint = footprint;
-      const buildingData = {
-        ...(f.properties || {}),
-        planx_calc_footprint_area: footprintArea,
-        planx_calc_floor_area: floorArea,
-        planx_calc_dwellings: dwellings,
-        planx_calc_population: population,
-        planx_calc_vehicles: vehicles
+
+      spec.height = height;
+      spec.levels = levels;
+      spec.floorHeight = featureFloorHeight;
+      spec.podiumHeight = podiumHeight;
+      spec.setback = featureSetback;
+      spec.ledges = settings.showLedges ? { projection: settings.ledgeProjection } : null;
+      spec.roof = mode === 'extrude+roof' ? { shape: featureRoofShape, height: featureRoofHeight } : null;
+      spec.looks = {
+        wall: wallLook(facadeTex, featureColor),
+        // Caps take the roof material unless a separate roof mesh covers them.
+        cap: mode === 'extrude+roof' ? null : capLook(featureRoofTex, featureRoofColor),
+        roof: mode === 'extrude+roof' ? roofLook(featureRoofTex, featureRoofColor) : null,
+        slab: slabLook
       };
-
       if (podiumHeight > 0) {
-        // 1. Podium (Ground floor)
-        const podiumExtrude = new THREE.ExtrudeGeometry(shape, { depth: podiumHeight, bevelEnabled: false });
-        podiumExtrude.rotateX(Math.PI / 2);
-        podiumExtrude.computeBoundingBox();
-        const minPodY = podiumExtrude.boundingBox ? podiumExtrude.boundingBox.min.y : 0;
-        if (minPodY !== 0) podiumExtrude.translate(0, -minPodY, 0);
-
         let podiumFacadeTex = facadeTex;
         if (settings.showStorefronts) {
           const storefrontFacade = resolveFacadeForLevels(selectedFacade, 1);
@@ -7695,153 +7364,25 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
           }
           podiumFacadeTex = facadeCache[storefrontFacade] || facadeTex;
         }
-
-        const matPodiumWall = new THREE.MeshStandardMaterial({
-          map: podiumFacadeTex,
-          color: new THREE.Color(featureColor),
-          roughness: 0.72,
-          side: THREE.DoubleSide,
-          emissive: isNight ? new THREE.Color(0x333322) : new THREE.Color(0x000000),
-          emissiveIntensity: isNight ? (Math.random() * 0.8 + 0.2) : 0
-        });
-
-        const podMesh = new THREE.Mesh(podiumExtrude, [matHiddenCap, matPodiumWall]);
-        podMesh.position.y = baseY;
-        podMesh.castShadow = true;
-        podMesh.receiveShadow = true;
-        podMesh.userData = buildingData;
-        if (isSceneBuildStale(buildToken)) return;
-        buildingGroup.add(podMesh);
-
-        // 2. Setback Tower
-        const inset = shapeFromInsetPolygon(poly, featureSetback);
-        if (inset) {
-          finalTowerShape = inset;
-          const outerInset = offsetRing(poly[0], featureSetback, false);
-          if (outerInset && outerInset.length >= 3) {
-            finalTowerFootprint = outerInset.map(pt => new THREE.Vector3(pt.x, 0, pt.y));
-          }
-        }
-
-        const towerHeight = height - podiumHeight;
-        const towerExtrude = new THREE.ExtrudeGeometry(finalTowerShape, { depth: towerHeight, bevelEnabled: false });
-        towerExtrude.rotateX(Math.PI / 2);
-        towerExtrude.computeBoundingBox();
-        const minTowY = towerExtrude.boundingBox ? towerExtrude.boundingBox.min.y : 0;
-        if (minTowY !== 0) towerExtrude.translate(0, -minTowY, 0);
-
-        const towerLevels = Math.max(1, levels - 1);
-        const towTexKey = `${featureFacade}_${towerLevels}_${towerHeight.toFixed(2)}_${featureFacadeScale.toFixed(2)}`;
-        if (!facadeScaleCache[towTexKey]) {
-          const base = facadeCache[featureFacade];
-          if (base) {
-            const recipe = (typeof FACADE_RECIPES !== 'undefined') ? FACADE_RECIPES[featureFacade] : null;
-            const textureFloorRows = facadeTextureFloorRows(featureFacade, recipe?.floorRows || 10);
-            const repeatV = Math.max(0.025, Math.min(3.0, towerLevels / textureFloorRows / featureFacadeScale));
-            const t = base.clone();
-            t.repeat.set(0.5 / featureFacadeScale, repeatV);
-            t.needsUpdate = true;
-            facadeScaleCache[towTexKey] = t;
-          }
-        }
-        const towerFacadeTex = facadeScaleCache[towTexKey] || facadeTex;
-
-        const matTowerWall = new THREE.MeshStandardMaterial({
-          map: towerFacadeTex,
-          color: new THREE.Color(featureColor),
-          roughness: 0.72,
-          side: THREE.DoubleSide,
-          emissive: isNight ? new THREE.Color(0x333322) : new THREE.Color(0x000000),
-          emissiveIntensity: isNight ? (Math.random() * 0.8 + 0.2) : 0
-        });
-
-        const b = new THREE.Mesh(towerExtrude, useSeparateRoofMesh ? [matHiddenCap, matTowerWall] : [matRoof, matTowerWall]);
-        b.position.y = baseY + podiumHeight;
-        b.castShadow = true;
-        b.receiveShadow = true;
-        b.userData = buildingData;
-        if (isSceneBuildStale(buildToken)) return;
-        buildingGroup.add(b);
-
-      } else {
-        // Normal Extrusion (Single volume)
-        const extrude = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false });
-        extrude.rotateX(Math.PI / 2);
-        extrude.computeBoundingBox();
-        const minY = extrude.boundingBox ? extrude.boundingBox.min.y : 0;
-        if (minY !== 0) extrude.translate(0, -minY, 0);
-
-        const b = new THREE.Mesh(extrude, useSeparateRoofMesh ? [matHiddenCap, matWall] : [matRoof, matWall]);
-        b.position.y = baseY;
-        b.castShadow = true;
-        b.receiveShadow = true;
-        b.userData = buildingData;
-        if (isSceneBuildStale(buildToken)) return;
-        buildingGroup.add(b);
+        spec.looks.podiumWall = wallLook(podiumFacadeTex, featureColor);
+        spec.looks.towerWall = wallLook(scaledFacadeTexture(featureFacade, Math.max(1, levels - 1), height - podiumHeight, featureFacadeScale) || facadeTex, featureColor);
       }
-
-      // 3. Facade Ledges/Slabs
-      if (settings.showLedges && levels > 1) {
-        const slabThickness = 0.12;
-        const slabMat = new THREE.MeshStandardMaterial({
-          color: 0xe2e8f0,
-          roughness: 0.85,
-          side: THREE.DoubleSide
-        });
-
-        // Every floor of a building shares one slab outline per setback (at
-        // most two: podium and tower), so extrude each outline once.
-        const slabGeoms = new Map();
-        const slabGeomFor = (setback) => {
-          if (!slabGeoms.has(setback)) {
-            const outsetShape = shapeFromInsetPolygon(poly, setback);
-            let geom = null;
-            if (outsetShape) {
-              geom = new THREE.ExtrudeGeometry(outsetShape, { depth: slabThickness, bevelEnabled: false });
-              geom.rotateX(Math.PI / 2);
-              geom.computeBoundingBox();
-              const minSlabY = geom.boundingBox ? geom.boundingBox.min.y : 0;
-              if (minSlabY !== 0) geom.translate(0, -minSlabY, 0);
-            }
-            slabGeoms.set(setback, geom);
-          }
-          return slabGeoms.get(setback);
-        };
-        for (let i = 1; i < levels; i++) {
-          const slabY = baseY + i * featureFloorHeight;
-          const slabSetback = ((i === 1 && podiumHeight > 0) ? 0 : (podiumHeight > 0 ? featureSetback : 0)) - settings.ledgeProjection;
-          const slabGeom = slabGeomFor(slabSetback);
-          if (slabGeom) {
-            const slabMesh = new THREE.Mesh(slabGeom, slabMat);
-            slabMesh.name = SLAB_NAME;
-            slabMesh.userData = buildingData;
-            slabMesh.position.y = slabY - slabThickness / 2;
-            slabMesh.castShadow = true;
-            slabMesh.receiveShadow = true;
-            if (isSceneBuildStale(buildToken)) return;
-            buildingGroup.add(slabMesh);
-          }
-        }
-      }
-
-      // 4. Roof Geometry
-      if (useSeparateRoofMesh) {
-        const roof = roofMeshFor(finalTowerShape, finalTowerFootprint, baseY + podiumHeight, height - podiumHeight, featureRoofShape, featureRoofHeight);
-        roof.material.map = featureRoofTex;
-        roof.material.color = new THREE.Color(featureRoofColor);
-        roof.material.needsUpdate = true;
-        roof.userData = buildingData;
-        if (isSceneBuildStale(buildToken)) return;
-        buildingGroup.add(roof);
-      }
+      specs.push(spec);
     }
   }
   if (isSceneBuildStale(buildToken)) return;
-  _hoveredBldg = null;
-  setHoveredBuildingId(-1);
-  const tBatch = performance.now();
-  batchBuildingGroup(buildingGroup, { isNight: (_solarCache.elevationDeg ?? 30) < -3 });
-  layerBuildTimings['Buildings: batch'] = Math.round(performance.now() - tBatch);
+
+  const tGeometry = performance.now();
+  const buckets = await buildBuildingsParallel(specs, looks.map((l) => ({ hasMap: !!l.material.map })));
+  layerBuildTimings['Buildings: geometry'] = Math.round(performance.now() - tGeometry);
+  layerBuildTimings['Buildings: workers'] = lastBuildWorkers;
+  if (!isSceneBuildStale(buildToken)) {
+    _hoveredBldg = null;
+    setHoveredBuildingId(-1);
+    addBuildingBuckets(buildingGroup, buckets, looks, records, { isNight: (_solarCache.elevationDeg ?? 30) < -3 });
+  }
+  // Templates were cloned into the shared materials; their textures stay.
+  for (const look of looks) look.material.dispose();
 }
 function buildZoningEnvelopesLayer(yapilar) {
   clearGroup(zoningGroup);
@@ -8808,6 +8349,7 @@ function hideLoadingOverlay(delay = 450) {
   const loading = document.getElementById('loading');
   if (!loading) return;
   loading.style.opacity = 0;
+  requestRender(delay + 300); // rendering resumes as the overlay fades
   setTimeout(() => { loading.style.display = 'none'; }, delay);
 }
 
@@ -9936,6 +9478,9 @@ function animate() {
   const _hasAnim = isWalkMode || cars.length > 0 || bikes.length > 0 || pedestrians.length > 0
     || settings.weather !== 'Clear' || stoneProjectiles.length > 0 || _flyT < 1.0
     || settings.autoOrbit || settings.autoTime || tourState.playing;
+  // The opaque loading overlay hides the scene while it is being built:
+  // drawing behind it only competes with the build (and its workers).
+  if (_loadingEl && _loadingEl.style.display !== 'none' && _loadingEl.style.opacity !== '0') return;
   const _useComposer = settings.enableSSAO;
   updateBuildingLod(buildingGroup, camera);
   // Walking moves the camera without orbit-control events; refit the shadow

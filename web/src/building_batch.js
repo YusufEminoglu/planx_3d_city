@@ -1,20 +1,17 @@
-// Building batching: collapses the per-building meshes produced by
-// buildBuildingLayer into a handful of merged meshes.
-//
-// The builder creates one mesh (and one material) per wall volume, roof and
-// floor slab, which costs tens of thousands of draw calls on a real city.
-// batchBuildingGroup() merges them per (material look, spatial tile) through
-// mesh_merge.js (colour -> vertex colour, texture repeat -> UVs), plus:
-//   - a planxId vertex attribute keeps the link back to each building's
+// Merged building meshes: one mesh per (material look, spatial tile) instead
+// of one mesh and material per wall, roof and floor slab (tens of thousands
+// of draw calls on a real city). The geometry is built and merged in
+// building_geometry.js (in workers when available); here the buffers become
+// meshes with shared materials, plus:
+//   - a planxId vertex attribute links each vertex to its building's
 //     properties for hover, click and fly-to;
 //   - a planxGlow attribute keeps the per-building night window brightness.
 // Tiles keep frustum culling and raycasting effective on large scenes.
 import * as THREE from 'three';
 import { MeshBVH, acceleratedRaycast } from 'three-mesh-bvh';
-import { CanonicalTextures, mergeMeshes, replaceChildren, sharedMaterialFrom } from './mesh_merge.js';
+import { CanonicalTextures, sharedMaterialFrom } from './mesh_merge.js';
 
-const TILE_SIZE = 400; // metres, local scene units
-export const SLAB_NAME = 'planx-floor-slab';
+export const BUILDING_TILE_SIZE = 400; // metres, local scene units
 const HOVER_COLOR = new THREE.Color(0x1a5c44).multiplyScalar(1.4);
 const NIGHT_EMISSIVE = 0x333322;
 
@@ -62,46 +59,40 @@ function lazyBvhRaycast(raycaster, intersects) {
   return acceleratedRaycast.call(this, raycaster, intersects);
 }
 
-// Deterministic night window brightness in [0.2, 1.0] per building.
-function glowFor(x, z) {
-  return 0.2 + (Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1) * 0.8;
-}
-
-export function batchBuildingGroup(group, { isNight = false } = {}) {
-  const meshes = group.children.filter((c) => c.isMesh && !c.isInstancedMesh);
-  if (!meshes.length) return;
-  records = [];
+/**
+ * Turn merged building buffers (buildBuildingBuckets / the worker pool) into
+ * meshes in `group`.
+ * looks[id] = { material (template), kind: 'wall' | 'slab' | 'other',
+ *               castShadow, receiveShadow, renderOrder }
+ * buildingRecords[planxId] = the building's properties, for picking.
+ */
+export function addBuildingBuckets(group, buckets, looks, buildingRecords, { isNight = false } = {}) {
+  records = buildingRecords;
   textures.dispose();
-  const recordIds = new Map();
-  const { merged, consumed } = mergeMeshes(meshes, {
-    tileSize: TILE_SIZE,
-    // Wall materials are the second slot of the [cap, wall] pair; floor slabs
-    // are tagged by the builder.
-    classify: (mesh, mi, multi) => (mesh.name === SLAB_NAME ? 'slab' : (multi && mi === 1 ? 'wall' : 'other')),
-    // Night glow lives in planxGlow, so emissive must not split buckets.
-    keyOptions: { ignoreEmissive: true },
-    attributes: ['planxId', { name: 'planxGlow', unit: true }],
-    perPiece: (mesh, centre) => {
-      const data = mesh.userData;
-      let rid = -1;
-      if (data && Object.keys(data).length) {
-        if (!recordIds.has(data)) {
-          recordIds.set(data, records.length);
-          records.push(data);
-        }
-        rid = recordIds.get(data);
-      }
-      // Builder meshes sit at x = z = 0 (geometry is in scene coordinates),
-      // so hash the footprint centre rather than the mesh position.
-      return { planxId: rid, planxGlow: glowFor(centre.x, centre.z) };
-    },
-    makeMaterial: (src, kind) => makeBuildingMaterial(src, kind === 'wall', isNight),
-    onMesh: (mesh, bucket) => {
-      mesh.raycast = lazyBvhRaycast;
-      mesh.userData = { planxBatch: true, planxLodSlab: bucket.kind === 'slab' };
-    }
-  });
-  replaceChildren(group, consumed, merged);
+  const materials = new Map();
+  for (const b of buckets) {
+    const look = looks[b.lookId];
+    if (!look) continue;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(b.position, 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(b.normal, 3, true));
+    if (b.uv) geo.setAttribute('uv', new THREE.BufferAttribute(b.uv, 2));
+    geo.setAttribute('color', new THREE.BufferAttribute(b.color, 3, true));
+    geo.setAttribute('planxId', new THREE.BufferAttribute(b.planxId, 1));
+    geo.setAttribute('planxGlow', new THREE.BufferAttribute(b.planxGlow, 1, true));
+    geo.computeBoundingBox();
+    geo.computeBoundingSphere();
+    // One shared material per look; tiles of the same look reuse it.
+    let mat = materials.get(b.lookId);
+    if (!mat) materials.set(b.lookId, (mat = makeBuildingMaterial(look.material, look.kind === 'wall', isNight)));
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.raycast = lazyBvhRaycast;
+    mesh.castShadow = look.castShadow;
+    mesh.receiveShadow = look.receiveShadow;
+    mesh.renderOrder = look.renderOrder;
+    mesh.userData = { planxBatch: true, planxLodSlab: look.kind === 'slab' };
+    group.add(mesh);
+  }
 }
 
 // Building properties for a raycast hit on either a batched or a plain mesh.
