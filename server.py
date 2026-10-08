@@ -158,6 +158,7 @@ class PlanX3DServer:
         mimetypes.add_type("application/json", ".geojson")
         mimetypes.add_type("image/tiff", ".tif")
         mimetypes.add_type("application/javascript", ".js")
+        mimetypes.add_type("image/webp", ".webp")  # not in older Python tables
 
     @property
     def is_running(self) -> bool:

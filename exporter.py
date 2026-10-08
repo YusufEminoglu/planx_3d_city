@@ -260,12 +260,14 @@ frozen scene.
 """
 import functools
 import http.server
+import mimetypes
 import socketserver
 import threading
 import webbrowser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+mimetypes.add_type("image/webp", ".webp")  # viewer textures; missing from older Python tables
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):

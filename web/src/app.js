@@ -966,7 +966,7 @@ const ROOF_SHAPE_OPTIONS = ['Flat', 'Pyramid', 'Hip', 'Gable', 'Shed'];
 const textureSets = {
   pavement: {
     Asphalt: null,
-    StoneA: 'assets/pavement.png',
+    StoneA: 'assets/pavement.webp',
     StoneB: 'StoneB',
     Concrete: 'Concrete',
     Cobble: 'Cobble',
@@ -978,7 +978,7 @@ const textureSets = {
   road: {
     Plain: null,
     Asphalt: 'Asphalt',
-    Cobblestone: 'assets/pavement.png',
+    Cobblestone: 'assets/pavement.webp',
     SharedStreet: 'SharedStreet'
   },
   island: {
@@ -992,7 +992,7 @@ const textureSets = {
     Water: 'Water'
   },
   hardscape: {
-    Cobble: 'assets/pavement.png',
+    Cobble: 'assets/pavement.webp',
     Concrete: 'Concrete',
     Tile: 'Tile',
     WarmStone: 'WarmStone',
@@ -1001,7 +1001,7 @@ const textureSets = {
     PlazaGranite: 'PlazaGranite'
   },
   facade: {
-    UrbanA: 'assets/facade.png',
+    UrbanA: 'assets/facade.webp',
     UrbanB: 'assets/facade2.png',
     UrbanC: 'assets/facade3.png',
     UrbanD: 'assets/facade4.png',
@@ -1014,7 +1014,7 @@ const textureSets = {
     MediterraneanStucco: 'MediterraneanStucco'
   },
   roof: {
-    RoofA: 'assets/roof.png',
+    RoofA: 'assets/roof.webp',
     RoofB: 'RoofB',
     RoofC: 'RoofC',
     RoofD: 'RoofD',
@@ -1031,12 +1031,12 @@ const textureSets = {
 const TURKISH_FACADE_TYPES = ['A', 'B', 'C', 'D', 'E', 'F'];
 const TURKISH_FACADE_BASE_KEYS = TURKISH_FACADE_TYPES.map((type) => `Urban_TR_${type}`);
 const TURKISH_FACADE_ASSETS = {
-  A: 'assets/facade_tr_a.png',
-  B: 'assets/facade_tr_b.png',
-  C: 'assets/facade_tr_c.png',
-  D: 'assets/facade_tr_d.png',
-  E: 'assets/facade_tr_e.png',
-  F: 'assets/facade_tr_f.png'
+  A: 'assets/facade_tr_a.webp',
+  B: 'assets/facade_tr_b.webp',
+  C: 'assets/facade_tr_c.webp',
+  D: 'assets/facade_tr_d.webp',
+  E: 'assets/facade_tr_e.webp',
+  F: 'assets/facade_tr_f.webp'
 };
 for (const type of TURKISH_FACADE_TYPES) {
   const baseKey = `Urban_TR_${type}`;
