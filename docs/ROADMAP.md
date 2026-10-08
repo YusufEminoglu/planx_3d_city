@@ -66,7 +66,30 @@ somut bir dosyaya/fonksiyona bağlanır ve ölçülebilir bir hedefle biter.
 >
 > 10.000 bina, orijinal → şimdi: sahne hazır 32,8 sn → 9,3 sn, kare 3,7 sn →
 > 1,5 sn, üçgen 2,88M → 1,17M, draw call 44.249 → 1.763.
-> Sırada: 1 (worker), 3 (terrain LOD), yolların da birleştirilmesi.
+
+> **Durum (ikinci tur):**
+> - **1. Worker:** Bina katmanı artık mesh/materyal üretip sonradan
+>   birleştirmiyor; ana thread her binayı düz bir "spec"e çeviriyor,
+>   `building_geometry.js` extrude/döşeme/çatıyı üretip (görünüm, karo)
+>   buffer'larını doğrudan yazıyor. Karolar 6'ya kadar modül worker'ına
+>   dağıtılıyor; worker yoksa aynı kod ana thread'de çalışıyor.
+> - **Yollar/bloklar/kaldırımlar da birleştirildi** (`mesh_merge.js`): 10k
+>   şehirde draw call 1.763 → 450.
+> - **Ölçekte bulunan karesel hata:** `terrainLocalYAt` her çağrıda tüm blok
+>   platolarını tarıyordu (50k şehirde 14 sn); ızgara indeksiyle çözüldü.
+> - Birleştirilmiş köşe verisi sıkıştırıldı (normal int16, renk/ışıma byte,
+>   UV yalnızca dokuluda): ~52 → ~26 bayt/köşe.
+> - Yükleme ekranı açıkken sahne çizilmiyor (build ve worker'larla
+>   yarışıyordu).
+> - **3. Terrain LOD — ertelendi:** arazi ağı en fazla 420² segment (~353k
+>   üçgen; varsayılan 120² ≈ 29k), tek mesh; yükseklik sorguları ağdan değil
+>   DEM'den. Bugünkü sınırlarla LOD ölçülebilir kazanç getirmiyor. DEM
+>   çözünürlüğü/alanı büyütülürse (Faz 3.1 ile) yeniden ele alınmalı.
+> - **6. Occlusion culling — ertelendi:** draw call 450'ye indikten sonra
+>   ölçülebilir bir darboğaz değil.
+>
+> 50.000 bina (4 vCPU, SwiftShader): sahne hazır 61,5 sn → 29,0 sn; bina
+> katmanı 30 sn → 7,4 sn.
 
 1. **Web Worker pipeline (B5)** — GeoJSON parse + üçgenleme (earcut) + extrude + merge worker'da; ana thread'e `Transferable` `ArrayBuffer` gelir. GeoTIFF decode `geotiff.js` pool ile worker'da.
 2. **Mekânsal tiling + LOD** — veri 250 m'lik karolara bölünür; uzak karolar LOD1 (düz kutu, dokusuz), yakın karolar LOD2 (çatı tipi, cephe dokusu, döşeme). Kamera frustum'una göre karo yükle/boşalt.

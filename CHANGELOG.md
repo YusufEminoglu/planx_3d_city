@@ -8,6 +8,7 @@
 - Viewer performance (roadmap phase 2, first round): building layer build ~3x faster, road/path ribbons use ~3 m quads instead of ~1 m (roads 1.84 M -> 0.61 M triangles on a 10k-building test city), floor-slab LOD beyond 550 m.
 - Sun shadows now actually render, follow the view (sharper close-ups) and refresh after the scene loads.
 - Photographic textures ship as WebP (8.2 MB -> 1.5 MB).
+- Viewer performance (roadmap phase 2, second round): building geometry is built and merged in a pool of module workers (main-thread fallback); static layers (blocks, roads, sidewalks, paths, fences...) are merged too (10k-building city: 450 draw calls); terrain height lookups no longer scan every block (quadratic on large cities); merged vertices take about half the memory; the scene is not drawn behind the loading screen. 50k-building city: scene ready 61.5 s -> 29.0 s.
 
 ## [1.0.3] - 2026-09-16
 
