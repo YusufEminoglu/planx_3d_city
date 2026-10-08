@@ -3,16 +3,17 @@
 
 Writes a grid city of N buildings, plus blocks, roads, trees and an ROI, into
 web/data so the viewer can be measured headless (see bench.mjs). No DEM is
-written: the viewer falls back to flat terrain, which keeps the benchmark
-focused on vector layer cost.
+written unless --dem is given: the viewer then falls back to flat terrain,
+which keeps the benchmark focused on vector layer cost.
 
-    python tests/bench/make_bench_data.py --buildings 10000
+    python tests/bench/make_bench_data.py --buildings 10000 [--dem]
 """
 from __future__ import annotations
 
 import argparse
 import json
 import math
+import struct
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -49,9 +50,61 @@ def write(name, obj):
     path.write_text(json.dumps(obj, separators=(",", ":")), encoding="utf-8")
 
 
+def write_geotiff(path, x0, y0, extent, res):
+    """Minimal uncompressed Float32 GeoTIFF (EPSG:32635), hills over the city."""
+    n = max(2, int(extent / res))
+    pixels = bytearray()
+    for r in range(n):
+        for c in range(n):
+            nx, ny = c / (n - 1) * 2 - 1, r / (n - 1) * 2 - 1
+            z = 50 + 25 * math.exp(-(nx * nx + ny * ny) * 1.5) + 3 * math.sin(nx * 5) * math.cos(ny * 5)
+            pixels += struct.pack("<f", z)
+    tags = []  # (tag, type, count, values) ; type 3=SHORT 4=LONG 12=DOUBLE
+
+    def tag(code, typ, values):
+        tags.append((code, typ, values))
+
+    head = 8
+    tag(256, 4, [n])
+    tag(257, 4, [n])
+    tag(258, 3, [32])
+    tag(259, 3, [1])
+    tag(262, 3, [1])
+    tag(273, 4, [0])          # patched below
+    tag(277, 3, [1])
+    tag(278, 4, [n])
+    tag(279, 4, [len(pixels)])
+    tag(339, 3, [3])
+    tag(33550, 12, [res, res, 0.0])
+    tag(33922, 12, [0.0, 0.0, 0.0, x0, y0 + extent, 0.0])
+    tag(34735, 3, [1, 1, 0, 3, 1024, 0, 1, 1, 1025, 0, 1, 1, 3072, 0, 1, 32635])
+    size = {3: 2, 4: 4, 12: 8}
+    ifd_size = 2 + len(tags) * 12 + 4
+    extra_at = head + ifd_size
+    extra = bytearray()
+    entries = []
+    for code, typ, values in tags:
+        fmt = {3: "H", 4: "I", 12: "d"}[typ]
+        raw = struct.pack("<" + fmt * len(values), *values)
+        if len(raw) <= 4:
+            entries.append(struct.pack("<HHI", code, typ, len(values)) + raw.ljust(4, b"\0"))
+        else:
+            entries.append(struct.pack("<HHII", code, typ, len(values), extra_at + len(extra)))
+            extra += raw
+            if len(extra) % 2:
+                extra += b"\0"
+        assert size[typ]
+    data_at = extra_at + len(extra)
+    entries[5] = struct.pack("<HHII", 273, 4, 1, data_at)
+    out = struct.pack("<2sHI", b"II", 42, head) + struct.pack("<H", len(tags)) + b"".join(entries) + struct.pack("<I", 0)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(out + extra + pixels)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--buildings", type=int, default=2000)
+    ap.add_argument("--dem", action="store_true", help="also write web/data/dem/mydem.tif")
     args = ap.parse_args()
     rng = LCG(42)
 
@@ -116,6 +169,11 @@ def main():
         "mode": "vector", "flexibleInputs": True, "project": {"title": f"Benchmark {args.buildings}"},
         "requiredInputs": [], "optionalInputs": [], "inputs": [],
     }
+    dem = DATA / "dem" / "mydem.tif"
+    if args.dem:
+        write_geotiff(dem, ORIGIN_X - 2 * STREET, ORIGIN_Y - 2 * STREET, extent + 4 * STREET, 4.0)
+    elif dem.exists():
+        dem.unlink()
     (DATA / "planx_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(f"wrote {len(buildings)} buildings, {len(blocks)} blocks, {len(roads)} roads, {len(trees)} trees")
 

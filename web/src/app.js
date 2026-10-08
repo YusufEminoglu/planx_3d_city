@@ -3967,11 +3967,24 @@ function demHeightMedianAtProjected(x, y, fallback = null, radius = 1) {
   return values[Math.floor(values.length / 2)];
 }
 
+// The DEM download is started alongside the vector layers (see rebuildScene),
+// and consumed once here; a later reload fetches it again.
+let _demPrefetch = null;
+function prefetchProjectDem() {
+  if (!_demPrefetch) {
+    _demPrefetch = fetchWithTimeout('../data/dem/mydem.tif', { cache: 'no-store' }, 30000)
+      .then((res) => (res.ok ? res.arrayBuffer() : null));
+    _demPrefetch.catch(() => {}); // surfaced by loadProjectDem
+  }
+  return _demPrefetch;
+}
+
 async function loadProjectDem() {
   setStatus(t('demLoading'));
-  const res = await fetchWithTimeout('../data/dem/mydem.tif', { cache: 'no-store' }, 30000);
-  if (!res.ok) throw new Error('DEM not found');
-  const file = await res.arrayBuffer();
+  const pending = prefetchProjectDem();
+  _demPrefetch = null;
+  const file = await pending;
+  if (!file) throw new Error('DEM not found');
   const tiff = await GeoTIFF.fromArrayBuffer(file);
   const image = await tiff.getImage();
   const [originXFull, originYFull] = image.getOrigin();
@@ -8707,22 +8720,25 @@ async function rebuildScene() {
 
   if (!layerDataCache) {
     loadingText.innerText = t('sceneGeojson') + '...';
+    if (!demReady && !demLoadingStarted) prefetchProjectDem();
     projectManifest = await loadManifest();
     applyManifestDefaults();
-    const adalar = await loadGeoJson('../data/yerlesim/myblocks.geojson', { required: manifestRequiresInput('blocks'), label: 'Blocks' });
-    const yapilar = await loadGeoJson('../data/yerlesim/mybuildings.geojson', { required: manifestRequiresInput('buildings'), label: 'Buildings' });
-    const yollar = await loadGeoJson('../data/yerlesim/myroads.geojson', { required: manifestRequiresInput('roads'), label: 'Roads' });
-    const agaclar = await loadGeoJson('../data/yerlesim/mytrees.geojson', { label: 'Trees' });
-    const lights = await loadGeoJson('../data/yerlesim/mylights.geojson', { label: 'Lights' });
-    const benches = await loadGeoJson('../data/yerlesim/mybenches.geojson', { label: 'Benches' });
-    const bins = await loadGeoJson('../data/yerlesim/mytrashbins.geojson', { label: 'Trash bins' });
-    const busstops = await loadGeoJson('../data/yerlesim/mybusstops.geojson', { label: 'Bus stops' });
-    const fences = await loadGeoJson('../data/yerlesim/myfences.geojson', { label: 'Fences' });
-    const waterlines = await loadGeoJson('../data/yerlesim/mywaterlines.geojson', { label: 'Water lines' });
-    const mosques = await loadGeoJson('../data/yerlesim/mymosques.geojson', { label: 'Mosques' });
-    const tumulus = await loadGeoJson('../data/yerlesim/mytumulus.geojson', { label: 'Tumulus' });
-
-    const roi = await loadGeoJson('../data/yerlesim/roi.geojson', { required: manifestRequiresInput('roi'), label: 'ROI' });
+    // Fetch every base layer at once; they are independent files.
+    const [adalar, yapilar, yollar, agaclar, lights, benches, bins, busstops, fences, waterlines, mosques, tumulus, roi] = await Promise.all([
+      loadGeoJson('../data/yerlesim/myblocks.geojson', { required: manifestRequiresInput('blocks'), label: 'Blocks' }),
+      loadGeoJson('../data/yerlesim/mybuildings.geojson', { required: manifestRequiresInput('buildings'), label: 'Buildings' }),
+      loadGeoJson('../data/yerlesim/myroads.geojson', { required: manifestRequiresInput('roads'), label: 'Roads' }),
+      loadGeoJson('../data/yerlesim/mytrees.geojson', { label: 'Trees' }),
+      loadGeoJson('../data/yerlesim/mylights.geojson', { label: 'Lights' }),
+      loadGeoJson('../data/yerlesim/mybenches.geojson', { label: 'Benches' }),
+      loadGeoJson('../data/yerlesim/mytrashbins.geojson', { label: 'Trash bins' }),
+      loadGeoJson('../data/yerlesim/mybusstops.geojson', { label: 'Bus stops' }),
+      loadGeoJson('../data/yerlesim/myfences.geojson', { label: 'Fences' }),
+      loadGeoJson('../data/yerlesim/mywaterlines.geojson', { label: 'Water lines' }),
+      loadGeoJson('../data/yerlesim/mymosques.geojson', { label: 'Mosques' }),
+      loadGeoJson('../data/yerlesim/mytumulus.geojson', { label: 'Tumulus' }),
+      loadGeoJson('../data/yerlesim/roi.geojson', { required: manifestRequiresInput('roi'), label: 'ROI' })
+    ]);
     layerDataCache = {
        adalar: asFeatureCollection(adalar, 'Blocks'),
        yapilar: asFeatureCollection(yapilar, 'Buildings'),
@@ -8747,38 +8763,23 @@ async function rebuildScene() {
     };
   }
   if (isSceneBuildStale(buildToken)) return;
-  if (settings.showParcels && !layerDataCache.parseller) {
-    const parseller = await loadGeoJson('../data/yerlesim/myparcels.geojson', { required: manifestRequiresInput('parcels'), label: 'Parcels' });
-    layerDataCache.parseller = asFeatureCollection(parseller, 'Parcels');
-  }
-  if (settings.showHardscape && !layerDataCache.hardscape) {
-    const hardscape = await loadGeoJson('../data/yerlesim/myhardscape.geojson', { label: 'Hardscape' });
-    layerDataCache.hardscape = asFeatureCollection(hardscape, 'Hardscape');
-  }
-  if (settings.showWindPlumes && !layerDataCache.hardscape) {
-    const hardscape = await loadGeoJson('../data/yerlesim/myhardscape.geojson', { label: 'Hardscape' });
-    layerDataCache.hardscape = asFeatureCollection(hardscape, 'Hardscape');
-  }
-  if (settings.showSidewalks && !layerDataCache.sidewalks) {
-    const sidewalks = await loadGeoJson('../data/yerlesim/mysidewalks.geojson', { label: 'Sidewalks' });
-    layerDataCache.sidewalks = asFeatureCollection(sidewalks, 'Sidewalks');
-  }
-  if (settings.showPedestrianPaths && !layerDataCache.pedestrianPaths) {
-    const pedestrianPaths = await loadGeoJson('../data/yerlesim/mypedestrian_paths.geojson', { label: 'Pedestrian paths' });
-    layerDataCache.pedestrianPaths = asFeatureCollection(pedestrianPaths, 'Pedestrian paths');
-  }
-  if ((settings.showBikeLanes || settings.showBikes) && !layerDataCache.bikeLanes) {
-    const bikeLanes = await loadGeoJson('../data/yerlesim/mybikelanes.geojson', { label: 'Bike lanes' });
-    layerDataCache.bikeLanes = asFeatureCollection(bikeLanes, 'Bike lanes');
-  }
-  if (settings.showFences && !layerDataCache.fences) {
-    const fences = await loadGeoJson('../data/yerlesim/myfences.geojson', { label: 'Fences' });
-    layerDataCache.fences = asFeatureCollection(fences, 'Fences');
-  }
-  if (settings.showWaterlines && !layerDataCache.waterlines) {
-    const waterlines = await loadGeoJson('../data/yerlesim/mywaterlines.geojson', { label: 'Water lines' });
-    layerDataCache.waterlines = asFeatureCollection(waterlines, 'Water lines');
-  }
+  // Layers that are only needed when their toggle is on, fetched in parallel.
+  const lazyLayers = [];
+  const lazyLayer = (needed, cacheKey, file, label, options = {}) => {
+    if (!needed || layerDataCache[cacheKey]) return;
+    lazyLayers.push(loadGeoJson(`../data/yerlesim/${file}`, { label, ...options }).then((data) => {
+      layerDataCache[cacheKey] = asFeatureCollection(data, label);
+    }));
+  };
+  lazyLayer(settings.showParcels, 'parseller', 'myparcels.geojson', 'Parcels', { required: manifestRequiresInput('parcels') });
+  lazyLayer(settings.showHardscape || settings.showWindPlumes, 'hardscape', 'myhardscape.geojson', 'Hardscape');
+  lazyLayer(settings.showSidewalks, 'sidewalks', 'mysidewalks.geojson', 'Sidewalks');
+  lazyLayer(settings.showPedestrianPaths, 'pedestrianPaths', 'mypedestrian_paths.geojson', 'Pedestrian paths');
+  lazyLayer(settings.showBikeLanes || settings.showBikes, 'bikeLanes', 'mybikelanes.geojson', 'Bike lanes');
+  lazyLayer(settings.showFences, 'fences', 'myfences.geojson', 'Fences');
+  lazyLayer(settings.showWaterlines, 'waterlines', 'mywaterlines.geojson', 'Water lines');
+  await Promise.all(lazyLayers);
+  if (isSceneBuildStale(buildToken)) return;
   
   const adalar = asFeatureCollection(layerDataCache.adalar, 'Blocks');
   const yapilar = asFeatureCollection(layerDataCache.yapilar, 'Buildings');
