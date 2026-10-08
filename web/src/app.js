@@ -13,6 +13,7 @@ import {
   SLAB_NAME, batchBuildingGroup, buildingHitData, buildingHitKey, buildingPickTargets,
   setBatchedBuildingNight, setHoveredBuildingId, updateBuildingLod
 } from './building_batch.js';
+import { batchStaticGroup } from './mesh_merge.js';
 
 let currentLang = 'EN';
 const urlParams = new URLSearchParams(window.location.search);
@@ -9100,6 +9101,13 @@ async function rebuildScene() {
   } else {
     clearGroup(waterlineGroup);
   }
+  // Static layers are never edited per mesh after this point: merge them.
+  const tStatic = performance.now();
+  for (const g of [islandGroup, parcelGroup, hardscapeGroup, roadGroup, bikeLaneGroup, sidewalkGroup,
+    pedestrianPathGroup, crosswalkGroup, fenceGroup, waterlineGroup]) {
+    batchStaticGroup(g);
+  }
+  layerBuildTimings['Static: batch'] = Math.round(performance.now() - tStatic);
   const tUi = performance.now();
   rebuildMinimapBg();
   layerBuildTimings['UI: minimap'] = Math.round(performance.now() - tUi);
