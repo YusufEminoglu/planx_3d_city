@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+- Viewer performance (roadmap phase 1): buildings are merged into shared-material tiles (10k buildings: 44,249 -> 1,848 draw calls), building picking uses a BVH, layers and the DEM load in parallel, the scene renders only when something changes, and the pixel ratio adapts while the view moves.
+- `?perf=1` performance overlay and a headless benchmark under `tests/bench`.
+- Fixes: the effect composer and label renderer now follow window resizes; the SSAO view no longer flickers with plain frames when the camera is still.
+
 ## [1.0.3] - 2026-09-16
 
 - Redesign plugin icon to high-end 3D tactile brand design with circular teal pedestal, zero margin, and refreshed documentation links.

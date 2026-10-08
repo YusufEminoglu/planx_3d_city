@@ -25,6 +25,12 @@ somut bir dosyaya/fonksiyona bağlanır ve ölçülebilir bir hedefle biter.
 
 ## Faz 1 — "Anında hız" (1–2 hafta, risk düşük, en yüksek getiri)
 
+> **Durum (Ekim 2026):** 1.1–1.7 uygulandı. Ölçüm: `tests/bench`, 10.000 bina,
+> headless Chromium (SwiftShader): draw call 44.249 → 1.848, sahne hazır
+> 33,5 sn → 16,0 sn, kare süresi 3,8 sn → 2,4 sn, bina seçimi 13,4 ms → 1,1 ms.
+> SwiftShader CPU ile çizdiği için mutlak FPS gerçek GPU'yu yansıtmaz; draw
+> call ve süre oranları yansıtır.
+
 **Hedef:** 10.000 binalık sahnede orta seviye laptop'ta 60 FPS, açılış < 3 sn.
 
 1. **Bina batching (B1)** — en büyük kazanç.
