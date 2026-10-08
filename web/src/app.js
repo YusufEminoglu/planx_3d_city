@@ -3865,7 +3865,7 @@ async function loadProjectDem() {
     noData: image.getGDALNoData()
   };
   demReady = true;
-  setStatus(`${t('demLoaded')} (Bergama_Elevation_Cropped.tif).`);
+  setStatus(`${t('demLoaded')} (mydem.tif).`);
 }
 
 function clearGroup(g) {

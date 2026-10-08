@@ -23,6 +23,15 @@ from qgis.core import (
     QgsVectorFileWriter,
 )
 
+from .export_utils import (
+    ExportCache,
+    coordinate_precision,
+    dem_clip_window,
+    dem_creation_options,
+    file_signature,
+    union_bounds,
+)
+
 
 MODE_VECTOR = "vector"
 MODE_RASTER_TEXTURE = "raster_texture"
@@ -449,17 +458,23 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
     export_crs = _target_export_crs(layer_map)
     if feedback and export_crs is not None:
         feedback(f"Export CRS -> {export_crs.authid() or export_crs.description()}")
+    cache = ExportCache(Path(web_root) / "data")
 
     dem_path = dem_dir / "mydem.tif"
     dem_layer = layer_map.get("dem")
     if dem_layer is None:
         if dem_path.exists():
             dem_path.unlink()
+        cache.forget(dem_path)
         manifest_inputs.append(_layer_manifest("dem", None, "dem/mydem.tif", True, required_inputs))
     else:
         try:
-            _export_dem(dem_layer, dem_path)
+            view = _viewer_bounds(layer_map, dem_layer.crs())
+            note = _export_dem(dem_layer, dem_path, view_bounds=view, cache=cache, optimize=True)
+            if feedback and note:
+                feedback(f"DEM -> {dem_path.name}: {note}")
         except ExportError as exc:
+            cache.forget(dem_path)
             # DEM is optional in all modes; keep export alive and let the viewer
             # fall back to its flat-terrain mode.
             if dem_path.exists():
@@ -503,12 +518,22 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
         empty = layer is None
         if layer is None:
             write_empty_geojson(out_path)
+            cache.forget(out_path)
         else:
+            signature = _vector_signature(layer, export_crs)
+            if cache.is_fresh(out_path, signature):
+                if feedback:
+                    feedback(f"{LABELS[key]} unchanged -> kept {out_path.name}")
+                written.append(str(out_path))
+                manifest_inputs.append(_layer_manifest(key, layer, f"vector/{filename}", empty, required_inputs))
+                continue
             _export_vector(layer, out_path, export_crs)
+            cache.record(out_path, signature)
         written.append(str(out_path))
         manifest_inputs.append(_layer_manifest(key, layer, f"vector/{filename}", empty, required_inputs))
         if feedback:
             feedback(f"{LABELS[key]} -> {out_path.name}")
+    cache.save()
 
     road_access = _road_access_manifest(layer_map)
     field_mappings = _field_mappings_manifest(layer_map)
@@ -827,9 +852,15 @@ def _export_vector(layer, out_path: Path, target_crs=None) -> None:
     options.driverName = "GeoJSON"
     options.fileEncoding = "UTF-8"
     options.layerName = out_path.stem
+    output_crs = layer.crs() if hasattr(layer, "crs") else None
     if target_crs is not None and target_crs.isValid() and hasattr(layer, "crs") and layer.crs().isValid():
         if layer.crs().authid() != target_crs.authid():
             options.ct = QgsCoordinateTransform(layer.crs(), target_crs, QgsProject.instance())
+            output_crs = target_crs
+    # The GeoJSON driver writes 15 decimals by default; millimetres (or ~1 cm
+    # in degrees) are plenty for the viewer and cut file size substantially.
+    is_geographic = bool(output_crs is not None and output_crs.isValid() and output_crs.isGeographic())
+    options.layerOptions = [f"COORDINATE_PRECISION={coordinate_precision(is_geographic)}"]
     transform_context = QgsProject.instance().transformContext()
     result = QgsVectorFileWriter.writeAsVectorFormatV3(layer, str(out_path), transform_context, options)
 
@@ -839,16 +870,39 @@ def _export_vector(layer, out_path: Path, target_crs=None) -> None:
         raise ExportError(f"Could not export {layer.name()} to {out_path}: {message}")
 
 
-def _export_dem(layer, out_path: Path) -> None:
+def _export_dem(layer, out_path: Path, view_bounds=None, cache=None, optimize: bool = False) -> Optional[str]:
+    """Write a raster to out_path; returns a short note for the export log.
+
+    With optimize=True (the DEM), a local GDAL-readable source is cropped to
+    the viewer's scene bounds plus a margin and written as a DEFLATE-compressed
+    tiled GeoTIFF; anything GDAL cannot handle falls back to a plain copy.
+    """
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    source_path = _local_raster_source(layer)
+    signature = None
+    if optimize and source_path:
+        signature = ["dem-v1", source_path, file_signature(source_path), list(view_bounds) if view_bounds else None]
+        if cache is not None and cache.is_fresh(out_path, signature):
+            return "unchanged, kept"
     if out_path.exists():
         out_path.unlink()
 
-    source_path = _local_raster_source(layer)
     if source_path and os.path.exists(source_path):
+        if optimize:
+            note = _gdal_optimized_dem(source_path, out_path, view_bounds)
+            if note:
+                if cache is not None:
+                    cache.record(out_path, signature)
+                return note
+            if out_path.exists():
+                out_path.unlink()
         shutil.copy2(source_path, out_path)
-        return
+        if cache is not None:
+            cache.record(out_path, signature)
+        return "copied"
 
+    if cache is not None:
+        cache.forget(out_path)
     provider = layer.dataProvider()
     pipe = QgsRasterPipe()
     if not pipe.set(provider.clone()):
@@ -865,6 +919,95 @@ def _export_dem(layer, out_path: Path) -> None:
     )
     if result != QgsRasterFileWriter.NoError:
         raise ExportError(f"Could not export DEM {layer.name()} to {out_path}")
+    return "written"
+
+
+def _gdal_optimized_dem(source_path: str, out_path: Path, view_bounds) -> Optional[str]:
+    """Crop/compress with GDAL; returns a note, or None to fall back to a copy."""
+    try:
+        from osgeo import gdal
+    except ImportError:
+        return None
+    src = None
+    dst = None
+    try:
+        src = gdal.Open(source_path)
+        if src is None or src.RasterCount < 1:
+            return None
+        gt = src.GetGeoTransform()
+        width, height = src.RasterXSize, src.RasterYSize
+        window = None
+        # Only north-up rasters can be cropped by a simple projected window.
+        if gt and gt[2] == 0 and gt[4] == 0 and gt[5] < 0:
+            dem_bounds = (gt[0], gt[3] + gt[5] * height, gt[0] + gt[1] * width, gt[3])
+            window = dem_clip_window(view_bounds, dem_bounds, gt[1], gt[5])
+        is_float = src.GetRasterBand(1).DataType in (gdal.GDT_Float32, gdal.GDT_Float64)
+        options = {"format": "GTiff", "creationOptions": dem_creation_options(is_float)}
+        if window:
+            options["projWin"] = [window[0], window[3], window[2], window[1]]
+        dst = gdal.Translate(str(out_path), src, **options)
+        if dst is None:
+            return None
+        if window:
+            return f"cropped to scene ({dst.RasterXSize}x{dst.RasterYSize} of {width}x{height} px), compressed"
+        return "compressed"
+    except Exception:  # noqa: BLE001 - any GDAL failure falls back to a plain copy
+        return None
+    finally:
+        dst = None
+        src = None
+
+
+# Layers the viewer derives its scene bounds from (ROI first), mirroring
+# deriveVectorBounds() in web/src/app.js.
+VIEWER_BOUNDS_KEYS = ("blocks", "roads", "buildings", "parcels", "sidewalks", "pedestrian_paths")
+
+
+def _viewer_bounds(layer_map: dict, crs):
+    """Viewer scene bounds in `crs`, or None when they cannot be determined."""
+    roi = layer_map.get("roi")
+    layers = [roi] if roi is not None else [layer_map.get(k) for k in VIEWER_BOUNDS_KEYS]
+    boxes = []
+    for layer in layers:
+        if layer is None:
+            continue
+        layer.updateExtents()
+        extent = layer.extent()
+        if extent.isNull():
+            continue
+        if crs is not None and crs.isValid() and layer.crs().isValid() and layer.crs() != crs:
+            try:
+                extent = QgsCoordinateTransform(layer.crs(), crs, QgsProject.instance()).transformBoundingBox(extent)
+            except Exception:  # noqa: BLE001 - an untransformable extent disables cropping
+                return None
+        boxes.append((extent.xMinimum(), extent.yMinimum(), extent.xMaximum(), extent.yMaximum()))
+    return union_bounds(boxes)
+
+
+def _vector_signature(layer, target_crs):
+    """What a GeoJSON export depends on, or None when it cannot be trusted.
+
+    Only file-backed OGR layers without pending edits get a signature; the
+    data file and its usual sidecars (shapefile .dbf/.shx/.prj, GeoPackage
+    -wal) are fingerprinted by size and mtime.
+    """
+    try:
+        if layer.providerType() != "ogr" or layer.isModified():
+            return None
+    except AttributeError:
+        return None
+    path = _local_raster_source(layer)
+    main = file_signature(path)
+    if main is None:
+        return None
+    base = os.path.splitext(path)[0]
+    sidecars = [file_signature(base + ext) for ext in (".dbf", ".shx", ".prj", ".cpg")]
+    sidecars.append(file_signature(path + "-wal"))
+    target = target_crs.authid() if target_crs is not None and target_crs.isValid() else ""
+    return [
+        "vector-v1", layer.source(), main, sidecars, layer.subsetString(),
+        layer.crs().authid(), target, layer.featureCount(),
+    ]
 
 
 def _export_basemap(layer_map: dict, out_path: Path) -> None:
