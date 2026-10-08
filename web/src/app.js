@@ -498,11 +498,39 @@ const sun = new THREE.DirectionalLight(0xffffff, 1.25);
 sun.castShadow = true;
 sun.shadow.autoUpdate = false;
 sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left = -1600;
-sun.shadow.camera.right = 1600;
-sun.shadow.camera.top = 1600;
-sun.shadow.camera.bottom = -1600;
+sun.shadow.normalBias = 0.02;
 scene.add(sun);
+scene.add(sun.target);
+
+// The shadow camera follows the view: it is centred on the orbit target (or
+// the walker) and sized from the camera distance, so close-ups get a sharp
+// shadow map while overviews still cover up to 1.6 km. (It used to be a fixed
+// box around the origin with the default 500 m far plane, while the sun sat
+// 1300 m away, so no shadows were cast at all.)
+const SUN_DISTANCE = 2500;
+const sunDirection = new THREE.Vector3(0, 1, 0);
+function fitSunShadow() {
+  const focus = isWalkMode ? camera.position : controls.target;
+  const viewDist = isWalkMode ? 120 : camera.position.distanceTo(controls.target);
+  const half = THREE.MathUtils.clamp(viewDist * 1.5, 90, 1600);
+  // Snap the centre to whole shadow texels so the map does not shimmer.
+  const texel = (2 * half) / sun.shadow.mapSize.x;
+  const fx = Math.round(focus.x / texel) * texel;
+  const fz = Math.round(focus.z / texel) * texel;
+  sun.target.position.set(fx, focus.y, fz);
+  sun.position.set(fx, focus.y, fz).addScaledVector(sunDirection, SUN_DISTANCE);
+  const cam = sun.shadow.camera;
+  if (cam.right !== half) {
+    cam.left = -half;
+    cam.right = half;
+    cam.top = half;
+    cam.bottom = -half;
+  }
+  cam.near = 1;
+  cam.far = SUN_DISTANCE * 2;
+  cam.updateProjectionMatrix();
+  sun.target.updateMatrixWorld();
+}
 
 const sky = new Sky();
 sky.scale.setScalar(450000);
@@ -626,6 +654,10 @@ function requestRender(ms = 600) {
 }
 for (const type of ['pointerdown', 'pointermove', 'pointerup', 'wheel', 'keydown', 'keyup', 'input', 'change', 'click', 'resize']) {
   window.addEventListener(type, () => requestRender(), { passive: true, capture: true });
+}
+// Settings edits can move, hide or restyle shadow casters.
+for (const type of ['input', 'change']) {
+  window.addEventListener(type, () => { sun.shadow.needsUpdate = true; }, { passive: true, capture: true });
 }
 let isRecording = false;
 
@@ -3290,7 +3322,8 @@ function updateTimeOfDay() {
   const theta = Math.PI - azimuth;
   const pos = new THREE.Vector3().setFromSphericalCoords(1, phi, theta);
 
-  sun.position.copy(pos).multiplyScalar(1300);
+  sunDirection.copy(pos);
+  fitSunShadow();
   // Smooth intensity ramp at horizon (golden hour feel)
   sun.intensity = elevationDeg > 0 ? 1.25 * Math.min(1, elevationDeg / 18) : 0;
   sun.shadow.needsUpdate = true;
@@ -9105,6 +9138,8 @@ let functionGuiRefs = null;
 
 function setSceneState(textOrKey, kind = 'ok') {
   requestRender();
+  // Layers were added or removed: the shadow map (autoUpdate off) is stale.
+  sun.shadow.needsUpdate = true;
   const pill = document.getElementById('scene-state');
   if (!pill) return;
   const translated = t(textOrKey);
@@ -9862,6 +9897,12 @@ function animate() {
     || settings.autoOrbit || settings.autoTime || tourState.playing;
   const _useComposer = settings.enableSSAO;
   updateBuildingLod(buildingGroup, camera);
+  // Walking moves the camera without orbit-control events; refit the shadow
+  // box once the walker has moved a few metres.
+  if (isWalkMode && sun.target.position.distanceToSquared(camera.position) > 25 + Math.pow(camera.position.y - sun.target.position.y, 2)) {
+    sun.shadow.needsUpdate = true;
+  }
+  if (sun.shadow.needsUpdate) fitSunShadow();
   if (isRecording || _hasAnim || _camMoving || _now < _renderKeepAliveUntil) {
     if (_pendingPixelRatio !== null) setDynamicPixelRatio(_pendingPixelRatio);
     _pendingPixelRatio = null;
