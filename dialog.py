@@ -82,7 +82,7 @@ EXPECTED_GEOMETRIES = {
     "tumulus": "Point",
 }
 
-RECOMMENDED_BUILDING_FIELDS = ("katadedi", "uipfonksiyon")
+RECOMMENDED_BUILDING_FIELDS = ("floors", "function")
 
 FIELD_MAPPING_DEFS = (
     ("road_hierarchy_field", "roads", "Road hierarchy/type field", "Road class such as arterial, street, service road, pedestrian way."),
@@ -90,11 +90,11 @@ FIELD_MAPPING_DEFS = (
     ("building_population_field", "buildings", "Building population field", "Optional population value; otherwise the viewer estimates from dwellings and area."),
     ("building_dwelling_field", "buildings", "Building dwelling field", "Dwelling or housing-unit count."),
     ("building_vehicle_field", "buildings", "Building vehicle field", "Estimated or calculated vehicle count."),
-    ("building_floors_field", "buildings", "Building floor count field", "Number of storeys; building height = floor count x floor height. Fallback column names include katadedi, kat, floors, levels."),
+    ("building_floors_field", "buildings", "Building floor count field", "Number of storeys; building height = floor count x floor height. Fallback column names include floors, building:levels, levels."),
     ("building_floor_area_field", "buildings", "Building gross floor area field", "Gross floor area or FAR-derived area."),
-    ("landuse_function_field", "buildings", "Land-use/function field", "Building use/function; used when uipfonksiyon is not available."),
+    ("landuse_function_field", "buildings", "Land-use/function field", "Building use/function; used when no 'function' field is present."),
     ("odor_source_field", "buildings", "Odor/noise source field", "Helps detect industry, waste, storage or treatment sources for wind/noise screening."),
-    ("tree_height_field", "trees", "Tree height field", "Tree height in meters; fallback names include height, boy and yukseklik."),
+    ("tree_height_field", "trees", "Tree height field", "Tree height in meters; fallback names include tree_height and height."),
     ("light_angle_field", "lights", "Light direction field", "Direction angle in degrees; otherwise aligned to the nearest road axis."),
     ("bench_angle_field", "benches", "Bench direction field", "Direction angle in degrees; otherwise aligned beside the nearest road axis."),
     ("trashbin_angle_field", "trashbins", "Trash bin direction field", "Direction angle in degrees; otherwise aligned to the nearest road axis."),
@@ -148,40 +148,40 @@ TREE_RENDER_MODE_OPTIONS = (
 )
 
 AUTO_MATCH_ALIASES = {
-    "dem": ("dem", "mydem", "elevation", "yukseklik", "yukseklik modeli"),
-    "plan_texture": ("plan", "siteplan", "yerlesim plani", "nazim", "uygulama", "texture", "pafta"),
-    "basemap": ("basemap", "base map", "xyz", "tile", "tiles", "google", "osm", "openstreetmap", "uydu", "satellite", "altlik", "altlık"),
-    "roi": ("roi", "sinir", "calisma", "alan", "boundary"),
-    "roads": ("roads", "road", "yol", "yollar", "aks", "myroads"),
-    "buildings": ("buildings", "building", "bina", "binalar", "yapi", "yapilar", "mybuildings"),
-    "blocks": ("blocks", "block", "ada", "adalar", "myblocks"),
-    "parcels": ("parcels", "parcel", "parsel", "parseller", "myparcels"),
-    "trees": ("trees", "tree", "agac", "agaclar", "mytrees"),
-    "hardscape": ("hardscape", "sert", "zemin", "myhardscape"),
-    "sidewalks": ("sidewalk", "sidewalks", "kaldirim", "kaldirimlar", "kaldırım", "kaldırımlar", "yaya kaldirimi", "mysidewalks"),
-    "pedestrian_paths": ("path", "paths", "patika", "patikalar", "walkway", "footpath", "pedestrian", "pedestrian_paths", "yaya yolu", "yaya yollari", "yaya yolları", "mypedestrian_paths"),
-    "bike_lanes": ("bike", "bicycle", "cycleway", "cycle lane", "bike lane", "bisiklet", "bisiklet yolu", "bisiklet_yolu", "mybikelanes"),
-    "lights": ("lights", "light", "aydinlatma", "lamba", "mylights"),
-    "benches": ("benches", "bench", "bank", "mybenches"),
-    "trashbins": ("trashbins", "trash", "bin", "cop", "mytrashbins"),
-    "busstops": ("busstops", "bus", "durak", "mybusstops"),
-    "fences": ("fences", "fence", "border", "borders", "wall", "walls", "cit", "çit", "myfences"),
-    "waterlines": ("waterlines", "waterline", "stream", "streams", "river", "rivers", "dere", "akarsu", "mywaterlines"),
-    "mosques": ("mosque", "mosques", "cami", "camiler", "mymosques"),
-    "tumulus": ("tumulus", "tumuli", "tumulusler", "tümülüs", "tumulus noktalari", "hoyuk", "höyük", "mytumulus"),
+    "dem": ("dem", "mydem", "elevation", "terrain", "dtm", "dsm"),
+    "plan_texture": ("plan", "siteplan", "site plan", "masterplan", "texture"),
+    "basemap": ("basemap", "base map", "xyz", "tile", "tiles", "google", "osm", "openstreetmap", "satellite", "orthophoto"),
+    "roi": ("roi", "boundary", "study area", "study_area", "extent"),
+    "roads": ("roads", "road", "streets", "street", "myroads"),
+    "buildings": ("buildings", "building", "mybuildings"),
+    "blocks": ("blocks", "block", "myblocks"),
+    "parcels": ("parcels", "parcel", "plots", "myparcels"),
+    "trees": ("trees", "tree", "mytrees"),
+    "hardscape": ("hardscape", "plaza", "paved", "myhardscape"),
+    "sidewalks": ("sidewalk", "sidewalks", "pavement", "mysidewalks"),
+    "pedestrian_paths": ("path", "paths", "walkway", "footpath", "pedestrian", "pedestrian_paths", "mypedestrian_paths"),
+    "bike_lanes": ("bike", "bicycle", "cycleway", "cycle lane", "bike lane", "mybikelanes"),
+    "lights": ("lights", "light", "lamp", "streetlight", "mylights"),
+    "benches": ("benches", "bench", "mybenches"),
+    "trashbins": ("trashbins", "trash", "bin", "waste_basket", "mytrashbins"),
+    "busstops": ("busstops", "bus", "bus stop", "mybusstops"),
+    "fences": ("fences", "fence", "border", "borders", "wall", "walls", "myfences"),
+    "waterlines": ("waterlines", "waterline", "stream", "streams", "river", "rivers", "mywaterlines"),
+    "mosques": ("mosque", "mosques", "mymosques"),
+    "tumulus": ("tumulus", "tumuli", "burial mound", "mytumulus"),
 }
 
 SMART_FIELD_ALIASES = {
-    "building_floors_field": ("katadedi", "kat", "kat_sayisi", "floors", "levels", "storeys", "floor_count"),
-    "building_population_field": ("nufus", "nüfus", "population", "pop", "bina_nufus"),
-    "building_dwelling_field": ("daire", "konut", "dwelling", "dwellings", "housing_units"),
-    "building_floor_area_field": ("aream2", "area_m2", "floor_area", "insaat_alani", "gfa"),
-    "tree_height_field": ("height", "boy", "yukseklik", "yükseklik", "tree_height"),
-    "road_width_field": ("genislik", "genişlik", "width", "yol_genisligi", "right_of_way"),
-    "landuse_function_field": ("uipfonksiyon", "fonksiyon", "landuse", "function", "kullanim", "kullanım"),
-    "block_category_field": ("ada_kategori", "kategori", "block_type", "category"),
-    "road_hierarchy_field": ("yol_turu", "yol_tipi", "hierarchy", "road_type", "class"),
-    "waterline_width_field": ("width", "genislik", "genişlik", "stream_width"),
+    "building_floors_field": ("floors", "building:levels", "levels", "storeys", "stories", "floor_count", "num_floors"),
+    "building_population_field": ("population", "pop", "residents"),
+    "building_dwelling_field": ("dwelling", "dwellings", "housing_units", "units"),
+    "building_floor_area_field": ("aream2", "area_m2", "floor_area", "gross_area", "gfa"),
+    "tree_height_field": ("height", "tree_height"),
+    "road_width_field": ("width", "road_width", "right_of_way"),
+    "landuse_function_field": ("function", "landuse", "land_use", "building:use", "use"),
+    "block_category_field": ("category", "block_type", "landuse", "class"),
+    "road_hierarchy_field": ("hierarchy", "road_type", "highway", "class"),
+    "waterline_width_field": ("width", "stream_width"),
 }
 
 ATMOSPHERE_PRESET_OPTIONS = (
@@ -545,7 +545,7 @@ class PlanX3DCityDialog(QDialog):
         mapping_group = QGroupBox("Field mapping")
         mapping_layout = QVBoxLayout(mapping_group)
         mapping_top = QHBoxLayout()
-        mapping_info = QLabel("Attribute fields auto-detect matching column names (e.g. katadedi, nufus, floors, genislik).")
+        mapping_info = QLabel("Attribute fields auto-detect matching column names (e.g. floors, building:levels, population, width).")
         mapping_info.setWordWrap(True)
         mapping_info.setStyleSheet("color: #64748b; font-weight: normal;")
         self.auto_field_btn = QPushButton("Auto-detect attributes")
@@ -660,8 +660,8 @@ class PlanX3DCityDialog(QDialog):
         )
         values_label.setWordWrap(True)
         editors = QVBoxLayout()
-        self.road_no_car_values = QLineEdit("yaya,pedestrian,foot,walk,path")
-        self.road_vehicle_values = QLineEdit("tasit,taşıt,vehicle,car,arac,araç,motorlu")
+        self.road_no_car_values = QLineEdit("pedestrian,foot,walk,path")
+        self.road_vehicle_values = QLineEdit("vehicle,car,motor_vehicle")
         self.road_no_car_values.setPlaceholderText("No-car keywords")
         self.road_vehicle_values.setPlaceholderText("Vehicle keywords")
         editors.addWidget(self.road_no_car_values)
@@ -1347,7 +1347,7 @@ class PlanX3DCityDialog(QDialog):
         return best
 
     def _normalize_name(self, value: str) -> str:
-        lowered = (value or "").lower().replace("ı", "i")
+        lowered = (value or "").lower()
         ascii_text = unicodedata.normalize("NFKD", lowered).encode("ascii", "ignore").decode("ascii")
         return ascii_text.replace("_", " ").replace("-", " ").strip()
 
@@ -1519,7 +1519,7 @@ class PlanX3DCityDialog(QDialog):
             QMessageBox.information(self, "GFA Calculator", "Please select a Buildings layer first.")
             return
         flr_field = self.field_mapping_combos.get("building_floors_field")
-        flr_name = flr_field.currentData() if flr_field else "katadedi"
+        flr_name = flr_field.currentData() if flr_field else "floors"
         from .style_tools import calculate_building_gfa_and_population
         res = calculate_building_gfa_and_population(
             layer,

@@ -97,63 +97,63 @@ ul {
 }
 
 .scene-btn {
-    left: 70px;
+    left: 50px;
     font-size: 1rem;
 }
 
 .layers-btn {
-    left: 120px;
+    left: 100px;
     font-size: 1rem;
     font-weight: 800;
 }
 
 .analysis-btn {
-    left: 270px;
+    left: 250px;
     font-size: 1rem;
     font-weight: 800;
 }
 
 .style-btn {
-    left: 170px;
+    left: 150px;
     font-size: 1rem;
     font-weight: 800;
 }
 
 .mobility-btn {
-    left: 220px;
+    left: 200px;
     font-size: 1rem;
     font-weight: 800;
 }
 
 .furniture-btn {
-    left: 320px;
+    left: 300px;
     font-size: 1rem;
     font-weight: 800;
 }
 
 .narrative-btn {
-    left: 370px;
+    left: 350px;
     font-size: 0.95rem;
     font-weight: 800;
 }
 
 .advanced-btn {
-    left: 420px;
+    left: 400px;
     font-size: 1rem;
 }
 
 .walk-btn {
-    left: 470px;
+    left: 450px;
     font-size: 1.1rem;
     padding-bottom: 2px;
 }
 
 .game-btn {
-    left: 520px;
+    left: 500px;
     font-size: 1.1rem;
 }
 .fences-btn {
-    left: 570px;
+    left: 550px;
     font-size: 1.1rem;
 }
 
@@ -669,7 +669,7 @@ ul {
 #recording-container {
     position: absolute;
     top: 0;
-    left: 270px;
+    left: 250px;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -1490,11 +1490,11 @@ body {
 }
 
 .model-studio-btn {
-    left: 620px;
+    left: 600px;
     font-size: 1.15rem;
 }
 .bike-btn {
-    left: 670px;
+    left: 650px;
     font-size: 1.1rem;
 }
 #model-studio-dock {

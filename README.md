@@ -257,17 +257,17 @@ The plugin writes the viewer inputs to fixed paths:
 
 - `web/data/dem/mydem.tif`
 - optional raster texture mode file: `web/data/texture/siteplan.tif`
-- `web/data/yerlesim/roi.geojson`
-- `web/data/yerlesim/myroads.geojson`
-- `web/data/yerlesim/mybuildings.geojson`
-- `web/data/yerlesim/myblocks.geojson`
-- `web/data/yerlesim/myparcels.geojson`
+- `web/data/vector/roi.geojson`
+- `web/data/vector/myroads.geojson`
+- `web/data/vector/mybuildings.geojson`
+- `web/data/vector/myblocks.geojson`
+- `web/data/vector/myparcels.geojson`
 - optional `mytrees`, `myhardscape`, `mysidewalks`, `mypedestrian_paths`, `mylights`, `mybenches`, `mytrashbins`, `mybusstops`
 - `web/data/planx_manifest.json`
 
 Optional layers can be left empty. The plugin writes empty GeoJSON files so the viewer remains stable.
 
-The repository intentionally excludes generated `web/data/dem`, `web/data/texture`, and `web/data/yerlesim` files. This keeps the QGIS Plugin Hub zip smaller and prevents one user's project data from becoming part of the distributed plugin.
+The repository intentionally excludes generated `web/data/dem`, `web/data/texture`, and `web/data/vector` files. This keeps the QGIS Plugin Hub zip smaller and prevents one user's project data from becoming part of the distributed plugin.
 
 The manifest records the export time, QGIS project title, source layer names, targets, CRS values, feature counts, and empty optional inputs. The viewer uses it to show project provenance and data health without requiring the user to remember how the export was produced.
 

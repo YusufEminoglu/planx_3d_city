@@ -46,7 +46,7 @@ const i18n = {
     pedDensity: 'Pedestrian Density',
     weather: 'Weather',
     showSidewalks: 'Sidewalks', showCrosswalks: 'Crosswalks', showPedestrianPaths: 'Block Paths',
-    binaInfo: 'Building Info', biFonk: 'Function', biKat: 'Floors', biNiz: 'Type', biAlan: 'Area',
+    buildingInfo: 'Building Info', buildingFunction: 'Function', buildingFloors: 'Floors', buildingArea: 'Area',
     sapanMode: 'Slingshot Mode', sapanHit: 'Hit! +1', sapanScoreLbl: 'Score',
     autoTime: '⏱ Solar Animation', autoTimeSpd: 'Speed (h/s)',
     minimap: 'Minimap',
@@ -649,11 +649,11 @@ function rebuildMinimapBg() {
   }
 
   // Island blocks
-  for (const f of layerDataCache.adalar?.features || []) {
+  for (const f of layerDataCache.blocksFc?.features || []) {
     for (const poly of getPolygonRings(f.geometry)) {
       const ring = poly[0]; if (!ring) continue;
-      const fn = ((f.properties?.uipfonksiyon || f.properties?.arazi_kull || '')).toString().toUpperCase();
-      ctx.fillStyle = fn.includes('PARK') || fn.includes('YEŞİL') ? 'rgba(30,90,45,0.65)' : 'rgba(155,155,150,0.45)';
+      const fn = String(blockCategoryValue(f.properties || {}) ?? '').toUpperCase();
+      ctx.fillStyle = fn.includes('PARK') || fn.includes('GREEN') ? 'rgba(30,90,45,0.65)' : 'rgba(155,155,150,0.45)';
       ctx.beginPath();
       ring.forEach(([cx, cy], i) => {
         const [lx, lz] = metersToLocal(cx, cy); const [mx, my] = _mmPx(lx, lz);
@@ -665,7 +665,7 @@ function rebuildMinimapBg() {
 
   // Roads
   ctx.strokeStyle = '#222a38'; ctx.lineWidth = 1.2;
-  for (const f of layerDataCache.yollar?.features || []) {
+  for (const f of layerDataCache.roadsFc?.features || []) {
     if (f.geometry?.type !== 'LineString') continue;
     ctx.beginPath();
     f.geometry.coordinates.forEach(([cx, cy], i) => {
@@ -688,8 +688,8 @@ function rebuildMinimapBg() {
   }
 
   // Buildings (colored by function)
-  for (const f of layerDataCache.yapilar?.features || []) {
-    const fn = (f.properties?.uipfonksiyon || 'BELIRSIZ').toString();
+  for (const f of layerDataCache.buildingsFc?.features || []) {
+    const fn = String(buildingFunctionValue(f.properties || {}));
     ctx.fillStyle = functionColorState[fn] || '#94a3b8';
     for (const poly of getPolygonRings(f.geometry)) {
       const ring = poly[0]; if (!ring) continue;
@@ -704,7 +704,7 @@ function rebuildMinimapBg() {
 
   // Trees
   ctx.fillStyle = '#4ade80';
-  for (const f of layerDataCache.agaclar?.features || []) {
+  for (const f of layerDataCache.treesFc?.features || []) {
     if (f.geometry?.type !== 'Point') continue;
     const [lx, lz] = metersToLocal(f.geometry.coordinates[0], f.geometry.coordinates[1]);
     const [mx, my] = _mmPx(lx, lz);
@@ -1387,7 +1387,7 @@ function namesWithMapping(mappingKey, fallbackNames) {
 }
 
 function buildingFunctionValue(props) {
-  return propFirst(props || {}, namesWithMapping('landuse_function_field', ['uipfonksiyon', 'fonksiyon', 'kullanim', 'landuse', 'arazi_kull'])) || 'BELIRSIZ';
+  return propFirst(props || {}, namesWithMapping('landuse_function_field', ['function', 'landuse', 'building:use'])) || 'UNDEFINED';
 }
 
 const settings = {
@@ -2053,8 +2053,8 @@ function rebuildMosqueLayerPartially() {
 }
 
 function rebuildTreeLayerPartially() {
-  if (!layerDataCache || !layerDataCache.agaclar) return;
-  buildTreeLayer(layerDataCache.agaclar, cachedDefaultTreeModel);
+  if (!layerDataCache || !layerDataCache.treesFc) return;
+  buildTreeLayer(layerDataCache.treesFc, cachedDefaultTreeModel);
 }
 
 function rebuildTumulusLayerPartially() {
@@ -2140,7 +2140,7 @@ function setActiveModelForCategory(cat, modelId) {
 
 function getMosqueName(feature, index) {
   const props = feature.properties || {};
-  return props.name || props.adi || props.label || `${t('catMosque') || 'Mosque'} #${index + 1}`;
+  return props.name || props.label || `${t('catMosque') || 'Mosque'} #${index + 1}`;
 }
 
 function renderUploadedModelsList() {
@@ -2547,7 +2547,7 @@ function renderMosqueCustomizationsList() {
 
 function getTumulusName(feature, index) {
   const props = feature.properties || {};
-  return props.name || props.adi || props.label || `${t('catTumulus') || 'Tumulus'} #${index + 1}`;
+  return props.name || props.label || `${t('catTumulus') || 'Tumulus'} #${index + 1}`;
 }
 
 function renderTumulusCustomizationsList() {
@@ -3225,11 +3225,9 @@ function parseLevel(v) {
   return 4;
 }
 
-// Common Turkish/English column names for building floor count.
+// Common column names for building floor count (OSM building:levels first).
 const BUILDING_FLOOR_FIELD_ALIASES = [
-  'katadedi', 'kat_adedi', 'katadet', 'kat_adet', 'katsayisi', 'kat_sayisi',
-  'kat_sayısı', 'katSayisi', 'kat', 'katlar', 'floors', 'num_floors', 'numfloors',
-  'floor_count', 'levels', 'storeys', 'stories', 'nkat', 'n_kat'
+  'building:levels', 'floors', 'num_floors', 'numfloors', 'floor_count', 'levels', 'storeys', 'stories'
 ];
 
 // Raw floor-count value as stored on the feature, honoring the QGIS-mapped
@@ -3239,7 +3237,7 @@ function buildingLevelsRaw(props) {
 }
 
 // Building floor count: prefers the QGIS-mapped 'building_floors_field', then
-// falls back to common Turkish/English column names. Building height is this
+// falls back to common column names. Building height is this
 // count multiplied by the (per-feature or global) floor height.
 function buildingLevels(props) {
   return parseLevel(buildingLevelsRaw(props));
@@ -3462,10 +3460,10 @@ function deriveVectorBounds(data) {
   const roi = asFeatureCollection(data?.roi, 'ROI');
   if (roi.features.length) return geometryBounds(roi.features);
   const candidates = [
-    asFeatureCollection(data?.adalar, 'Blocks').features,
-    asFeatureCollection(data?.yollar, 'Roads').features,
-    asFeatureCollection(data?.yapilar, 'Buildings').features,
-    asFeatureCollection(data?.parseller, 'Parcels').features,
+    asFeatureCollection(data?.blocksFc, 'Blocks').features,
+    asFeatureCollection(data?.roadsFc, 'Roads').features,
+    asFeatureCollection(data?.buildingsFc, 'Buildings').features,
+    asFeatureCollection(data?.parcelsFc, 'Parcels').features,
     asFeatureCollection(data?.sidewalks, 'Sidewalks').features,
     asFeatureCollection(data?.pedestrianPaths, 'Pedestrian paths').features
   ]
@@ -3503,15 +3501,9 @@ function activateFlatTerrainFallback(sourceBounds = null, height = 0) {
 
 function normalizeAccessText(value) {
   return String(value ?? '')
-    .toLocaleLowerCase('tr-TR')
+    .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/ı/g, 'i')
-    .replace(/ş/g, 's')
-    .replace(/ğ/g, 'g')
-    .replace(/ü/g, 'u')
-    .replace(/ö/g, 'o')
-    .replace(/ç/g, 'c');
+    .replace(/[\u0300-\u036f]/g, '');
 }
 
 function keywordList(values) {
@@ -3526,8 +3518,8 @@ function roadAllowsCars(feature) {
   const raw = props[field];
   if (raw === undefined || raw === null || String(raw).trim() === '') return true;
   const value = normalizeAccessText(raw);
-  const noCar = keywordList(access.noCarKeywords || ['yaya', 'pedestrian', 'foot', 'walk', 'path']);
-  const vehicle = keywordList(access.vehicleKeywords || ['tasit', 'vehicle', 'car', 'arac', 'motorlu']);
+  const noCar = keywordList(access.noCarKeywords || ['pedestrian', 'foot', 'walk', 'path']);
+  const vehicle = keywordList(access.vehicleKeywords || ['vehicle', 'car', 'motor_vehicle']);
   const hasNoCar = noCar.some((kw) => value.includes(kw));
   const hasVehicle = vehicle.some((kw) => value.includes(kw));
   return !hasNoCar || hasVehicle;
@@ -3539,21 +3531,21 @@ function roadModeText(feature) {
   const props = feature?.properties || {};
   const hierarchy = mappedField('road_hierarchy_field');
   if (hierarchy) return featureLabelText(props, [hierarchy], '');
-  return field ? featureLabelText(props, [field], '') : featureLabelText(props, ['yol_turu', 'yoltipi', 'tur', 'tip', 'access', 'mode'], '');
+  return field ? featureLabelText(props, [field], '') : featureLabelText(props, ['road_type', 'highway', 'type', 'access', 'mode'], '');
 }
 
 function estimateAmenityPoints() {
   const points = [];
   const data = layerDataCache || {};
   const furniture = data.furniture || {};
-  for (const collection of [furniture.busstops, furniture.lights, data.agaclar]) {
+  for (const collection of [furniture.busstops, furniture.lights, data.treesFc]) {
     for (const f of collection?.features || []) {
       if (f.geometry?.type === 'Point') points.push(f.geometry.coordinates);
     }
   }
-  for (const f of data.yapilar?.features || []) {
+  for (const f of data.buildingsFc?.features || []) {
     const fn = normalizeAccessText(buildingFunctionValue(f.properties || {}));
-    if (!/(egitim|okul|park|saglik|ticaret|sosyal|kultur|spor|yesil|donati)/.test(fn)) continue;
+    if (!/(educat|school|park|health|commerc|retail|social|cultur|sport|green|amenit)/.test(fn)) continue;
     const rings = getPolygonRings(f.geometry);
     const outer = rings?.[0]?.[0];
     if (!outer?.length) continue;
@@ -3590,8 +3582,8 @@ function roadVisualColor(feature, amenityPoints = []) {
   if (settings.roadColorMode === 'Access / traffic') {
     if (!roadAllowsCars(feature)) return new THREE.Color(0x0ea5e9);
     const mode = normalizeAccessText(roadModeText(feature));
-    if (/(ana|arter|bulvar|otoyol|primary|trunk)/.test(mode)) return new THREE.Color(0xef4444);
-    if (/(cadde|collector|secondary)/.test(mode)) return new THREE.Color(0xf59e0b);
+    if (/(arterial|boulevard|motorway|primary|trunk)/.test(mode)) return new THREE.Color(0xef4444);
+    if (/(avenue|collector|secondary)/.test(mode)) return new THREE.Color(0xf59e0b);
     return new THREE.Color(0x64748b);
   }
   return new THREE.Color(settings.roadColor);
@@ -4412,18 +4404,18 @@ function applyIslandMaterialVisibility(material) {
   return material;
 }
 
-function shouldApplyIslandPlateaus(adalar) {
-  if (!settings.flattenIslands || !adalar?.features?.length) return false;
+function shouldApplyIslandPlateaus(blocksFc) {
+  if (!settings.flattenIslands || !blocksFc?.features?.length) return false;
   return !!(settings.showIslands || settings.showBuildings || settings.showHardscape || settings.showTrees || settings.showFurniture);
 }
 
-function applyIslandPlateaus(pos, segments, width, depth, adalar, transitionM) {
+function applyIslandPlateaus(pos, segments, width, depth, blocksFc, transitionM) {
   islandPlateauCache.length = 0;
   invalidatePlateauIndex();
-  if (!adalar?.features?.length) return;
+  if (!blocksFc?.features?.length) return;
   const count = pos.count;
 
-  for (const feature of adalar.features) {
+  for (const feature of blocksFc.features) {
     const rings = getPolygonRings(feature.geometry);
     if (!rings.length) continue;
     const localPolys = rings.map((poly) => poly.map((ring) => ring.map((c) => metersToLocal(c[0], c[1]))));
@@ -4501,7 +4493,7 @@ function applyIslandPlateaus(pos, segments, width, depth, adalar, transitionM) {
   pos.needsUpdate = true;
 }
 
-async function buildTerrain(adalar, buildToken = sceneBuildToken) {
+async function buildTerrain(blocksFc, buildToken = sceneBuildToken) {
   const width = bounds.maxX - bounds.minX;
   const depth = bounds.maxY - bounds.minY;
   const segments = currentTerrainSegments();
@@ -4575,8 +4567,8 @@ async function buildTerrain(adalar, buildToken = sceneBuildToken) {
   }
   limitTerrainBoundarySpikes(pos, segments, width, depth, avgZ, roiPolyCache);
   smoothTerrainSurface(pos, segments, width, depth);
-  if (shouldApplyIslandPlateaus(adalar)) {
-    applyIslandPlateaus(pos, segments, width, depth, adalar, settings.islandPlateauTransition);
+  if (shouldApplyIslandPlateaus(blocksFc)) {
+    applyIslandPlateaus(pos, segments, width, depth, blocksFc, settings.islandPlateauTransition);
   } else {
     islandPlateauCache.length = 0;
     invalidatePlateauIndex();
@@ -4664,15 +4656,15 @@ async function buildTerrain(adalar, buildToken = sceneBuildToken) {
     world.add(terrainOverlayMesh);
   }
   buildTerrainSideSkirt(width, depth, zMin, finalStats.avg);
-  _lastTerrainY = finalStats.avg;   // fallback için kararlı terrain yüksekliğini başlat
+  _lastTerrainY = finalStats.avg;   // stable terrain height for the fallback path
   const terrainLabel = demSampler?.flat ? 'Flat terrain plane' : 'mydem.tif';
   setStatus(`${t('demLoaded')} (${terrainLabel}). Z: ${zMin.toFixed(1)} - ${zMax.toFixed(1)} m`);
   return true;
 }
 
-/* terrainLocalYAt: DEM'den doğrudan yükseklik okur.
- * Raycasting KULLANMAZ — demHeightAtProjected ile aynı kaynağı kullanır.
- * Terrain mesh segment çözünürlüğüne bağımlılık ortadan kalkar. */
+/* terrainLocalYAt: reads the height straight from the DEM.
+ * No raycasting: it uses the same source as demHeightAtProjected, so it does
+ * not depend on the terrain mesh's segment resolution. */
 let _lastTerrainY = 0;
 function terrainLocalYAt(localX, localZ) {
   if (islandPlateauCache.length) {
@@ -4829,7 +4821,7 @@ function blockCategoryValue(properties) {
   if (field && properties && properties[field] !== undefined && properties[field] !== null) {
     return properties[field];
   }
-  const defaults = ['uipfonksiyon', 'arazi_kull', 'planx_category', 'category', 'function', 'fonksiyon'];
+  const defaults = ['planx_category', 'category', 'function'];
   for (const def of defaults) {
     if (properties && properties[def] !== undefined && properties[def] !== null) {
       return properties[def];
@@ -4842,19 +4834,19 @@ function defaultBlockCategoryStyle(cat, index = 0) {
   const c = cat.toUpperCase();
   let color = ['#f5e4c2', '#bfdbfe', '#fee2e2', '#dcfce7', '#fef3c7', '#ede9fe'][index % 6];
   let texture = 'None';
-  if (c.includes('PARK') || c.includes('GREEN') || c.includes('YEŞİL') || c.includes('ORMAN') || c.includes('PLAYGROUND') || c.includes('BAHÇE')) {
+  if (/PARK|GREEN|FOREST|PLAYGROUND|GARDEN|MEADOW/.test(c)) {
     color = '#5e9e3e';
     texture = 'ParkGreen';
-  } else if (c.includes('WATER') || c.includes('SU') || c.includes('GÖL') || c.includes('DENİZ') || c.includes('NEHİR')) {
+  } else if (/WATER|LAKE|SEA\b|RIVER|POND|RESERVOIR/.test(c)) {
     color = '#0f5e9c';
     texture = 'Water';
-  } else if (c.includes('SPORT') || c.includes('SPOR')) {
+  } else if (/SPORT|STADIUM|PITCH/.test(c)) {
     color = '#4a8c30';
     texture = 'FineGrid';
-  } else if (c.includes('RESIDENT') || c.includes('KONUT')) {
+  } else if (/RESIDENT|HOUSING/.test(c)) {
     color = '#d6c8a6';
     texture = 'ResidentialBeige';
-  } else if (c.includes('CIVIC') || c.includes('KAMU') || c.includes('COMMERCIAL') || c.includes('TİCARET') || c.includes('SCHOOL') || c.includes('OKUL')) {
+  } else if (/CIVIC|PUBLIC|COMMERCIAL|RETAIL|SCHOOL|EDUCATION/.test(c)) {
     color = '#b6b3a8';
     texture = 'CivicGravel';
   }
@@ -5277,12 +5269,12 @@ function buildWaterlinesLayer(waterlines) {
   }
 }
 
-async function buildIslandLayer(adalar, buildToken = sceneBuildToken) {
+async function buildIslandLayer(blocksFc, buildToken = sceneBuildToken) {
   clearGroup(islandGroup);
-  if (!adalar?.features?.length) return;
+  if (!blocksFc?.features?.length) return;
   const plateauByFeature = new Map(islandPlateauCache.map((c) => [c.feature, c]));
   
-  const categories = [...new Set(adalar.features.map(f => String(blockCategoryValue(f.properties))))];
+  const categories = [...new Set(blocksFc.features.map(f => String(blockCategoryValue(f.properties))))];
   categories.forEach((cat, i) => {
     ensureBlockCategoryStyle(cat, i);
   });
@@ -5290,14 +5282,14 @@ async function buildIslandLayer(adalar, buildToken = sceneBuildToken) {
   const customMaterials = {};
   const categoryMode = categories.length > 0;
   
-  for (const f of adalar.features) {
+  for (const f of blocksFc.features) {
     const cat = String(blockCategoryValue(f.properties));
     const catStyle = ensureBlockCategoryStyle(cat, categories.indexOf(cat));
     
     const fallbackColor = categoryMode ? catStyle.color : settings.islandColor;
     const fallbackTexture = categoryMode ? catStyle.texture : settings.islandTexture;
-    const featureColor = normalizeHexColor(propFirst(f.properties || {}, ['planx_color', 'planx_renk', 'color', 'renk']), fallbackColor);
-    const featureTexture = presetValue(propFirst(f.properties || {}, ['planx_texture', 'planx_island_texture', 'texture', 'doku']), textureSets.island, fallbackTexture);
+    const featureColor = normalizeHexColor(propFirst(f.properties || {}, ['planx_color', 'color']), fallbackColor);
+    const featureTexture = presetValue(propFirst(f.properties || {}, ['planx_texture', 'planx_island_texture', 'texture']), textureSets.island, fallbackTexture);
     const featureTextureMap = categoryMode
       ? createTintedIslandTexturePreset(featureTexture, featureColor)
       : createIslandTexturePreset(featureTexture);
@@ -5355,19 +5347,19 @@ async function buildIslandLayer(adalar, buildToken = sceneBuildToken) {
   }
 }
 
-function buildParcelLayer(parseller) {
+function buildParcelLayer(parcelsFc) {
   clearGroup(parcelGroup);
-  if (!parseller?.features?.length) return;
-  /* Parsel: sadece boundary (sınır çizgisi), fill yok.
-   * Her vertex kendi DEM yüksekliğini alır (relevant to DEM). */
+  if (!parcelsFc?.features?.length) return;
+  /* Parcels: boundary lines only, no fill.
+   * Every vertex takes its own DEM height. */
   const lineMat = new THREE.LineBasicMaterial({
     color: new THREE.Color(settings.parcelBoundaryColor),
     transparent: true,
     opacity: settings.parcelBoundaryOpacity,
-    depthWrite: false          // ada yüzeyleriyle depth-fighting önlenir
+    depthWrite: false          // avoids depth-fighting with block surfaces
   });
 
-  for (const f of parseller.features) {
+  for (const f of parcelsFc.features) {
     for (const poly of getPolygonRings(f.geometry)) {
       const outer = poly[0];
       if (!outer || outer.length < 3) continue;
@@ -5449,15 +5441,15 @@ function polygonAreaGeo(ring) {
 function estimateBuildingFeatureMetrics(feature) {
   const props = feature?.properties || {};
   const levels = buildingLevels(props);
-  let footprint = parseNumberProp(props, ['taban_alani', 'footprint_area', 'aream2'], null);
+  let footprint = parseNumberProp(props, ['footprint_area', 'aream2'], null);
   if (!footprint) {
     const outer = getPolygonRings(feature.geometry)?.[0]?.[0];
     footprint = polygonAreaGeo(outer);
   }
-  const floorArea = parseNumberProp(props, namesWithMapping('building_floor_area_field', ['toplam_insaat', 'insaat_alani', 'floor_area', 'gross_area']), footprint * levels);
-  const dwellings = parseNumberProp(props, namesWithMapping('building_dwelling_field', ['daire', 'daire_sayisi', 'dwelling', 'dwellings']), Math.max(1, Math.round(floorArea / 115)));
-  const population = parseNumberProp(props, namesWithMapping('building_population_field', ['nufus', 'nüfus', 'nÃ¼fus', 'population', 'pop']), Math.round(dwellings * 3.1));
-  const vehicles = parseNumberProp(props, namesWithMapping('building_vehicle_field', ['arac', 'araç', 'araÃ§', 'vehicle', 'cars']), Math.round(dwellings * 0.7));
+  const floorArea = parseNumberProp(props, namesWithMapping('building_floor_area_field', ['floor_area', 'gross_area']), footprint * levels);
+  const dwellings = parseNumberProp(props, namesWithMapping('building_dwelling_field', ['dwelling', 'dwellings']), Math.max(1, Math.round(floorArea / 115)));
+  const population = parseNumberProp(props, namesWithMapping('building_population_field', ['population', 'pop']), Math.round(dwellings * 3.1));
+  const vehicles = parseNumberProp(props, namesWithMapping('building_vehicle_field', ['vehicle', 'cars']), Math.round(dwellings * 0.7));
   return { footprint, floorArea, dwellings, population, vehicles };
 }
 
@@ -5611,7 +5603,7 @@ function featureRoadWidth(feature) {
 }
 
 function buildingHeightFromProps(props, levels, floorHeight = settings.floorHeight) {
-  const explicit = parseNumberProp(props || {}, ['planx_height', 'height', 'yukseklik', 'yükseklik', 'yÃ¼kseklik', 'bina_yuksekligi', 'building_height'], null);
+  const explicit = parseNumberProp(props || {}, ['planx_height', 'height', 'building_height'], null);
   if (explicit !== null && explicit > 0) return explicit;
   return levels * Math.max(2.4, Math.min(6, Number(floorHeight) || settings.floorHeight));
 }
@@ -5620,20 +5612,20 @@ function isOdorOrEmissionSource(feature) {
   const props = feature?.properties || {};
   const odorField = mappedField('odor_source_field');
   if (odorField && props[odorField] !== undefined) {
-    return /(1|true|evet|yes|source|risk|sanayi|industry|atik|waste|cop|depolama|storage|aritma|sewage)/.test(normalizeAccessText(props[odorField]));
+    return /(1|true|yes|source|risk|industr|waste|storage|treatment|sewage)/.test(normalizeAccessText(props[odorField]));
   }
   const text = normalizeAccessText([
-    props[mappedField('landuse_function_field')], props.uipfonksiyon, props.fonksiyon, props.kullanim, props.landuse,
-    props.tesis, props.adi, props.name, props.tip, props.tur
+    props[mappedField('landuse_function_field')], props.function, props.landuse, props.industrial, props.amenity,
+    props.name, props.type
   ].filter(Boolean).join(' '));
-  return /(sanayi|industry|atik|waste|cop|solid|depolama|transfer|arıtma|aritma|sewage|lojistik|logistics)/.test(text);
+  return /(industr|waste|solid|storage|transfer|treatment|sewage|logistics)/.test(text);
 }
 
 function buildWindPlumeLayer() {
   clearGroup(windPlumeGroup);
   if (!settings.showWindPlumes) return;
   const sources = [
-    ...(layerDataCache?.yapilar?.features || []),
+    ...(layerDataCache?.buildingsFc?.features || []),
     ...(layerDataCache?.hardscape?.features || [])
   ].filter(isOdorOrEmissionSource);
   if (!sources.length) return;
@@ -5831,12 +5823,12 @@ function createRoofPresetTexture(name) {
 }
 
 // Legacy tree renderer retained only for regression reference.
-function buildTreeLayerLegacy(agaclar) {
+function buildTreeLayerLegacy(treesFc) {
   clearGroup(treeGroup);
-  if (!agaclar?.features?.length) return;
-  const feats = agaclar.features.filter(f => f.geometry?.type === 'Point');
+  if (!treesFc?.features?.length) return;
+  const feats = treesFc.features.filter(f => f.geometry?.type === 'Point');
   if (!feats.length) return;
-  const heightFields = namesWithMapping('tree_height_field', ['planx_tree_height', 'tree_height', 'height', 'boy', 'agac_boyu', 'ağaç_boyu', 'aÄŸaÃ§_boyu', 'yukseklik', 'yükseklik', 'yÃ¼kseklik']);
+  const heightFields = namesWithMapping('tree_height_field', ['planx_tree_height', 'tree_height', 'height']);
 
   // Group by variant (0,1,2)
   const buckets = [[], [], []];
@@ -6068,11 +6060,11 @@ function representativeTreeCoords(geometry) {
 }
 
 // InstancedMesh trees — dynamic variant buckets (up to 10 presets) with optional randomize + rand(min,max) heights.
-function buildTreeLayer(agaclar, treeModel) {
+function buildTreeLayer(treesFc, treeModel) {
   clearGroup(treeGroup);
-  if (!agaclar?.features?.length) return;
+  if (!treesFc?.features?.length) return;
   const treeSamples = [];
-  for (const feat of agaclar.features || []) {
+  for (const feat of treesFc.features || []) {
     const coords = representativeTreeCoords(feat?.geometry);
     if (!coords.length) continue;
     for (const coord of coords) treeSamples.push({ feature: feat, coord });
@@ -6082,7 +6074,7 @@ function buildTreeLayer(agaclar, treeModel) {
     return;
   }
   const mappedHeightField = mappedField('tree_height_field');
-  const fallbackHeightFields = ['planx_tree_height', 'tree_height', 'height', 'boy', 'agac_boyu', 'ağaç_boyu', 'aÄŸaÃ§_boyu', 'yukseklik', 'yükseklik', 'yÃ¼kseklik'];
+  const fallbackHeightFields = ['planx_tree_height', 'tree_height', 'height'];
   const heightFields = mappedHeightField ? [mappedHeightField, ...fallbackHeightFields] : fallbackHeightFields;
   const randomHeightExpr = parseRandRangeExpr(settings.treeHeightRandomExpr);
   const randomizeTrees = !!settings.treeRandomize;
@@ -6346,7 +6338,7 @@ function buildMosqueLayer(mosques, mosqueModel) {
     if (cust.rotation !== undefined) {
       angleRad = -THREE.MathUtils.degToRad(cust.rotation);
     } else {
-      const deg = numericPropFirst(props, ['planx_angle', 'planx_rotation', 'angle', 'rotation', 'yon', 'yön']);
+      const deg = numericPropFirst(props, ['planx_angle', 'planx_rotation', 'angle', 'rotation']);
       if (deg !== null) {
         angleRad = -THREE.MathUtils.degToRad(deg);
       } else {
@@ -6455,7 +6447,7 @@ function buildTumulusLayer(tumulus, tumulusModel) {
 
     const props = f.properties || {};
     // Per-feature attribute multiplier and per-placement overrides stack on the global X/Y/Z scale.
-    const pScale = parseNumberProp(props, ['planx_scale', 'scale', 'tumulus_scale', 'olcek', 'ölçek'], 1.0);
+    const pScale = parseNumberProp(props, ['planx_scale', 'scale', 'tumulus_scale'], 1.0);
     const sx = (cust.scaleX !== undefined ? cust.scaleX : pScale) * gScaleX;
     const sy = (cust.scaleY !== undefined ? cust.scaleY : pScale) * gScaleY;
     const sz = (cust.scaleZ !== undefined ? cust.scaleZ : pScale) * gScaleZ;
@@ -6464,7 +6456,7 @@ function buildTumulusLayer(tumulus, tumulusModel) {
     if (cust.rotation !== undefined) {
       m.rotation.y = -THREE.MathUtils.degToRad(cust.rotation);
     } else {
-      const deg = numericPropFirst(props, ['planx_angle', 'planx_rotation', 'angle', 'rotation', 'yon', 'yön']);
+      const deg = numericPropFirst(props, ['planx_angle', 'planx_rotation', 'angle', 'rotation']);
       m.rotation.y = deg !== null
         ? -THREE.MathUtils.degToRad(deg)
         : -THREE.MathUtils.degToRad(settings.tumulusRotation || 0);
@@ -6527,8 +6519,7 @@ function nearestRoadInfo(x, z) {
 function furnitureRotationY(feature, x, z, mappedKey) {
   const props = feature?.properties || {};
   const fieldNames = namesWithMapping(mappedKey, [
-    'planx_angle', 'planx_rotation', 'angle', 'rotation', 'rot',
-    'heading', 'bearing', 'azimuth', 'direction', 'yon', 'yön', 'yÃ¶n'
+    'planx_angle', 'planx_rotation', 'angle', 'rotation', 'rot', 'heading', 'bearing', 'azimuth', 'direction'
   ]);
   const deg = numericPropFirst(props, fieldNames);
   if (deg !== null) return -THREE.MathUtils.degToRad(deg);
@@ -6867,39 +6858,35 @@ function buildFurnitureLayer() {
   if (settings.showBusStops) placeItem(busstops, stopGeo, 'busstops');
 }
 
+// Keyword matching on the (upper-cased) land-use / function value.
+const FUNCTION_KEYWORDS = [
+  { re: /RESIDENT|HOUSING|DWELLING|APARTMENT/, color: '#f5e4c2', icon: '🏠' },
+  { re: /SCHOOL|EDUCATION|UNIVERSITY|COLLEGE|CAMPUS/, color: '#bfdbfe', icon: '🏫' },
+  { re: /MOSQUE|CHURCH|TEMPLE|SYNAGOGUE|RELIGIO|WORSHIP/, color: '#d8f5e0', icon: '🕌' },
+  { re: /COMMERCIAL|RETAIL|SHOP|MALL|MARKET|OFFICE/, color: '#fed7aa', icon: '🏪' },
+  { re: /HEALTH|HOSPITAL|CLINIC|MEDICAL/, color: '#fce7f3', icon: '🏥' },
+  { re: /SPORT|STADIUM|ARENA/, color: '#e0e7ff', icon: '🏟️' },
+  { re: /PARK|GREEN|GARDEN/, color: '#bbf7d0', icon: '🌳' },
+  { re: /CIVIC|PUBLIC|GOVERNMENT|MUNICIPAL|ADMINISTRAT/, color: '#ede9fe', icon: '🏛️' },
+  { re: /INDUSTR|FACTORY|WAREHOUSE|MANUFACTUR/, color: '#e2e8f0', icon: '🏭' }
+];
+
 function getSemanticColor(fn) {
-  const f = fn.toUpperCase();
-  if (f.includes('KONUT') || f.includes('YERLEŞİK') || f.includes('MESKEN')) return '#f5e4c2';
-  if (f.includes('OKUL') || f.includes('EĞİTİM') || f.includes('ÜNİVERSİTE')) return '#bfdbfe';
-  if (f.includes('CAMİ') || f.includes('DİNİ') || f.includes('İBADET')) return '#d8f5e0';
-  if (f.includes('TİCARET') || f.includes('ÇARŞI') || f.includes('AVM')) return '#fed7aa';
-  if (f.includes('SAĞLIK') || f.includes('HASTANE') || f.includes('KLİNİK')) return '#fce7f3';
-  if (f.includes('SPOR') || f.includes('STADYUM') || f.includes('ARENA')) return '#e0e7ff';
-  if (f.includes('PARK') || f.includes('YEŞİL') || f.includes('BAHÇE')) return '#bbf7d0';
-  if (f.includes('KAMU') || f.includes('İDARİ') || f.includes('BELEDİYE')) return '#ede9fe';
-  if (f.includes('SANAYİ') || f.includes('ENDÜSTRİ') || f.includes('FABRİKA')) return '#e2e8f0';
-  return '#f1f5f9';
+  const f = String(fn).toUpperCase();
+  return FUNCTION_KEYWORDS.find((k) => k.re.test(f))?.color || '#f1f5f9';
 }
 
 function getFunctionIcon(fn) {
-  const f = fn.toUpperCase();
-  if (f.includes('KONUT') || f.includes('YERLEŞİK')) return '🏠';
-  if (f.includes('OKUL') || f.includes('EĞİTİM')) return '🏫';
-  if (f.includes('CAMİ') || f.includes('DİNİ')) return '🕌';
-  if (f.includes('TİCARET') || f.includes('AVM')) return '🏪';
-  if (f.includes('SAĞLIK') || f.includes('HASTANE')) return '🏥';
-  if (f.includes('SPOR')) return '🏟️';
-  if (f.includes('PARK') || f.includes('YEŞİL')) return '🌳';
-  if (f.includes('KAMU') || f.includes('İDARİ')) return '🏛️';
-  return '🏢';
+  const f = String(fn).toUpperCase();
+  return FUNCTION_KEYWORDS.find((k) => k.re.test(f))?.icon || '🏢';
 }
 
-async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
+async function buildBuildingLayer(buildingsFc, buildToken = sceneBuildToken) {
   clearGroup(buildingGroup);
   buildingFunctionMaterials.clear();
-  if (!yapilar?.features?.length) return;
+  if (!buildingsFc?.features?.length) return;
 
-  const functions = [...new Set(yapilar.features.map((f) => String(buildingFunctionValue(f.properties || {}))))];
+  const functions = [...new Set(buildingsFc.features.map((f) => String(buildingFunctionValue(f.properties || {}))))];
 
   for (let i = 0; i < functions.length; i++) {
     const fn = functions[i];
@@ -6995,24 +6982,24 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
   const specs = [];
   const records = [];
 
-  for (const f of yapilar.features) {
+  for (const f of buildingsFc.features) {
     const props = f.properties || {};
     const fn = String(buildingFunctionValue(props));
     const fnIndex = Math.max(0, functions.indexOf(fn));
     const fnStyle = ensureFunctionBuildingStyle(fn, fnIndex);
     const levels = buildingLevels(f.properties);
-    const featureFloorHeight = parseNumberProp(props, ['planx_floor_height', 'floor_height', 'kat_yuksekligi', 'kat_yüksekliği'], fnStyle.floorHeight);
+    const featureFloorHeight = parseNumberProp(props, ['planx_floor_height', 'floor_height'], fnStyle.floorHeight);
     const height = buildingHeightFromProps(props, levels, featureFloorHeight);
     const featureSetback = fnStyle.setbackEnabled !== false ? Math.max(0, Number(settings.buildingSetback) || 0) : 0;
-    const featureColor = normalizeHexColor(propFirst(props, ['planx_color', 'planx_renk', 'color', 'renk']), fnStyle.color);
-    const selectedFacadeRaw = presetValue(propFirst(props, ['planx_facade', 'planx_texture', 'facade', 'cephe', 'doku']), textureSets.facade, fnStyle.facade);
+    const featureColor = normalizeHexColor(propFirst(props, ['planx_color', 'color']), fnStyle.color);
+    const selectedFacadeRaw = presetValue(propFirst(props, ['planx_facade', 'planx_texture', 'facade']), textureSets.facade, fnStyle.facade);
     const selectedFacade = normalizeFacadeKey(selectedFacadeRaw);
     const featureFacade = resolveFacadeForLevels(selectedFacade, levels);
-    const featureFacadeScale = Math.max(1, Math.min(8, parseNumberProp(props, ['planx_facade_scale', 'facade_scale', 'cephe_olcegi'], fnStyle.facadeScale)));
-    const featureRoofTexture = presetValue(propFirst(props, ['planx_roof_texture', 'roof_texture', 'cati_doku', 'cati_texture']), textureSets.roof, fnStyle.roofTexture);
-    const featureRoofShape = roofShapeValue(roofShapeValue(propFirst(props, ['planx_roof_shape', 'roof_shape', 'cati_tipi']), fnStyle.roofShape), 'Pyramid');
-    const featureRoofHeight = parseNumberProp(props, ['planx_roof_height', 'roof_height', 'cati_yuksekligi', 'çatı_yüksekliği'], fnStyle.roofHeight);
-    const featureRoofColor = normalizeHexColor(propFirst(props, ['planx_roof_color', 'roof_color', 'cati_renk']), fnStyle.roofColor);
+    const featureFacadeScale = Math.max(1, Math.min(8, parseNumberProp(props, ['planx_facade_scale', 'facade_scale'], fnStyle.facadeScale)));
+    const featureRoofTexture = presetValue(propFirst(props, ['planx_roof_texture', 'roof_texture']), textureSets.roof, fnStyle.roofTexture);
+    const featureRoofShape = roofShapeValue(roofShapeValue(propFirst(props, ['planx_roof_shape', 'roof_shape']), fnStyle.roofShape), 'Pyramid');
+    const featureRoofHeight = parseNumberProp(props, ['planx_roof_height', 'roof_height'], fnStyle.roofHeight);
+    const featureRoofColor = normalizeHexColor(propFirst(props, ['planx_roof_color', 'roof_color']), fnStyle.roofColor);
 
     for (const poly of getPolygonRings(f.geometry)) {
       const outer = poly[0];
@@ -7025,11 +7012,11 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
       cz /= rings[0].length;
 
       const baseY = buildingBaseYForOuterRing(outer);
-      const footprintArea = parseNumberProp(props, ['taban_alani', 'footprint_area', 'aream2'], polygonAreaGeo(outer));
-      const floorArea = parseNumberProp(props, namesWithMapping('building_floor_area_field', ['toplam_insaat', 'insaat_alani', 'floor_area', 'gross_area']), footprintArea * levels);
-      const dwellings = parseNumberProp(props, namesWithMapping('building_dwelling_field', ['daire', 'daire_sayisi', 'dwelling', 'dwellings']), Math.max(1, Math.round(floorArea / 115)));
-      const population = parseNumberProp(props, ['nufus', 'nüfus', 'population', 'pop'], Math.round(dwellings * 3.1));
-      const vehicles = parseNumberProp(props, ['arac', 'araç', 'vehicle', 'cars'], Math.round(dwellings * 0.7));
+      const footprintArea = parseNumberProp(props, ['footprint_area', 'aream2'], polygonAreaGeo(outer));
+      const floorArea = parseNumberProp(props, namesWithMapping('building_floor_area_field', ['floor_area', 'gross_area']), footprintArea * levels);
+      const dwellings = parseNumberProp(props, namesWithMapping('building_dwelling_field', ['dwelling', 'dwellings']), Math.max(1, Math.round(floorArea / 115)));
+      const population = parseNumberProp(props, ['population', 'pop'], Math.round(dwellings * 3.1));
+      const vehicles = parseNumberProp(props, ['vehicle', 'cars'], Math.round(dwellings * 0.7));
       const rid = records.length;
       records.push({
         ...(f.properties || {}),
@@ -7108,21 +7095,21 @@ async function buildBuildingLayer(yapilar, buildToken = sceneBuildToken) {
   // Templates were cloned into the shared materials; their textures stay.
   for (const look of looks) look.material.dispose();
 }
-function buildZoningEnvelopesLayer(yapilar) {
+function buildZoningEnvelopesLayer(buildingsFc) {
   clearGroup(zoningGroup);
-  if (!settings.showZoningEnvelopes || !yapilar?.features?.length) return;
+  if (!settings.showZoningEnvelopes || !buildingsFc?.features?.length) return;
 
   const zoningHeight = settings.zoningMaxHeight;
   const zoningSetbackVal = settings.zoningSetback;
   const highlight = settings.highlightViolations;
 
-  for (const f of yapilar.features) {
+  for (const f of buildingsFc.features) {
     const props = f.properties || {};
     const levels = buildingLevels(props);
     const fn = String(buildingFunctionValue(props));
     const fnIndex = Math.max(0, Object.keys(functionColorState).indexOf(fn));
     const fnStyle = ensureFunctionBuildingStyle(fn, fnIndex);
-    const featureFloorHeight = parseNumberProp(props, ['planx_floor_height', 'floor_height', 'kat_yuksekligi', 'kat_yüksekliği'], fnStyle.floorHeight);
+    const featureFloorHeight = parseNumberProp(props, ['planx_floor_height', 'floor_height'], fnStyle.floorHeight);
     const height = buildingHeightFromProps(props, levels, featureFloorHeight);
 
     const featureSetback = fnStyle.setbackEnabled !== false ? Math.max(0, Number(settings.buildingSetback) || 0) : 0;
@@ -7255,7 +7242,7 @@ function createBikeLaneTexture(baseColor = settings.bikeLaneColor) {
 function bikeLaneFeatureWidth(feature) {
   const width = parseNumberProp(
     feature?.properties || {},
-    ['planx_width', 'bike_lane_width', 'cycleway_width', 'width', 'genislik', 'bisiklet_yolu_genisligi'],
+    ['planx_width', 'bike_lane_width', 'cycleway_width', 'width'],
     settings.bikeLaneWidth
   );
   return Math.max(1.5, Math.min(5, width || 3));
@@ -7442,7 +7429,7 @@ function buildBicycleTraffic() {
   }
 }
 
-async function buildRoadsAndTraffic(yollar, buildToken = sceneBuildToken) {
+async function buildRoadsAndTraffic(roadsFc, buildToken = sceneBuildToken) {
   clearGroup(roadGroup);
   clearGroup(carGroup);
   clearGroup(pedestrianGroup);
@@ -7450,7 +7437,7 @@ async function buildRoadsAndTraffic(yollar, buildToken = sceneBuildToken) {
   vehicleRoadCurves = [];
   cars = [];
   pedestrians = [];
-  if (!yollar?.features?.length) return;
+  if (!roadsFc?.features?.length) return;
 
   let roadTex = null;
   if (settings.roadStyle === 'Asphalt') {
@@ -7474,7 +7461,7 @@ async function buildRoadsAndTraffic(yollar, buildToken = sceneBuildToken) {
   });
   const amenityPoints = settings.roadColorMode === 'Amenity distance' ? estimateAmenityPoints() : [];
 
-  for (const f of yollar.features) {
+  for (const f of roadsFc.features) {
     if (!f.geometry || f.geometry.type !== 'LineString') continue;
     const xzPts = [];
     for (const c of f.geometry.coordinates) {
@@ -7805,8 +7792,8 @@ function buildSidewalkPolygonLayer(sidewalks, buildToken = sceneBuildToken) {
   }
 }
 
-function buildProceduralSidewalkStrips(yollar, buildToken = sceneBuildToken) {
-  if (!yollar?.features?.length) return;
+function buildProceduralSidewalkStrips(roadsFc, buildToken = sceneBuildToken) {
+  if (!roadsFc?.features?.length) return;
 
   const swWidth = 1.3;
   const sidewalkTex = createSidewalkTexture(settings.sidewalkColor);
@@ -7821,7 +7808,7 @@ function buildProceduralSidewalkStrips(yollar, buildToken = sceneBuildToken) {
     polygonOffsetUnits: -3
   });
 
-  for (const f of yollar.features) {
+  for (const f of roadsFc.features) {
     if (!f.geometry || f.geometry.type !== 'LineString') continue;
     const xzPtsW = [];
     for (const c of f.geometry.coordinates) {
@@ -7879,20 +7866,20 @@ function buildProceduralSidewalkStrips(yollar, buildToken = sceneBuildToken) {
   }
 }
 
-function buildSidewalkLayer(yollar, sidewalks = EMPTY_GEOJSON, buildToken = sceneBuildToken) {
+function buildSidewalkLayer(roadsFc, sidewalks = EMPTY_GEOJSON, buildToken = sceneBuildToken) {
   clearGroup(sidewalkGroup);
   if (!settings.showSidewalks) return;
   if (sidewalks?.features?.length) {
     buildSidewalkPolygonLayer(sidewalks, buildToken);
     if (isSceneBuildStale(buildToken)) return;
   }
-  buildProceduralSidewalkStrips(yollar, buildToken);
+  buildProceduralSidewalkStrips(roadsFc, buildToken);
 }
 
 function pedestrianPathWidth(feature) {
   const width = parseNumberProp(
     feature?.properties || {},
-    ['width', 'genislik', 'genişlik', 'path_width', 'walkway_width', 'yaya_yolu_genisligi'],
+    ['width', 'path_width', 'walkway_width'],
     2.2
   );
   return Math.max(0.8, Math.min(6.0, width || 2.2));
@@ -8002,10 +7989,10 @@ function buildPedestrianPathLayer(paths = EMPTY_GEOJSON, buildToken = sceneBuild
   }
 }
 
-function buildCrosswalkLayer(yollar) {
+function buildCrosswalkLayer(roadsFc) {
   clearGroup(crosswalkGroup);
   if (!settings.showCrosswalks) return;
-  if (!yollar?.features?.length) return;
+  if (!roadsFc?.features?.length) return;
 
   const cwMat = new THREE.MeshStandardMaterial({ color: 0xf0ede5, roughness: 0.85 });
   const stripeW = 0.38;
@@ -8013,7 +8000,7 @@ function buildCrosswalkLayer(yollar) {
   const stripeCount = 5;
   const totalLen = stripeCount * stripeW + (stripeCount - 1) * stripeGap;
 
-  for (const f of yollar.features) {
+  for (const f of roadsFc.features) {
     if (!f.geometry || f.geometry.type !== 'LineString') continue;
     const coords = f.geometry.coordinates;
     if (coords.length < 2) continue;
@@ -8107,29 +8094,29 @@ async function rebuildScene() {
     projectManifest = await loadManifest();
     applyManifestDefaults();
     // Fetch every base layer at once; they are independent files.
-    const [adalar, yapilar, yollar, agaclar, lights, benches, bins, busstops, fences, waterlines, mosques, tumulus, roi] = await Promise.all([
-      loadGeoJson('../data/yerlesim/myblocks.geojson', { required: manifestRequiresInput('blocks'), label: 'Blocks' }),
-      loadGeoJson('../data/yerlesim/mybuildings.geojson', { required: manifestRequiresInput('buildings'), label: 'Buildings' }),
-      loadGeoJson('../data/yerlesim/myroads.geojson', { required: manifestRequiresInput('roads'), label: 'Roads' }),
-      loadGeoJson('../data/yerlesim/mytrees.geojson', { label: 'Trees' }),
-      loadGeoJson('../data/yerlesim/mylights.geojson', { label: 'Lights' }),
-      loadGeoJson('../data/yerlesim/mybenches.geojson', { label: 'Benches' }),
-      loadGeoJson('../data/yerlesim/mytrashbins.geojson', { label: 'Trash bins' }),
-      loadGeoJson('../data/yerlesim/mybusstops.geojson', { label: 'Bus stops' }),
-      loadGeoJson('../data/yerlesim/myfences.geojson', { label: 'Fences' }),
-      loadGeoJson('../data/yerlesim/mywaterlines.geojson', { label: 'Water lines' }),
-      loadGeoJson('../data/yerlesim/mymosques.geojson', { label: 'Mosques' }),
-      loadGeoJson('../data/yerlesim/mytumulus.geojson', { label: 'Tumulus' }),
-      loadGeoJson('../data/yerlesim/roi.geojson', { required: manifestRequiresInput('roi'), label: 'ROI' })
+    const [blocksFc, buildingsFc, roadsFc, treesFc, lights, benches, bins, busstops, fences, waterlines, mosques, tumulus, roi] = await Promise.all([
+      loadGeoJson('../data/vector/myblocks.geojson', { required: manifestRequiresInput('blocks'), label: 'Blocks' }),
+      loadGeoJson('../data/vector/mybuildings.geojson', { required: manifestRequiresInput('buildings'), label: 'Buildings' }),
+      loadGeoJson('../data/vector/myroads.geojson', { required: manifestRequiresInput('roads'), label: 'Roads' }),
+      loadGeoJson('../data/vector/mytrees.geojson', { label: 'Trees' }),
+      loadGeoJson('../data/vector/mylights.geojson', { label: 'Lights' }),
+      loadGeoJson('../data/vector/mybenches.geojson', { label: 'Benches' }),
+      loadGeoJson('../data/vector/mytrashbins.geojson', { label: 'Trash bins' }),
+      loadGeoJson('../data/vector/mybusstops.geojson', { label: 'Bus stops' }),
+      loadGeoJson('../data/vector/myfences.geojson', { label: 'Fences' }),
+      loadGeoJson('../data/vector/mywaterlines.geojson', { label: 'Water lines' }),
+      loadGeoJson('../data/vector/mymosques.geojson', { label: 'Mosques' }),
+      loadGeoJson('../data/vector/mytumulus.geojson', { label: 'Tumulus' }),
+      loadGeoJson('../data/vector/roi.geojson', { required: manifestRequiresInput('roi'), label: 'ROI' })
     ]);
     layerDataCache = {
-       adalar: asFeatureCollection(adalar, 'Blocks'),
-       yapilar: asFeatureCollection(yapilar, 'Buildings'),
-       yollar: asFeatureCollection(yollar, 'Roads'),
-       agaclar: asFeatureCollection(agaclar, 'Trees'),
+       blocksFc: asFeatureCollection(blocksFc, 'Blocks'),
+       buildingsFc: asFeatureCollection(buildingsFc, 'Buildings'),
+       roadsFc: asFeatureCollection(roadsFc, 'Roads'),
+       treesFc: asFeatureCollection(treesFc, 'Trees'),
        mosques: asFeatureCollection(mosques, 'Mosques'),
        tumulus: asFeatureCollection(tumulus, 'Tumulus'),
-       parseller: null,
+       parcelsFc: null,
        hardscape: null,
        sidewalks: null,
        pedestrianPaths: null,
@@ -8150,11 +8137,11 @@ async function rebuildScene() {
   const lazyLayers = [];
   const lazyLayer = (needed, cacheKey, file, label, options = {}) => {
     if (!needed || layerDataCache[cacheKey]) return;
-    lazyLayers.push(loadGeoJson(`../data/yerlesim/${file}`, { label, ...options }).then((data) => {
+    lazyLayers.push(loadGeoJson(`../data/vector/${file}`, { label, ...options }).then((data) => {
       layerDataCache[cacheKey] = asFeatureCollection(data, label);
     }));
   };
-  lazyLayer(settings.showParcels, 'parseller', 'myparcels.geojson', 'Parcels', { required: manifestRequiresInput('parcels') });
+  lazyLayer(settings.showParcels, 'parcelsFc', 'myparcels.geojson', 'Parcels', { required: manifestRequiresInput('parcels') });
   lazyLayer(settings.showHardscape || settings.showWindPlumes, 'hardscape', 'myhardscape.geojson', 'Hardscape');
   lazyLayer(settings.showSidewalks, 'sidewalks', 'mysidewalks.geojson', 'Sidewalks');
   lazyLayer(settings.showPedestrianPaths, 'pedestrianPaths', 'mypedestrian_paths.geojson', 'Pedestrian paths');
@@ -8164,32 +8151,32 @@ async function rebuildScene() {
   await Promise.all(lazyLayers);
   if (isSceneBuildStale(buildToken)) return;
   
-  const adalar = asFeatureCollection(layerDataCache.adalar, 'Blocks');
-  const yapilar = asFeatureCollection(layerDataCache.yapilar, 'Buildings');
-  const yollar = asFeatureCollection(layerDataCache.yollar, 'Roads');
-  const agaclar = asFeatureCollection(layerDataCache.agaclar, 'Trees');
+  const blocksFc = asFeatureCollection(layerDataCache.blocksFc, 'Blocks');
+  const buildingsFc = asFeatureCollection(layerDataCache.buildingsFc, 'Buildings');
+  const roadsFc = asFeatureCollection(layerDataCache.roadsFc, 'Roads');
+  const treesFc = asFeatureCollection(layerDataCache.treesFc, 'Trees');
   const mosques = asFeatureCollection(layerDataCache.mosques, 'Mosques');
   const tumulus = asFeatureCollection(layerDataCache.tumulus, 'Tumulus');
-  const parseller = layerDataCache.parseller ? asFeatureCollection(layerDataCache.parseller, 'Parcels') : null;
+  const parcelsFc = layerDataCache.parcelsFc ? asFeatureCollection(layerDataCache.parcelsFc, 'Parcels') : null;
   const hardscape = layerDataCache.hardscape ? asFeatureCollection(layerDataCache.hardscape, 'Hardscape') : null;
   const sidewalks = layerDataCache.sidewalks ? asFeatureCollection(layerDataCache.sidewalks, 'Sidewalks') : null;
   const pedestrianPaths = layerDataCache.pedestrianPaths ? asFeatureCollection(layerDataCache.pedestrianPaths, 'Pedestrian paths') : null;
   const bikeLanes = layerDataCache.bikeLanes ? asFeatureCollection(layerDataCache.bikeLanes, 'Bike lanes') : null;
   const fences = layerDataCache.fences ? asFeatureCollection(layerDataCache.fences, 'Fences') : null;
   const waterlines = layerDataCache.waterlines ? asFeatureCollection(layerDataCache.waterlines, 'Water lines') : null;
-  Object.assign(layerDataCache, { adalar, yapilar, yollar, agaclar, parseller, hardscape, sidewalks, pedestrianPaths, bikeLanes, fences, waterlines, mosques, tumulus });
+  Object.assign(layerDataCache, { blocksFc, buildingsFc, roadsFc, treesFc, parcelsFc, hardscape, sidewalks, pedestrianPaths, bikeLanes, fences, waterlines, mosques, tumulus });
   layerBuildTimings['Load: data'] = Math.round(performance.now() - tScene);
   updateDashboard(layerDataCache);
 
   // Calculate and update stats
   const statDiv = document.getElementById('stats-content');
   if (statDiv) {
-    const blockCount = adalar.features.length;
-    const parcelCount = parseller ? parseller.features.length : '-';
-    const bldCount = yapilar.features.length;
+    const blockCount = blocksFc.features.length;
+    const parcelCount = parcelsFc ? parcelsFc.features.length : '-';
+    const bldCount = buildingsFc.features.length;
     let totalFloors = 0;
     const funcMap = {};
-    yapilar.features.forEach(f => {
+    buildingsFc.features.forEach(f => {
        const fn = buildingFunctionValue(f.properties || {});
        funcMap[fn] = (funcMap[fn] || 0) + 1;
        totalFloors += buildingLevels(f.properties);
@@ -8199,7 +8186,7 @@ async function rebuildScene() {
     let html = `<div class="stat-row"><span>${t('statBld')}</span><span class="stat-val">${bldCount}</span></div>`;
     html += `<div class="stat-row"><span>${t('statBlock')}</span><span class="stat-val">${blockCount}</span></div>`;
     html += `<div class="stat-row"><span>${t('statFlr')}</span><span class="stat-val">${avgFlr}</span></div>`;
-    if (parseller) html += `<div class="stat-row"><span>${t('statParcel')}</span><span class="stat-val">${parcelCount}</span></div>`;
+    if (parcelsFc) html += `<div class="stat-row"><span>${t('statParcel')}</span><span class="stat-val">${parcelCount}</span></div>`;
     const topFuncs = Object.entries(funcMap).sort((a, b) => b[1] - a[1]).slice(0, 4);
     topFuncs.forEach(([k, v]) => {
       const icon = getFunctionIcon(k);
@@ -8273,7 +8260,7 @@ async function rebuildScene() {
   loadingText.innerText = t('sceneTerrain') + '...';
   setSceneState('sceneTerrain');
   const tTerrain = performance.now();
-  const terrainBuilt = await buildTerrain(adalar, buildToken);
+  const terrainBuilt = await buildTerrain(blocksFc, buildToken);
   layerBuildTimings.Terrain = Math.round(performance.now() - tTerrain);
   if (!terrainBuilt || isSceneBuildStale(buildToken)) return;
 
@@ -8303,14 +8290,14 @@ async function rebuildScene() {
     }
     tumulusModel = cachedDefaultTumulusModel;
   }
-  if (settings.showIslands && (!isRasterTextureMode() || adalar.features.length)) {
-    await runLayerBuild('Blocks', () => buildIslandLayer(adalar, buildToken), () => clearGroup(islandGroup));
+  if (settings.showIslands && (!isRasterTextureMode() || blocksFc.features.length)) {
+    await runLayerBuild('Blocks', () => buildIslandLayer(blocksFc, buildToken), () => clearGroup(islandGroup));
   } else {
     clearGroup(islandGroup);
   }
   if (isSceneBuildStale(buildToken)) return;
-  if (settings.showParcels && parseller) {
-    await runLayerBuild('Parcels', () => buildParcelLayer(parseller), () => clearGroup(parcelGroup));
+  if (settings.showParcels && parcelsFc) {
+    await runLayerBuild('Parcels', () => buildParcelLayer(parcelsFc), () => clearGroup(parcelGroup));
   } else {
     clearGroup(parcelGroup);
   }
@@ -8322,18 +8309,18 @@ async function rebuildScene() {
   if (isSceneBuildStale(buildToken)) return;
   await runLayerBuild('Wind plume', () => buildWindPlumeLayer(), () => clearGroup(windPlumeGroup));
   if (settings.showBuildings) {
-    await runLayerBuild('Buildings', () => buildBuildingLayer(yapilar, buildToken), () => clearGroup(buildingGroup));
+    await runLayerBuild('Buildings', () => buildBuildingLayer(buildingsFc, buildToken), () => clearGroup(buildingGroup));
   } else {
     clearGroup(buildingGroup);
   }
   if (isSceneBuildStale(buildToken)) return;
-  if (settings.showZoningEnvelopes && settings.showBuildings && yapilar) {
-    await runLayerBuild('Zoning Envelopes', () => buildZoningEnvelopesLayer(yapilar), () => clearGroup(zoningGroup));
+  if (settings.showZoningEnvelopes && settings.showBuildings && buildingsFc) {
+    await runLayerBuild('Zoning Envelopes', () => buildZoningEnvelopesLayer(buildingsFc), () => clearGroup(zoningGroup));
   } else {
     clearGroup(zoningGroup);
   }
   if (isSceneBuildStale(buildToken)) return;
-  await runLayerBuild('Roads', () => buildRoadsAndTraffic(yollar, buildToken), () => {
+  await runLayerBuild('Roads', () => buildRoadsAndTraffic(roadsFc, buildToken), () => {
     clearGroup(roadGroup);
     clearGroup(carGroup);
     clearGroup(pedestrianGroup);
@@ -8354,7 +8341,7 @@ async function rebuildScene() {
   }
   if (isSceneBuildStale(buildToken)) return;
   if (settings.showSidewalks) {
-    await runLayerBuild('Sidewalks', () => buildSidewalkLayer(yollar, sidewalks, buildToken), () => clearGroup(sidewalkGroup));
+    await runLayerBuild('Sidewalks', () => buildSidewalkLayer(roadsFc, sidewalks, buildToken), () => clearGroup(sidewalkGroup));
   } else {
     clearGroup(sidewalkGroup);
   }
@@ -8365,13 +8352,13 @@ async function rebuildScene() {
     pedestrianPathCurves = [];
   }
   if (settings.showCrosswalks) {
-    await runLayerBuild('Crosswalks', () => buildCrosswalkLayer(yollar), () => clearGroup(crosswalkGroup));
+    await runLayerBuild('Crosswalks', () => buildCrosswalkLayer(roadsFc), () => clearGroup(crosswalkGroup));
   } else {
     clearGroup(crosswalkGroup);
   }
   await runLayerBuild('Pedestrians', () => buildPedestrianLayer(), () => clearGroup(pedestrianGroup));
   if (settings.showTrees) {
-    await runLayerBuild('Trees', () => buildTreeLayer(agaclar, treeModel), () => clearGroup(treeGroup));
+    await runLayerBuild('Trees', () => buildTreeLayer(treesFc, treeModel), () => clearGroup(treeGroup));
   } else {
     clearGroup(treeGroup);
   }
@@ -8460,26 +8447,26 @@ function setSceneState(textOrKey, kind = 'ok') {
 
 function updateDashboard(data) {
   if (!data) return;
-  const adalar = data.adalar || EMPTY_GEOJSON;
-  const yapilar = data.yapilar || EMPTY_GEOJSON;
-  const yollar = data.yollar || EMPTY_GEOJSON;
-  const agaclar = data.agaclar || EMPTY_GEOJSON;
-  const parseller = data.parseller || EMPTY_GEOJSON;
+  const blocksFc = data.blocksFc || EMPTY_GEOJSON;
+  const buildingsFc = data.buildingsFc || EMPTY_GEOJSON;
+  const roadsFc = data.roadsFc || EMPTY_GEOJSON;
+  const treesFc = data.treesFc || EMPTY_GEOJSON;
+  const parcelsFc = data.parcelsFc || EMPTY_GEOJSON;
   const hardscape = data.hardscape || EMPTY_GEOJSON;
   const sidewalks = data.sidewalks || EMPTY_GEOJSON;
   const pedestrianPaths = data.pedestrianPaths || EMPTY_GEOJSON;
   const bikeLanes = data.bikeLanes || EMPTY_GEOJSON;
   const furniture = data.furniture || {};
 
-  const bldCount = yapilar.features.length;
-  const blockCount = adalar.features.length;
-  const parcelCount = parseller?.features?.length || 0;
+  const bldCount = buildingsFc.features.length;
+  const blockCount = blocksFc.features.length;
+  const parcelCount = parcelsFc?.features?.length || 0;
   let totalFloors = 0;
   let totalPopulation = 0;
   let totalDwellings = 0;
   let totalVehicles = 0;
   const funcMap = {};
-  yapilar.features.forEach((f) => {
+  buildingsFc.features.forEach((f) => {
     const fn = buildingFunctionValue(f.properties || {});
     funcMap[fn] = (funcMap[fn] || 0) + 1;
     totalFloors += buildingLevels(f.properties);
@@ -8521,10 +8508,10 @@ function updateDashboard(data) {
   if (health) {
     const manifestEmpty = new Set(projectManifest?.summary?.emptyOptionalInputs || []);
     const optional = [
-      ['blocks', 'Blocks', adalar.features.length],
+      ['blocks', 'Blocks', blocksFc.features.length],
       ['parcels', 'Parcels', parcelCount],
-      ['roads', 'Roads', yollar.features.length],
-      ['trees', 'Trees', agaclar.features.length],
+      ['roads', 'Roads', roadsFc.features.length],
+      ['trees', 'Trees', treesFc.features.length],
       ['hardscape', 'Hardscape', hardscape?.features?.length || 0],
       ['sidewalks', 'Sidewalks', sidewalks?.features?.length || 0],
       ['pedestrian_paths', 'Paths', pedestrianPaths?.features?.length || 0],
@@ -8750,10 +8737,11 @@ window.addEventListener('mousemove', (e) => {
   _doHoverBuilding(hits[0]);
   if (hoverTip) {
     const p = buildingHitData(hits[0]);
-    const icon = getFunctionIcon(p.uipfonksiyon || '');
+    const fn = String(buildingFunctionValue(p));
+    const icon = getFunctionIcon(fn);
     const floorVal = buildingLevelsRaw(p);
-    const floors = floorVal != null ? `${floorVal} ${t('biKat').toLowerCase()}` : '-';
-    hoverTip.innerHTML = `<div class="tooltip-title">${icon} ${(p.uipfonksiyon || '-').slice(0, 26)}</div><div class="tooltip-row"><span>${t('biKat')}</span><span>${floors}</span></div>`;
+    const floors = floorVal != null ? `${floorVal} ${t('buildingFloors').toLowerCase()}` : '-';
+    hoverTip.innerHTML = `<div class="tooltip-title">${icon} ${fn.slice(0, 26)}</div><div class="tooltip-row"><span>${t('buildingFloors')}</span><span>${floors}</span></div>`;
     hoverTip.style.display = 'block';
     const tx = Math.min(e.clientX + 16, innerWidth - 200);
     const ty = Math.max(e.clientY - 60, 8);
@@ -8780,13 +8768,15 @@ window.addEventListener('click', (e) => {
     return;
   }
   const p = buildingHitData(hits[0]);
-  const icon = getFunctionIcon(p.uipfonksiyon || '');
+  const icon = getFunctionIcon(String(buildingFunctionValue(p)));
   const areaStr = p.aream2 ? `${parseFloat(p.aream2).toFixed(0)} m²` : '-';
-  const calcFootprintArea = parseNumberProp(p, ['planx_calc_footprint_area', 'taban_alani', 'footprint_area'], null);
-  const calcFloorArea = parseNumberProp(p, ['planx_calc_floor_area', 'toplam_insaat', 'insaat_alani'], null);
-  const calcPopulation = parseNumberProp(p, ['planx_calc_population', 'nufus', 'nüfus', 'population'], null);
-  const calcDwellings = parseNumberProp(p, ['planx_calc_dwellings', 'daire', 'daire_sayisi', 'dwellings'], null);
-  const calcVehicles = parseNumberProp(p, ['planx_calc_vehicles', 'arac', 'araç', 'vehicle', 'cars'], null);
+  const siteCoverage = parseNumberProp(p, ['site_coverage', 'coverage_ratio', 'coverage'], null);
+  const floorAreaRatio = parseNumberProp(p, ['far', 'floor_area_ratio', 'fsi'], null);
+  const calcFootprintArea = parseNumberProp(p, ['planx_calc_footprint_area', 'footprint_area'], null);
+  const calcFloorArea = parseNumberProp(p, ['planx_calc_floor_area', 'floor_area', 'gross_area'], null);
+  const calcPopulation = parseNumberProp(p, ['planx_calc_population', 'population'], null);
+  const calcDwellings = parseNumberProp(p, ['planx_calc_dwellings', 'dwellings'], null);
+  const calcVehicles = parseNumberProp(p, ['planx_calc_vehicles', 'vehicle', 'cars'], null);
   const styleRows = [
     ['Color', p.planx_color || p.color],
     ['Facade', p.planx_facade],
@@ -8795,12 +8785,11 @@ window.addEventListener('click', (e) => {
   ].filter(([, value]) => value);
   if (detailTip) {
     detailTip.innerHTML = `
-      <div class="tooltip-title">${icon} ${t('binaInfo')} <span class="tip-close" onclick="this.closest('#bldg-detail-tip').style.display='none'">✕</span></div>
-      <div class="tooltip-row"><span>${t('biFonk')}</span><span>${(p.uipfonksiyon || '-').slice(0, 24)}</span></div>
-      <div class="tooltip-row"><span>${t('biKat')}</span><span>${buildingLevelsRaw(p) ?? '-'}</span></div>
-      <div class="tooltip-row"><span>${t('biNiz')}</span><span>${p.nizam || '-'}</span></div>
-      ${p.taks != null ? `<div class="tooltip-row"><span>TAKS</span><span>${p.taks}</span></div>` : ''}
-      ${p.kaks != null ? `<div class="tooltip-row"><span>KAKS</span><span>${p.kaks}</span></div>` : ''}
+      <div class="tooltip-title">${icon} ${t('buildingInfo')} <span class="tip-close" onclick="this.closest('#bldg-detail-tip').style.display='none'">✕</span></div>
+      <div class="tooltip-row"><span>${t('buildingFunction')}</span><span>${String(buildingFunctionValue(p)).slice(0, 24)}</span></div>
+      <div class="tooltip-row"><span>${t('buildingFloors')}</span><span>${buildingLevelsRaw(p) ?? '-'}</span></div>
+      ${siteCoverage != null ? `<div class="tooltip-row"><span>Site coverage</span><span>${siteCoverage}</span></div>` : ''}
+      ${floorAreaRatio != null ? `<div class="tooltip-row"><span>FAR</span><span>${floorAreaRatio}</span></div>` : ''}
       <div class="tooltip-row"><span>Footprint area</span><span>${areaStr}</span></div>
       ${calcFootprintArea ? `<div class="tooltip-row"><span>Calculated footprint</span><span>${calcFootprintArea.toFixed(0)} m²</span></div>` : ''}
       ${calcFloorArea ? `<div class="tooltip-row"><span>Gross floor area</span><span>${calcFloorArea.toFixed(0)} m²</span></div>` : ''}

@@ -21,7 +21,7 @@ DATA = ROOT / "web" / "data"
 ORIGIN_X = 500000.0
 ORIGIN_Y = 4500000.0
 CRS = {"type": "name", "properties": {"name": "urn:ogc:def:crs:EPSG::32635"}}
-FUNCTIONS = ("Konut", "Ticaret", "Egitim", "Saglik", "Sanayi", "Konut+Ticaret")
+FUNCTIONS = ("Residential", "Commercial", "Education", "Health", "Industrial", "Mixed use")
 BLOCK = 80.0       # block edge, metres
 STREET = 16.0      # street width between blocks
 PER_BLOCK = 9      # 3 x 3 buildings per block
@@ -45,7 +45,7 @@ def fc(name, features):
 
 
 def write(name, obj):
-    path = DATA / "yerlesim" / name
+    path = DATA / "vector" / name
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(obj, separators=(",", ":")), encoding="utf-8")
 
@@ -120,7 +120,7 @@ def main():
                 break
             bx = ORIGIN_X + gx * pitch
             by = ORIGIN_Y + gy * pitch
-            blocks.append({"type": "Feature", "properties": {"ada": len(blocks)},
+            blocks.append({"type": "Feature", "properties": {"block_id": len(blocks)},
                            "geometry": {"type": "Polygon", "coordinates": rect(bx, by, bx + BLOCK, by + BLOCK)}})
             cell = BLOCK / 3.0
             for iy in range(3):
@@ -140,8 +140,8 @@ def main():
                         coords = rect(x0, y0, x0 + w, y0 + d)
                     buildings.append({"type": "Feature", "properties": {
                         "id": bid,
-                        "kat": 1 + int(rng.random() * 12),
-                        "fonksiyon": FUNCTIONS[int(rng.random() * len(FUNCTIONS))],
+                        "floors": 1 + int(rng.random() * 12),
+                        "function": FUNCTIONS[int(rng.random() * len(FUNCTIONS))],
                     }, "geometry": {"type": "Polygon", "coordinates": coords}})
                     bid += 1
             for k in range(4):
@@ -150,9 +150,9 @@ def main():
     extent = grid * pitch
     for i in range(grid + 1):
         c = -STREET / 2 + i * pitch
-        roads.append({"type": "Feature", "properties": {"genislik": 12},
+        roads.append({"type": "Feature", "properties": {"width": 12},
                       "geometry": {"type": "LineString", "coordinates": [[ORIGIN_X - STREET, ORIGIN_Y + c], [ORIGIN_X + extent, ORIGIN_Y + c]]}})
-        roads.append({"type": "Feature", "properties": {"genislik": 12},
+        roads.append({"type": "Feature", "properties": {"width": 12},
                       "geometry": {"type": "LineString", "coordinates": [[ORIGIN_X + c, ORIGIN_Y - STREET], [ORIGIN_X + c, ORIGIN_Y + extent]]}})
 
     roi = [{"type": "Feature", "properties": {},

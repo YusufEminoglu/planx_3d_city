@@ -21,7 +21,7 @@ license=MIT
 changelog=
     1.0.3 - Redesign plugin icon to high-end 3D tactile brand design with circular teal pedestal, zero margin, and refreshed documentation links.
     PlanX 3D City Viewer 1.0.0 - Flagship Official Release.
-        - Includes 1-click OSM Urban Harvester expansion, Atmosphere & Lighting Studio, Visual Readiness Gauge, WebGL Performance Tier Estimator, TR-UIP Planning Standards Assistant, Volumetric GFA Calculator, GeoTIFF Edge Blending, and Keyboard Shortcuts HUD.
+        - Includes 1-click OSM Urban Harvester expansion, Atmosphere & Lighting Studio, Visual Readiness Gauge, WebGL Performance Tier Estimator, Volumetric GFA Calculator, GeoTIFF Edge Blending, and Keyboard Shortcuts HUD.
         - Added dynamic 0-100 percent Scene Readiness Score and Pre-Flight WebGL Performance Tier predictor (Ultra 60+ FPS, High Performance, Heavy Urban Scene) to quality report.
     PlanX 3D City Viewer 0.8.66 - Atmosphere & Lighting Studio presets.
         - Added 5 visual lighting presets (Midday Sunlight Clean, Golden Hour Architectural, Overcast Soft Studio, Night Lights & Glow, Morning Mist) to QGIS publisher.

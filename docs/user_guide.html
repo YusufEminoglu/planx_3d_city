@@ -131,7 +131,7 @@
       <ol class="steps">
         <li>Open QGIS and load the layers you want to present. For Vector Plan Mode, every vector layer is optional; the viewer can also run with only a DEM or without a DEM.</li>
         <li>Open <b>PlanX 3D City Publisher</b> from the QGIS plugin menu.</li>
-        <li>Use <b>Auto-match layers</b> first. The plugin searches common Turkish and English layer names such as roads, buildings, blocks, parcels, hardscape, sidewalks, trees, benches, and bus stops.</li>
+        <li>Use <b>Auto-match layers</b> first. The plugin searches common layer names such as roads, buildings, blocks, parcels, hardscape, sidewalks, trees, benches, and bus stops.</li>
         <li>If you do not have project data yet, click <b>Try with sample data</b> or <b>Import from OpenStreetMap</b>.</li>
         <li>Click <b>Generate quality report</b>. Required issues stop export; recommended issues are guidance only.</li>
         <li>Click <b>Export and open 3D Viewer</b>. The plugin writes the web data package and launches the local browser viewer.</li>
@@ -162,7 +162,7 @@
       </table>
 
       <h3>Useful building fields</h3>
-      <p><code>katadedi</code> controls floor count. Height can also be read from common height fields. Optional fields such as population, dwellings, total floor area, vehicle count, roof type, roof color, facade texture, and planning function improve dashboards and thematic styling.</p>
+      <p><code>floors</code> (or <code>building:levels</code>) controls floor count. Height can also be read from common height fields. Optional fields such as population, dwellings, total floor area, vehicle count, roof type, roof color, facade texture, and planning function improve dashboards and thematic styling.</p>
 
       <h3>Coordinate systems</h3>
       <p>Projected CRS data in metres gives the best result. The plugin can reproject OpenStreetMap imports to a local UTM CRS. Avoid mixing layers with unknown or incorrect CRS definitions.</p>
@@ -241,7 +241,7 @@
           <tr><td>Roads appear low after OSM import</td><td>OSM geometry is outside the DEM or the scene is using fallback terrain</td><td>Re-export with wider DEM context, or use the flat fallback; roads are placed on the final visible terrain cache.</td></tr>
           <tr><td>Texture appears only inside ROI</td><td>ROI texture clipping is active</td><td>This is intentional for wide DEM context. Change terrain outside color if needed.</td></tr>
           <tr><td>Quality report marks layers missing</td><td>Recommended layers are absent</td><td>Vector Plan Mode can still export. Missing optional layers are written as empty GeoJSON and skipped by the viewer.</td></tr>
-          <tr><td>Buildings have no height</td><td>No floor count or height field is mapped</td><td>Map <code>katadedi</code> or a height field, or let the viewer use fallback height rules.</td></tr>
+          <tr><td>Buildings have no height</td><td>No floor count or height field is mapped</td><td>Map <code>floors</code> or a height field, or let the viewer use fallback height rules.</td></tr>
           <tr><td>Browser shows an older viewer</td><td>Browser cache kept an old module</td><td>Hard refresh the browser or re-open from QGIS after publishing.</td></tr>
         </tbody>
       </table>

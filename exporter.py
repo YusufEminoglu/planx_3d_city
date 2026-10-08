@@ -383,7 +383,7 @@ def write_empty_geojson(path: Path) -> None:
 def web_data_paths(web_root: str) -> tuple[Path, Path]:
     data_root = Path(web_root) / "data"
     dem_dir = data_root / "dem"
-    vector_dir = data_root / "yerlesim"
+    vector_dir = data_root / "vector"
     dem_dir.mkdir(parents=True, exist_ok=True)
     vector_dir.mkdir(parents=True, exist_ok=True)
     return dem_dir, vector_dir
@@ -506,7 +506,7 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
         else:
             _export_vector(layer, out_path, export_crs)
         written.append(str(out_path))
-        manifest_inputs.append(_layer_manifest(key, layer, f"yerlesim/{filename}", empty, required_inputs))
+        manifest_inputs.append(_layer_manifest(key, layer, f"vector/{filename}", empty, required_inputs))
         if feedback:
             feedback(f"{LABELS[key]} -> {out_path.name}")
 
@@ -593,8 +593,8 @@ def _road_access_manifest(layer_map: dict) -> Optional[dict]:
     field = (layer_map.get("road_access_field") or "").strip()
     if not field:
         return None
-    no_car_values = str(layer_map.get("road_no_car_values") or "yaya,pedestrian,foot,walk,path")
-    vehicle_values = str(layer_map.get("road_vehicle_values") or "tasit,taşıt,vehicle,car,arac,araç,motorlu")
+    no_car_values = str(layer_map.get("road_no_car_values") or "pedestrian,foot,walk,path")
+    vehicle_values = str(layer_map.get("road_vehicle_values") or "vehicle,car,motor_vehicle")
     return {
         "field": field,
         "noCarKeywords": [v.strip() for v in no_car_values.split(",") if v.strip()],
