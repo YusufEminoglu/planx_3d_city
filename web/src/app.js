@@ -22,6 +22,7 @@ import { createAtmosphere } from './atmosphere.js';
 import { applyWindSway, setWind, updateWind, windActive } from './wind.js';
 import { captureSize, captureTiled, hashWithView, viewFromHash } from './capture.js';
 import { ExposureAnalysis, skyDirections, sunPathDirections } from './exposure_analysis.js';
+import { capacityChange, plotCapacity, pointInRings, polygonArea, scenarioTotals } from './zoning_scenario.js';
 
 const urlParams = new URLSearchParams(window.location.search);
 const isPortableMode = urlParams.has('portable') || urlParams.get('portable') === '1';
@@ -294,6 +295,44 @@ composer.addPass(dofPass);
 composer.addPass(bloomPass);
 composer.addPass(new OutputPass());
 
+// Scenario views: 'Massing' shows the scenario instead of the buildings,
+// 'Split' shows existing buildings left of the divider and the scenario
+// right of it (two scissored draws; shadows are redrawn for each side).
+let splitFraction = 0.5;
+const _splitSize = new THREE.Vector2();
+function scenarioViewActive() {
+  return settings.scenarioView !== 'Off' && scenarioGroup.children.length > 0;
+}
+
+function renderScenarioView() {
+  const size = renderer.getSize(_splitSize);
+  const x = settings.scenarioView === 'Split' ? Math.round(size.x * splitFraction) : 0;
+  const showBuildings = buildingGroup.visible;
+  const showZoning = zoningGroup.visible;
+  renderer.setScissorTest(true);
+  if (x > 0) {
+    scenarioGroup.visible = false;
+    sun.shadow.needsUpdate = true;
+    renderer.setScissor(0, 0, x, size.y);
+    renderer.render(scene, camera);
+  }
+  buildingGroup.visible = false;
+  zoningGroup.visible = false;
+  scenarioGroup.visible = true;
+  sun.shadow.needsUpdate = true;
+  renderer.setScissor(x, 0, size.x - x, size.y);
+  renderer.render(scene, camera);
+  renderer.setScissorTest(false);
+  buildingGroup.visible = showBuildings;
+  zoningGroup.visible = showZoning;
+}
+
+// One frame of the scene without post-processing.
+function drawScene() {
+  if (scenarioViewActive()) renderScenarioView();
+  else renderer.render(scene, camera);
+}
+
 function useComposite() {
   return settings.enableSSAO || settings.depthOfField;
 }
@@ -301,6 +340,12 @@ function useComposite() {
 // The settled frame: AO and depth of field as set.
 const _dofDir = new THREE.Vector3();
 function renderComposite() {
+  if (scenarioViewActive()) {
+    // The split view is drawn without the composite (AO/DoF per side would
+    // need two composers).
+    renderScenarioView();
+    return;
+  }
   aoPass.enabled = !!settings.enableSSAO;
   dofPass.enabled = !!settings.depthOfField;
   if (dofPass.enabled) {
@@ -416,6 +461,8 @@ let roiBoundaryGroup = new THREE.Group();
 let fenceGroup = new THREE.Group();
 let waterlineGroup = new THREE.Group();
 let zoningGroup = new THREE.Group();
+// Zoning scenario massing (what-if capacity per plot).
+const scenarioGroup = new THREE.Group();
 world.add(islandGroup);
 world.add(parcelGroup);
 world.add(hardscapeGroup);
@@ -438,6 +485,7 @@ world.add(roiBoundaryGroup);
 world.add(fenceGroup);
 world.add(waterlineGroup);
 world.add(zoningGroup);
+world.add(scenarioGroup);
 
 /* Layer Elevation Hierarchy
  * DEM < islands < block paths < buildings/trees < parcels < hardscape slab < roads < bike lanes < sidewalks < cars/bikes.
@@ -1573,6 +1621,9 @@ const settings = {
   highlightViolations: true,
   zoningSetback: 3.0,
   zoningMaxHeight: 40.0,
+  zoningCoverage: 0.4,
+  zoningFar: 2.0,
+  scenarioView: 'Off',
   activeTreeModel: 'default',
   activeLightModel: 'default',
   activeBenchModel: 'default',
@@ -1639,7 +1690,7 @@ const PERSISTED_SETTING_KEYS = [
   'showFences', 'fenceHeight', 'fenceThickness', 'fenceTexture', 'fenceColor',
   'showWaterlines', 'waterlineWidth',
   'showRoadMarkings', 'showLedges', 'showStorefronts', 'buildingSetback', 'ledgeProjection',
-  'showZoningEnvelopes', 'highlightViolations', 'zoningSetback', 'zoningMaxHeight',
+  'showZoningEnvelopes', 'highlightViolations', 'zoningSetback', 'zoningMaxHeight', 'zoningCoverage', 'zoningFar', 'scenarioView',
   'activeTreeModel', 'activeLightModel', 'activeBenchModel', 'activeBinModel', 'activeBusStopModel', 'activeMosqueModel',
   'activeTumulusModel', 'treeModelPool'
 ];
@@ -5619,7 +5670,7 @@ function withAnalysisVisibility(fn) {
     }
   };
   for (const c of scene.children) if (c !== world) hide(c);
-  for (const g of [carGroup, bikeGroup, pedestrianGroup, windPlumeGroup, roiBoundaryGroup, zoningGroup, shadowHeatmapMesh]) hide(g);
+  for (const g of [carGroup, bikeGroup, pedestrianGroup, windPlumeGroup, roiBoundaryGroup, zoningGroup, scenarioGroup, shadowHeatmapMesh]) hide(g);
   return Promise.resolve()
     .then(fn)
     .finally(() => { for (const o of hidden) o.visible = true; });
@@ -7355,6 +7406,144 @@ function buildZoningEnvelopesLayer(buildingsFc) {
   }
 }
 
+// --- Zoning scenarios: what the rules would allow, plot by plot ---
+// Plots are parcels when the export has them, otherwise blocks. Each plot
+// gets a massing volume: its setback outline, shrunk to the site coverage,
+// as many floors as FAR and maximum height allow, coloured by how that
+// capacity compares with the buildings standing on the plot.
+const SCENARIO_COLORS = { gain: 0x3b82f6, loss: 0xf97316, same: 0x94a3b8, none: 0x94a3b8 };
+let scenarioResult = null;
+
+function shapeArea(shape) {
+  let a = Math.abs(THREE.ShapeUtils.area(shape.getPoints()));
+  for (const h of shape.holes) a -= Math.abs(THREE.ShapeUtils.area(h.getPoints()));
+  return Math.max(0, a);
+}
+
+function scaleShape(shape, k) {
+  const pts = shape.getPoints();
+  let cx = 0;
+  let cy = 0;
+  for (const p of pts) { cx += p.x; cy += p.y; }
+  cx /= pts.length;
+  cy /= pts.length;
+  const sc = (p) => new THREE.Vector2(cx + (p.x - cx) * k, cy + (p.y - cy) * k);
+  const out = new THREE.Shape(pts.map(sc));
+  for (const h of shape.holes) out.holes.push(new THREE.Path(h.getPoints().map(sc)));
+  return out;
+}
+
+function buildScenario() {
+  clearGroup(scenarioGroup);
+  scenarioResult = null;
+  if (settings.scenarioView === 'Off' || !layerDataCache) {
+    updateScenarioUi();
+    return;
+  }
+  const data = layerDataCache;
+  const usingParcels = !!data.parcelsFc?.features?.length;
+  const plotsFc = usingParcels ? data.parcelsFc : data.blocksFc;
+  const rules = {
+    coverage: settings.zoningCoverage,
+    far: settings.zoningFar,
+    maxHeight: settings.zoningMaxHeight,
+    floorHeight: settings.floorHeight
+  };
+  // Existing buildings by their footprint centre (projected metres).
+  const buildings = [];
+  let existingPopulation = 0;
+  for (const f of data.buildingsFc?.features || []) {
+    const outer = getPolygonRings(f.geometry)?.[0]?.[0];
+    if (!outer?.length) continue;
+    let x = 0;
+    let y = 0;
+    for (const c of outer) { x += c[0]; y += c[1]; }
+    const m = estimateBuildingFeatureMetrics(f);
+    buildings.push({ x: x / outer.length, y: y / outer.length, gfa: m.floorArea || 0, footprint: m.footprint || 0, population: m.population || 0, used: false });
+    existingPopulation += m.population || 0;
+  }
+  const plots = [];
+  const materials = {};
+  const matFor = (key) => (materials[key] ||= new THREE.MeshStandardMaterial({ color: SCENARIO_COLORS[key], roughness: 0.85 }));
+  const edgeMat = new THREE.LineBasicMaterial({ color: 0x0f172a, transparent: true, opacity: 0.35 });
+  for (const f of plotsFc?.features || []) {
+    for (const rings of getPolygonRings(f.geometry)) {
+      const outer = rings?.[0];
+      if (!outer || outer.length < 3) continue;
+      const area = polygonArea(rings);
+      if (area < 20) continue;
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const [x, y] of outer) {
+        minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+      }
+      let existingGfa = 0;
+      let existingFootprint = 0;
+      for (const b of buildings) {
+        if (b.used || b.x < minX || b.x > maxX || b.y < minY || b.y > maxY) continue;
+        if (!pointInRings(b.x, b.y, rings)) continue;
+        b.used = true;
+        existingGfa += b.gfa;
+        existingFootprint += b.footprint;
+      }
+      const localRings = toLocalRings(rings);
+      const buildable = settings.zoningSetback > 0
+        ? insetShapeFromRings(localRings, settings.zoningSetback)
+        : shapeFromRings(localRings);
+      const buildableArea = buildable ? shapeArea(buildable) : 0;
+      const capacity = plotCapacity(area, buildableArea, rules);
+      plots.push({ area, existingGfa, existingFootprint, capacity });
+      if (!buildable || capacity.gfa <= 0) continue;
+      const k = Math.sqrt(Math.min(1, capacity.footprint / Math.max(1e-6, buildableArea)));
+      const shape = k < 0.999 ? scaleShape(buildable, k) : buildable;
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: capacity.height, bevelEnabled: false });
+      geo.rotateX(Math.PI / 2);
+      geo.computeBoundingBox();
+      geo.translate(0, -geo.boundingBox.min.y, 0);
+      const c = new THREE.Vector3();
+      geo.boundingBox.getCenter(c);
+      const mesh = new THREE.Mesh(geo, matFor(capacityChange(existingGfa, capacity.gfa)));
+      mesh.position.y = terrainLocalYAt(c.x, c.z) + LAYER.content;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.userData = { planxScenario: true, ...capacity, existingGfa, plotArea: area };
+      mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), edgeMat));
+      scenarioGroup.add(mesh);
+    }
+  }
+  scenarioResult = { totals: scenarioTotals(plots, existingPopulation), usingParcels, rules };
+  updateScenarioUi();
+  sun.shadow.needsUpdate = true;
+  requestRender();
+}
+
+function updateScenarioUi() {
+  const box = document.getElementById('scenario-summary');
+  const divider = document.getElementById('split-divider');
+  const split = settings.scenarioView === 'Split' && scenarioResult;
+  if (divider) {
+    divider.style.display = split ? '' : 'none';
+    divider.style.left = `${splitFraction * 100}%`;
+  }
+  document.querySelectorAll('[data-scenario-view]').forEach((b) => b.classList.toggle('active', b.dataset.scenarioView === settings.scenarioView));
+  if (!box) return;
+  if (!scenarioResult) {
+    box.innerHTML = '';
+    return;
+  }
+  const t = scenarioResult.totals;
+  const n = (v) => Math.round(v).toLocaleString('en-US');
+  const d = (v) => `${v >= 0 ? '+' : ''}${n(v)}`;
+  box.innerHTML = `<table class="scenario-table">`
+    + `<tr><th></th><th>Existing</th><th>Scenario</th></tr>`
+    + `<tr><td>Floor area (m²)</td><td>${n(t.existingGfa)}</td><td>${n(t.gfa)}</td></tr>`
+    + `<tr><td>FAR</td><td>${t.existingFar.toFixed(2)}</td><td>${t.far.toFixed(2)}</td></tr>`
+    + `<tr><td>Site coverage</td><td>${(t.existingCoverage * 100).toFixed(0)}%</td><td>${(t.coverage * 100).toFixed(0)}%</td></tr>`
+    + (t.population !== null ? `<tr><td>Population (est.)</td><td>${n(t.existingPopulation)}</td><td>${n(t.population)}</td></tr>` : '')
+    + `</table><p class="dock-note">${t.plots} ${scenarioResult.usingParcels ? 'parcels' : 'blocks'} · change ${d(t.gfaChange)} m² · `
+    + `<span style="color:#3b82f6">■</span> more capacity <span style="color:#f97316">■</span> less <span style="color:#94a3b8">■</span> similar</p>`;
+}
+
 function createPedestrianModel(index = 0) {
   const variants = assetPoolVariants('pedestrians');
   const variant = variants[index % Math.max(1, variants.length)] || 'Commuter';
@@ -8606,6 +8795,7 @@ async function rebuildScene() {
   }
   layerBuildTimings['Scene: total'] = Math.round(performance.now() - tScene);
   setSceneState('sceneReady');
+  if (settings.scenarioView !== 'Off') buildScenario();
   if (!_initialViewApplied) {
     _initialViewApplied = true;
     applyView(viewFromHash(location.hash));
@@ -9412,7 +9602,7 @@ function animate() {
     if (_pendingPixelRatio !== null) setDynamicPixelRatio(_pendingPixelRatio);
     _pendingPixelRatio = null;
     renderer.info.reset();
-    renderer.render(scene, camera);
+    drawScene();
     _lastFrameRender = _now;
     _composerSettled = false;
   } else if (_useComposer && !_composerSettled) {
@@ -9427,7 +9617,7 @@ function animate() {
     setDynamicPixelRatio(MAX_PIXEL_RATIO);
     _pendingPixelRatio = null;
     renderer.info.reset();
-    if (_useComposer) renderComposite(); else renderer.render(scene, camera);
+    if (_useComposer) renderComposite(); else drawScene();
     _lastFrameRender = _now;
     _fpsLastSample = _now;
     return;
@@ -9817,7 +10007,7 @@ if (btnRecord && btnStop) {
 
 // --- Screenshot ---
 function renderCleanFrame() {
-  if (useComposite()) renderComposite(); else renderer.render(scene, camera);
+  if (useComposite()) renderComposite(); else drawScene();
 }
 
 // Screenshot at the size picked next to the button: the screen itself, or a
@@ -9916,7 +10106,7 @@ async function exportTiles3DZip() {
   const includeTerrain = !!document.getElementById('tiles-include-terrain')?.checked;
   const heightOffset = Number(document.getElementById('tiles-height-offset')?.value) || 0;
   // Static scene only: no traffic, people, overlays or analysis drapes.
-  const skip = new Set([carGroup, bikeGroup, pedestrianGroup, windPlumeGroup, roiBoundaryGroup, zoningGroup, shadowHeatmapMesh]);
+  const skip = new Set([carGroup, bikeGroup, pedestrianGroup, windPlumeGroup, roiBoundaryGroup, zoningGroup, scenarioGroup, shadowHeatmapMesh]);
   if (!includeTerrain) {
     skip.add(terrainMesh);
     skip.add(terrainSideGroup);
@@ -9941,6 +10131,36 @@ async function exportTiles3DZip() {
   }
 }
 document.getElementById('tiles-export')?.addEventListener('click', exportTiles3DZip);
+
+// Scenario view buttons and the split divider.
+document.querySelectorAll('[data-scenario-view]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    settings.scenarioView = btn.dataset.scenarioView;
+    savePersistedSettings();
+    buildScenario();
+    requestRender();
+  });
+});
+(() => {
+  const divider = document.getElementById('split-divider');
+  if (!divider) return;
+  let dragging = false;
+  divider.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    divider.setPointerCapture(e.pointerId);
+    e.stopPropagation();
+    e.preventDefault();
+  });
+  divider.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    splitFraction = Math.min(0.95, Math.max(0.05, e.clientX / window.innerWidth));
+    divider.style.left = `${splitFraction * 100}%`;
+    requestRender();
+  });
+  const stop = () => { dragging = false; };
+  divider.addEventListener('pointerup', stop);
+  divider.addEventListener('pointercancel', stop);
+})();
 
 window.addEventListener('hashchange', () => applyView(viewFromHash(location.hash), { fly: true }));
 document.getElementById('btn-copy-view')?.addEventListener('click', copyViewLink);
@@ -10430,6 +10650,11 @@ function applyDockSetting(key, value, inputType) {
     checkTimeChange();
   } else if (key === 'autoTime' || key === 'autoTimeSpeed' || key === 'trafficSpeed' || key === 'bikeSpeed') {
     updateDockControls();
+  } else if (['zoningCoverage', 'zoningFar', 'zoningMaxHeight', 'zoningSetback', 'highlightViolations'].includes(key)) {
+    // Rules only: redraw the envelopes and the scenario, not the scene.
+    buildZoningEnvelopesLayer(layerDataCache?.buildingsFc);
+    buildScenario();
+    requestRender();
   } else {
     rebuildScene();
   }

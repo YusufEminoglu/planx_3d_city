@@ -284,6 +284,14 @@
         <label><input type="checkbox" data-setting="highlightViolations"> <span>Highlight Violations</span></label>
         <label><span>Zoning Setback (m)</span> <input type="range" min="0" max="10.0" step="0.5" data-setting="zoningSetback"></label>
         <label><span>Max Height Allowed (m)</span> <input type="range" min="10" max="150" step="5" data-setting="zoningMaxHeight"></label>
+        <label><span>Site coverage (max share of plot)</span> <input type="range" min="0.05" max="1" step="0.05" data-setting="zoningCoverage"></label>
+        <label><span>Floor area ratio (FAR)</span> <input type="range" min="0.1" max="10" step="0.1" data-setting="zoningFar"></label>
+        <div class="dock-actions">
+            <button data-scenario-view="Massing" title="What the rules allow on every plot">Scenario massing</button>
+            <button data-scenario-view="Split" title="Existing buildings left, scenario right; drag the divider">Split: existing | scenario</button>
+            <button data-scenario-view="Off">Off</button>
+        </div>
+        <div id="scenario-summary"></div>
         <div class="dock-section">
             <p class="dock-section-title" data-i18n="shadowStudyTitle">Shadow study</p>
             <p class="dock-note" data-i18n="shadowStudyNote">Jump to solstices &amp; equinoxes, then play the day to see how shadows move.</p>
@@ -423,6 +431,7 @@
         <canvas id="compass-canvas" width="48" height="48"></canvas>
     </div>
 
+    <div id="split-divider" style="display:none" title="Drag to compare"><span class="split-label split-left">Existing</span><span class="split-label split-right">Scenario</span></div>
     <div id="scene-state-indicator" title="Scene auto-saved to the project so the portable ZIP can freeze it">💾 <span data-i18n="sceneSaved">Scene saved</span></div>
 
     <!-- Keyboard Shortcuts Modal -->

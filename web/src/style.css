@@ -1743,3 +1743,46 @@ body.presentation-mode .lil-gui {
 }
 #dem-status.is-visible { opacity: 1; transform: none; }
 #dem-status.is-error { background: rgba(127, 29, 29, 0.92); }
+
+/* Zoning scenario: split divider and summary table. */
+#split-divider {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    margin-left: -2px;
+    z-index: 25;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.35);
+    cursor: ew-resize;
+    touch-action: none;
+}
+#split-divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -9px;
+    width: 22px;
+    height: 44px;
+    margin-top: -22px;
+    border-radius: 11px;
+    background: #f8fafc;
+    box-shadow: 0 1px 6px rgba(15, 23, 42, 0.4);
+}
+#split-divider .split-label {
+    position: absolute;
+    top: 72px;
+    padding: 3px 8px;
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.8);
+    color: #f8fafc;
+    font: 600 11px/1.3 'Montserrat', sans-serif;
+    white-space: nowrap;
+    pointer-events: none;
+}
+#split-divider .split-left { right: 10px; }
+#split-divider .split-right { left: 10px; }
+.scenario-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 6px; }
+.scenario-table th, .scenario-table td { padding: 2px 4px; text-align: right; }
+.scenario-table th:first-child, .scenario-table td:first-child { text-align: left; }
+[data-scenario-view].active { outline: 2px solid #38bdf8; }
