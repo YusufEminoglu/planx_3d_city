@@ -283,11 +283,11 @@ export function mixedColor(base, target, amount) {
   return base.clone().lerp(new THREE.Color(target), Math.max(0, Math.min(1, amount)));
 }
 
+const asphaltTextureCache = new Map();
 export function createAsphaltTexture(baseColor = '#2e3135') {
   const base = colorObjectFromHex(baseColor, '#2e3135');
   const cacheKey = `asphalt:${base.getHexString()}`;
-  createAsphaltTexture.cache = createAsphaltTexture.cache || new Map();
-  if (createAsphaltTexture.cache.has(cacheKey)) return createAsphaltTexture.cache.get(cacheKey);
+  if (asphaltTextureCache.has(cacheKey)) return asphaltTextureCache.get(cacheKey);
 
   const c = document.createElement('canvas');
   c.width = 512; c.height = 512;
@@ -316,7 +316,7 @@ export function createAsphaltTexture(baseColor = '#2e3135') {
   t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(8, 8);
   t.colorSpace = THREE.SRGBColorSpace;
-  createAsphaltTexture.cache.set(cacheKey, t);
+  asphaltTextureCache.set(cacheKey, t);
   return t;
 }
 
@@ -433,12 +433,12 @@ export function createIslandTexturePreset(name) {
   return t;
 }
 
+const tintedIslandTextureCache = new Map();
 export function createTintedIslandTexturePreset(name, baseColor) {
   if (name === 'None') return null;
   const base = colorObjectFromHex(baseColor, '#e5e7eb');
   const cacheKey = `${name}:${base.getHexString()}`;
-  createTintedIslandTexturePreset.cache = createTintedIslandTexturePreset.cache || new Map();
-  if (createTintedIslandTexturePreset.cache.has(cacheKey)) return createTintedIslandTexturePreset.cache.get(cacheKey);
+  if (tintedIslandTextureCache.has(cacheKey)) return tintedIslandTextureCache.get(cacheKey);
 
   const c = document.createElement('canvas');
   c.width = 256; c.height = 256;
@@ -489,7 +489,7 @@ export function createTintedIslandTexturePreset(name, baseColor) {
   t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(4, 4);
   t.colorSpace = THREE.SRGBColorSpace;
-  createTintedIslandTexturePreset.cache.set(cacheKey, t);
+  tintedIslandTextureCache.set(cacheKey, t);
   return t;
 }
 

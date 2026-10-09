@@ -228,10 +228,30 @@ python -m unittest discover -s tests -p 'test_*.py' # exporter and server unit t
 npx playwright install chromium                     # once, for the browser checks
 npm run bench:data && npm run bench:check           # 1000-building benchmark gate
 npm run visual                                      # visual regression (fixed cameras)
+npm run smoke                                       # UI smoke test (docks, settings, analyses, exports)
 ```
 
 `npm run bench:check -- --update` and `npm run visual -- --update` write new
 baselines when a change is intended.
+
+Viewer source layout (`web/src`): the top level holds self-contained
+libraries with unit tests (building geometry and batching, roof skeleton,
+exposure analysis, 3D Tiles, CityJSON, video export, catalogue, geography,
+attributes, textures). The viewer itself is organised by role:
+
+| Folder | Contents |
+|---|---|
+| `core/` | scene, camera and composer (`scene.js`), shared state (`state.js`), settings, rendering, data loading, scene build, scene-state sync, Model Studio storage |
+| `terrain/` | DEM, terrain mesh and textures, `terrainLocalYAt()` |
+| `layers/` | one module per layer: buildings, ground (blocks, parcels, fences, water), trees, landmarks, furniture, mobility, zoning, emissions, environment |
+| `analysis/` | sun hours, sky view factor and viewshed drapes |
+| `ui/` | docks, Model Studio, tour, picking, view links, exports, recording, minimap, dashboard, bookmarks, QGIS link |
+
+`app.js` only wires them together: start-up, walk mode and the frame loop.
+Values that several modules replace (scene origin, loaded data, terrain,
+interaction modes) live on the `state` object in `core/state.js`; objects
+that are only changed in place (scene, layer groups, settings) are exported
+by their own modules.
 
 ## 🧩 Part of the PlanX ecosystem
 

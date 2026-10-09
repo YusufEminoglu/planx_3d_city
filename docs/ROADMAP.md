@@ -288,9 +288,33 @@ somut bir dosyaya/fonksiyona bağlanır ve ölçülebilir bir hedefle biter.
 >   `ui_text.js`, `catalog.js`, `geo.js`, `props.js`, `textures.js`
 >   modüllerine taşındı (döngüsel import yok: alan eşlemesi ve anizotropi
 >   enjekte ediliyor). Görsel testler piksel aynı, yapı metrikleri aynı.
->   Kalan: sahne kurulumu, katmanlar (bina, arazi, yol), Model Studio,
->   anlatı/tur, minimap ve dock UI — paylaşılan durum (ayarlar, gruplar,
->   kamera) bir bağlam nesnesine taşındıkça bölünebilir.
+>
+> **Durum (Ekim 2026, ikinci tur — Faz 6 tamamlandı):**
+> - **6.1 app.js bölme (tamam):** 9.691 → ~900 satır (yalnız açılış, yürüme
+>   modu ve kare döngüsü). Birden çok modülün değiştirdiği 50 değişken
+>   (sahne merkezi, yüklenen veri, arazi, trafik verisi, etkileşim modları)
+>   `core/state.js` içindeki `state` nesnesine taşındı; yerinde değişen
+>   nesneler (sahne, katman grupları, ayarlar) kendi modüllerinden sabit
+>   olarak dışa aktarılıyor. Yeni klasörler: `core/` (sahne, durum, ayarlar,
+>   çizim, veri yükleme, sahne kurulumu, sahne durumu senkronu, model
+>   deposu), `terrain/`, `layers/` (bina, zemin, ağaç, anıt, donatı,
+>   ulaşım, imar, emisyon, çevre), `analysis/`, `ui/` (dock'lar, Model
+>   Studio, tur, seçim, görünüm bağlantıları, dışa aktarma, kayıt, minimap,
+>   gösterge paneli, yer imleri, QGIS bağlantısı). Döngüsel import yok:
+>   sahne kurulumu arayüzü kancalarla (`setSceneBuildHooks`), ayar
+>   kaydı sahne durumu senkronunu `setAfterSave` ile çağırıyor. Taşıma
+>   kapsam analizine dayalı bir araçla yapıldı (kod metni aynen taşındı);
+>   görsel testler piksel aynı, yapı metrikleri aynı.
+> - **UI duman testi (`tests/smoke`, CI'da):** tüm dock'ları açar, her
+>   dock ayarını değiştirir, güneş/gökyüzü/görüş analizlerini, senaryo
+>   görünümlerini, yer imlerini, tur düzenleyiciyi, Model Studio'yu, bina
+>   seçimini, ekran görüntüsünü, CityJSON ve 3D Tiles dışa aktarımını
+>   çalıştırır; herhangi bir sayfa veya konsol hatasında kırmızı. Bölme
+>   sırasında modül yoluna göre çözülen `import()` yollarının kırıldığını
+>   bu test yakaladı; artık bir birim testi tüm göreli import'ları
+>   denetliyor. Benchmark verisi de coğrafi referans taşıyor (3D Tiles
+>   dışa aktarımı test edilebiliyor).
+> - Kalan Türkçe iki yorum ("Sapan Modu") temizlendi.
 
 1. **`app.js`'i modüllere böl** — `scene/`, `layers/buildings.js`, `layers/terrain.js`, `analysis/`, `ui/`, `workers/`. Build aracı gerektirmeden native ES modules + import map (mevcut "Node.js gerektirmez" ilkesi korunur).
 2. **Benchmark sahnesi** — `sample_generator.py` ile 1k / 10k / 100k binalık deterministik veri; Playwright + headless Chromium ile FPS, draw call, açılış süresi ölçümü CI'da (`.github/workflows/quality.yml`'a yeni job). Regresyon > %10 ise kırmızı.

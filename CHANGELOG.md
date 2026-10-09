@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Engineering (roadmap phase 6, second round): the viewer is split into modules by role (`core/` scene, settings, state and scene build; `terrain/`; `layers/` per layer; `analysis/`; `ui/` docks, Model Studio, tour, picking, exports, QGIS link); `app.js` is down from 11,157 to about 900 lines (start-up and the frame loop), with no import cycles and identical rendering. A UI smoke test drives every dock and setting, the analyses, scenarios, tour, Model Studio and the exports in CI; a unit test checks that every relative import resolves.
 - Engineering (roadmap phase 6, first round): ESLint and JSDoc type checks, a benchmark gate and visual regression tests in CI; app.js split into modules (UI text, asset catalogue, geography, attributes, textures) with identical rendering.
 - Planning tools (roadmap phase 5, second round): viewshed from a picked point; comparing two zoning scenarios (Split: B | A); CityJSON 2.0 export (LoD1 buildings); MP4 tour videos rendered frame by frame with WebCodecs (720p to 4K, captions); portable packages ready for GitHub/GitLab Pages and Netlify; WebXR (VR headsets) with teleport; a 3D preview panel in QGIS with two-way building selection.
 - Fix: zoning envelopes were never drawn.

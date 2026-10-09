@@ -32,6 +32,12 @@
     "web/src/wind.js",
     "web/src/tiles_export.js",
     "web/src/video_export.js",
-    "web/src/xr.js"
+    "web/src/xr.js",
+    "web/src/catalog.js",
+    "web/src/geo.js",
+    "web/src/props.js",
+    "web/src/textures.js",
+    "web/src/ui_text.js",
+    "web/src/core/state.js"
   ]
 }

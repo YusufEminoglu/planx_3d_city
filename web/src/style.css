@@ -935,7 +935,7 @@ ul {
 .tooltip-row span:first-child { color: #94a3b8; }
 .tooltip-row span:last-child { color: #f1f5f9; font-weight: 600; max-width: 130px; text-align: right; }
 
-/* ── Sapan Modu / Game HUD ───────────────────────────────────── */
+/* ── Slingshot game HUD ───────────────────────────────────────── */
 .game-hud {
     position: fixed;
     top: 0; left: 0;

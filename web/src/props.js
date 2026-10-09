@@ -90,3 +90,12 @@ export function normalizeAccessText(value) {
 export function keywordList(values) {
   return (values || []).map(normalizeAccessText).filter(Boolean);
 }
+
+export function numericPropFirst(props, names) {
+  for (const name of names) {
+    if (!name || props?.[name] === undefined || props?.[name] === null || props?.[name] === '') continue;
+    const value = Number(String(props[name]).replace(',', '.'));
+    if (Number.isFinite(value)) return value;
+  }
+  return null;
+}
