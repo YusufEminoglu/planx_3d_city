@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Visual quality (roadmap phase 4, first round): a physical sky with sky-based image lighting and horizon-tinted fog (Effects > atmosphere: Cinematic or Clean); the settled frame is antialiased (4x MSAA) with ground-truth ambient occlusion (GTAO) replacing SSAO; at night single windows light up in warm or cool light instead of whole facades glowing.
 - Exporter (roadmap phase 3): the DEM is cropped to the viewer's scene bounds and written as a tiled DEFLATE GeoTIFF (falls back to a copy), GeoJSON coordinates are written with 3 decimals instead of 15, and unchanged file-based layers are not rewritten on re-export.
 - Turkish removed: the viewer and the QGIS dialog are English-only (no TR language toggle or bilingual text); the Modern Turkish theme, Urban_TR facades, TurkishTile roof and TR-UIP assistant are gone; attribute lookups use English/OSM column names (`floors`, `building:levels`, `function`, `landuse`, `population`, `width`...). Projects with Turkish column names need them mapped in the field mapping. Exported vector data now lives in `web/data/vector` (was `web/data/yerlesim`); re-export existing projects.
 - Viewer performance (roadmap phase 1): buildings are merged into shared-material tiles (10k buildings: 44,249 -> 1,848 draw calls), building picking uses a BVH, layers and the DEM load in parallel, the scene renders only when something changes, and the pixel ratio adapts while the view moves.

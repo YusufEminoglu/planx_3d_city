@@ -126,6 +126,27 @@ somut bir dosyaya/fonksiyona bağlanır ve ölçülebilir bir hedefle biter.
 
 ## Faz 4 — Görsel kalite: "dünyanın en iyisi" (3–6 hafta)
 
+> **Durum (Ekim 2026, ilk tur):** 4.1, 4.2'nin büyük kısmı ve 4.3'ün gece
+> penceresi kısmı uygulandı.
+> - **Atmosfer (`web/src/atmosphere.js`):** "Cinematic" modu fiziksel `Sky`
+>   çizer ve aynı gökyüzünden PMREM ortam haritası pişirir (güneş 1.5°'den
+>   fazla dönerse yeniden). Kare geneli ACES renkleri soldurduğu için gökyüzü
+>   kendi shader'ında pozlama + ACES ile tone-map ediliyor; ortam ışığı
+>   malzeme başına `envMapIntensity` 0.32 + ambient 0.16. Sis ufuk rengini
+>   alıyor. "Clean" modu eski düz sunum arka planını korur (Efektler menüsü).
+> - **Post-process:** SSAOPass sahneyi MSAA'sız yeniden çiziyor ve RenderPass'i
+>   yok sayıyordu. Yerine 4x MSAA HalfFloat hedef → GTAOPass (metre ölçekli
+>   yarıçap, Poisson denoise) → bloom (yalnız gece) → OutputPass. Yalnız
+>   kamera durunca çizilen "settled" karede çalışır; SwiftShader'da settled kare
+>   ~0.95 s → ~1.45 s (GTAO'nun normal/derinlik çizimi), hareket karesi değişmedi.
+>   `__planxPerf.timeComposer()` eklendi.
+> - **Gece pencereleri:** cephe dokusunun pencere ızgarası (sütun/satır sayısı,
+>   faz, pencere dikdörtgeni) yüklemede parlaklık profillerinden tahmin
+>   ediliyor (otokorelasyon + hücre ortalaması; foto ve prosedürel dokular için
+>   metadata gerekmez). Duvar shader'ı her binanın `planxGlow` oranı kadar
+>   rastgele pencereyi sıcak/soğuk ışıkla yakıyor; bloom'a yetecek parlaklıkta.
+> - Kalan: TAA/SMAA (hareket karesi için), DoF, cam yansıması, 4.4–4.6.
+
 1. **Fiziksel gökyüzü + IBL** — `Sky` → PMREM ortam haritası; saat/enlem ile senkron (enlem zaten DEM'den türetiliyor). Gece için şehir ışıkları + yıldız.
 2. **Modern post-process zinciri** — SSAO yerine **GTAO/N8AO**, TAA veya SMAA, ACES/AgX tone mapping, hafif bloom, yükseklik sisi, DoF (sunum modu).
 3. **Prosedürel cephe shader'ı** — dokuya bağlı kalmadan kat/pencere ızgarası, gece rastgele yanan pencereler (şu an `Math.random()` emissive per-material), cam yansıması — hepsi tek shader, sıfır ek doku.
