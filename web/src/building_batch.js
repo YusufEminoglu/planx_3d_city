@@ -18,6 +18,8 @@ const NIGHT_EMISSIVE = 0x333322;
 // Lit window radiance relative to NIGHT_EMISSIVE (linear): bright enough to
 // reach the night bloom threshold.
 const WINDOW_GAIN = 45;
+// Extra sky reflection on window glass (the environment is dimmed for walls).
+const GLASS_REFLECTION = 1.5;
 
 // Shared by every batched material, so hover is one uniform write.
 const sharedUniforms = {
@@ -228,25 +230,43 @@ function patchMaterial(mat, windows) {
         'varying float vPlanxGlow;',
         'float planxHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }'
       ].join('\n'))
-      .replace('#include <emissivemap_fragment>', [
-        '#include <emissivemap_fragment>',
+      .replace('#include <roughnessmap_fragment>', [
+        '#include <roughnessmap_fragment>',
+        // Window mask, once per fragment: one cell per window of the facade's
+        // grid, glass inside the cell's window rectangle.
+        'float planxWin = 0.0;',
+        'float planxLitWin = 0.0;',
+        'vec3 planxTint = vec3(1.0);',
         '#ifdef USE_MAP',
         'if (uPlanxWindows > 0.5) {',
-        // One cell per window; each building lights its own random share
-        // (planxGlow), in warm or cool light, with a little per-window dimming.
         '  vec2 planxGridUv = vMapUv * uPlanxWinGrid - uPlanxWinOffset;',
         '  vec2 planxCell = floor(planxGridUv);',
         '  vec2 planxLocal = planxGridUv - planxCell;',
         '  float planxInRect = step(uPlanxWinRect.x, planxLocal.x) * step(planxLocal.x, uPlanxWinRect.z) * step(uPlanxWinRect.y, planxLocal.y) * step(planxLocal.y, uPlanxWinRect.w);',
-        '  float planxH = planxHash(planxCell + vec2(vPlanxId * 0.731, vPlanxId * 0.197));',
-        '  float planxLit = step(1.0 - vPlanxGlow * 0.7, planxH);',
         '  float planxLum = dot(sampledDiffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));',
         '  float planxGlass = 1.0 - 0.5 * smoothstep(uPlanxWinLum.x, uPlanxWinLum.y, planxLum);',
-        '  vec3 planxTint = mix(vec3(1.0, 0.78, 0.5), vec3(0.8, 0.88, 1.0), step(0.82, fract(planxH * 17.0)));',
-        `  totalEmissiveRadiance *= planxTint * planxGlass * planxInRect * planxLit * (0.6 + 0.4 * fract(planxH * 31.0)) * ${WINDOW_GAIN.toFixed(1)};`,
-        '} else {',
-        '  totalEmissiveRadiance *= vPlanxGlow;',
+        '  planxWin = planxInRect * planxGlass;',
+        // Each building lights its own random share of windows at night
+        // (planxGlow), in warm or cool light, with some per-window dimming.
+        '  float planxH = planxHash(planxCell + vec2(vPlanxId * 0.731, vPlanxId * 0.197));',
+        '  planxLitWin = planxWin * step(1.0 - vPlanxGlow * 0.7, planxH) * (0.6 + 0.4 * fract(planxH * 31.0));',
+        '  planxTint = mix(vec3(1.0, 0.78, 0.5), vec3(0.8, 0.88, 1.0), step(0.82, fract(planxH * 17.0)));',
+        // Glass is glossy: sharper sun highlights and sky reflections.
+        '  roughnessFactor = mix(roughnessFactor, 0.15, planxWin);',
         '}',
+        '#endif'
+      ].join('\n'))
+      .replace('#include <lights_fragment_maps>', [
+        '#include <lights_fragment_maps>',
+        '#if defined( RE_IndirectSpecular )',
+        `radiance *= 1.0 + ${GLASS_REFLECTION.toFixed(1)} * planxWin;`,
+        '#endif'
+      ].join('\n'))
+      .replace('#include <emissivemap_fragment>', [
+        '#include <emissivemap_fragment>',
+        '#ifdef USE_MAP',
+        `if (uPlanxWindows > 0.5) totalEmissiveRadiance *= planxTint * planxLitWin * ${WINDOW_GAIN.toFixed(1)};`,
+        'else totalEmissiveRadiance *= vPlanxGlow;',
         '#else',
         'totalEmissiveRadiance *= vPlanxGlow;',
         '#endif',
