@@ -7,7 +7,7 @@
 **Turn QGIS layers into an interactive Three.js city — DEM terrain, buildings, mobility, wind and narrative keyframe tours in the browser.**
 
 [![QGIS](https://img.shields.io/badge/QGIS-3.28%2B-93b023?logo=qgis&logoColor=white)](https://plugins.qgis.org/plugins/planx_3d_city/)
-[![Version](https://img.shields.io/github/v/tag/YusufEminoglu/planx_3d_city?label=version&color=blue)](https://gitlab.com/geophilo1/planx_3d_city/releases)
+[![Version](https://img.shields.io/github/v/tag/YusufEminoglu/planx_3d_city?label=version&color=blue)](https://github.com/YusufEminoglu/planx_3d_city/releases)
 [![License](https://img.shields.io/badge/license-MIT-orange)](LICENSE)
 [![QGIS Plugin Hub](https://img.shields.io/badge/QGIS%20Hub-install-589632?logo=qgis&logoColor=white)](https://plugins.qgis.org/plugins/planx_3d_city/)
 [![Documentation](https://img.shields.io/badge/📖_Reference_Manual-13a0a0)](https://geophilo.com/planx_3d_city/)
@@ -259,12 +259,12 @@ This plugin is one of 15 open-source QGIS plugins for urban planning by the same
 
 | Planning & analysis | CAD & production | 3D & visualization |
 |---|---|---|
-| [PlanX](https://gitlab.com/geophilo1/planx_3d_city) — spatial-planning suite | [PlanX CAD Toolset](https://gitlab.com/geophilo1/planx_3d_city) — drafting-grade CAD | [PlanX 3D City](https://gitlab.com/geophilo1/planx_3d_city) — Three.js city viewer |
-| [GeoStats Lab](https://gitlab.com/geophilo1/planx_3d_city) — spatial statistics | [EasyFillet](https://gitlab.com/geophilo1/planx_3d_city) — tangent-arc fillet | [3D OSM Model](https://gitlab.com/geophilo1/planx_3d_city) — OSM → 3D city in browser |
-| [Suitability Lab](https://gitlab.com/geophilo1/planx_3d_city) — raster MCDA | [Settlement Toolset](https://gitlab.com/geophilo1/planx_3d_city) — 9-stage settlement plans | [OSM Quick 3D](https://gitlab.com/geophilo1/planx_3d_city) — OSM → native QGIS 3D |
-| [DataCube Lab](https://gitlab.com/geophilo1/planx_3d_city) — spatiotemporal cubes | [UIP Toolset](https://gitlab.com/geophilo1/planx_3d_city) — Turkish master-plan automation | [Urban Procedural 3D](https://gitlab.com/geophilo1/planx_3d_city) — parametric zoning lab |
-| [Urban Resilience](https://gitlab.com/geophilo1/planx_3d_city) — 28 resilience tools | [ParcelFlux](https://gitlab.com/geophilo1/planx_3d_city) — parcel subdivision | [CartoLab](https://gitlab.com/geophilo1/planx_3d_city) — publication cartography |
+| [PlanX](https://github.com/YusufEminoglu/planx_3d_city) — spatial-planning suite | [PlanX CAD Toolset](https://github.com/YusufEminoglu/planx_3d_city) — drafting-grade CAD | [PlanX 3D City](https://github.com/YusufEminoglu/planx_3d_city) — Three.js city viewer |
+| [GeoStats Lab](https://github.com/YusufEminoglu/planx_3d_city) — spatial statistics | [EasyFillet](https://github.com/YusufEminoglu/planx_3d_city) — tangent-arc fillet | [3D OSM Model](https://github.com/YusufEminoglu/planx_3d_city) — OSM → 3D city in browser |
+| [Suitability Lab](https://github.com/YusufEminoglu/planx_3d_city) — raster MCDA | [Settlement Toolset](https://github.com/YusufEminoglu/planx_3d_city) — 9-stage settlement plans | [OSM Quick 3D](https://github.com/YusufEminoglu/planx_3d_city) — OSM → native QGIS 3D |
+| [DataCube Lab](https://github.com/YusufEminoglu/planx_3d_city) — spatiotemporal cubes | [UIP Toolset](https://github.com/YusufEminoglu/planx_3d_city) — Turkish master-plan automation | [Urban Procedural 3D](https://github.com/YusufEminoglu/planx_3d_city) — parametric zoning lab |
+| [Urban Resilience](https://github.com/YusufEminoglu/planx_3d_city) — 28 resilience tools | [ParcelFlux](https://github.com/YusufEminoglu/planx_3d_city) — parcel subdivision | [CartoLab](https://github.com/YusufEminoglu/planx_3d_city) — publication cartography |
 
 ## 📜 License & author
 
-MIT © [Yusuf Eminoğlu](https://github.com/YusufEminoglu) — bug reports and feature requests welcome in [Issues](https://gitlab.com/geophilo1/planx_3d_city/-/issues).
+MIT © [Yusuf Eminoğlu](https://github.com/YusufEminoglu) — bug reports and feature requests welcome in [Issues](https://github.com/YusufEminoglu/planx_3d_city/issues).

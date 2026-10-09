@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.0.1] - 2026-10-09
+
+- The repository and issue tracker moved to GitHub: https://github.com/YusufEminoglu/planx_3d_city (plugin metadata, README and reference manual links updated).
+
 ## [2.0.0] - 2026-10-09
 
 - Engineering (roadmap phase 6, second round): the viewer is split into modules by role (`core/` scene, settings, state and scene build; `terrain/`; `layers/` per layer; `analysis/`; `ui/` docks, Model Studio, tour, picking, exports, QGIS link); `app.js` is down from 11,157 to about 900 lines (start-up and the frame loop), with no import cycles and identical rendering. A UI smoke test drives every dock and setting, the analyses, scenarios, tour, Model Studio and the exports in CI; a unit test checks that every relative import resolves.
