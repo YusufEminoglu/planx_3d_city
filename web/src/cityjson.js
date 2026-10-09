@@ -1,3 +1,4 @@
+// @ts-check
 // CityJSON 2.0 writer for buildings: LoD1 solids (footprint extruded from
 // its ground height to its roof height) in the export CRS, with the source
 // attributes. Pure data in, plain object out, so it is tested in node.

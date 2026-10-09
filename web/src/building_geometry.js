@@ -1,3 +1,4 @@
+// @ts-check
 // Building geometry in local scene coordinates (x, z), free of viewer state,
 // so the same code runs on the main thread and in building_worker.js.
 //

@@ -1,3 +1,4 @@
+// @ts-check
 // WebXR: walk the city in a VR headset (Quest browser, desktop VR).
 //
 // The "Enter VR" button only appears when the browser supports immersive VR.
@@ -17,10 +18,12 @@ import { VRButton } from 'three/addons/webxr/VRButton.js';
  * @returns null when immersive VR is not available
  */
 export async function setupXR({ renderer, scene, camera, standAt, groundTargets, drawFrame, onStart, onEnd }) {
-  if (typeof navigator === 'undefined' || !navigator.xr) return null;
+  // WebXR typings are not in the DOM lib.
+  const xr = typeof navigator === 'undefined' ? null : /** @type {any} */ (navigator).xr;
+  if (!xr) return null;
   let supported = false;
   try {
-    supported = await navigator.xr.isSessionSupported('immersive-vr');
+    supported = await xr.isSessionSupported('immersive-vr');
   } catch {
     supported = false;
   }

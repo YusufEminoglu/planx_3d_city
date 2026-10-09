@@ -1,3 +1,4 @@
+// @ts-check
 // Merged building meshes: one mesh per (material look, spatial tile) instead
 // of one mesh and material per wall, roof and floor slab (tens of thousands
 // of draw calls on a real city). The geometry is built and merged in

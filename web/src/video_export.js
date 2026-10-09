@@ -1,3 +1,4 @@
+// @ts-check
 // Frame-exact video export with WebCodecs: the caller draws each frame (the
 // tour at t = i / fps, whatever the machine's speed), frames are encoded in
 // the browser and muxed into an MP4. No upload, no server, any resolution
@@ -19,7 +20,8 @@ export function videoExportSupported() {
 
 async function pickConfig(width, height, fps, bitrate) {
   for (const c of CANDIDATES) {
-    const config = { codec: c.codec(width, height), width, height, bitrate, framerate: fps, ...c.extra };
+    /** @type {VideoEncoderConfig} */
+    const config = /** @type {any} */ ({ codec: c.codec(width, height), width, height, bitrate, framerate: fps, ...c.extra });
     try {
       const support = await VideoEncoder.isConfigSupported(config);
       if (support.supported) return { muxerCodec: c.muxer, config: support.config || config };
@@ -31,11 +33,15 @@ async function pickConfig(width, height, fps, bitrate) {
 }
 
 /**
- * @param width, height  output size (even numbers)
- * @param fps            frames per second
- * @param frameCount     number of frames
- * @param drawFrame(i)   draws frame i and returns the canvas to encode
- * @returns { blob, codec }
+ * @param {object} args
+ * @param {number} args.width output width (made even)
+ * @param {number} args.height output height (made even)
+ * @param {number} [args.fps] frames per second
+ * @param {number} args.frameCount number of frames
+ * @param {(i: number) => CanvasImageSource} args.drawFrame draws frame i, returns the canvas to encode
+ * @param {(fraction: number) => void} [args.onProgress]
+ * @param {number} [args.bitrate] bits per second (default ~0.12 bit per pixel)
+ * @returns {Promise<{ blob: Blob, codec: string }>}
  */
 export async function encodeVideo({ width, height, fps = 30, frameCount, drawFrame, onProgress, bitrate }) {
   if (!videoExportSupported()) throw new Error('This browser has no WebCodecs video encoder (use Chrome, Edge or a recent Firefox).');

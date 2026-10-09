@@ -1,3 +1,4 @@
+// @ts-check
 // View links and high-resolution captures.
 //
 // A view link carries the camera in the URL hash (#view=...), so a shared

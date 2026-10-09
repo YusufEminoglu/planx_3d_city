@@ -1,16 +1,23 @@
+// @ts-check
 // Zoning "what if" rules: the building capacity of a plot under site
 // coverage, floor area ratio (FAR), maximum height and setback limits, and
 // scenario totals against the existing buildings. Pure numbers (no three.js)
 // so the rules are tested in node; the viewer does the geometry.
 
 /**
- * Capacity of one plot.
- * @param plotArea      m² of the plot
- * @param buildableArea m² left inside the setback (<= plotArea)
- * @param rules { coverage (0-1), far, maxHeight (m), floorHeight (m) }
- * @returns { footprint, floors, height, gfa, limitedBy }
+ * @typedef {{ coverage: number, far: number, maxHeight: number, floorHeight: number }} ZoningRules
+ *   coverage 0-1, maxHeight and floorHeight in metres
+ * @typedef {{ footprint: number, floors: number, height: number, gfa: number, limitedBy: string }} PlotCapacity
  *   limitedBy: 'coverage' | 'setback' (footprint) and 'far' | 'height'
- *   (floors), joined with '+', or 'none' when nothing can be built.
+ *   (floors), joined with '+', or 'none' when nothing can be built
+ */
+
+/**
+ * Capacity of one plot.
+ * @param {number} plotArea m² of the plot
+ * @param {number} buildableArea m² left inside the setback (<= plotArea)
+ * @param {ZoningRules} rules
+ * @returns {PlotCapacity}
  */
 export function plotCapacity(plotArea, buildableArea, rules) {
   const coverage = clamp(rules.coverage, 0, 1);

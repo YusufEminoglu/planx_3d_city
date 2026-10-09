@@ -1,3 +1,4 @@
+// @ts-check
 // Worker pool for building geometry. Specs are grouped by tile and whole
 // tiles are dealt to workers, so every (look, tile) bucket comes back complete
 // from one worker and needs no further merging. Falls back to building on the
@@ -14,8 +15,8 @@ function createPool() {
   const count = Math.max(1, Math.min(MAX_WORKERS, (navigator.hardwareConcurrency || 2) - 1));
   const workers = [];
   for (let i = 0; i < count; i++) {
-    const worker = new Worker(new URL('./building_worker.js', import.meta.url), { type: 'module' });
-    worker.pending = new Map();
+    /** @type {Worker & { pending: Map<number, { resolve: Function, reject: Function }> }} */
+    const worker = Object.assign(new Worker(new URL('./building_worker.js', import.meta.url), { type: 'module' }), { pending: new Map() });
     worker.onmessage = (event) => {
       const { id, buckets, error } = event.data;
       const job = worker.pending.get(id);

@@ -1,0 +1,37 @@
+{
+  "//": "Type check (JSDoc + inference) of the viewer modules that opt in with // @ts-check (vendored libraries are not checked). Run: npm run typecheck",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true
+  },
+  "files": [
+    "types/vendor-shims.d.ts",
+    "web/src/roof_skeleton.js",
+    "web/src/capture.js",
+    "web/src/tiles_math.js",
+    "web/src/zoning_scenario.js",
+    "web/src/cityjson.js",
+    "web/src/atmosphere.js",
+    "web/src/building_batch.js",
+    "web/src/building_geometry.js",
+    "web/src/building_worker.js",
+    "web/src/building_workers.js",
+    "web/src/mesh_merge.js",
+    "web/src/exposure_analysis.js",
+    "web/src/wind.js",
+    "web/src/tiles_export.js",
+    "web/src/video_export.js",
+    "web/src/xr.js"
+  ]
+}

@@ -27,3 +27,12 @@ tests/bench
 
 # Viewer unit tests (node --test tests/js/*.test.mjs).
 tests/js
+
+# Development tooling (npm run lint / typecheck / bench:check / visual).
+package.json
+package-lock.json
+eslint.config.mjs
+tsconfig.checkjs.json
+types
+node_modules
+tests/visual

@@ -1,3 +1,4 @@
+// @ts-check
 // Wind sway for instanced tree crowns: a vertex-shader bend that grows with
 // height inside the crown, phased per tree so a street of trees does not move
 // in lockstep. It only animates while frames are being drawn (the viewer

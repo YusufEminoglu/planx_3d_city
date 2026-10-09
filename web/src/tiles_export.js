@@ -1,3 +1,4 @@
+// @ts-check
 // OGC 3D Tiles 1.1 export of the current scene: a tileset.json whose root
 // is placed on the globe from the export's georeference, with one glTF (GLB)
 // per 800 m tile, zipped for download. Opens in CesiumJS, Cesium ion,
@@ -74,12 +75,14 @@ function isVisible(o) {
 }
 
 /**
- * @param roots        Object3Ds to export (their visible meshes)
- * @param georeference manifest.georeference (control points)
- * @param centre       [x, y] scene centre in the export CRS
- * @param xSign        the viewer's LOCAL_X_SIGN (scene x = sign * grid east)
- * @param heightOffset metres added to heights (e.g. geoid undulation)
- * @returns { blob, tiles, lon, lat }
+ * @param {object} args
+ * @param {any[]} args.roots Object3Ds to export (their visible meshes)
+ * @param {any} args.georeference manifest.georeference (control points)
+ * @param {number[]} args.centre [x, y] scene centre in the export CRS
+ * @param {number} [args.xSign] the viewer's LOCAL_X_SIGN (scene x = sign * grid east)
+ * @param {number} [args.heightOffset] metres added to heights (e.g. geoid undulation)
+ * @param {(fraction: number) => void} [args.onProgress]
+ * @returns {Promise<{ blob: Blob, tiles: number, lon: number, lat: number }>}
  */
 export async function exportTiles3D({ roots, georeference, centre, xSign = 1, heightOffset = 0, onProgress }) {
   const placement = rootTransform(georeference, centre[0], centre[1], heightOffset);

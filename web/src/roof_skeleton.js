@@ -1,3 +1,4 @@
+// @ts-check
 // Straight skeleton of a simple polygon and the hip / gable roof built on it.
 //
 // The skeleton is what remains when every edge of the footprint moves inward
@@ -313,12 +314,19 @@ export function straightSkeleton(points) {
 }
 
 /**
- * Roof faces over a footprint with the same pitch on every side.
- * @param ring   footprint points {x, y}, any winding, no holes
- * @param height height of the highest point (the pitch follows from it)
- * @param gable  turn hip ends (triangles under a ridge end) into vertical gables
- * @returns { faces: [{ vertical, points: [{x, y, h}...] }] }, each face
- *          counter-clockwise seen from above (y up), or null on failure.
+ * @typedef {{ x: number, y: number }} Point2
+ * @typedef {{ x: number, y: number, h: number }} RoofPoint
+ * @typedef {{ vertical: boolean, points: RoofPoint[] }} RoofFace
+ */
+
+/**
+ * Roof faces over a footprint with the same pitch on every side. Each face
+ * is counter-clockwise seen from above (y up).
+ * @param {Point2[]} ring footprint, any winding, no holes
+ * @param {number} height height of the highest point (the pitch follows from it)
+ * @param {{ gable?: boolean }} [options] gable: turn hip ends (triangles under
+ *        a ridge end) into vertical gables
+ * @returns {{ faces: RoofFace[] } | null} null when the skeleton fails
  */
 export function skeletonRoof(ring, height, { gable = false } = {}) {
   let pts = cleanRing(ring);

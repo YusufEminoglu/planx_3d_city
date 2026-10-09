@@ -1,3 +1,4 @@
+// @ts-check
 // Mesh merging core shared by the building batcher and the static-layer
 // batcher. Merges many small meshes into one mesh per (material look, tile):
 //   - material colour moves into a vertex colour (multiplied with any existing
@@ -85,7 +86,7 @@ export function sharedMaterialFrom(src, textures) {
 
 /**
  * Merge meshes into one mesh per bucket.
- * @param {THREE.Mesh[]} meshes
+ * @param {any[]} meshes THREE.Mesh objects
  * @param {object} opt
  *   tileSize       - metres; 0 disables tiling
  *   classify(mesh, materialIndex, isMultiMaterial) -> kind string, or null to drop the range
@@ -96,7 +97,7 @@ export function sharedMaterialFrom(src, textures) {
  *                    normalized bytes)
  *   makeMaterial(sourceMaterial, kind) -> THREE.Material
  *   onMesh(mergedMesh, bucket) - final touches (raycast, userData)
- * @returns {{ merged: THREE.Mesh[], consumed: THREE.Mesh[] }} consumed meshes
+ * @returns {{ merged: any[], consumed: any[] }} THREE.Mesh lists; consumed meshes
  *   were merged and can be removed; others were left alone.
  */
 export function mergeMeshes(meshes, opt) {

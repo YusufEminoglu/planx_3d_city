@@ -1,0 +1,10 @@
+{
+  "buildings": 1000,
+  "calls": 149,
+  "triangles": 262128,
+  "meshes": 174,
+  "readyMs": 9943,
+  "frameMs": 2293.3,
+  "orbitFrameMs": 2465.2,
+  "pickWarmMs": 0.09
+}

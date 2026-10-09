@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
-import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -1061,7 +1061,7 @@ const assetThemePresets = {
 
 const namedAssetColors = {
   Graphite: 0x1f2937, Slate: 0x475569, Teal: 0x0f766e, White: 0xe5e7eb, Navy: 0x1d4ed8,
-  Ivory: 0xf8f1df, Terracotta: 0x9f5b3f, Olive: 0x556b2f, Black: 0x111827,
+  Ivory: 0xf8f1df, Terracotta: 0x9f5b3f, Black: 0x111827,
   Silver: 0xcbd5e1, Sand: 0xd8c3a5, Moss: 0x3f6212, Burgundy: 0x7f1d1d,
   Commuter: 0x334155, 'Urban Casual': 0x475569, Office: 0x1f2937, Student: 0x0f766e,
   Evening: 0x374151, 'Casual Linen': 0xd8c3a5, 'Warm Neutral': 0x8b6f47, Visitor: 0x64748b,
@@ -4361,8 +4361,6 @@ function buildTerrainSideSkirt(width, depth, demMin, fallbackHeight) {
   if (roiFeatures.length) {
     roiFeatures.forEach((feature) => getPolygonRings(feature.geometry).forEach(addBottomPolygon));
   } else {
-    const halfW = width * 0.5;
-    const halfD = depth * 0.5;
     addBottomPolygon([[
       [bounds.minX, bounds.minY],
       [bounds.maxX, bounds.minY],
@@ -6106,72 +6104,6 @@ function createRoofPresetTexture(name) {
 }
 
 // Legacy tree renderer retained only for regression reference.
-function buildTreeLayerLegacy(treesFc) {
-  clearGroup(treeGroup);
-  if (!treesFc?.features?.length) return;
-  const feats = treesFc.features.filter(f => f.geometry?.type === 'Point');
-  if (!feats.length) return;
-  const heightFields = namesWithMapping('tree_height_field', ['planx_tree_height', 'tree_height', 'height']);
-
-  // Group by variant (0,1,2)
-  const buckets = [[], [], []];
-  feats.forEach((f, i) => {
-    const h = parseNumberProp(f.properties || {}, heightFields, 8);
-    const treeH = Number.isFinite(h) && h > 1 ? h : 8;
-    const [x, z] = metersToLocal(f.geometry.coordinates[0], f.geometry.coordinates[1]);
-    const y = terrainLocalYAt(x, z) + LAYER.content;
-    buckets[i % 3].push({ x, y, z, h: treeH });
-  });
-
-  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3a2a, roughness: 0.95 });
-  const treeVariants = assetPoolVariants('trees');
-  const leafMats = [0, 1, 2].map((idx) => new THREE.MeshStandardMaterial({
-    color: assetColor(treeVariants[idx], [0x3b6e2e, 0x497e3a, 0x4a7530][idx]),
-    roughness: idx === 2 ? 0.88 : 0.9
-  }));
-  const crownGeos = [
-    new THREE.ConeGeometry(1, 2.2, 7),       // conifer
-    new THREE.SphereGeometry(1, 6, 5),        // deciduous round
-    new THREE.IcosahedronGeometry(1, 1)       // bushy irregular
-  ];
-  const trunkGeo = new THREE.CylinderGeometry(0.1, 0.18, 1, 5);
-  const dummy = new THREE.Object3D();
-
-  buckets.forEach((trees, vi) => {
-    if (!trees.length) return;
-    const trunkInst = new THREE.InstancedMesh(trunkGeo, trunkMat, trees.length);
-    trunkInst.castShadow = true;
-    const crownInst = new THREE.InstancedMesh(crownGeos[vi], leafMats[vi], trees.length);
-    crownInst.castShadow = true;
-
-    trees.forEach(({ x, y, z, h }, idx) => {
-      const trunkH = Math.max(1.2, h * 0.22);
-      const crownH = Math.max(2, h * 0.78);
-      // deterministic rotation from position
-      const rot = ((x * 13.7 + z * 7.3) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
-
-      dummy.position.set(x, y + trunkH * 0.5, z);
-      dummy.rotation.set(0, rot, 0);
-      dummy.scale.set(1, trunkH, 1);
-      dummy.updateMatrix();
-      trunkInst.setMatrixAt(idx, dummy.matrix);
-
-      const cr = crownH * (vi === 0 ? 0.38 : vi === 1 ? 0.50 : 0.44);
-      const ch = crownH * (vi === 0 ? 1.0  : vi === 1 ? 0.72 : 0.68);
-      const cy = y + trunkH + crownH * (vi === 0 ? 0.48 : 0.35);
-      dummy.position.set(x, cy, z);
-      dummy.rotation.set(0, rot, 0);
-      dummy.scale.set(cr, ch, cr);
-      dummy.updateMatrix();
-      crownInst.setMatrixAt(idx, dummy.matrix);
-    });
-
-    trunkInst.instanceMatrix.needsUpdate = true;
-    crownInst.instanceMatrix.needsUpdate = true;
-    treeGroup.add(trunkInst, crownInst);
-  });
-}
-
 function parseRandRangeExpr(expr) {
   const text = String(expr || '').trim();
   if (!text) return null;
@@ -8483,31 +8415,6 @@ function buildCrosswalkLayer(roadsFc) {
   }
 }
 
-function buildRoiBoundary(roi) {
-  clearGroup(roiBoundaryGroup);
-  if (!roi?.features?.length) return;
-  const mat = new THREE.LineBasicMaterial({ color: 0xff4444, linewidth: 2, depthTest: false });
-  for (const f of roi.features) {
-    if (!f.geometry) continue;
-    const rings = f.geometry.type === 'Polygon'
-      ? [f.geometry.coordinates]
-      : f.geometry.coordinates;
-    for (const poly of rings) {
-      for (const ring of poly) {
-        const pts = [];
-        for (const c of ring) {
-          const [lx, lz] = metersToLocal(c[0], c[1]);
-          const y = terrainLocalYAt(lx, lz) + 2.5;
-          pts.push(new THREE.Vector3(lx, y, lz));
-        }
-        if (pts.length < 2) continue;
-        const geo = new THREE.BufferGeometry().setFromPoints(pts);
-        roiBoundaryGroup.add(new THREE.Line(geo, mat));
-      }
-    }
-  }
-}
-
 function hideLoadingOverlay(delay = 450) {
   const loading = document.getElementById('loading');
   if (!loading) return;
@@ -9902,6 +9809,14 @@ window.__planxPerf = {
     const t0 = performance.now();
     await computeExposure(mode, eye ? new THREE.Vector3(...eye) : null);
     return { ms: Math.round(performance.now() - t0), status: document.getElementById('dem-status')?.innerText || '' };
+  },
+  // One clean frame of the 3D canvas as a PNG data URL (no UI): visual tests.
+  capture() {
+    setDynamicPixelRatio(MAX_PIXEL_RATIO);
+    sun.shadow.needsUpdate = true;
+    updateBuildingLod(buildingGroup, camera);
+    renderCleanFrame();
+    return renderer.domElement.toDataURL('image/png');
   },
   // Depth-of-field state of the last settled frame.
   dof() {

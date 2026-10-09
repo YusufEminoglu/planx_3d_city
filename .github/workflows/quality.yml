@@ -57,3 +57,45 @@ jobs:
         run: |
           python -m unittest discover -s tests -p 'test_*.py' -q
           node --test tests/js/*.test.mjs
+
+  # The browser viewer: lint, type check, benchmark gate and visual
+  # regression in headless Chromium (software rendering, deterministic).
+  viewer-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dev tooling
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Type check (JSDoc, tsc --checkJs)
+        run: npm run typecheck
+
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Benchmark city (1000 buildings)
+        run: npm run bench:data
+
+      - name: Benchmark gate (draw calls, triangles, meshes; timings reported)
+        run: npm run bench:check
+
+      - name: Visual regression (fixed cameras)
+        run: npm run visual
+
+      - name: Upload visual differences
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-differences
+          path: tests/visual/output
+          if-no-files-found: ignore

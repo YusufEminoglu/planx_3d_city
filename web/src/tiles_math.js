@@ -1,3 +1,4 @@
+// @ts-check
 // Geodesy and packaging for the OGC 3D Tiles export, free of three.js so it
 // runs in node tests.
 //

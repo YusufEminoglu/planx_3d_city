@@ -1,3 +1,4 @@
+// @ts-check
 // Atmosphere: a visible physical sky, sky-based image lighting (IBL) and fog
 // that matches the horizon.
 //

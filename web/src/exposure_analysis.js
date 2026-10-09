@@ -1,3 +1,4 @@
+// @ts-check
 // GPU exposure analysis: direct sun hours over a day, or sky view factor,
 // for every surface seen from above (streets, squares, roofs) at once.
 //
@@ -199,14 +200,21 @@ export class ExposureAnalysis {
   }
 
   /**
-   * @param scene        scene to analyse (only meshes to include visible)
-   * @param area         { minX, maxX, minZ, maxZ, minY, maxY } local metres
-   * @param directions   [{ dir: Vector3 towards the sky, weight }]
-   * @param resolution   texels per side of the result
-   * @returns { size, area, values, coverage, heights } row 0 = north edge
-   *          values: sum of weights of unobstructed directions per texel
-   *          coverage: sum of all weights (where a surface exists), else 0
-   *          heights: surface height per texel (NaN where nothing)
+   * Analyse every surface seen from above. Result rows start at the north
+   * edge; values: sum of weights of unobstructed directions per texel;
+   * coverage: sum of all weights (where a surface exists), else 0;
+   * heights: surface height per texel (NaN where nothing).
+   * @param {object} args
+   * @param {any} args.scene scene to analyse (only meshes to include visible)
+   * @param {{ minX: number, maxX: number, minZ: number, maxZ: number, minY: number, maxY: number }} args.area local metres
+   * @param {{ dir: any, weight: number }[]} [args.directions] towards the sky (sun, sky modes)
+   * @param {any} [args.eye] observer position: viewshed mode
+   * @param {number} [args.maxDistance] viewshed radius (m)
+   * @param {number} [args.resolution] texels per side of the result
+   * @param {number} [args.depthResolution] texels per side of each depth map
+   * @param {(fraction: number) => void} [args.onProgress]
+   * @returns {Promise<{ size: number, area: { minX: number, maxX: number, minZ: number, maxZ: number },
+   *   values: Float32Array, coverage: Float32Array, heights: Float32Array }>}
    */
   async run({ scene, area, directions = [], eye = null, maxDistance = 1000, resolution = 512, depthResolution = 2048, onProgress }) {
     const r = this.renderer;
