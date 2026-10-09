@@ -306,18 +306,25 @@ function scenarioViewActive() {
 
 function renderScenarioView() {
   const size = renderer.getSize(_splitSize);
-  const x = settings.scenarioView === 'Split' ? Math.round(size.x * splitFraction) : 0;
+  const split = settings.scenarioView === 'Split' || settings.scenarioView === 'SplitAB';
+  const x = split ? Math.round(size.x * splitFraction) : 0;
   const showBuildings = buildingGroup.visible;
   const showZoning = zoningGroup.visible;
   renderer.setScissorTest(true);
   if (x > 0) {
+    // Left: existing buildings, or scenario B.
+    const leftB = settings.scenarioView === 'SplitAB';
     scenarioGroup.visible = false;
+    scenarioGroupB.visible = leftB;
+    buildingGroup.visible = leftB ? false : showBuildings;
+    zoningGroup.visible = leftB ? false : showZoning;
     sun.shadow.needsUpdate = true;
     renderer.setScissor(0, 0, x, size.y);
     renderer.render(scene, camera);
   }
   buildingGroup.visible = false;
   zoningGroup.visible = false;
+  scenarioGroupB.visible = false;
   scenarioGroup.visible = true;
   sun.shadow.needsUpdate = true;
   renderer.setScissor(x, 0, size.x - x, size.y);
@@ -463,6 +470,7 @@ let waterlineGroup = new THREE.Group();
 let zoningGroup = new THREE.Group();
 // Zoning scenario massing (what-if capacity per plot).
 const scenarioGroup = new THREE.Group();
+const scenarioGroupB = new THREE.Group();
 world.add(islandGroup);
 world.add(parcelGroup);
 world.add(hardscapeGroup);
@@ -486,6 +494,7 @@ world.add(fenceGroup);
 world.add(waterlineGroup);
 world.add(zoningGroup);
 world.add(scenarioGroup);
+world.add(scenarioGroupB);
 
 /* Layer Elevation Hierarchy
  * DEM < islands < block paths < buildings/trees < parcels < hardscape slab < roads < bike lanes < sidewalks < cars/bikes.
@@ -1622,6 +1631,10 @@ const settings = {
   zoningSetback: 3.0,
   zoningMaxHeight: 40.0,
   zoningCoverage: 0.4,
+  zoningBCoverage: 0.3,
+  zoningBFar: 1.5,
+  zoningBMaxHeight: 21,
+  zoningBSetback: 5,
   viewshedRadius: 500,
   zoningFar: 2.0,
   scenarioView: 'Off',
@@ -1691,7 +1704,7 @@ const PERSISTED_SETTING_KEYS = [
   'showFences', 'fenceHeight', 'fenceThickness', 'fenceTexture', 'fenceColor',
   'showWaterlines', 'waterlineWidth',
   'showRoadMarkings', 'showLedges', 'showStorefronts', 'buildingSetback', 'ledgeProjection',
-  'showZoningEnvelopes', 'highlightViolations', 'zoningSetback', 'zoningMaxHeight', 'zoningCoverage', 'zoningFar', 'scenarioView', 'viewshedRadius',
+  'showZoningEnvelopes', 'highlightViolations', 'zoningSetback', 'zoningMaxHeight', 'zoningCoverage', 'zoningFar', 'scenarioView', 'viewshedRadius', 'zoningBCoverage', 'zoningBFar', 'zoningBMaxHeight', 'zoningBSetback',
   'activeTreeModel', 'activeLightModel', 'activeBenchModel', 'activeBinModel', 'activeBusStopModel', 'activeMosqueModel',
   'activeTumulusModel', 'treeModelPool'
 ];
@@ -5671,7 +5684,7 @@ function withAnalysisVisibility(fn) {
     }
   };
   for (const c of scene.children) if (c !== world) hide(c);
-  for (const g of [carGroup, bikeGroup, pedestrianGroup, windPlumeGroup, roiBoundaryGroup, zoningGroup, scenarioGroup, shadowHeatmapMesh]) hide(g);
+  for (const g of [carGroup, bikeGroup, pedestrianGroup, windPlumeGroup, roiBoundaryGroup, zoningGroup, scenarioGroup, scenarioGroupB, shadowHeatmapMesh]) hide(g);
   return Promise.resolve()
     .then(fn)
     .finally(() => { for (const o of hidden) o.visible = true; });
@@ -7461,22 +7474,37 @@ function scaleShape(shape, k) {
   return out;
 }
 
+function scenarioRules(which) {
+  const b = which === 'B';
+  return {
+    coverage: b ? settings.zoningBCoverage : settings.zoningCoverage,
+    far: b ? settings.zoningBFar : settings.zoningFar,
+    maxHeight: b ? settings.zoningBMaxHeight : settings.zoningMaxHeight,
+    setback: b ? settings.zoningBSetback : settings.zoningSetback,
+    floorHeight: settings.floorHeight
+  };
+}
+
 function buildScenario() {
   clearGroup(scenarioGroup);
+  clearGroup(scenarioGroupB);
   scenarioResult = null;
   if (settings.scenarioView === 'Off' || !layerDataCache) {
     updateScenarioUi();
     return;
   }
+  const a = buildScenarioMassing(scenarioGroup, scenarioRules('A'));
+  const b = settings.scenarioView === 'SplitAB' ? buildScenarioMassing(scenarioGroupB, scenarioRules('B')) : null;
+  scenarioResult = { totals: a.totals, totalsB: b?.totals || null, usingParcels: a.usingParcels };
+  updateScenarioUi();
+  sun.shadow.needsUpdate = true;
+  requestRender();
+}
+
+function buildScenarioMassing(group, rules) {
   const data = layerDataCache;
   const usingParcels = !!data.parcelsFc?.features?.length;
   const plotsFc = usingParcels ? data.parcelsFc : data.blocksFc;
-  const rules = {
-    coverage: settings.zoningCoverage,
-    far: settings.zoningFar,
-    maxHeight: settings.zoningMaxHeight,
-    floorHeight: settings.floorHeight
-  };
   // Existing buildings by their footprint centre (projected metres).
   const buildings = [];
   let existingPopulation = 0;
@@ -7515,8 +7543,8 @@ function buildScenario() {
         existingFootprint += b.footprint;
       }
       const localRings = toLocalRings(rings);
-      const buildable = settings.zoningSetback > 0
-        ? insetShapeFromRings(localRings, settings.zoningSetback)
+      const buildable = rules.setback > 0
+        ? insetShapeFromRings(localRings, rules.setback)
         : shapeFromRings(localRings);
       const buildableArea = buildable ? shapeArea(buildable) : 0;
       const capacity = plotCapacity(area, buildableArea, rules);
@@ -7536,22 +7564,23 @@ function buildScenario() {
       mesh.receiveShadow = true;
       mesh.userData = { planxScenario: true, ...capacity, existingGfa, plotArea: area };
       mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), edgeMat));
-      scenarioGroup.add(mesh);
+      group.add(mesh);
     }
   }
-  scenarioResult = { totals: scenarioTotals(plots, existingPopulation), usingParcels, rules };
-  updateScenarioUi();
-  sun.shadow.needsUpdate = true;
-  requestRender();
+  return { totals: scenarioTotals(plots, existingPopulation), usingParcels };
 }
 
 function updateScenarioUi() {
   const box = document.getElementById('scenario-summary');
   const divider = document.getElementById('split-divider');
-  const split = settings.scenarioView === 'Split' && scenarioResult;
+  const split = (settings.scenarioView === 'Split' || settings.scenarioView === 'SplitAB') && scenarioResult;
   if (divider) {
     divider.style.display = split ? '' : 'none';
     divider.style.left = `${splitFraction * 100}%`;
+    const left = divider.querySelector('.split-left');
+    const right = divider.querySelector('.split-right');
+    if (left) left.textContent = settings.scenarioView === 'SplitAB' ? 'Scenario B' : 'Existing';
+    if (right) right.textContent = 'Scenario A';
   }
   document.querySelectorAll('[data-scenario-view]').forEach((b) => b.classList.toggle('active', b.dataset.scenarioView === settings.scenarioView));
   if (!box) return;
@@ -7560,14 +7589,16 @@ function updateScenarioUi() {
     return;
   }
   const t = scenarioResult.totals;
+  const tb = scenarioResult.totalsB;
   const n = (v) => Math.round(v).toLocaleString('en-US');
   const d = (v) => `${v >= 0 ? '+' : ''}${n(v)}`;
+  const col = (fn) => `<td>${fn(t)}</td>${tb ? `<td>${fn(tb)}</td>` : ''}`;
   box.innerHTML = `<table class="scenario-table">`
-    + `<tr><th></th><th>Existing</th><th>Scenario</th></tr>`
-    + `<tr><td>Floor area (m²)</td><td>${n(t.existingGfa)}</td><td>${n(t.gfa)}</td></tr>`
-    + `<tr><td>FAR</td><td>${t.existingFar.toFixed(2)}</td><td>${t.far.toFixed(2)}</td></tr>`
-    + `<tr><td>Site coverage</td><td>${(t.existingCoverage * 100).toFixed(0)}%</td><td>${(t.coverage * 100).toFixed(0)}%</td></tr>`
-    + (t.population !== null ? `<tr><td>Population (est.)</td><td>${n(t.existingPopulation)}</td><td>${n(t.population)}</td></tr>` : '')
+    + `<tr><th></th><th>Existing</th><th>${tb ? 'A' : 'Scenario'}</th>${tb ? '<th>B</th>' : ''}</tr>`
+    + `<tr><td>Floor area (m²)</td><td>${n(t.existingGfa)}</td>${col((x) => n(x.gfa))}</tr>`
+    + `<tr><td>FAR</td><td>${t.existingFar.toFixed(2)}</td>${col((x) => x.far.toFixed(2))}</tr>`
+    + `<tr><td>Site coverage</td><td>${(t.existingCoverage * 100).toFixed(0)}%</td>${col((x) => `${(x.coverage * 100).toFixed(0)}%`)}</tr>`
+    + (t.population !== null ? `<tr><td>Population (est.)</td><td>${n(t.existingPopulation)}</td>${col((x) => n(x.population))}</tr>` : '')
     + `</table><p class="dock-note">${t.plots} ${scenarioResult.usingParcels ? 'parcels' : 'blocks'} · change ${d(t.gfaChange)} m² · `
     + `<span style="color:#3b82f6">■</span> more capacity <span style="color:#f97316">■</span> less <span style="color:#94a3b8">■</span> similar</p>`;
 }
@@ -10159,7 +10190,7 @@ async function exportTiles3DZip() {
   const includeTerrain = !!document.getElementById('tiles-include-terrain')?.checked;
   const heightOffset = Number(document.getElementById('tiles-height-offset')?.value) || 0;
   // Static scene only: no traffic, people, overlays or analysis drapes.
-  const skip = new Set([carGroup, bikeGroup, pedestrianGroup, windPlumeGroup, roiBoundaryGroup, zoningGroup, scenarioGroup, shadowHeatmapMesh]);
+  const skip = new Set([carGroup, bikeGroup, pedestrianGroup, windPlumeGroup, roiBoundaryGroup, zoningGroup, scenarioGroup, scenarioGroupB, shadowHeatmapMesh]);
   if (!includeTerrain) {
     skip.add(terrainMesh);
     skip.add(terrainSideGroup);
@@ -10705,7 +10736,7 @@ function applyDockSetting(key, value, inputType) {
     updateDockControls();
   } else if (key === 'viewshedRadius') {
     // Used by the next viewshed run.
-  } else if (['zoningCoverage', 'zoningFar', 'zoningMaxHeight', 'zoningSetback', 'highlightViolations'].includes(key)) {
+  } else if (['zoningCoverage', 'zoningFar', 'zoningMaxHeight', 'zoningSetback', 'highlightViolations', 'zoningBCoverage', 'zoningBFar', 'zoningBMaxHeight', 'zoningBSetback'].includes(key)) {
     // Rules only: redraw the envelopes and the scenario, not the scene.
     buildZoningEnvelopesLayer(layerDataCache?.buildingsFc);
     buildScenario();
