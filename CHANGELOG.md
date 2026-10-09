@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Planning tools (roadmap phase 5, second round): viewshed from a picked point; comparing two zoning scenarios (Split: B | A); CityJSON 2.0 export (LoD1 buildings); MP4 tour videos rendered frame by frame with WebCodecs (720p to 4K, captions); portable packages ready for GitHub/GitLab Pages and Netlify; WebXR (VR headsets) with teleport; a 3D preview panel in QGIS with two-way building selection.
+- Fix: zoning envelopes were never drawn.
 - Planning tools (roadmap phase 5, first round): GPU sun-hours and sky-view-factor analysis for every street, square and roof (replaces the shadow heatmap); zoning what-if scenarios (site coverage, FAR, maximum height, setback) with capacity against the existing buildings and an existing | scenario split view; OGC 3D Tiles 1.1 export georeferenced from the QGIS export (CesiumJS, ArcGIS, Unreal); shareable view links; screenshots up to 8K.
 - Fix: the sun stood on the opposite side of the sky (morning shadows fell east, noon shadows south); sun, wind plumes and tree wind now follow the compass. Status messages are visible again.
 - Visual quality (roadmap phase 4, second round): hip and gable roofs follow the real footprint (straight skeleton: L, T and U plans get proper ridges and valleys); window glass is glossy and reflects the sky; water lines reflect the sky; optional depth of field for presentation shots and optional wind sway for tree crowns (Effects menu).

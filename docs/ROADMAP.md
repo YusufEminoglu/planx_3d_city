@@ -225,6 +225,40 @@ somut bir dosyaya/fonksiyona bağlanır ve ölçülebilir bir hedefle biter.
 >   karolar (`setViewOffset`) birleştiriliyor, ek yok. 4K MP4 (WebCodecs)
 >   kaldı.
 > - **Kalan:** 5.6 WebXR, 5.7 QGIS içi önizleme paneli.
+>
+> **Durum (ikinci tur) — Faz 5'in kalanı:**
+> - **Görüş alanı (viewshed):** Analiz → "Viewshed from a point", sahnede
+>   gözlemci noktası tıklanıyor; göz yüksekliğinde (1,6 m) altı adet 90°
+>   derinlik görünümü (küp) ile yarıçap içindeki tüm sokak/meydan/çatılar
+>   görünür/görünmez işaretleniyor, lejantta görünür oran. Aynı GPU hattı,
+>   perspektif görünümler için doğrusal mesafe testi.
+> - **İki senaryo karşılaştırması:** B kural seti (TAKS, KAKS, Hmax, çekme)
+>   ve "Split: B | A"; tablo mevcut / A / B.
+> - **Düzeltme:** imar zarfları (Show Zoning Envelopes) hiç çizilmiyordu
+>   (çokgen listesi tek çokgen yerine geçiyordu); her parça kendi zemininde.
+> - **CityJSON 2.0:** binalar LoD1 katı (avlular, çok parçalı binalar
+>   MultiSolid), dışa aktarım CRS'inde, öznitelikleriyle. Testler kapalı ve
+>   dışa dönük kabuk kontrol ediyor; örnek çıktı CityJSON 2.0.2 şemasından
+>   hatasız geçiyor, cjio okuyor.
+> - **MP4 tur videosu:** keyframe turu her kare kendi zamanında (t = i/fps)
+>   çiziliyor, WebCodecs ile tarayıcıda kodlanıp MP4'e paketleniyor
+>   (mp4-muxer, MIT), altyazılar karelere işleniyor; 720p / 1080p / 4K.
+>   H.264 yoksa VP9/AV1 (MP4 içinde). Test: 180 kare, 6 s, ffmpeg hatasız
+>   çözüyor.
+> - **Statik yayın:** taşınabilir paket kökte index.html (#view= korunur),
+>   .nojekyll ve .gitlab-ci.yml ile GitHub/GitLab Pages ve Netlify'a olduğu
+>   gibi yüklenebiliyor; README adımları anlatıyor.
+> - **WebXR:** tarayıcı immersive VR destekliyorsa "Enter VR"; sokak
+>   seviyesinde, mevcut bakış yönünde başlıyor, kumanda ile ışınlanma.
+>   Gözlük olmadan yalnızca buton/geri düşüş test edildi.
+> - **QGIS içi önizleme + canlı seçim:** eklenti menüsünde "3D preview
+>   panel"; QtWebEngine varsa görüntüleyici QGIS içinde, yoksa tarayıcıda.
+>   Seçim iki yönlü: QGIS'te seçilen bina 3D'de turuncu vurgulanıp kameraya
+>   alınıyor; görüntüleyicide tıklanan bina QGIS'te seçilip harita ona
+>   kayıyor. Eşleştirme konuma göre (çokgen içi nokta, dışa aktarım CRS'i),
+>   kimlik gerekmiyor. Sunucu tarafı köprü Python testli; uçtan uca test
+>   gerçek PlanX sunucusuyla yapıldı. QGIS paneli burada QGIS olmadığı için
+>   denenmedi.
 
 1. **Gerçek zamanlı analizler (GPU)** — gökyüzü görüş faktörü (SVF), güneşlenme saatleri ısı haritası (21 Aralık / 21 Haziran), görüş alanı (viewshed), gölge süresi — hepsi GPU render-to-texture ile saniyeler içinde.
 2. **İmar senaryoları** — TAKS/KAKS/Hmax parametreleriyle "ne olur" modu; A/B senaryo kaydırıcılı karşılaştırma (split-screen).
