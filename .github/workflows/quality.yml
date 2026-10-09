@@ -46,3 +46,14 @@ jobs:
       # skip makes this gate pass while the Hub still blocks.
       - name: Bandit (any finding blocks the Hub)
         run: python -m bandit -q -r . -x ./tests,./e2e,./scratch,./node_modules
+
+      # Node 22 loads the viewer's ES modules (plain .js) without a package.json.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Pure-Python and pure-JS units that need neither QGIS nor a browser.
+      - name: Unit tests
+        run: |
+          python -m unittest discover -s tests -p 'test_*.py' -q
+          node --test tests/js/*.test.mjs

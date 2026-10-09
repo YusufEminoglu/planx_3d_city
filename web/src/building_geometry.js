@@ -5,6 +5,7 @@
 // workers do not see import maps. The URL resolves to the same module the
 // page loads as 'three', so the main thread still gets a single instance.
 import * as THREE from '../assets/vendor/three/build/three.module.js';
+import { skeletonRoof } from './roof_skeleton.js';
 
 export function polygonCentroid(points) {
   if (!points.length) return new THREE.Vector3(0, 0, 0);
@@ -152,6 +153,74 @@ export function roofGeometryFromTriangles(points, faces) {
   return geo;
 }
 
+// Hip / gable roof on the straight skeleton of the eave outline: every eave
+// edge gets its own plane at the same pitch, so L, T and U footprints get
+// valleys and ridges that follow the building. Roof texture rows run along
+// each face's eave. Returns null when the skeleton cannot be built.
+function skeletonRoofGeometry(eaveRing, roofHeight, gable) {
+  const roof = skeletonRoof(eaveRing.map((p) => ({ x: p.x, y: p.z })), roofHeight, { gable });
+  if (!roof) return null;
+  let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity;
+  for (const p of eaveRing) {
+    minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+    minZ = Math.min(minZ, p.z); maxZ = Math.max(maxZ, p.z);
+  }
+  const uvScale = 1 / Math.max(1e-6, maxX - minX, maxZ - minZ);
+  const pos = [];
+  const uv = [];
+  const va = new THREE.Vector3();
+  const vb = new THREE.Vector3();
+  const vc = new THREE.Vector3();
+  const nrm = new THREE.Vector3();
+  for (const face of roof.faces) {
+    const pts = face.points;
+    const a = pts[0];
+    const b = pts[1];
+    const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    const dx = (b.x - a.x) / len;
+    const dy = (b.y - a.y) / len;
+    // Inward normal of the eave (the footprint is counter-clockwise).
+    const ix = -dy;
+    const iy = dx;
+    // 2D frame of the face: along the eave, and up the slope (or the wall).
+    const local = pts.map((p) => {
+      const along = (p.x - a.x) * dx + (p.y - a.y) * dy;
+      const inward = (p.x - a.x) * ix + (p.y - a.y) * iy;
+      return { along, up: face.vertical ? p.h : Math.hypot(inward, p.h) };
+    });
+    const contour = face.vertical
+      ? local.map((q) => new THREE.Vector2(q.along, q.up))
+      : pts.map((p) => new THREE.Vector2(p.x, p.y));
+    let tris;
+    try {
+      tris = THREE.ShapeUtils.triangulateShape(contour, []);
+    } catch {
+      return null;
+    }
+    for (const [i0, i1, i2] of tris) {
+      const p0 = pts[i0], p1 = pts[i1], p2 = pts[i2];
+      va.set(p0.x, p0.h, p0.y);
+      vb.set(p1.x, p1.h, p1.y);
+      vc.set(p2.x, p2.h, p2.y);
+      nrm.subVectors(vb, va).cross(vc.clone().sub(va));
+      // Slopes face up, gable walls face out of the footprint.
+      const flip = face.vertical ? (nrm.x * ix + nrm.z * iy) > 0 : nrm.y < 0;
+      const order = flip ? [i0, i2, i1] : [i0, i1, i2];
+      for (const k of order) {
+        const p = pts[k];
+        pos.push(p.x, p.h, p.y);
+        uv.push(local[k].along * uvScale, local[k].up * uvScale);
+      }
+    }
+  }
+  if (!pos.length) return null;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.computeVertexNormals();
+  return geo;
+}
+
 // Roof geometry over a footprint, with its lowest point at y = 0. roofShape
 // must already be one of ROOF_SHAPE_OPTIONS.
 export function roofGeometryFor(shape, footprintPoints, roofShape, roofHeight) {
@@ -235,8 +304,10 @@ export function roofGeometryFor(shape, footprintPoints, roofShape, roofHeight) {
         faces.push([pBase, qBase, qTop, pTop]);
       }
       roofGeo = roofGeometryFromTriangles(points, faces);
+    } else if ((roofGeo = skeletonRoofGeometry(eaveRing, rh, safeShape === 'Gable'))) {
+      // Straight-skeleton hip / gable roof.
     } else {
-      // Gable / Hip: loft the footprint outline up to a ridge line at height rh.
+      // Fallback: loft the footprint outline up to one ridge line at height rh.
       // Gable -> ridge spans the full length (vertical gable ends).
       // Hip   -> ridge inset from each end by the half-width (sloped hip ends).
       const ridgeHalf = safeShape === 'Gable' ? aHalf : Math.max(0, aHalf - bHalf);

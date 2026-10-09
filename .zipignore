@@ -24,3 +24,6 @@ docs/assets
 
 # Benchmark harness (writes its own synthetic web/data; not used by the plugin).
 tests/bench
+
+# Viewer unit tests (node --test tests/js/*.test.mjs).
+tests/js
