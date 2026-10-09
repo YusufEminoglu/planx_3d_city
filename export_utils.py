@@ -92,6 +92,35 @@ def coordinate_precision(is_geographic: bool) -> int:
     return 7 if is_geographic else 3
 
 
+GEOREF_STEP_M = 1000.0
+
+
+def georeference_control_xy(centre: tuple[float, float], step: float = GEOREF_STEP_M) -> list[tuple[float, float]]:
+    """Projected control points: the scene centre, one step east, one step north."""
+    cx, cy = centre
+    return [(cx, cy), (cx + step, cy), (cx, cy + step)]
+
+
+def georeference_record(crs_authid: str, xy: list, lonlat: list) -> Optional[dict]:
+    """Manifest entry tying the export CRS to WGS84 through three control points.
+
+    The viewer fits an affine map from these (exact for three points; the
+    projection is close to affine over a city), which is enough to place the
+    scene on the globe for 3D Tiles. None when the points are unusable.
+    """
+    if len(xy) != 3 or len(lonlat) != 3:
+        return None
+    pts = []
+    for (x, y), (lon, lat) in zip(xy, lonlat):
+        if not all(map(_finite, (x, y, lon, lat))) or not (-180 <= lon <= 180 and -90 <= lat <= 90):
+            return None
+        pts.append({"xy": [round(x, 3), round(y, 3)], "lonLat": [round(lon, 9), round(lat, 9)]})
+    (x0, y0), (x1, y1), (x2, y2) = xy
+    if abs((x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0)) < 1e-6:
+        return None
+    return {"crs": crs_authid or "", "controlPoints": pts}
+
+
 def file_signature(path: Optional[str]) -> Optional[list]:
     """(size, mtime) of a local file, or None when it is not a readable file."""
     if not path:

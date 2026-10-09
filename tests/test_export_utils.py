@@ -76,5 +76,26 @@ class MiscTest(unittest.TestCase):
             self.assertFalse(cache2.is_fresh(out, ["sig"]))
 
 
+
+class GeoreferenceTests(unittest.TestCase):
+    def test_control_points(self):
+        self.assertEqual(eu.georeference_control_xy((500.0, 200.0)), [(500.0, 200.0), (1500.0, 200.0), (500.0, 1200.0)])
+
+    def test_record(self):
+        xy = eu.georeference_control_xy((475000.0, 4420000.0))
+        lonlat = [(32.7, 39.92), (32.7117, 39.9201), (32.7001, 39.929)]
+        rec = eu.georeference_record("EPSG:32636", xy, lonlat)
+        self.assertEqual(rec["crs"], "EPSG:32636")
+        self.assertEqual(len(rec["controlPoints"]), 3)
+        self.assertEqual(rec["controlPoints"][1]["xy"], [476000.0, 4420000.0])
+
+    def test_rejects_bad_points(self):
+        xy = eu.georeference_control_xy((0.0, 0.0))
+        self.assertIsNone(eu.georeference_record("X", xy, [(0, 0), (0, 0)]))
+        self.assertIsNone(eu.georeference_record("X", xy, [(0, 0), (200, 0), (0, 1)]))
+        self.assertIsNone(eu.georeference_record("X", [(0, 0), (1, 1), (2, 2)], [(0, 0), (1, 0), (0, 1)]))
+        self.assertIsNone(eu.georeference_record("X", xy, [(0, 0), (float("nan"), 0), (0, 1)]))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -13,10 +13,12 @@ from typing import Optional
 from qgis.PyQt.QtCore import QSize
 from qgis.PyQt.QtGui import QColor
 from qgis.core import (
+    QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
     QgsCoordinateTransformContext,
     QgsMapRendererParallelJob,
     QgsMapSettings,
+    QgsPointXY,
     QgsProject,
     QgsRasterFileWriter,
     QgsRasterPipe,
@@ -29,6 +31,8 @@ from .export_utils import (
     dem_clip_window,
     dem_creation_options,
     file_signature,
+    georeference_control_xy,
+    georeference_record,
     union_bounds,
 )
 
@@ -540,6 +544,7 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
     analysis_defaults = _analysis_defaults_manifest(layer_map)
     viewer_defaults = _viewer_defaults_manifest(layer_map)
     asset_theme, asset_pools, pedestrian_style = _asset_theme_manifest(layer_map)
+    georeference = _georeference(layer_map, export_crs)
     manifest_path = write_manifest(
         web_root,
         manifest_inputs,
@@ -555,6 +560,7 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
         asset_theme,
         asset_pools,
         pedestrian_style,
+        georeference,
     )
     written.append(str(manifest_path))
     return written
@@ -575,6 +581,7 @@ def write_manifest(
     asset_theme: str,
     asset_pools: dict,
     pedestrian_style: dict,
+    georeference: Optional[dict] = None,
 ) -> Path:
     data_root = Path(web_root) / "data"
     data_root.mkdir(parents=True, exist_ok=True)
@@ -604,6 +611,7 @@ def write_manifest(
         "assetPools": asset_pools,
         "pedestrianStyle": pedestrian_style,
         "inputs": inputs,
+        "georeference": georeference,
         "summary": {
             "emptyOptionalInputs": [item["key"] for item in inputs if item.get("optional") and item.get("empty")],
             "crs": sorted({item.get("crs") for item in inputs if item.get("crs")}),
@@ -961,6 +969,27 @@ def _gdal_optimized_dem(source_path: str, out_path: Path, view_bounds) -> Option
 # Layers the viewer derives its scene bounds from (ROI first), mirroring
 # deriveVectorBounds() in web/src/app.js.
 VIEWER_BOUNDS_KEYS = ("blocks", "roads", "buildings", "parcels", "sidewalks", "pedestrian_paths")
+
+
+def _georeference(layer_map: dict, crs) -> Optional[dict]:
+    """WGS84 control points around the scene centre (for 3D Tiles), or None."""
+    try:
+        if crs is None or not crs.isValid() or crs.isGeographic():
+            return None
+        bounds = _viewer_bounds(layer_map, crs)
+        if bounds is None:
+            return None
+        centre = ((bounds[0] + bounds[2]) / 2.0, (bounds[1] + bounds[3]) / 2.0)
+        xy = georeference_control_xy(centre)
+        wgs84 = QgsCoordinateReferenceSystem("EPSG:4326")
+        transform = QgsCoordinateTransform(crs, wgs84, QgsProject.instance())
+        lonlat = []
+        for x, y in xy:
+            p = transform.transform(QgsPointXY(x, y))
+            lonlat.append((p.x(), p.y()))
+        return georeference_record(crs.authid(), xy, lonlat)
+    except Exception:  # noqa: BLE001 - georeferencing is optional metadata
+        return None
 
 
 def _viewer_bounds(layer_map: dict, crs):

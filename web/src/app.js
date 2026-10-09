@@ -9906,6 +9906,42 @@ async function copyViewLink() {
   }
 }
 
+// --- 3D Tiles export of the visible scene ---
+async function exportTiles3DZip() {
+  const georeference = projectManifest?.georeference;
+  if (!georeference?.controlPoints) {
+    setStatus('3D Tiles needs a georeferenced export: publish again from QGIS (projected CRS).', true);
+    return;
+  }
+  const includeTerrain = !!document.getElementById('tiles-include-terrain')?.checked;
+  const heightOffset = Number(document.getElementById('tiles-height-offset')?.value) || 0;
+  // Static scene only: no traffic, people, overlays or analysis drapes.
+  const skip = new Set([carGroup, bikeGroup, pedestrianGroup, windPlumeGroup, roiBoundaryGroup, zoningGroup, shadowHeatmapMesh]);
+  if (!includeTerrain) {
+    skip.add(terrainMesh);
+    skip.add(terrainSideGroup);
+  }
+  const roots = world.children.filter((c) => c && !skip.has(c));
+  try {
+    setStatus('3D Tiles: preparing...');
+    const { exportTiles3D } = await import('./tiles_export.js');
+    const { blob, tiles, lon, lat } = await exportTiles3D({
+      roots, georeference, centre: [centerX, centerY], xSign: LOCAL_X_SIGN, heightOffset,
+      onProgress: (f) => setStatus(`3D Tiles: ${Math.round(f * 100)}%`)
+    });
+    const link = document.createElement('a');
+    link.download = `planx_3d_city_3dtiles_${Date.now()}.zip`;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 20000);
+    setStatus(`3D Tiles exported: ${tiles} tiles, ${(blob.size / 1048576).toFixed(1)} MB, centre ${lat.toFixed(5)}, ${lon.toFixed(5)}.`);
+  } catch (err) {
+    console.warn('3D Tiles export failed', err);
+    setStatus(`3D Tiles export failed: ${err?.message || err}`, true);
+  }
+}
+document.getElementById('tiles-export')?.addEventListener('click', exportTiles3DZip);
+
 window.addEventListener('hashchange', () => applyView(viewFromHash(location.hash), { fly: true }));
 document.getElementById('btn-copy-view')?.addEventListener('click', copyViewLink);
 

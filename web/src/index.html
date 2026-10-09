@@ -325,6 +325,15 @@
         </div>
         <input id="tour-import" type="file" accept="application/json" class="dock-file">
         <div id="tour-list" class="tour-list"></div>
+        <div class="dock-section">
+            <p class="dock-section-title">3D Tiles export</p>
+            <p class="dock-note">OGC 3D Tiles 1.1 (tileset.json + glTF) of the visible scene, placed on the globe, for CesiumJS, Cesium ion, ArcGIS and Unreal. Heights are the DEM's: add the local geoid height to sit on an ellipsoid-based globe.</p>
+            <label><span>Height offset (m)</span> <input id="tiles-height-offset" type="number" step="0.1" value="0" class="dock-text" style="width:90px"></label>
+            <label><input id="tiles-include-terrain" type="checkbox"> <span>Include terrain</span></label>
+            <div class="dock-actions">
+                <button id="tiles-export">Export 3D Tiles (.zip)</button>
+            </div>
+        </div>
     </aside>
  
     <aside class="dock-panel hidden" id="model-studio-dock" style="width: 360px;">
