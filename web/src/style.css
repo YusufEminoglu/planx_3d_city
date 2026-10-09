@@ -1702,3 +1702,44 @@ body.presentation-mode .lil-gui {
     pointer-events: none !important;
     transition: opacity 0.3s ease-in-out;
 }
+
+/* Exposure analysis legend (sun hours / sky view factor). */
+#exposure-legend {
+    position: fixed;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    z-index: 30;
+    min-width: 300px;
+    max-width: min(520px, calc(100vw - 32px));
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.86);
+    color: #e2e8f0;
+    font: 12px/1.4 'Montserrat', sans-serif;
+    pointer-events: none;
+}
+#exposure-legend .exposure-title { font-weight: 700; margin-bottom: 6px; }
+#exposure-legend .exposure-bar { height: 10px; border-radius: 5px; }
+#exposure-legend .exposure-scale { display: flex; justify-content: space-between; margin-top: 3px; font-variant-numeric: tabular-nums; }
+#exposure-legend .exposure-note { margin-top: 4px; color: #94a3b8; font-size: 11px; }
+
+/* Status toast (setStatus). */
+#dem-status {
+    position: fixed;
+    left: 16px;
+    bottom: 16px;
+    z-index: 40;
+    max-width: min(460px, calc(100vw - 32px));
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(15, 23, 42, 0.88);
+    color: #e2e8f0;
+    font: 12px/1.4 'Montserrat', sans-serif;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.25s, transform 0.25s;
+}
+#dem-status.is-visible { opacity: 1; transform: none; }
+#dem-status.is-error { background: rgba(127, 29, 29, 0.92); }

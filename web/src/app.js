@@ -21,6 +21,7 @@ import { batchStaticGroup } from './mesh_merge.js';
 import { createAtmosphere } from './atmosphere.js';
 import { applyWindSway, setWind, updateWind, windActive } from './wind.js';
 import { captureSize, captureTiled, hashWithView, viewFromHash } from './capture.js';
+import { ExposureAnalysis, skyDirections, sunPathDirections } from './exposure_analysis.js';
 
 const urlParams = new URLSearchParams(window.location.search);
 const isPortableMode = urlParams.has('portable') || urlParams.get('portable') === '1';
@@ -90,7 +91,7 @@ Object.assign(i18n.EN, {
   shadowSummer: 'Summer solstice', shadowAutumn: 'Autumn equinox',
   shadowPlayDay: 'Play day (sunrise-sunset)', shadowStop: 'Stop',
   shadowPlaySpeed: 'Day playback speed',
-  shadowCompute: 'Compute shadow heatmap', shadowClear: 'Clear heatmap',
+  shadowCompute: 'Sun hours (this day)', shadowClear: 'Clear analysis',
   timeDawn: 'Dawn 6', timeNoon: 'Noon 12', timeSunset: 'Sunset 19', timeNight: 'Night 22',
   lblThemeMode: 'Theme', themeAuto: 'Auto (system)', themeLight: 'Light', themeDark: 'Dark',
   lblTerrainTileMeters: 'Texture tile size (m)',
@@ -3121,9 +3122,23 @@ function createTintedIslandTexturePreset(name, baseColor) {
   return t;
 }
 
-function setStatus(text) {
-  const el = document.getElementById('dem-status');
-  if (el) el.innerText = text;
+// Status messages (progress, results, errors) as a small toast at the
+// bottom left; it fades after a few seconds. (They used to go to a
+// #dem-status element the page no longer has.)
+let _statusTimer = null;
+function setStatus(text, isError = false) {
+  let el = document.getElementById('dem-status');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'dem-status';
+    el.setAttribute('role', 'status');
+    document.body.appendChild(el);
+  }
+  el.innerText = text || '';
+  el.classList.toggle('is-error', !!isError);
+  el.classList.toggle('is-visible', !!text);
+  clearTimeout(_statusTimer);
+  if (text) _statusTimer = setTimeout(() => el.classList.remove('is-visible'), isError ? 9000 : 5000);
 }
 
 /* Solar position via simplified NOAA formula.
@@ -3158,11 +3173,7 @@ function updateTimeOfDay() {
   const azimuthDeg = (THREE.MathUtils.radToDeg(azimuth) + 360) % 360;
   _solarCache = { elevationDeg, azimuthDeg };
 
-  /* Three.js convention: phi from +Y axis (0 = up), theta from +Z around +Y.
-   * Compass azimuth 0=N(-Z), 90=E(+X), 180=S(+Z), 270=W(-X) → theta = π - azimuth. */
-  const phi = Math.PI / 2 - elevation;
-  const theta = Math.PI - azimuth;
-  const pos = new THREE.Vector3().setFromSphericalCoords(1, phi, theta);
+  const pos = compassDirection(azimuth, elevation);
 
   sunDirection.copy(pos);
   fitSunShadow();
@@ -3267,6 +3278,16 @@ function updateWeather() {
   scene.add(weatherParticles);
 }
 updateWeather();
+
+// Unit vector towards a compass bearing (radians clockwise from north) at an
+// elevation above the horizon, in scene axes: north is +Z (northing) and east
+// is LOCAL_X_SIGN * X, as metersToLocal places the data. (The sun used to
+// assume north = -Z and east = +X, which put it on the opposite side of the
+// sky: morning shadows fell east and noon shadows south.)
+function compassDirection(azimuth, elevation = 0) {
+  const c = Math.cos(elevation);
+  return new THREE.Vector3(LOCAL_X_SIGN * Math.sin(azimuth) * c, Math.sin(elevation), Math.cos(azimuth) * c);
+}
 
 function metersToLocal(x, y) {
   return [(x - centerX) * LOCAL_X_SIGN, y - centerY];
@@ -5548,104 +5569,210 @@ function buildingBaseYForOuterRing(outer) {
  * count how many samples are blocked by buildings/trees/blocks. Score 0 (always
  * sun) .. 1 (always shaded) drives a colour overlay quad above the terrain.
  * Useful for solar access screening of plans. */
-async function computeShadowHeatmap() {
-  if (!bounds || !terrainMesh) return;
-  removeShadowHeatmap();
-  const setProgress = (msg) => setStatus(msg);
-  setProgress('Computing shadow heatmap... (raycasting)');
-  await new Promise((r) => setTimeout(r, 16));
+// --- Exposure analysis (GPU): direct sun hours or sky view factor ---
+// Every surface seen from above (streets, squares, roofs) is analysed at
+// about 1.5 m resolution; the result is draped over the scene with a legend.
+let exposureAnalysis = null;
+let exposureRunning = false;
+const EXPOSURE_RAMP = [
+  [0.0, [0.27, 0.0, 0.33]],
+  [0.25, [0.23, 0.32, 0.55]],
+  [0.5, [0.13, 0.57, 0.55]],
+  [0.75, [0.37, 0.79, 0.38]],
+  [1.0, [0.99, 0.91, 0.14]]
+];
 
-  const gridN = 48;
-  const width = bounds.maxX - bounds.minX;
-  const depth = bounds.maxY - bounds.minY;
-  const dx = width / (gridN - 1);
-  const dz = depth / (gridN - 1);
-  const sampleHours = [7, 9, 11, 13, 15, 17];
-  const dayOfYear = settings.dayOfYear || 172;
-  const latitude = settings.latitude == null ? 39 : settings.latitude;
-
-  const blockers = [];
-  buildingGroup.traverse((o) => { if (o.isMesh) blockers.push(o); });
-  treeGroup.traverse((o) => { if (o.isMesh) blockers.push(o); });
-
-  const scores = new Float32Array(gridN * gridN);
-  const local = new THREE.Vector3();
-  const localRaycaster = new THREE.Raycaster();
-  localRaycaster.firstHitOnly = true;
-  localRaycaster.far = Math.max(800, Math.max(width, depth));
-
-  const sunDirs = [];
-  for (const hour of sampleHours) {
-    const { elevation, azimuth } = solarPosition(hour, dayOfYear, latitude);
-    if (elevation <= 0) continue;
-    const phi = Math.PI / 2 - elevation;
-    const theta = Math.PI - azimuth;
-    const dir = new THREE.Vector3().setFromSphericalCoords(1, phi, theta);
-    sunDirs.push(dir);
+function exposureColor(t, out) {
+  const v = Math.max(0, Math.min(1, t));
+  for (let i = 1; i < EXPOSURE_RAMP.length; i++) {
+    const [t1, c1] = EXPOSURE_RAMP[i];
+    if (v <= t1) {
+      const [t0, c0] = EXPOSURE_RAMP[i - 1];
+      const f = (v - t0) / (t1 - t0);
+      for (let k = 0; k < 3; k++) out[k] = c0[k] + (c1[k] - c0[k]) * f;
+      return out;
+    }
   }
-  if (!sunDirs.length) {
-    setProgress('Shadow heatmap: no daylight in current day-of-year — skipping.');
+  return out;
+}
+
+function exposureArea() {
+  const box = new THREE.Box3();
+  for (const g of [terrainMesh, buildingGroup, treeGroup, islandGroup]) if (g) box.expandByObject(g);
+  const w = bounds.maxX - bounds.minX;
+  const d = bounds.maxY - bounds.minY;
+  return {
+    minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2,
+    minY: Number.isFinite(box.min.y) ? box.min.y : -50,
+    maxY: Number.isFinite(box.max.y) ? box.max.y : 200
+  };
+}
+
+// Hide everything that is not built surface while the depth passes run:
+// the sky, moving traffic, transparent overlays.
+function withAnalysisVisibility(fn) {
+  const hidden = [];
+  const hide = (o) => {
+    if (o && o.visible) {
+      o.visible = false;
+      hidden.push(o);
+    }
+  };
+  for (const c of scene.children) if (c !== world) hide(c);
+  for (const g of [carGroup, bikeGroup, pedestrianGroup, windPlumeGroup, roiBoundaryGroup, zoningGroup, shadowHeatmapMesh]) hide(g);
+  return Promise.resolve()
+    .then(fn)
+    .finally(() => { for (const o of hidden) o.visible = true; });
+}
+
+async function computeExposure(mode = 'sun') {
+  if (exposureRunning) return;
+  if (!bounds || !terrainMesh) {
+    setStatus('Analysis needs a loaded scene.', true);
     return;
   }
+  exposureRunning = true;
+  removeShadowHeatmap();
+  const dayOfYear = Math.max(1, Math.min(365, settings.dayOfYear || 172));
+  const latitude = settings.latitude == null ? 39 : settings.latitude;
+  const directions = mode === 'svf'
+    ? skyDirections(8, 16)
+    : sunPathDirections(solarPosition, compassDirection, dayOfYear, latitude, { stepMinutes: 15 });
+  if (!directions.length) {
+    setStatus('Sun hours: the sun does not rise on this day at this latitude.', true);
+    exposureRunning = false;
+    return;
+  }
+  const label = mode === 'svf' ? 'Sky view factor' : 'Sun hours';
+  try {
+    setStatus(`${label}: preparing ${directions.length} directions...`);
+    await new Promise((r) => setTimeout(r, 0));
+    if (!exposureAnalysis) exposureAnalysis = new ExposureAnalysis(renderer);
+    const area = exposureArea();
+    const span = Math.max(area.maxX - area.minX, area.maxZ - area.minZ);
+    const resolution = Math.min(2048, Math.max(512, Math.ceil(span / 1.5)));
+    const t0 = performance.now();
+    const result = await withAnalysisVisibility(() => exposureAnalysis.run({
+      scene, area, directions, resolution,
+      onProgress: (f) => setStatus(`${label}: ${Math.round(f * 100)}%`)
+    }));
+    showExposureOverlay(result, mode, { dayOfYear, latitude, directions: directions.length });
+    setStatus(`${label} ready: ${directions.length} directions, ${result.size} x ${result.size} grid, ${((performance.now() - t0) / 1000).toFixed(1)} s.`);
+  } catch (err) {
+    console.warn('exposure analysis failed', err);
+    setStatus(`${label} failed: ${err?.message || err}`, true);
+  } finally {
+    exposureRunning = false;
+    requestRender();
+  }
+}
 
-  for (let gi = 0; gi < gridN; gi++) {
-    if (gi % 8 === 0) {
-      setProgress(`Computing shadow heatmap... ${Math.round((gi / gridN) * 100)}%`);
-      await new Promise((r) => setTimeout(r, 0));
-    }
-    for (let gj = 0; gj < gridN; gj++) {
-      const lx = -width * 0.5 + gj * dx;
-      const lz = -depth * 0.5 + gi * dz;
-      const y = terrainLocalYAt(lx, lz) + 0.5;
-      local.set(lx, y, lz);
-      let shaded = 0;
-      for (const dir of sunDirs) {
-        localRaycaster.set(local, dir);
-        const hits = localRaycaster.intersectObjects(blockers, false);
-        if (hits.length) shaded++;
-      }
-      scores[gi * gridN + gj] = shaded / sunDirs.length;
+function showExposureOverlay(result, mode, info) {
+  const { size, area, values, coverage, heights } = result;
+  // Scale: hours of direct sun (0 .. longest exposure), or SVF 0..1.
+  let maxValue = 0;
+  for (let i = 0; i < values.length; i++) if (coverage[i] > 0 && values[i] > maxValue) maxValue = values[i];
+  const scaleMax = mode === 'svf' ? 1 : Math.max(0.25, maxValue);
+  const data = new Uint8Array(size * size * 4);
+  const rgb = [0, 0, 0];
+  for (let y = 0; y < size; y++) {
+    // DataTexture rows start at v = 0 (south); result row 0 is north.
+    const dst = (size - 1 - y) * size;
+    for (let x = 0; x < size; x++) {
+      const i = y * size + x;
+      const o = (dst + x) * 4;
+      if (!(coverage[i] > 0)) continue;
+      exposureColor(values[i] / scaleMax, rgb);
+      data[o] = Math.round(rgb[0] * 255);
+      data[o + 1] = Math.round(rgb[1] * 255);
+      data[o + 2] = Math.round(rgb[2] * 255);
+      data[o + 3] = 255;
     }
   }
-
-  // Build overlay grid mesh — one quad per cell, vertex-coloured
-  const geo = new THREE.PlaneGeometry(width, depth, gridN - 1, gridN - 1);
+  const tex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.magFilter = THREE.NearestFilter;
+  tex.needsUpdate = true;
+  // Drape over the analysed surfaces: one vertex every few texels.
+  const seg = Math.min(384, size);
+  const w = area.maxX - area.minX;
+  const d = area.maxZ - area.minZ;
+  const geo = new THREE.PlaneGeometry(w, d, seg, seg);
   geo.rotateX(-Math.PI / 2);
+  geo.translate((area.minX + area.maxX) / 2, 0, (area.minZ + area.maxZ) / 2);
   const pos = geo.attributes.position;
-  const colors = [];
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
     const z = pos.getZ(i);
-    const y = terrainLocalYAt(x, z) + 0.45;
-    pos.setY(i, y);
-    const gj = Math.min(gridN - 1, Math.max(0, Math.round((x + width * 0.5) / dx)));
-    const gi = Math.min(gridN - 1, Math.max(0, Math.round((z + depth * 0.5) / dz)));
-    const score = scores[gi * gridN + gj];
-    // Colour ramp: bright golden (no shadow) → deep cool blue (full shadow)
-    const c = new THREE.Color().setHSL(0.13 + score * 0.45, 0.7, 0.55 - score * 0.20);
-    colors.push(c.r, c.g, c.b);
+    const tx = Math.min(size - 1, Math.max(0, Math.floor(((x - area.minX) / w) * size)));
+    const ty = Math.min(size - 1, Math.max(0, Math.floor(((z - area.minZ) / d) * size)));
+    const h = heights[ty * size + tx];
+    pos.setY(i, (Number.isFinite(h) ? h : terrainLocalYAt(x, z)) + 0.35);
   }
-  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  geo.computeVertexNormals();
+  // Only surfaces seen from above were analysed: drop the steep triangles the
+  // drape would hang down building walls.
+  const cell = Math.max(w, d) / seg;
+  const index = geo.index.array;
+  const kept = [];
+  for (let t = 0; t < index.length; t += 3) {
+    const ya = pos.getY(index[t]);
+    const yb = pos.getY(index[t + 1]);
+    const yc = pos.getY(index[t + 2]);
+    if (Math.max(ya, yb, yc) - Math.min(ya, yb, yc) <= cell * 1.5) kept.push(index[t], index[t + 1], index[t + 2]);
+  }
+  geo.setIndex(kept);
   const mat = new THREE.MeshBasicMaterial({
-    vertexColors: true,
+    map: tex,
     transparent: true,
-    opacity: 0.55,
+    opacity: 0.85,
     depthWrite: false,
+    side: THREE.DoubleSide,
     polygonOffset: true,
-    polygonOffsetFactor: -3,
-    polygonOffsetUnits: -3
+    polygonOffsetFactor: -4,
+    polygonOffsetUnits: -4
   });
   shadowHeatmapMesh = new THREE.Mesh(geo, mat);
   shadowHeatmapMesh.renderOrder = 100;
   world.add(shadowHeatmapMesh);
-  setProgress(`Shadow heatmap ready — ${sunDirs.length} solar samples, ${gridN}x${gridN} grid.`);
+  showExposureLegend(mode, scaleMax, info, result);
+}
+
+function showExposureLegend(mode, scaleMax, info, result) {
+  let el = document.getElementById('exposure-legend');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'exposure-legend';
+    document.body.appendChild(el);
+  }
+  const stops = EXPOSURE_RAMP.map(([t, c]) => `rgb(${c.map((v) => Math.round(v * 255)).join(',')}) ${t * 100}%`).join(', ');
+  let sum = 0;
+  let n = 0;
+  for (let i = 0; i < result.values.length; i++) {
+    if (result.coverage[i] > 0) {
+      sum += result.values[i];
+      n++;
+    }
+  }
+  const mean = n ? sum / n : 0;
+  const date = new Date(Date.UTC(2025, 0, info.dayOfYear)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  const title = mode === 'svf'
+    ? 'Sky view factor (0 = enclosed, 1 = open sky)'
+    : `Direct sun, ${date}, lat ${Number(info.latitude).toFixed(1)}° (hours)`;
+  const fmt = (v) => (mode === 'svf' ? v.toFixed(2) : v.toFixed(1));
+  el.innerHTML = `<div class="exposure-title">${title}</div>`
+    + `<div class="exposure-bar" style="background: linear-gradient(90deg, ${stops})"></div>`
+    + `<div class="exposure-scale"><span>0</span><span>${fmt(scaleMax / 2)}</span><span>${fmt(scaleMax)}</span></div>`
+    + `<div class="exposure-note">Mean ${fmt(mean)} · ${info.directions} ${mode === 'svf' ? 'sky directions' : 'sun positions'} · streets, squares and roofs</div>`;
+  el.style.display = '';
 }
 
 function removeShadowHeatmap() {
+  const legend = document.getElementById('exposure-legend');
+  if (legend) legend.style.display = 'none';
   if (!shadowHeatmapMesh) return;
   world.remove(shadowHeatmapMesh);
   shadowHeatmapMesh.geometry.dispose();
+  shadowHeatmapMesh.material.map?.dispose();
   shadowHeatmapMesh.material.dispose();
   shadowHeatmapMesh = null;
 }
@@ -5691,9 +5818,9 @@ function buildWindPlumeLayer() {
   ].filter(isOdorOrEmissionSource);
   if (!sources.length) return;
 
-  const dir = THREE.MathUtils.degToRad(settings.windDirectionDeg);
-  const dx = Math.sin(dir);
-  const dz = Math.cos(dir);
+  const windDir = compassDirection(THREE.MathUtils.degToRad(settings.windDirectionDeg));
+  const dx = windDir.x;
+  const dz = windDir.z;
   const length = settings.windPlumeDistance;
   const width = Math.max(28, length * 0.28);
   const mat = new THREE.MeshBasicMaterial({
@@ -6124,7 +6251,8 @@ function representativeTreeCoords(geometry) {
 // Tree crowns sway with the analysis wind direction while the setting is on
 // (the viewer then keeps drawing frames).
 function syncWind() {
-  setWind(settings.treeWind ? 0.05 : 0, settings.windDirectionDeg);
+  const dir = compassDirection(THREE.MathUtils.degToRad(settings.windDirectionDeg));
+  setWind(settings.treeWind ? 0.05 : 0, dir.x, dir.z);
 }
 
 function buildTreeLayer(treesFc, treeModel) {
@@ -9479,6 +9607,12 @@ window.__planxPerf = {
     camera.lookAt(controls.target);
     return total / steps;
   },
+  // Run an exposure analysis ('sun' or 'svf') and report its timing.
+  async exposure(mode = 'sun') {
+    const t0 = performance.now();
+    await computeExposure(mode);
+    return { ms: Math.round(performance.now() - t0), status: document.getElementById('dem-status')?.innerText || '' };
+  },
   // Depth-of-field state of the last settled frame.
   dof() {
     const u = dofPass.uniforms;
@@ -10327,12 +10461,12 @@ function initDockUi() {
     settings.autoTime = false;
     reflectDockSettings();
   });
-  document.getElementById('shadow-compute')?.addEventListener('click', () => {
-    computeShadowHeatmap();
-  });
+  document.getElementById('shadow-compute')?.addEventListener('click', () => computeExposure('sun'));
+  document.getElementById('svf-compute')?.addEventListener('click', () => computeExposure('svf'));
   document.getElementById('shadow-clear')?.addEventListener('click', () => {
     removeShadowHeatmap();
-    setStatus('Shadow heatmap cleared.');
+    setStatus('Analysis cleared.');
+    requestRender();
   });
 
   // Quick time-of-day presets

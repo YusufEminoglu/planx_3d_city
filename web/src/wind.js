@@ -51,13 +51,12 @@ export function applyWindSway(material) {
 
 /**
  * @param strength 0 = still; ~0.08 is a breeze (share of crown height)
- * @param directionDeg compass direction the wind blows towards, as the
- *        viewer's wind plumes use it
+ * @param dirX, dirZ horizontal direction the wind blows towards, in scene
+ *        axes (as the viewer's wind plumes use it)
  */
-export function setWind(strength, directionDeg) {
+export function setWind(strength, dirX, dirZ) {
   uniforms.uWindStrength.value = strength;
-  const r = THREE.MathUtils.degToRad(directionDeg);
-  uniforms.uWindDir.value.set(Math.sin(r), Math.cos(r));
+  uniforms.uWindDir.value.set(dirX, dirZ).normalize();
 }
 
 export function updateWind(seconds) {
