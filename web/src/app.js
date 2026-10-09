@@ -7402,13 +7402,15 @@ function buildZoningEnvelopesLayer(buildingsFc) {
 
     const featureSetback = fnStyle.setbackEnabled !== false ? Math.max(0, Number(settings.buildingSetback) || 0) : 0;
 
-    const poly = getPolygonRings(f.geometry);
+    // One envelope per polygon part. (This used to pass the list of parts
+    // where one part's rings were expected, so no envelope was ever built.)
+    for (const poly of getPolygonRings(f.geometry)) {
     const outer = poly?.[0];
     if (!outer || outer.length < 3) continue;
 
     const baseY = buildingBaseYForOuterRing(outer);
 
-    const zoningShape = shapeFromInsetPolygon(poly, zoningSetbackVal);
+    const zoningShape = zoningSetbackVal > 0 ? shapeFromInsetPolygon(poly, zoningSetbackVal) : shapeFromLocalPolygon(poly);
     if (!zoningShape) continue;
 
     const extrude = new THREE.ExtrudeGeometry(zoningShape, { depth: zoningHeight, bevelEnabled: false });
@@ -7444,6 +7446,7 @@ function buildZoningEnvelopesLayer(buildingsFc) {
     envelopeMesh.add(wireframe);
 
     zoningGroup.add(envelopeMesh);
+    }
   }
 }
 
