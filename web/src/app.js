@@ -18,6 +18,7 @@ import { buildBuildingsParallel, lastBuildWorkers } from './building_workers.js'
 import { insetShapeFromRings, shapeFromRings } from './building_geometry.js';
 import { batchStaticGroup } from './mesh_merge.js';
 import { createAtmosphere } from './atmosphere.js';
+import { applyWindSway, setWind, updateWind, windActive } from './wind.js';
 
 const urlParams = new URLSearchParams(window.location.search);
 const isPortableMode = urlParams.has('portable') || urlParams.get('portable') === '1';
@@ -1495,6 +1496,7 @@ const settings = {
   enableSSAO: true,
   enableBloom: true,
   atmosphere: 'Cinematic',
+  treeWind: false,
   showPedestrians: false,
   pedestrianDensity: 0.5,
   weather: 'Clear',
@@ -1571,7 +1573,7 @@ const PERSISTED_SETTING_KEYS = [
   'showTerrainTexture', 'showOutsideRoiTerrain', 'terrainTextureOpacity', 'terrainTextureBrightness', 'terrainTextureContrast',
   'terrainOutsideColor', 'terrainSmoothingPasses', 'terrainSmoothingStrength', 'terrainMaxSlope',
   'showTerrainSides', 'terrainSideDrop', 'terrainSideColor',
-  'fogDensity', 'autoTime', 'autoTimeSpeed', 'enableSSAO', 'enableBloom', 'atmosphere',
+  'fogDensity', 'autoTime', 'autoTimeSpeed', 'enableSSAO', 'enableBloom', 'atmosphere', 'treeWind',
   'pavementStyle', 'hardscapeStyle', 'hardscapeHeight', 'buildingMode', 'facadeTextureScale', 'terrainAnalysisMode', 'showXyzTiles', 'xyzTileUrl',
   'assetTheme',
   'floorHeight', 'roofTexture', 'roofShape', 'roofHeight', 'roadStyle', 'roadColor', 'sidewalkColor', 'roadColorMode', 'roadWidth',
@@ -6077,8 +6079,15 @@ function representativeTreeCoords(geometry) {
 }
 
 // InstancedMesh trees — dynamic variant buckets (up to 10 presets) with optional randomize + rand(min,max) heights.
+// Tree crowns sway with the analysis wind direction while the setting is on
+// (the viewer then keeps drawing frames).
+function syncWind() {
+  setWind(settings.treeWind ? 0.05 : 0, settings.windDirectionDeg);
+}
+
 function buildTreeLayer(treesFc, treeModel) {
   clearGroup(treeGroup);
+  syncWind();
   if (!treesFc?.features?.length) return;
   const treeSamples = [];
   for (const feat of treesFc.features || []) {
@@ -6178,7 +6187,7 @@ function buildTreeLayer(treesFc, treeModel) {
     const profile = TREE_VARIANT_PROFILES[variantName] || TREE_PROFILE_DEFAULT;
     const crownGeo = treeCrownGeometry(profile.shape, realisticTrees);
     const crownMinY = crownGeometryMinY(crownGeo, -1);
-    const leafMat = treeLeafMaterial(variantName, profile, realisticTrees);
+    const leafMat = applyWindSway(treeLeafMaterial(variantName, profile, realisticTrees));
     const trunkInst = new THREE.InstancedMesh(trunkGeo, trunkMat, trees.length);
     trunkInst.frustumCulled = false;
     trunkInst.castShadow = true;
@@ -6189,7 +6198,7 @@ function buildTreeLayer(treesFc, treeModel) {
     let canopyUpperInst = null;
     if (realisticTrees && profile.shape !== 'palm') {
       const upperGeo = treeCrownGeometry(profile.shape, true);
-      const upperMat = treeLeafMaterial(variantName, profile, true);
+      const upperMat = applyWindSway(treeLeafMaterial(variantName, profile, true));
       canopyUpperInst = new THREE.InstancedMesh(upperGeo, upperMat, trees.length);
       canopyUpperInst.frustumCulled = false;
       canopyUpperInst.castShadow = true;
@@ -8573,6 +8582,7 @@ function addGui() {
   fx.add(settings, 'enableSSAO').name(t('sSsa'));
   fx.add(settings, 'enableBloom').name(t('sBloom')).onChange(checkTimeChange);
   fx.add(settings, 'atmosphere', ['Cinematic', 'Clean']).name('Atmosphere').onChange(checkTimeChange);
+  fx.add(settings, 'treeWind').name('Wind sway (trees)').onChange(() => { syncWind(); requestRender(); });
 
   const terrain = globalGui.addFolder(t('terrain'));
   terrain.add(settings, 'showTerrainTexture').name('Plan texture').onChange(rebuildScene);
@@ -9207,9 +9217,11 @@ function animate() {
   // → smooth orbit at 60fps, quality rendering when static
   const _now = performance.now();
   const _camMoving = (_now - _lastCameraMove) < 300;
+  const _windOn = windActive() && treeGroup.visible && treeGroup.children.length > 0;
   const _hasAnim = isWalkMode || cars.length > 0 || bikes.length > 0 || pedestrians.length > 0
     || settings.weather !== 'Clear' || stoneProjectiles.length > 0 || _flyT < 1.0
-    || settings.autoOrbit || settings.autoTime || tourState.playing;
+    || settings.autoOrbit || settings.autoTime || tourState.playing || _windOn;
+  if (_windOn) updateWind(_now / 1000);
   // The opaque loading overlay hides the scene while it is being built:
   // drawing behind it only competes with the build (and its workers).
   if (_loadingEl && _loadingEl.style.display !== 'none' && _loadingEl.style.opacity !== '0') return;
