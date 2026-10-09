@@ -16,6 +16,7 @@ import {
 import { buildBuildingsParallel, lastBuildWorkers } from './building_workers.js';
 import { insetShapeFromRings, shapeFromRings } from './building_geometry.js';
 import { batchStaticGroup } from './mesh_merge.js';
+import { createAtmosphere } from './atmosphere.js';
 
 const urlParams = new URLSearchParams(window.location.search);
 const isPortableMode = urlParams.has('portable') || urlParams.get('portable') === '1';
@@ -332,8 +333,10 @@ function fitSunShadow() {
 }
 
 const sky = new Sky();
-sky.scale.setScalar(450000);
+// Inside the camera's far plane (20 km) so the sky is actually drawn.
+sky.scale.setScalar(15000);
 scene.add(sky);
+const atmosphere = createAtmosphere({ renderer, scene, sky, ambient });
 
 const texLoader = new THREE.TextureLoader();
 const world = new THREE.Group();
@@ -1479,6 +1482,7 @@ const settings = {
   timeOfDay: 14,
   enableSSAO: true,
   enableBloom: true,
+  atmosphere: 'Cinematic',
   showPedestrians: false,
   pedestrianDensity: 0.5,
   weather: 'Clear',
@@ -1555,7 +1559,7 @@ const PERSISTED_SETTING_KEYS = [
   'showTerrainTexture', 'showOutsideRoiTerrain', 'terrainTextureOpacity', 'terrainTextureBrightness', 'terrainTextureContrast',
   'terrainOutsideColor', 'terrainSmoothingPasses', 'terrainSmoothingStrength', 'terrainMaxSlope',
   'showTerrainSides', 'terrainSideDrop', 'terrainSideColor',
-  'fogDensity', 'autoTime', 'autoTimeSpeed', 'enableSSAO', 'enableBloom',
+  'fogDensity', 'autoTime', 'autoTimeSpeed', 'enableSSAO', 'enableBloom', 'atmosphere',
   'pavementStyle', 'hardscapeStyle', 'hardscapeHeight', 'buildingMode', 'facadeTextureScale', 'terrainAnalysisMode', 'showXyzTiles', 'xyzTileUrl',
   'assetTheme',
   'floorHeight', 'roofTexture', 'roofShape', 'roofHeight', 'roadStyle', 'roadColor', 'sidewalkColor', 'roadColorMode', 'roadWidth',
@@ -3112,12 +3116,12 @@ function updateTimeOfDay() {
   sun.intensity = elevationDeg > 0 ? 1.25 * Math.min(1, elevationDeg / 18) : 0;
   sun.shadow.needsUpdate = true;
 
-  sky.material.uniforms.sunPosition.value.copy(pos);
   scene.fog.density = settings.fogDensity;
+  atmosphere.update(settings.atmosphere, pos, elevationDeg);
+  atmosphere.applyEnvironmentIntensity(scene, settings.atmosphere);
 
   // Night Mode effects
   const isNight = elevationDeg < -3;
-  ambient.intensity = isNight ? 0.2 : 0.62;
   
   // Toggle bloom based on night mode and settings
   bloomPass.strength = (isNight && settings.enableBloom) ? 1.2 : 0.0;
@@ -8432,6 +8436,7 @@ let functionGuiRefs = null;
 
 function setSceneState(textOrKey, kind = 'ok') {
   requestRender();
+  if (textOrKey === 'sceneReady') atmosphere.applyEnvironmentIntensity(scene, settings.atmosphere);
   // Layers were added or removed: the shadow map (autoUpdate off) is stale.
   sun.shadow.needsUpdate = true;
   const pill = document.getElementById('scene-state');
@@ -8554,6 +8559,7 @@ function addGui() {
   fx.add(settings, 'weather', ['Clear', 'Rain', 'Snow']).name(t('weather')).onChange(updateWeather);
   fx.add(settings, 'enableSSAO').name(t('sSsa'));
   fx.add(settings, 'enableBloom').name(t('sBloom')).onChange(checkTimeChange);
+  fx.add(settings, 'atmosphere', ['Cinematic', 'Clean']).name('Atmosphere').onChange(checkTimeChange);
 
   const terrain = globalGui.addFolder(t('terrain'));
   terrain.add(settings, 'showTerrainTexture').name('Plan texture').onChange(rebuildScene);
