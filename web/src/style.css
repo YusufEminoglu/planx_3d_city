@@ -1786,3 +1786,6 @@ body.presentation-mode .lil-gui {
 .scenario-table th, .scenario-table td { padding: 2px 4px; text-align: right; }
 .scenario-table th:first-child, .scenario-table td:first-child { text-align: left; }
 [data-scenario-view].active { outline: 2px solid #38bdf8; }
+
+/* Picking a point in the scene (viewshed observer). */
+body.picking-point canvas { cursor: crosshair; }

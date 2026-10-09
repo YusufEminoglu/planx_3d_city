@@ -24,6 +24,7 @@ void main() {
 
 const ACCUMULATE_FRAGMENT = `
 precision highp float;
+#include <packing>
 varying vec2 vUv;
 uniform sampler2D tHeight;
 uniform sampler2D tDepth;
@@ -32,6 +33,14 @@ uniform mat4 uDirViewProj;
 uniform float uWeight;
 uniform float uBias;
 uniform float uLift;
+// Perspective views (viewshed): compare linear distances along the view
+// axis, and count only texels inside this view's frustum.
+uniform float uPerspective;
+uniform mat4 uDirView;
+uniform float uNear;
+uniform float uFar;
+uniform float uBiasMeters;
+uniform float uMaxDistance;
 void main() {
   float d = texture2D(tHeight, vUv).r;
   if (d <= 0.0) discard; // nothing below this texel
@@ -40,6 +49,19 @@ void main() {
   world /= world.w;
   world.y += uLift;
   vec4 clip = uDirViewProj * world;
+  if (uPerspective > 0.5) {
+    if (clip.w <= 0.0) discard;
+    vec3 pndc = clip.xyz / clip.w;
+    vec2 puv = pndc.xy * 0.5 + 0.5;
+    if (puv.x < 0.0 || puv.x > 1.0 || puv.y < 0.0 || puv.y > 1.0 || pndc.z > 1.0) discard;
+    float selfDist = -(uDirView * world).z;
+    if (length((uDirView * world).xyz) > uMaxDistance) discard;
+    float occ = 1.0 - texture2D(tDepth, puv).r;
+    float occDist = occ >= 1.0 ? 1e9 : -perspectiveDepthToViewZ(occ, uNear, uFar);
+    float seen = selfDist <= occDist + uBiasMeters ? 1.0 : 0.0;
+    gl_FragColor = vec4(uWeight * seen, uWeight, 0.0, 1.0);
+    return;
+  }
   vec3 ndc = clip.xyz / clip.w;
   vec2 duv = ndc.xy * 0.5 + 0.5;
   float lit = 1.0;
@@ -112,7 +134,13 @@ export class ExposureAnalysis {
         uDirViewProj: { value: new THREE.Matrix4() },
         uWeight: { value: 1 },
         uBias: { value: 0.0005 },
-        uLift: { value: 0.3 }
+        uLift: { value: 0.3 },
+        uPerspective: { value: 0 },
+        uDirView: { value: new THREE.Matrix4() },
+        uNear: { value: 0.5 },
+        uFar: { value: 1000 },
+        uBiasMeters: { value: 0.75 },
+        uMaxDistance: { value: 1e9 }
       },
       blending: THREE.CustomBlending,
       blendEquation: THREE.AddEquation,
@@ -180,7 +208,7 @@ export class ExposureAnalysis {
    *          coverage: sum of all weights (where a surface exists), else 0
    *          heights: surface height per texel (NaN where nothing)
    */
-  async run({ scene, area, directions, resolution = 512, depthResolution = 2048, onProgress }) {
+  async run({ scene, area, directions = [], eye = null, maxDistance = 1000, resolution = 512, depthResolution = 2048, onProgress }) {
     const r = this.renderer;
     const size = Math.min(resolution, this.maxTexture);
     const dSize = Math.min(depthResolution, this.maxTexture);
@@ -221,16 +249,43 @@ export class ExposureAnalysis {
     r.setClearColor(0x000000, 0);
     r.clear(true, true, false);
     r.setRenderTarget(prevTarget);
-    for (let i = 0; i < directions.length; i++) {
-      const { dir, weight } = directions[i];
-      dirCam.position.copy(centre).addScaledVector(dir, 2 * radius);
-      dirCam.up.set(0, 1, 0);
-      if (Math.abs(dir.y) > 0.99) dirCam.up.set(0, 0, -1);
-      dirCam.lookAt(centre);
-      dirCam.updateMatrixWorld();
-      this._renderDepth(scene, dirCam, depthTarget);
-      u.uDirViewProj.value.multiplyMatrices(dirCam.projectionMatrix, dirCam.matrixWorldInverse);
-      u.uWeight.value = weight;
+    // Views: an orthographic camera per direction (sun, sky), or for a
+    // viewshed six 90-degree cameras at the observer's eye (a cube map).
+    const views = [];
+    if (eye) {
+      const faces = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+      for (const [x, y, z] of faces) {
+        const cam = new THREE.PerspectiveCamera(90, 1, 0.5, maxDistance * 1.5);
+        cam.position.copy(eye);
+        cam.up.set(0, 1, 0);
+        if (y !== 0) cam.up.set(0, 0, -1);
+        cam.lookAt(eye.x + x, eye.y + y, eye.z + z);
+        cam.updateMatrixWorld();
+        cam.updateProjectionMatrix();
+        views.push({ camera: cam, weight: 1 });
+      }
+    } else {
+      for (const { dir, weight } of directions) views.push({ dir, weight });
+    }
+    u.uPerspective.value = eye ? 1 : 0;
+    u.uMaxDistance.value = eye ? maxDistance : 1e9;
+    for (let i = 0; i < views.length; i++) {
+      const view = views[i];
+      let cam = view.camera;
+      if (!cam) {
+        cam = dirCam;
+        dirCam.position.copy(centre).addScaledVector(view.dir, 2 * radius);
+        dirCam.up.set(0, 1, 0);
+        if (Math.abs(view.dir.y) > 0.99) dirCam.up.set(0, 0, -1);
+        dirCam.lookAt(centre);
+        dirCam.updateMatrixWorld();
+      }
+      this._renderDepth(scene, cam, depthTarget);
+      u.uDirViewProj.value.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+      u.uDirView.value.copy(cam.matrixWorldInverse);
+      u.uNear.value = cam.near;
+      u.uFar.value = cam.far;
+      u.uWeight.value = view.weight;
       const before = r.getRenderTarget();
       const autoClear = r.autoClear;
       r.autoClear = false;
@@ -238,8 +293,8 @@ export class ExposureAnalysis {
       r.render(this.quadScene, this.quadCamera);
       r.setRenderTarget(before);
       r.autoClear = autoClear;
-      if (onProgress && (i % 4 === 3 || i === directions.length - 1)) {
-        onProgress((i + 1) / directions.length);
+      if (onProgress && (i % 4 === 3 || i === views.length - 1)) {
+        onProgress((i + 1) / views.length);
         await new Promise((res) => setTimeout(res, 0));
       }
     }

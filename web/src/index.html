@@ -305,10 +305,12 @@
                 <button id="shadow-play-day" data-i18n="shadowPlayDay">Play day (6→18)</button>
                 <button id="shadow-stop" data-i18n="shadowStop">Stop</button>
             </div>
+            <label><span>Viewshed radius (m)</span> <input type="range" min="100" max="2000" step="50" data-setting="viewshedRadius"></label>
             <label><span data-i18n="shadowPlaySpeed">Day playback speed</span> <input type="range" min="0.5" max="6" step="0.5" data-setting="autoTimeSpeed"></label>
             <div class="dock-actions">
                 <button id="shadow-compute" data-i18n="shadowCompute">Sun hours (this day)</button>
                 <button id="svf-compute">Sky view factor</button>
+                <button id="viewshed-pick" title="Click, then click the observer position in the scene">Viewshed from a point</button>
                 <button id="shadow-clear" data-i18n="shadowClear">Clear analysis</button>
             </div>
         </div>

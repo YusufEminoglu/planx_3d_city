@@ -1622,6 +1622,7 @@ const settings = {
   zoningSetback: 3.0,
   zoningMaxHeight: 40.0,
   zoningCoverage: 0.4,
+  viewshedRadius: 500,
   zoningFar: 2.0,
   scenarioView: 'Off',
   activeTreeModel: 'default',
@@ -1690,7 +1691,7 @@ const PERSISTED_SETTING_KEYS = [
   'showFences', 'fenceHeight', 'fenceThickness', 'fenceTexture', 'fenceColor',
   'showWaterlines', 'waterlineWidth',
   'showRoadMarkings', 'showLedges', 'showStorefronts', 'buildingSetback', 'ledgeProjection',
-  'showZoningEnvelopes', 'highlightViolations', 'zoningSetback', 'zoningMaxHeight', 'zoningCoverage', 'zoningFar', 'scenarioView',
+  'showZoningEnvelopes', 'highlightViolations', 'zoningSetback', 'zoningMaxHeight', 'zoningCoverage', 'zoningFar', 'scenarioView', 'viewshedRadius',
   'activeTreeModel', 'activeLightModel', 'activeBenchModel', 'activeBinModel', 'activeBusStopModel', 'activeMosqueModel',
   'activeTumulusModel', 'treeModelPool'
 ];
@@ -5676,7 +5677,7 @@ function withAnalysisVisibility(fn) {
     .finally(() => { for (const o of hidden) o.visible = true; });
 }
 
-async function computeExposure(mode = 'sun') {
+async function computeExposure(mode = 'sun', eye = null) {
   if (exposureRunning) return;
   if (!bounds || !terrainMesh) {
     setStatus('Analysis needs a loaded scene.', true);
@@ -5686,17 +5687,18 @@ async function computeExposure(mode = 'sun') {
   removeShadowHeatmap();
   const dayOfYear = Math.max(1, Math.min(365, settings.dayOfYear || 172));
   const latitude = settings.latitude == null ? 39 : settings.latitude;
-  const directions = mode === 'svf'
+  const directions = mode === 'viewshed' ? [] : (mode === 'svf'
     ? skyDirections(8, 16)
-    : sunPathDirections(solarPosition, compassDirection, dayOfYear, latitude, { stepMinutes: 15 });
-  if (!directions.length) {
+    : sunPathDirections(solarPosition, compassDirection, dayOfYear, latitude, { stepMinutes: 15 }));
+  if (mode === 'sun' && !directions.length) {
     setStatus('Sun hours: the sun does not rise on this day at this latitude.', true);
     exposureRunning = false;
     return;
   }
-  const label = mode === 'svf' ? 'Sky view factor' : 'Sun hours';
+  const label = mode === 'viewshed' ? 'Viewshed' : (mode === 'svf' ? 'Sky view factor' : 'Sun hours');
+  const maxDistance = Math.max(50, Number(settings.viewshedRadius) || 500);
   try {
-    setStatus(`${label}: preparing ${directions.length} directions...`);
+    setStatus(`${label}: preparing...`);
     await new Promise((r) => setTimeout(r, 0));
     if (!exposureAnalysis) exposureAnalysis = new ExposureAnalysis(renderer);
     const area = exposureArea();
@@ -5704,11 +5706,11 @@ async function computeExposure(mode = 'sun') {
     const resolution = Math.min(2048, Math.max(512, Math.ceil(span / 1.5)));
     const t0 = performance.now();
     const result = await withAnalysisVisibility(() => exposureAnalysis.run({
-      scene, area, directions, resolution,
+      scene, area, directions, resolution, eye, maxDistance,
       onProgress: (f) => setStatus(`${label}: ${Math.round(f * 100)}%`)
     }));
-    showExposureOverlay(result, mode, { dayOfYear, latitude, directions: directions.length });
-    setStatus(`${label} ready: ${directions.length} directions, ${result.size} x ${result.size} grid, ${((performance.now() - t0) / 1000).toFixed(1)} s.`);
+    showExposureOverlay(result, mode, { dayOfYear, latitude, directions: directions.length || 6, eye, maxDistance });
+    setStatus(`${label} ready: ${result.size} x ${result.size} grid, ${((performance.now() - t0) / 1000).toFixed(1)} s.`);
   } catch (err) {
     console.warn('exposure analysis failed', err);
     setStatus(`${label} failed: ${err?.message || err}`, true);
@@ -5723,7 +5725,7 @@ function showExposureOverlay(result, mode, info) {
   // Scale: hours of direct sun (0 .. longest exposure), or SVF 0..1.
   let maxValue = 0;
   for (let i = 0; i < values.length; i++) if (coverage[i] > 0 && values[i] > maxValue) maxValue = values[i];
-  const scaleMax = mode === 'svf' ? 1 : Math.max(0.25, maxValue);
+  const scaleMax = mode === 'sun' ? Math.max(0.25, maxValue) : 1;
   const data = new Uint8Array(size * size * 4);
   const rgb = [0, 0, 0];
   for (let y = 0; y < size; y++) {
@@ -5733,7 +5735,15 @@ function showExposureOverlay(result, mode, info) {
       const i = y * size + x;
       const o = (dst + x) * 4;
       if (!(coverage[i] > 0)) continue;
-      exposureColor(values[i] / scaleMax, rgb);
+      if (mode === 'viewshed') {
+        // Seen from the observer: green; hidden within the radius: dark.
+        const seen = values[i] > 0;
+        rgb[0] = seen ? 0.13 : 0.2;
+        rgb[1] = seen ? 0.85 : 0.05;
+        rgb[2] = seen ? 0.37 : 0.3;
+      } else {
+        exposureColor(values[i] / scaleMax, rgb);
+      }
       data[o] = Math.round(rgb[0] * 255);
       data[o + 1] = Math.round(rgb[1] * 255);
       data[o + 2] = Math.round(rgb[2] * 255);
@@ -5784,6 +5794,14 @@ function showExposureOverlay(result, mode, info) {
   });
   shadowHeatmapMesh = new THREE.Mesh(geo, mat);
   shadowHeatmapMesh.renderOrder = 100;
+  if (info.eye) {
+    // Observer marker: a post from the ground to eye height.
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1.6, 12), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+    post.position.copy(info.eye).add(new THREE.Vector3(0, -0.8, 0));
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.9, 16, 12), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+    head.position.copy(info.eye);
+    shadowHeatmapMesh.add(post, head);
+  }
   world.add(shadowHeatmapMesh);
   showExposureLegend(mode, scaleMax, info, result);
 }
@@ -5806,6 +5824,16 @@ function showExposureLegend(mode, scaleMax, info, result) {
   }
   const mean = n ? sum / n : 0;
   const date = new Date(Date.UTC(2025, 0, info.dayOfYear)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  if (mode === 'viewshed') {
+    let seen = 0;
+    for (let i = 0; i < result.values.length; i++) if (result.coverage[i] > 0 && result.values[i] > 0) seen++;
+    const share = n ? (100 * seen) / n : 0;
+    el.innerHTML = `<div class="exposure-title">Viewshed from the marked point (eye 1.6 m, radius ${Math.round(info.maxDistance)} m)</div>`
+      + `<div class="exposure-scale"><span><span style="color:#22d95e">■</span> visible ${share.toFixed(0)}%</span><span><span style="color:#330d4d">■</span> hidden ${(100 - share).toFixed(0)}%</span></div>`
+      + '<div class="exposure-note">Of the streets, squares and roofs within the radius</div>';
+    el.style.display = '';
+    return;
+  }
   const title = mode === 'svf'
     ? 'Sky view factor (0 = enclosed, 1 = open sky)'
     : `Direct sun, ${date}, lat ${Number(info.latitude).toFixed(1)}° (hours)`;
@@ -9148,6 +9176,31 @@ window.addEventListener('mouseleave', () => { _unhoverBuilding(); if (hoverTip) 
 // Click: show full detail panel
 const detailTip = document.getElementById('bldg-detail-tip');
 let _detailOpen = false;
+// Viewshed point picking: the next click on the scene sets the observer.
+let viewshedPicking = false;
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && viewshedPicking) {
+    viewshedPicking = false;
+    document.body.classList.remove('picking-point');
+    setStatus('Viewshed cancelled.');
+  }
+});
+window.addEventListener('click', (e) => {
+  if (!viewshedPicking || e.target !== renderer.domElement) return;
+  e.stopImmediatePropagation();
+  viewshedPicking = false;
+  document.body.classList.remove('picking-point');
+  const mouse = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  rc.setFromCamera(mouse, camera);
+  const targets = [...buildingPickTargets(buildingGroup), terrainMesh, islandGroup].filter(Boolean);
+  const hit = rc.intersectObjects(targets, true)[0];
+  if (!hit) {
+    setStatus('Viewshed: no surface under the cursor.', true);
+    return;
+  }
+  computeExposure('viewshed', hit.point.clone().add(new THREE.Vector3(0, 1.6, 0)));
+}, { capture: true });
+
 window.addEventListener('click', (e) => {
   if (isWalkMode || isGameMode) return;
   if (e.target.closest('#ui-container') || e.target.closest('.lil-gui') || e.target.closest('#recording-container')) return;
@@ -9798,9 +9851,9 @@ window.__planxPerf = {
     return total / steps;
   },
   // Run an exposure analysis ('sun' or 'svf') and report its timing.
-  async exposure(mode = 'sun') {
+  async exposure(mode = 'sun', eye = null) {
     const t0 = performance.now();
-    await computeExposure(mode);
+    await computeExposure(mode, eye ? new THREE.Vector3(...eye) : null);
     return { ms: Math.round(performance.now() - t0), status: document.getElementById('dem-status')?.innerText || '' };
   },
   // Depth-of-field state of the last settled frame.
@@ -10650,6 +10703,8 @@ function applyDockSetting(key, value, inputType) {
     checkTimeChange();
   } else if (key === 'autoTime' || key === 'autoTimeSpeed' || key === 'trafficSpeed' || key === 'bikeSpeed') {
     updateDockControls();
+  } else if (key === 'viewshedRadius') {
+    // Used by the next viewshed run.
   } else if (['zoningCoverage', 'zoningFar', 'zoningMaxHeight', 'zoningSetback', 'highlightViolations'].includes(key)) {
     // Rules only: redraw the envelopes and the scenario, not the scene.
     buildZoningEnvelopesLayer(layerDataCache?.buildingsFc);
@@ -10724,6 +10779,11 @@ function initDockUi() {
   });
   document.getElementById('shadow-compute')?.addEventListener('click', () => computeExposure('sun'));
   document.getElementById('svf-compute')?.addEventListener('click', () => computeExposure('svf'));
+  document.getElementById('viewshed-pick')?.addEventListener('click', () => {
+    viewshedPicking = true;
+    document.body.classList.add('picking-point');
+    setStatus('Viewshed: click the observer position in the scene (Esc cancels).');
+  });
   document.getElementById('shadow-clear')?.addEventListener('click', () => {
     removeShadowHeatmap();
     setStatus('Analysis cleared.');
