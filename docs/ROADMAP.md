@@ -187,6 +187,45 @@ somut bir dosyaya/fonksiyona bağlanır ve ölçülebilir bir hedefle biter.
 
 ## Faz 5 — Planlamacılar için katil özellikler (sürekli)
 
+> **Durum (Ekim 2026, ilk tur):** 5.1 (güneş saatleri + SVF), 5.2, 5.3 (3D
+> Tiles), 5.4 (görünüm linki) ve 5.5'in yüksek çözünürlüklü görüntü kısmı.
+> - **Düzeltme (önemli):** güneş yanlış yarıküredeydi. Veri kuzeyi +Z, doğuyu
+>   −X'e koyuyor; güneş kuzeyi −Z, doğuyu +X sayıyordu, yani 180° dönüktü
+>   (sabah gölgeleri doğuya, öğlen gölgeleri güneye düşüyordu). Pusula doğruydu.
+>   Güneş, rüzgâr bulutları ve ağaç rüzgârı artık tek bir pusula→sahne
+>   dönüşümünü kullanıyor. Ayrıca `setStatus` mesajları sayfada olmayan bir
+>   öğeye yazılıyordu; artık köşede bildirim olarak görünüyor.
+> - **5.1 GPU maruziyet analizi** (`web/src/exposure_analysis.js`): üstten
+>   yükseklik haritası + her güneş konumu (15 dk) ya da gökyüzü yönü (128,
+>   kosinüs ağırlıklı) için derinlik haritası; tam ekran geçişle float hedefe
+>   toplanıyor. Sokak, meydan ve çatılar ~1,5 m çözünürlükte. Örnek şehirde
+>   SwiftShader'da 17 s (güneş saatleri) / 31 s (SVF); eski 48×48 ışın
+>   izleme ısı haritasının yerini aldı. Sonuç sahneye örtülüyor (duvar
+>   üçgenleri atılıyor), lejant ve ortalama ile. Görüş alanı (viewshed) ve
+>   cephe analizi kaldı.
+> - **5.2 İmar senaryoları** (`web/src/zoning_scenario.js`): TAKS (taban
+>   alanı oranı), KAKS (emsal), Hmax ve çekme mesafesi ile her parsel (yoksa
+>   ada) için izin verilen kütle; mevcut binalarla karşılaştırmalı tablo
+>   (inşaat alanı, emsal, TAKS, nüfus tahmini) ve renkli kütleler. "Split"
+>   görünümü: solda mevcut, sağda senaryo, sürüklenebilir ayırıcı. Kurallar
+>   değişince sadece senaryo yeniden çiziliyor. A/B iki senaryo karşılaştırması
+>   kaldı (şu an mevcut ↔ senaryo).
+> - **5.3 3D Tiles 1.1 dışa aktarım** (`tiles_math.js`, `tiles_export.js`):
+>   QGIS dışa aktarımı manifeste coğrafi referans yazıyor (CRS + merkez,
+>   1 km doğu, 1 km kuzey için WGS84 kontrol noktaları). Görüntüleyici
+>   800 m'lik karolar halinde GLB + tileset.json üretip zip'liyor; kök dönüşüm
+>   afin uydurma → meridyen yakınsaması/ölçek → WGS84 ENU→ECEF. Ağaçlar
+>   EXT_mesh_gpu_instancing. Jeoit için yükseklik ofseti alanı var. Testler:
+>   UTM'e karşı < 10 cm; GLB'ler Khronos glTF doğrulayıcısından hatasız.
+>   CityJSON ve Google Photorealistic 3D Tiles bağlamı kaldı.
+> - **5.4 Görünüm linki:** kamera (+ saat) URL hash'inde (`#view=`), "Copy
+>   view link" ile kopyalanıyor; link açılınca o görünüme gidiyor.
+>   GitHub/GitLab Pages yayınlama kaldı.
+> - **5.5 Yüksek çözünürlüklü görüntü:** ekran / 2x / 4K / 8K; ekran boyutlu
+>   karolar (`setViewOffset`) birleştiriliyor, ek yok. 4K MP4 (WebCodecs)
+>   kaldı.
+> - **Kalan:** 5.6 WebXR, 5.7 QGIS içi önizleme paneli.
+
 1. **Gerçek zamanlı analizler (GPU)** — gökyüzü görüş faktörü (SVF), güneşlenme saatleri ısı haritası (21 Aralık / 21 Haziran), görüş alanı (viewshed), gölge süresi — hepsi GPU render-to-texture ile saniyeler içinde.
 2. **İmar senaryoları** — TAKS/KAKS/Hmax parametreleriyle "ne olur" modu; A/B senaryo kaydırıcılı karşılaştırma (split-screen).
 3. **3D Tiles / CityGML / CityJSON içe-dışa aktarım** — OGC 3D Tiles 1.1 çıktısı (Cesium, ArcGIS, Unreal ile uyum); Google Photorealistic 3D Tiles bağlam katmanı (API anahtarı kullanıcıdan).

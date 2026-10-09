@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Planning tools (roadmap phase 5, first round): GPU sun-hours and sky-view-factor analysis for every street, square and roof (replaces the shadow heatmap); zoning what-if scenarios (site coverage, FAR, maximum height, setback) with capacity against the existing buildings and an existing | scenario split view; OGC 3D Tiles 1.1 export georeferenced from the QGIS export (CesiumJS, ArcGIS, Unreal); shareable view links; screenshots up to 8K.
+- Fix: the sun stood on the opposite side of the sky (morning shadows fell east, noon shadows south); sun, wind plumes and tree wind now follow the compass. Status messages are visible again.
 - Visual quality (roadmap phase 4, second round): hip and gable roofs follow the real footprint (straight skeleton: L, T and U plans get proper ridges and valleys); window glass is glossy and reflects the sky; water lines reflect the sky; optional depth of field for presentation shots and optional wind sway for tree crowns (Effects menu).
 - Visual quality (roadmap phase 4, first round): a physical sky with sky-based image lighting and horizon-tinted fog (Effects > atmosphere: Cinematic or Clean); the settled frame is antialiased (4x MSAA) with ground-truth ambient occlusion (GTAO) replacing SSAO; at night single windows light up in warm or cool light instead of whole facades glowing.
 - Exporter (roadmap phase 3): the DEM is cropped to the viewer's scene bounds and written as a tiled DEFLATE GeoTIFF (falls back to a copy), GeoJSON coordinates are written with 3 decimals instead of 15, and unchanged file-based layers are not rewritten on re-export.
