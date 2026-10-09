@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="icons/icon_main.svg" width="96" alt="PlanX 3D City Viewer icon"/>
+<img src="icons/icon.png" width="96" alt="PlanX 3D City Viewer icon"/>
 
 # PlanX 3D City Viewer
 
