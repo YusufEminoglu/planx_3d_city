@@ -13,7 +13,7 @@ import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import {
   BUILDING_TILE_SIZE, addBuildingBuckets, buildingHitData, buildingHitKey, buildingPickTargets,
-  setBatchedBuildingNight, setHoveredBuildingId, updateBuildingLod
+  setBatchedBuildingNight, setHoveredBuildingId, setSelectedBuildingId, updateBuildingLod
 } from './building_batch.js';
 import { buildBuildingsParallel, lastBuildWorkers } from './building_workers.js';
 import { insetShapeFromRings, shapeFromRings } from './building_geometry.js';
@@ -525,6 +525,9 @@ let demReady = false;
 let demLoadingStarted = false;
 let layerDataCache = null;
 let projectManifest = null;
+// Building footprints by record id (projected outer ring, bbox, centre), to
+// match QGIS selection points and to report viewer clicks.
+let buildingFootprints = [];
 let terrainTexture = null;
 let baseMapTexture = null;
 let terrainOverlayMesh = null;
@@ -7269,6 +7272,7 @@ async function buildBuildingLayer(buildingsFc, buildToken = sceneBuildToken) {
     : (settings.buildingMode === 'Extruded + roof' ? 'extrude+roof' : 'extrude');
   const specs = [];
   const records = [];
+  buildingFootprints = [];
 
   for (const f of buildingsFc.features) {
     const props = f.properties || {};
@@ -7306,6 +7310,7 @@ async function buildBuildingLayer(buildingsFc, buildToken = sceneBuildToken) {
       const population = parseNumberProp(props, ['population', 'pop'], Math.round(dwellings * 3.1));
       const vehicles = parseNumberProp(props, ['vehicle', 'cars'], Math.round(dwellings * 0.7));
       const rid = records.length;
+      buildingFootprints[rid] = footprintIndexEntry(poly);
       records.push({
         ...(f.properties || {}),
         planx_calc_footprint_area: footprintArea,
@@ -9249,6 +9254,8 @@ window.addEventListener('click', (e) => {
     return;
   }
   const p = buildingHitData(hits[0]);
+  const hitKey = buildingHitKey(hits[0]);
+  if (typeof hitKey === 'number' && hitKey >= 0) reportViewerPick(hitKey);
   const icon = getFunctionIcon(String(buildingFunctionValue(p)));
   const areaStr = p.aream2 ? `${parseFloat(p.aream2).toFixed(0)} m²` : '-';
   const siteCoverage = parseNumberProp(p, ['site_coverage', 'coverage_ratio', 'coverage'], null);
@@ -9525,8 +9532,14 @@ document.addEventListener('keyup', (e) => {
   }
 });
 
+// While a video is being rendered frame by frame, or a VR headset drives
+// the frames, the live loop stands by.
+let _videoExporting = false;
+let _xrActive = false;
+
 function animate() {
   requestAnimationFrame(animate);
+  if (_videoExporting || _xrActive) return;
   const time = performance.now();
   const delta = (time - prevTime) / 1000;
   
@@ -10183,6 +10196,88 @@ async function copyViewLink() {
   }
 }
 
+// --- QGIS <-> viewer selection sync (only with the PlanX local server) ---
+function footprintIndexEntry(poly) {
+  const outer = (poly?.[0] || []).filter((c) => c && c.length >= 2);
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, sx = 0, sy = 0;
+  for (const [x, y] of outer) {
+    minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+    sx += x;
+    sy += y;
+  }
+  return { rings: poly, minX, minY, maxX, maxY, cx: sx / Math.max(1, outer.length), cy: sy / Math.max(1, outer.length) };
+}
+
+function buildingIdAtProjected(x, y) {
+  for (let rid = 0; rid < buildingFootprints.length; rid++) {
+    const f = buildingFootprints[rid];
+    if (!f || x < f.minX || x > f.maxX || y < f.minY || y > f.maxY) continue;
+    if (pointInRings(x, y, f.rings)) return rid;
+  }
+  return -1;
+}
+
+const qgisSync = { seq: -1, enabled: !isPortableMode, failures: 0 };
+async function pollQgisSelection() {
+  if (!qgisSync.enabled || document.hidden || !buildingFootprints.length) return;
+  try {
+    const res = await fetch('/api/selection', { cache: 'no-store' });
+    if (!res.ok) throw new Error(String(res.status));
+    const sel = await res.json();
+    qgisSync.failures = 0;
+    if (sel.seq === qgisSync.seq) return;
+    const first = qgisSync.seq === -1;
+    qgisSync.seq = sel.seq;
+    const ids = (sel.points || []).map(([x, y]) => buildingIdAtProjected(x, y)).filter((id) => id >= 0);
+    setSelectedBuildingId(ids.length ? ids[0] : -1);
+    if (ids.length && !first) {
+      const f = buildingFootprints[ids[0]];
+      const [lx, lz] = metersToLocal(f.cx, f.cy);
+      const pt = new THREE.Vector3(lx, terrainLocalYAt(lx, lz), lz);
+      const dir = camera.position.clone().sub(pt).setY(0).normalize();
+      _flyOrigin = camera.position.clone();
+      _flyTarget = pt.clone().addScaledVector(dir, 90).add(new THREE.Vector3(0, 60, 0));
+      _flyControlsTarget = pt;
+      _flyT = 0;
+      setStatus(`QGIS selection: ${ids.length} building${ids.length === 1 ? '' : 's'} in the scene${ids.length > 1 ? ' (first one highlighted)' : ''}.`);
+    }
+    requestRender();
+  } catch {
+    // Plain static hosting has no selection endpoint: stop after a few tries.
+    if (++qgisSync.failures >= 3) qgisSync.enabled = false;
+  }
+}
+setInterval(pollQgisSelection, 1000);
+
+// A point inside a footprint: its centre when that is inside, otherwise
+// the centre of its largest triangle (L, U and C shapes).
+function footprintInsidePoint(f) {
+  if (pointInRings(f.cx, f.cy, f.rings)) return [f.cx, f.cy];
+  const outer = (f.rings[0] || []).map(([x, y]) => new THREE.Vector2(x - f.cx, y - f.cy));
+  let best = null;
+  let bestArea = -1;
+  for (const [a, b, c] of THREE.ShapeUtils.triangulateShape(outer, [])) {
+    const area = Math.abs(THREE.ShapeUtils.area([outer[a], outer[b], outer[c]]));
+    if (area > bestArea) {
+      bestArea = area;
+      best = [(outer[a].x + outer[b].x + outer[c].x) / 3 + f.cx, (outer[a].y + outer[b].y + outer[c].y) / 3 + f.cy];
+    }
+  }
+  return best || [f.cx, f.cy];
+}
+
+function reportViewerPick(rid) {
+  const f = buildingFootprints[rid];
+  if (!qgisSync.enabled || !f) return;
+  const [x, y] = footprintInsidePoint(f);
+  fetch('/api/viewer-pick', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ x, y })
+  }).catch(() => {});
+}
+
 // --- 3D Tiles export of the visible scene ---
 async function exportTiles3DZip() {
   const georeference = projectManifest?.georeference;
@@ -10218,6 +10313,41 @@ async function exportTiles3DZip() {
   }
 }
 document.getElementById('tiles-export')?.addEventListener('click', exportTiles3DZip);
+
+// --- WebXR (VR headsets): street-level walk with teleport ---
+import('./xr.js').then(({ setupXR }) => setupXR({
+  renderer,
+  scene,
+  camera,
+  standAt: () => {
+    const t = controls.target;
+    const dir = new THREE.Vector3().subVectors(t, camera.position);
+    return {
+      position: new THREE.Vector3(t.x, terrainLocalYAt(t.x, t.z) + 0.05, t.z),
+      heading: Math.atan2(-dir.x, -dir.z)
+    };
+  },
+  groundTargets: () => [terrainMesh, islandGroup, roadGroup, sidewalkGroup, ...buildingPickTargets(buildingGroup)].filter(Boolean),
+  drawFrame: () => {
+    updateBuildingLod(buildingGroup, camera);
+    renderer.render(scene, camera);
+  },
+  onStart: () => {
+    _xrActive = true;
+    if (tourState.playing) pauseTour();
+    controls.enabled = false;
+  },
+  onEnd: () => {
+    _xrActive = false;
+    controls.enabled = !isWalkMode;
+    controls.update();
+    sun.shadow.needsUpdate = true;
+    requestRender();
+  }
+})).catch((err) => console.warn('WebXR setup skipped', err));
+document.getElementById('tour-video')?.addEventListener('click', () => {
+  renderTourVideo().catch((err) => setStatus(`Tour video failed: ${err?.message || err}`, true));
+});
 
 // --- CityJSON (LoD1) export of the buildings ---
 async function exportCityJson() {
@@ -10471,9 +10601,22 @@ function applyTourPlayback() {
       tourState.currentTime = duration;
     }
   }
+  const active = applyTourAt(tourState.currentTime);
+  const caption = document.getElementById('tour-caption-overlay');
+  if (caption) {
+    caption.textContent = active?.caption || '';
+    caption.classList.toggle('hidden', !active?.caption);
+  }
+}
+
+// The tour state at `seconds` (camera, target, time of day, keyframe
+// settings); returns the keyframe whose caption and settings apply.
+function applyTourAt(seconds) {
   const frames = tourState.keyframes;
+  if (frames.length < 2) return null;
+  const duration = Math.max(1, Number(tourState.duration) || 18);
   const totalSegments = frames.length - 1;
-  const progress = Math.min(1, Math.max(0, tourState.currentTime / duration));
+  const progress = Math.min(1, Math.max(0, seconds / duration));
   const segmentFloat = progress * totalSegments;
   const idx = Math.min(totalSegments - 1, Math.floor(segmentFloat));
   const localT = easeInOutCubic(segmentFloat - idx);
@@ -10486,11 +10629,104 @@ function applyTourPlayback() {
   const active = localT < 0.5 ? a : b;
   if (active.settings) Object.assign(settings, active.settings);
   checkTimeChange();
-  const caption = document.getElementById('tour-caption-overlay');
-  if (caption) {
-    caption.textContent = active.caption || '';
-    caption.classList.toggle('hidden', !active.caption);
+  return active;
+}
+
+// --- Tour video (MP4): every frame rendered at its exact tour time ---
+async function renderTourVideo() {
+  if (tourState.keyframes.length < 2) {
+    setStatus('Tour video: add at least two keyframes first.', true);
+    return;
   }
+  const { encodeVideo, videoExportSupported } = await import('./video_export.js');
+  if (!videoExportSupported()) {
+    setStatus('Tour video needs a browser with WebCodecs (Chrome, Edge, recent Firefox). The webm recorder in the camera panel still works.', true);
+    return;
+  }
+  const preset = document.getElementById('tour-video-size')?.value || '1080';
+  const [width, height] = preset === '2160' ? [3840, 2160] : (preset === '720' ? [1280, 720] : [1920, 1080]);
+  const fps = 30;
+  const duration = Math.max(1, Number(tourState.duration) || 18);
+  const frameCount = Math.round(duration * fps);
+  if (tourState.playing) pauseTour();
+  // Render at the video size off screen: the canvas keeps its CSS size.
+  const saved = {
+    ratio: renderer.getPixelRatio(),
+    size: renderer.getSize(new THREE.Vector2()),
+    aspect: camera.aspect,
+    position: camera.position.clone(),
+    target: controls.target.clone(),
+    timeOfDay: settings.timeOfDay
+  };
+  const out = document.createElement('canvas');
+  out.width = width;
+  out.height = height;
+  const ctx = out.getContext('2d');
+  _videoExporting = true;
+  try {
+    renderer.setPixelRatio(1);
+    renderer.setSize(width, height, false);
+    composer.setPixelRatio(1);
+    composer.setSize(width, height);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    const t0 = performance.now();
+    const { blob, codec } = await encodeVideo({
+      width, height, fps, frameCount,
+      drawFrame: (i) => {
+        const active = applyTourAt(i / fps);
+        fitSunShadow();
+        sun.shadow.needsUpdate = true;
+        updateBuildingLod(buildingGroup, camera);
+        renderCleanFrame();
+        ctx.drawImage(renderer.domElement, 0, 0, width, height);
+        if (active?.caption) drawVideoCaption(ctx, active.caption, width, height);
+        return out;
+      },
+      onProgress: (f) => setStatus(`Tour video ${width} x ${height}: ${Math.round(f * 100)}%`)
+    });
+    const link = document.createElement('a');
+    link.download = `planx_3d_city_tour_${height}p.mp4`;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 30000);
+    setStatus(`Tour video saved: ${frameCount} frames, ${(blob.size / 1048576).toFixed(1)} MB, ${codec}, ${((performance.now() - t0) / 1000).toFixed(0)} s.`);
+  } catch (err) {
+    console.warn('tour video failed', err);
+    setStatus(`Tour video failed: ${err?.message || err}`, true);
+  } finally {
+    renderer.setPixelRatio(saved.ratio);
+    renderer.setSize(saved.size.x, saved.size.y, false);
+    composer.setPixelRatio(saved.ratio);
+    composer.setSize(saved.size.x, saved.size.y);
+    camera.aspect = saved.aspect;
+    camera.updateProjectionMatrix();
+    camera.position.copy(saved.position);
+    controls.target.copy(saved.target);
+    settings.timeOfDay = saved.timeOfDay;
+    checkTimeChange();
+    _videoExporting = false;
+    sun.shadow.needsUpdate = true;
+    requestRender();
+  }
+}
+
+function drawVideoCaption(ctx, text, width, height) {
+  const size = Math.round(height * 0.032);
+  ctx.save();
+  ctx.font = `600 ${size}px Montserrat, 'Segoe UI', sans-serif`;
+  const pad = Math.round(size * 0.6);
+  const w = Math.min(width * 0.8, ctx.measureText(text).width + pad * 2);
+  const x = Math.round(width * 0.04);
+  const y = Math.round(height * 0.9) - size - pad;
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.72)';
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, size + pad * 2, size * 0.4);
+  ctx.fill();
+  ctx.fillStyle = '#f8fafc';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, x + pad, y + pad + size / 2, w - pad * 2);
+  ctx.restore();
 }
 
 function exportTourJson() {

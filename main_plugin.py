@@ -10,7 +10,7 @@ from qgis.PyQt.QtCore import QSettings
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QFileDialog, QMessageBox
 
-from .exporter import LABELS, copy_portable_viewer, existing_target_files, export_all, optional_inputs_for_mode, plugin_version, required_inputs_for_mode, validate_inputs, zip_portable_viewer
+from .exporter import LABELS, _target_export_crs, copy_portable_viewer, existing_target_files, export_all, optional_inputs_for_mode, plugin_version, required_inputs_for_mode, validate_inputs, zip_portable_viewer
 from .server import PlanX3DServer
 
 PLUGIN_VERSION = plugin_version()
@@ -24,8 +24,11 @@ class PlanX3DCityPlugin:
         self.plugin_dir = os.path.dirname(__file__)
         self.web_root = os.path.join(self.plugin_dir, "web")
         self.action = None
+        self.preview_action = None
         self.dialog = None
         self.server = PlanX3DServer(self.web_root)
+        self.sync = None
+        self.preview_dock = None
 
     def initGui(self):
         icon = QIcon(os.path.join(self.plugin_dir, "icons", "icon_main.svg"))
@@ -34,11 +37,24 @@ class PlanX3DCityPlugin:
         self.action.triggered.connect(self.show_dialog)
         self.iface.addToolBarIcon(self.action)
         self.iface.addPluginToMenu("&PlanX 3D City", self.action)
+        self.preview_action = QAction(icon, "3D preview panel (live selection)", self.iface.mainWindow())
+        self.preview_action.setStatusTip("Show the 3D viewer next to the map; building selections sync both ways")
+        self.preview_action.triggered.connect(self.show_preview_panel)
+        self.iface.addPluginToMenu("&PlanX 3D City", self.preview_action)
 
     def unload(self):
         if self.action:
             self.iface.removePluginMenu("&PlanX 3D City", self.action)
             self.iface.removeToolBarIcon(self.action)
+        if self.preview_action:
+            self.iface.removePluginMenu("&PlanX 3D City", self.preview_action)
+        if self.sync:
+            self.sync.detach()
+            self.sync = None
+        if self.preview_dock:
+            self.iface.removeDockWidget(self.preview_dock)
+            self.preview_dock.deleteLater()
+            self.preview_dock = None
         self.server.stop()
         if self.dialog:
             self.dialog.close()
@@ -113,7 +129,11 @@ class PlanX3DCityPlugin:
             empty_optionals = [LABELS[key] for key in optional if key not in required and layer_map.get(key) is None]
             written = export_all(layer_map, self.web_root)
             url = self.server.start()
-            webbrowser.open(url)
+            self._attach_sync(layer_map)
+            if self.preview_dock is not None and self.preview_dock.isVisible() and self.preview_dock.embedded:
+                self.preview_dock.load(url)
+            else:
+                webbrowser.open(url)
         except Exception as exc:
             self._message("PlanX 3D City error", str(exc), QMessageBox.Icon.Critical)
             if self.dialog:
@@ -125,6 +145,33 @@ class PlanX3DCityPlugin:
         if self.dialog:
             self.dialog.set_status(message)
             self.dialog.set_publish_summary(url, written, empty_optionals)
+
+    def _attach_sync(self, layer_map: dict) -> None:
+        """Follow the exported building layer's selection (best effort)."""
+        try:
+            from .qgis_sync import PlanXQgisSync
+
+            if self.sync is None:
+                self.sync = PlanXQgisSync(self.iface, self.server.bridge)
+            self.sync.attach(layer_map.get("buildings"), _target_export_crs(layer_map))
+        except Exception as exc:  # noqa: BLE001 - the link is optional
+            self.iface.messageBar().pushInfo("PlanX 3D City", f"Selection sync unavailable: {exc}")
+
+    def show_preview_panel(self):
+        try:
+            from .qgis_sync import PlanXPreviewDock, add_preview_dock
+
+            url = self.server.start()
+            if self.preview_dock is None:
+                self.preview_dock = PlanXPreviewDock(self.iface.mainWindow())
+                add_preview_dock(self.iface, self.preview_dock)
+            self.preview_dock.load(url)
+            self.preview_dock.show()
+            self.preview_dock.raise_()
+            if self.sync is None and self.dialog is not None:
+                self._attach_sync(self.dialog.selected_layers())
+        except Exception as exc:  # noqa: BLE001 - report instead of breaking QGIS
+            self._message("PlanX 3D City", f"Could not open the preview panel: {exc}", QMessageBox.Icon.Warning)
 
     def stop_server(self):
         self.server.stop()

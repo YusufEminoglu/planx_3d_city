@@ -24,7 +24,10 @@ const GLASS_REFLECTION = 1.5;
 // Shared by every batched material, so hover is one uniform write.
 const sharedUniforms = {
   uPlanxHover: { value: -1 },
-  uPlanxHoverColor: { value: HOVER_COLOR }
+  uPlanxHoverColor: { value: HOVER_COLOR },
+  // Building selected from QGIS (orange), drawn under the hover highlight.
+  uPlanxSelected: { value: -1 },
+  uPlanxSelectedColor: { value: new THREE.Color(0xf97316).multiplyScalar(0.9) }
 };
 
 let records = [];
@@ -212,6 +215,8 @@ function patchMaterial(mat, windows) {
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uPlanxHover = sharedUniforms.uPlanxHover;
     shader.uniforms.uPlanxHoverColor = sharedUniforms.uPlanxHoverColor;
+    shader.uniforms.uPlanxSelected = sharedUniforms.uPlanxSelected;
+    shader.uniforms.uPlanxSelectedColor = sharedUniforms.uPlanxSelectedColor;
     Object.assign(shader.uniforms, winUniforms);
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nattribute float planxId;\nattribute float planxGlow;\nvarying float vPlanxId;\nvarying float vPlanxGlow;')
@@ -221,6 +226,8 @@ function patchMaterial(mat, windows) {
         '#include <common>',
         'uniform float uPlanxHover;',
         'uniform vec3 uPlanxHoverColor;',
+        'uniform float uPlanxSelected;',
+        'uniform vec3 uPlanxSelectedColor;',
         'uniform vec2 uPlanxWinGrid;',
         'uniform vec2 uPlanxWinOffset;',
         'uniform vec4 uPlanxWinRect;',
@@ -270,6 +277,7 @@ function patchMaterial(mat, windows) {
         '#else',
         'totalEmissiveRadiance *= vPlanxGlow;',
         '#endif',
+        'if (abs(vPlanxId - uPlanxSelected) < 0.5) totalEmissiveRadiance = uPlanxSelectedColor;',
         'if (abs(vPlanxId - uPlanxHover) < 0.5) totalEmissiveRadiance = uPlanxHoverColor;'
       ].join('\n'));
   };
@@ -350,6 +358,10 @@ export function buildingHitKey(hit) {
   const obj = hit?.object;
   if (obj?.userData?.planxBatch) return hit.face ? obj.geometry.attributes.planxId.getX(hit.face.a) : -1;
   return obj;
+}
+
+export function setSelectedBuildingId(id) {
+  sharedUniforms.uPlanxSelected.value = (typeof id === 'number' && id >= 0) ? id : -1;
 }
 
 export function setHoveredBuildingId(id) {

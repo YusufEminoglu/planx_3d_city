@@ -341,6 +341,14 @@
             <button id="tour-pause" data-i18n="pauseTour">Pause</button>
             <button id="tour-export" data-i18n="exportJson">Export JSON</button>
         </div>
+        <div class="dock-actions">
+            <select id="tour-video-size" class="dock-text" title="Video size">
+                <option value="720">720p</option>
+                <option value="1080" selected>1080p</option>
+                <option value="2160">4K</option>
+            </select>
+            <button id="tour-video" title="Render every frame of the tour at its exact time and save an MP4">Render tour video (MP4)</button>
+        </div>
         <input id="tour-import" type="file" accept="application/json" class="dock-file">
         <div id="tour-list" class="tour-list"></div>
         <div class="dock-section">
