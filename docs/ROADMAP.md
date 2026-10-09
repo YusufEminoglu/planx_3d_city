@@ -270,6 +270,28 @@ somut bir dosyaya/fonksiyona bağlanır ve ölçülebilir bir hedefle biter.
 
 ## Faz 6 — Mühendislik altyapısı (Faz 1 ile paralel başlamalı)
 
+> **Durum (Ekim 2026, ilk tur):**
+> - **6.4 Lint + tip kontrolü:** `package.json` (yalnız geliştirme; eklenti
+>   zip'ine girmez) ile ESLint, TypeScript ve Playwright sabit sürümlü.
+>   ESLint bir yinelenen renk anahtarı ('Olive') ve ölü kod buldu (91 satır
+>   silindi). `tsc --checkJs` `// @ts-check` ile işaretli 16+ modülü JSDoc
+>   tipleriyle kontrol ediyor (vendor kütüphaneler tipsiz sayılıyor).
+> - **6.2 Benchmark CI'da:** 1000 binalık deterministik şehir; çizim
+>   çağrısı, üçgen ve mesh sayısı tabandan %10'dan fazla artarsa CI kırmızı
+>   (`tests/bench/baseline.json`); süreler raporlanıyor, yalnız 3 kat
+>   yavaşlamada kırmızı (CI makineleri değişken).
+> - **6.3 Görsel regresyon:** dört sabit kamera (gündüz, sokak, gece,
+>   Clean), doğrudan WebGL tuvalinden (arayüz/yazı tipi yok), trafik/insan
+>   ve GTAO kapalı (rastgelelik yok); 24 seviye / %1,5 piksel toleransı,
+>   fark görüntüleri CI artefaktı. Ardışık çalıştırmalarda piksel aynı.
+> - **6.1 app.js bölme (ilk tur):** 11.157 → 9.691 satır; kod olduğu gibi
+>   `ui_text.js`, `catalog.js`, `geo.js`, `props.js`, `textures.js`
+>   modüllerine taşındı (döngüsel import yok: alan eşlemesi ve anizotropi
+>   enjekte ediliyor). Görsel testler piksel aynı, yapı metrikleri aynı.
+>   Kalan: sahne kurulumu, katmanlar (bina, arazi, yol), Model Studio,
+>   anlatı/tur, minimap ve dock UI — paylaşılan durum (ayarlar, gruplar,
+>   kamera) bir bağlam nesnesine taşındıkça bölünebilir.
+
 1. **`app.js`'i modüllere böl** — `scene/`, `layers/buildings.js`, `layers/terrain.js`, `analysis/`, `ui/`, `workers/`. Build aracı gerektirmeden native ES modules + import map (mevcut "Node.js gerektirmez" ilkesi korunur).
 2. **Benchmark sahnesi** — `sample_generator.py` ile 1k / 10k / 100k binalık deterministik veri; Playwright + headless Chromium ile FPS, draw call, açılış süresi ölçümü CI'da (`.github/workflows/quality.yml`'a yeni job). Regresyon > %10 ise kırmızı.
 3. **Görsel regresyon testleri** — sabit kameradan ekran görüntüsü karşılaştırma.

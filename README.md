@@ -214,6 +214,25 @@ These overlays are for plan review and classroom discussion, not engineering-gra
 - If function coloring is weak, verify the `function` field or the mapped land-use field.
 - If selected feature styling is not visible, save edits in QGIS and export again.
 
+## Development
+
+The plugin needs no Node.js: the viewer is plain ES modules with an import
+map. Node is only used for the development checks, which CI also runs:
+
+```bash
+npm ci                                              # ESLint, TypeScript, Playwright (dev only)
+npm run lint                                        # ESLint over the viewer and test scripts
+npm run typecheck                                   # tsc --checkJs on modules with // @ts-check
+npm test                                            # viewer unit tests (node --test)
+python -m unittest discover -s tests -p 'test_*.py' # exporter and server unit tests
+npx playwright install chromium                     # once, for the browser checks
+npm run bench:data && npm run bench:check           # 1000-building benchmark gate
+npm run visual                                      # visual regression (fixed cameras)
+```
+
+`npm run bench:check -- --update` and `npm run visual -- --update` write new
+baselines when a change is intended.
+
 ## 🧩 Part of the PlanX ecosystem
 
 This plugin is one of 15 open-source QGIS plugins for urban planning by the same author:

@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Engineering (roadmap phase 6, first round): ESLint and JSDoc type checks, a benchmark gate and visual regression tests in CI; app.js split into modules (UI text, asset catalogue, geography, attributes, textures) with identical rendering.
 - Planning tools (roadmap phase 5, second round): viewshed from a picked point; comparing two zoning scenarios (Split: B | A); CityJSON 2.0 export (LoD1 buildings); MP4 tour videos rendered frame by frame with WebCodecs (720p to 4K, captions); portable packages ready for GitHub/GitLab Pages and Netlify; WebXR (VR headsets) with teleport; a 3D preview panel in QGIS with two-way building selection.
 - Fix: zoning envelopes were never drawn.
 - Planning tools (roadmap phase 5, first round): GPU sun-hours and sky-view-factor analysis for every street, square and roof (replaces the shadow heatmap); zoning what-if scenarios (site coverage, FAR, maximum height, setback) with capacity against the existing buildings and an existing | scenario split view; OGC 3D Tiles 1.1 export georeferenced from the QGIS export (CesiumJS, ArcGIS, Unreal); shareable view links; screenshots up to 8K.
