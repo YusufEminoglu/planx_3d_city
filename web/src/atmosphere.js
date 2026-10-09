@@ -114,7 +114,12 @@ export function createAtmosphere({ renderer, scene, sky, ambient }) {
       const k = style === 'Clean' ? 1 : ENV_INTENSITY;
       root.traverse((o) => {
         const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
-        for (const m of mats) if ('envMapIntensity' in m && m.envMapIntensity !== k) m.envMapIntensity = k;
+        for (const m of mats) {
+          if (!('envMapIntensity' in m)) continue;
+          // Materials can ask for more (water, glass) than the general share.
+          const v = Math.min(1, k * (m.userData?.planxEnvBoost || 1));
+          if (m.envMapIntensity !== v) m.envMapIntensity = v;
+        }
       });
     },
     dispose() {

@@ -9,6 +9,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import {
   BUILDING_TILE_SIZE, addBuildingBuckets, buildingHitData, buildingHitKey, buildingPickTargets,
@@ -282,8 +283,42 @@ const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, windo
 const composer = new EffectComposer(renderer, composerTarget);
 composer.addPass(renderPass);
 composer.addPass(aoPass);
+// Presentation depth of field: sharp at the orbit target, blurring with
+// distance from it. Off by default; like AO it only runs on the settled frame.
+const DOF_STRENGTH = 0.02;
+const dofPass = new BokehPass(scene, camera, { focus: 300, aperture: DOF_STRENGTH / 300, maxblur: 0.01 });
+dofPass.enabled = false;
+composer.addPass(dofPass);
 composer.addPass(bloomPass);
 composer.addPass(new OutputPass());
+
+function useComposite() {
+  return settings.enableSSAO || settings.depthOfField;
+}
+
+// The settled frame: AO and depth of field as set.
+const _dofDir = new THREE.Vector3();
+function renderComposite() {
+  aoPass.enabled = !!settings.enableSSAO;
+  dofPass.enabled = !!settings.depthOfField;
+  if (dofPass.enabled) {
+    // The camera range changes with the scene size: keep depth decoding in step.
+    dofPass.uniforms.nearClip.value = camera.near;
+    dofPass.uniforms.farClip.value = camera.far;
+    dofPass.uniforms.aspect.value = camera.aspect;
+    // Focus on the screen centre: where the view direction meets the ground
+    // at the orbit target's height (the target itself can be off-centre).
+    camera.getWorldDirection(_dofDir);
+    const drop = controls.target.y - camera.position.y;
+    const along = _dofDir.y < -1e-3 ? drop / _dofDir.y : -1;
+    const focus = along > 0 ? along : camera.position.distanceTo(controls.target);
+    dofPass.uniforms.focus.value = focus;
+    // Blur by relative depth, so the effect looks alike at street level and
+    // over the whole city: full blur at half the focus distance off-focus.
+    dofPass.uniforms.aperture.value = DOF_STRENGTH / Math.max(1, focus);
+  }
+  composer.render();
+}
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -1495,6 +1530,7 @@ const settings = {
   timeOfDay: 14,
   enableSSAO: true,
   enableBloom: true,
+  depthOfField: false,
   atmosphere: 'Cinematic',
   treeWind: false,
   showPedestrians: false,
@@ -1573,7 +1609,7 @@ const PERSISTED_SETTING_KEYS = [
   'showTerrainTexture', 'showOutsideRoiTerrain', 'terrainTextureOpacity', 'terrainTextureBrightness', 'terrainTextureContrast',
   'terrainOutsideColor', 'terrainSmoothingPasses', 'terrainSmoothingStrength', 'terrainMaxSlope',
   'showTerrainSides', 'terrainSideDrop', 'terrainSideColor',
-  'fogDensity', 'autoTime', 'autoTimeSpeed', 'enableSSAO', 'enableBloom', 'atmosphere', 'treeWind',
+  'fogDensity', 'autoTime', 'autoTimeSpeed', 'enableSSAO', 'enableBloom', 'atmosphere', 'treeWind', 'depthOfField',
   'pavementStyle', 'hardscapeStyle', 'hardscapeHeight', 'buildingMode', 'facadeTextureScale', 'terrainAnalysisMode', 'showXyzTiles', 'xyzTileUrl',
   'assetTheme',
   'floorHeight', 'roofTexture', 'roofShape', 'roofHeight', 'roadStyle', 'roadColor', 'sidewalkColor', 'roadColorMode', 'roadWidth',
@@ -5196,13 +5232,15 @@ function buildWaterlinesLayer(waterlines) {
   const mat = new THREE.MeshStandardMaterial({
     color: '#0f5e9c',
     map: createWaterTexture(),
-    roughness: 0.15,
-    metalness: 0.1,
+    roughness: 0.06,
+    metalness: 0.0,
     side: THREE.DoubleSide,
     polygonOffset: true,
     polygonOffsetFactor: -3,
     polygonOffsetUnits: -3
   });
+  // Water mirrors the sky: full environment reflection (walls get a share).
+  mat.userData.planxEnvBoost = 3;
 
   for (const f of waterlines.features) {
     if (f.geometry?.type !== 'LineString' && f.geometry?.type !== 'MultiLineString') continue;
@@ -8582,6 +8620,7 @@ function addGui() {
   fx.add(settings, 'enableSSAO').name(t('sSsa'));
   fx.add(settings, 'enableBloom').name(t('sBloom')).onChange(checkTimeChange);
   fx.add(settings, 'atmosphere', ['Cinematic', 'Clean']).name('Atmosphere').onChange(checkTimeChange);
+  fx.add(settings, 'depthOfField').name('Depth of field').onChange(() => requestRender());
   fx.add(settings, 'treeWind').name('Wind sway (trees)').onChange(() => { syncWind(); requestRender(); });
 
   const terrain = globalGui.addFolder(t('terrain'));
@@ -9225,7 +9264,7 @@ function animate() {
   // The opaque loading overlay hides the scene while it is being built:
   // drawing behind it only competes with the build (and its workers).
   if (_loadingEl && _loadingEl.style.display !== 'none' && _loadingEl.style.opacity !== '0') return;
-  const _useComposer = settings.enableSSAO;
+  const _useComposer = useComposite();
   updateBuildingLod(buildingGroup, camera);
   // Walking moves the camera without orbit-control events; refit the shadow
   // box once the walker has moved a few metres.
@@ -9244,7 +9283,7 @@ function animate() {
     setDynamicPixelRatio(MAX_PIXEL_RATIO);
     _pendingPixelRatio = null;
     renderer.info.reset();
-    composer.render();
+    renderComposite();
     _lastSSAORender = _now;
     _lastFrameRender = _now;
     _composerSettled = true;
@@ -9252,7 +9291,7 @@ function animate() {
     setDynamicPixelRatio(MAX_PIXEL_RATIO);
     _pendingPixelRatio = null;
     renderer.info.reset();
-    if (_useComposer) composer.render(); else renderer.render(scene, camera);
+    if (_useComposer) renderComposite(); else renderer.render(scene, camera);
     _lastFrameRender = _now;
     _fpsLastSample = _now;
     return;
@@ -9431,6 +9470,11 @@ window.__planxPerf = {
     camera.position.copy(start);
     camera.lookAt(controls.target);
     return total / steps;
+  },
+  // Depth-of-field state of the last settled frame.
+  dof() {
+    const u = dofPass.uniforms;
+    return { enabled: dofPass.enabled, focus: u.focus.value, near: u.nearClip.value, far: u.farClip.value, aperture: u.aperture.value, maxblur: u.maxblur.value, target: camera.position.distanceTo(controls.target) };
   },
   // Cost of one settled post-processed frame (AO, bloom, output) at the
   // current view, against a plain render.
@@ -9635,7 +9679,7 @@ function takeScreenshot() {
   uiContainer.style.visibility = 'hidden';
   if (globalGui) globalGui.domElement.style.visibility = 'hidden';
   setDynamicPixelRatio(MAX_PIXEL_RATIO);
-  if (settings.enableSSAO) composer.render(); else renderer.render(scene, camera);
+  if (useComposite()) renderComposite(); else renderer.render(scene, camera);
 
   const canvas = document.querySelector('canvas');
   const link = document.createElement('a');
