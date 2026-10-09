@@ -10219,6 +10219,56 @@ async function exportTiles3DZip() {
 }
 document.getElementById('tiles-export')?.addEventListener('click', exportTiles3DZip);
 
+// --- CityJSON (LoD1) export of the buildings ---
+async function exportCityJson() {
+  const fc = layerDataCache?.buildingsFc;
+  if (!fc?.features?.length) {
+    setStatus('CityJSON: no buildings in this scene.', true);
+    return;
+  }
+  const buildings = [];
+  fc.features.forEach((f, i) => {
+    const props = f.properties || {};
+    const polygons = getPolygonRings(f.geometry).filter((p) => p?.[0]?.length >= 3);
+    if (!polygons.length) return;
+    const levels = buildingLevels(props);
+    const fn = String(buildingFunctionValue(props));
+    const fnStyle = ensureFunctionBuildingStyle(fn, Math.max(0, Object.keys(functionColorState).indexOf(fn)));
+    const floorHeight = parseNumberProp(props, ['planx_floor_height', 'floor_height'], fnStyle.floorHeight);
+    const height = buildingHeightFromProps(props, levels, floorHeight);
+    const metrics = estimateBuildingFeatureMetrics(f);
+    const id = props.id ?? props.fid ?? props.osm_id ?? `building_${i + 1}`;
+    buildings.push({
+      id: buildings.some((b) => b.id === String(id)) ? `${id}_${i + 1}` : String(id),
+      polygons,
+      base: buildingBaseYForOuterRing(polygons[0][0]) - buildingGroundOffset(),
+      height,
+      attributes: {
+        ...props,
+        function: fn,
+        storeysAboveGround: levels,
+        measuredHeight: Math.round(height * 100) / 100,
+        planx_floor_area: Math.round(metrics.floorArea || 0),
+        planx_population: Math.round(metrics.population || 0)
+      }
+    });
+  });
+  const { buildCityJson } = await import('./cityjson.js');
+  const crs = projectManifest?.georeference?.crs || projectManifest?.summary?.crs?.[0] || '';
+  const title = projectManifest?.project?.title || 'PlanX 3D City';
+  const cj = buildCityJson(buildings, { crs, title });
+  const blob = new Blob([JSON.stringify(cj)], { type: 'application/city+json' });
+  const link = document.createElement('a');
+  link.download = `planx_3d_city_${Date.now()}.city.json`;
+  link.href = URL.createObjectURL(blob);
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 20000);
+  setStatus(`CityJSON exported: ${Object.keys(cj.CityObjects).length} buildings (LoD1), ${(blob.size / 1048576).toFixed(1)} MB${crs ? `, ${crs}` : ', CRS unknown'}.`);
+}
+document.getElementById('cityjson-export')?.addEventListener('click', () => {
+  exportCityJson().catch((err) => setStatus(`CityJSON export failed: ${err?.message || err}`, true));
+});
+
 // Scenario view buttons and the split divider.
 document.querySelectorAll('[data-scenario-view]').forEach((btn) => {
   btn.addEventListener('click', () => {
