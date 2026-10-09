@@ -92,6 +92,58 @@ def coordinate_precision(is_geographic: bool) -> int:
     return 7 if is_geographic else 3
 
 
+STATIC_INDEX_HTML = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PlanX 3D City</title>
+<script>
+  // Open the viewer in portable mode and keep a shared view (#view=...).
+  location.replace("src/?portable=1" + location.hash);
+</script>
+</head>
+<body>
+<p><a href="src/?portable=1">Open the PlanX 3D City viewer</a></p>
+</body>
+</html>
+"""
+
+GITLAB_PAGES_CI = """# GitLab Pages: publishes this folder as the site.
+pages:
+  stage: deploy
+  script:
+    - mkdir -p .public
+    - cp -r src assets data index.html .public/
+    - mv .public public
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+"""
+
+PUBLISHING_README = [
+    "Publish on the web (static hosting, no server code needed):",
+    "- GitHub Pages: put this folder in a repository (root or /docs), then Settings > Pages >",
+    "  'Deploy from a branch'. The included index.html opens the viewer and .nojekyll keeps",
+    "  every file as it is.",
+    "- GitLab Pages: push this folder; the included .gitlab-ci.yml publishes it.",
+    "- Netlify / Cloudflare Pages: drag this folder onto the site's deploy page (Netlify Drop).",
+    "- View links (Copy view link in the camera panel) work on the published site too.",
+    "- Hosted sites are public unless the host offers access control: share only data you may publish.",
+]
+
+
+def static_hosting_files() -> dict[str, str]:
+    """Files that make a portable viewer folder publishable on static hosts."""
+    return {
+        "index.html": STATIC_INDEX_HTML,
+        ".nojekyll": "",
+        ".gitlab-ci.yml": GITLAB_PAGES_CI,
+    }
+
+
 GEOREF_STEP_M = 1000.0
 
 

@@ -33,6 +33,8 @@ from .export_utils import (
     file_signature,
     georeference_control_xy,
     georeference_record,
+    PUBLISHING_README,
+    static_hosting_files,
     union_bounds,
 )
 
@@ -309,6 +311,13 @@ if __name__ == "__main__":
     )
     copied.append(str(serve_path))
 
+    # Static-hosting entry points (GitHub/GitLab Pages, Netlify): the folder
+    # can be published as it is.
+    for name, content in static_hosting_files().items():
+        hosting_path = output_path / name
+        hosting_path.write_text(content, encoding="utf-8")
+        copied.append(str(hosting_path))
+
     readme_path = output_path / "README_PORTABLE_VIEWER.txt"
     readme_path.write_text(
         "\n".join(
@@ -333,6 +342,8 @@ if __name__ == "__main__":
                 "- Narrative Studio JSON files store camera/tour/viewer state only. They do not embed DEM, GeoJSON, imagery, or the viewer app.",
                 "- If this package includes data/planx_tour.json, the viewer can auto-load it on another computer.",
                 "- If you export a newer project from QGIS, create a fresh portable folder so the copied data stays in sync.",
+                "",
+                *PUBLISHING_README,
             ]
         ),
         encoding="utf-8",

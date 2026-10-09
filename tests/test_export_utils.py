@@ -97,5 +97,14 @@ class GeoreferenceTests(unittest.TestCase):
         self.assertIsNone(eu.georeference_record("X", xy, [(0, 0), (float("nan"), 0), (0, 1)]))
 
 
+class StaticHostingTests(unittest.TestCase):
+    def test_files(self):
+        files = eu.static_hosting_files()
+        self.assertEqual(set(files), {"index.html", ".nojekyll", ".gitlab-ci.yml"})
+        self.assertIn('location.replace("src/?portable=1" + location.hash)', files["index.html"])
+        self.assertIn("public", files[".gitlab-ci.yml"])
+        self.assertTrue(any("GitHub Pages" in line for line in eu.PUBLISHING_README))
+
+
 if __name__ == "__main__":
     unittest.main()
