@@ -131,7 +131,7 @@
       <ol class="steps">
         <li>Open QGIS and load the layers you want to present. For Vector Plan Mode, every vector layer is optional; the viewer can also run with only a DEM or without a DEM.</li>
         <li>Open <b>PlanX 3D City Publisher</b> from the QGIS plugin menu.</li>
-        <li>Use <b>Auto-match layers</b> first. The plugin searches common Turkish and English layer names such as roads, buildings, blocks, parcels, hardscape, sidewalks, trees, benches, and bus stops.</li>
+        <li>Use <b>Auto-match layers</b> first. The plugin searches common layer names such as roads, buildings, blocks, parcels, hardscape, sidewalks, trees, benches, and bus stops.</li>
         <li>If you do not have project data yet, click <b>Try with sample data</b> or <b>Import from OpenStreetMap</b>.</li>
         <li>Click <b>Generate quality report</b>. Required issues stop export; recommended issues are guidance only.</li>
         <li>Click <b>Export and open 3D Viewer</b>. The plugin writes the web data package and launches the local browser viewer.</li>
@@ -162,7 +162,7 @@
       </table>
 
       <h3>Useful building fields</h3>
-      <p><code>katadedi</code> controls floor count. Height can also be read from common height fields. Optional fields such as population, dwellings, total floor area, vehicle count, roof type, roof color, facade texture, and planning function improve dashboards and thematic styling.</p>
+      <p><code>floors</code> (or <code>building:levels</code>) controls floor count. Height can also be read from common height fields. Optional fields such as population, dwellings, total floor area, vehicle count, roof type, roof color, facade texture, and planning function improve dashboards and thematic styling.</p>
 
       <h3>Coordinate systems</h3>
       <p>Projected CRS data in metres gives the best result. The plugin can reproject OpenStreetMap imports to a local UTM CRS. Avoid mixing layers with unknown or incorrect CRS definitions.</p>
@@ -216,9 +216,16 @@
       <p>The viewer opens as a browser-based city cockpit. Use the left and right docks to tune display, theme, terrain, analysis, mobility, weather, camera, and narrative tools.</p>
       <ul>
         <li><b>Scene and camera</b>: orbit, fly-to selected building, walk mode, field of view, time of day, auto orbit, and camera bookmarks.</li>
+        <li><b>Time and effects</b>: <i>Cinematic</i> atmosphere (physical sky, sky lighting, horizon fog) or <i>Clean</i> flat background, ambient occlusion with antialiasing on the still frame, night bloom with individually lit windows, optional depth of field for presentation shots, and optional wind sway for trees (keeps the viewer drawing while on).</li>
+        <li><b>Buildings</b>: hip and gable roofs follow the real footprint (L, T and U shapes get proper ridges and valleys).</li>
         <li><b>Terrain</b>: texture source, ROI texture clipping, outside ROI color, terrain sides, smoothing, island plateau, topographic tint, and slope tint.</li>
         <li><b>Layers</b>: basemap texture, plan texture, outside-ROI terrain, blocks, buildings, roads, sidewalks, parks, parcels, hardscape, trees, furniture, cars, pedestrians, and ROI outline.</li>
-        <li><b>Analysis</b>: building metrics, shadow heatmap, urban comfort, wind plume, minimap, and function filters.</li>
+        <li><b>Analysis</b>: building metrics, sun hours over a day and sky view factor for streets, squares and roofs (GPU, with a legend), urban comfort, wind plume, minimap, and function filters.</li>
+        <li><b>Viewshed</b>: click <i>Viewshed from a point</i>, then the observer position, to see which streets, squares and roofs are visible from eye height within the radius.</li>
+        <li><b>Zoning scenarios</b>: set site coverage, floor area ratio, maximum height and setback to see what every parcel (or block) could hold, with floor area, FAR, coverage and estimated population against the existing buildings; <i>Split</i> compares existing and scenario A side by side, and <i>Split: B | A</i> compares two rule sets.</li>
+        <li><b>Sharing and output</b>: <i>Copy view link</i> (the camera travels in the URL), screenshots up to 8K, MP4 tour videos (Narrative Studio, 720p to 4K), a 3D Tiles 1.1 export for CesiumJS, Cesium ion, ArcGIS and Unreal, and a CityJSON export of the buildings. Portable packages can be published as they are on GitHub Pages, GitLab Pages or Netlify.</li>
+        <li><b>VR</b>: with a WebXR headset browser (for example Quest), <i>Enter VR</i> puts you at street level; point and pull the trigger to teleport.</li>
+        <li><b>Live link with QGIS</b>: <i>PlanX 3D City &gt; 3D preview panel</i> shows the viewer beside the map (or in the browser when QGIS has no web engine). Selecting buildings in QGIS highlights them in 3D, and clicking a building in 3D selects it in QGIS.</li>
         <li><b>Narrative Studio</b>: save keyframes, build presentation tours, and export portable viewer packages.</li>
       </ul>
     </section>
@@ -241,7 +248,7 @@
           <tr><td>Roads appear low after OSM import</td><td>OSM geometry is outside the DEM or the scene is using fallback terrain</td><td>Re-export with wider DEM context, or use the flat fallback; roads are placed on the final visible terrain cache.</td></tr>
           <tr><td>Texture appears only inside ROI</td><td>ROI texture clipping is active</td><td>This is intentional for wide DEM context. Change terrain outside color if needed.</td></tr>
           <tr><td>Quality report marks layers missing</td><td>Recommended layers are absent</td><td>Vector Plan Mode can still export. Missing optional layers are written as empty GeoJSON and skipped by the viewer.</td></tr>
-          <tr><td>Buildings have no height</td><td>No floor count or height field is mapped</td><td>Map <code>katadedi</code> or a height field, or let the viewer use fallback height rules.</td></tr>
+          <tr><td>Buildings have no height</td><td>No floor count or height field is mapped</td><td>Map <code>floors</code> or a height field, or let the viewer use fallback height rules.</td></tr>
           <tr><td>Browser shows an older viewer</td><td>Browser cache kept an old module</td><td>Hard refresh the browser or re-open from QGIS after publishing.</td></tr>
         </tbody>
       </table>

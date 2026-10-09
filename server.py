@@ -19,6 +19,12 @@ from pathlib import Path
 # ZIP can freeze it. Localhost only; SimpleHTTPRequestHandler stays read-only
 # for everything else.
 SCENE_STATE_ENDPOINT = "/api/scene-state"
+# QGIS <-> viewer selection sync. Points are footprint centres in the export
+# CRS, so neither side needs the other's feature ids.
+SELECTION_ENDPOINT = "/api/selection"
+VIEWER_PICK_ENDPOINT = "/api/viewer-pick"
+MAX_PICK_BYTES = 64 * 1024
+MAX_SELECTION_POINTS = 500
 SCENE_STATE_FILE = "planx_scene_state.json"
 MODELS_SUBDIR = "models"
 _SAFE_ID_RE = re.compile(r"[^A-Za-z0-9_\-]")
@@ -38,6 +44,49 @@ def _decode_model_payload(b64):
     return None
 
 
+class SelectionBridge:
+    """Thread-safe hand-over between the QGIS main thread and the server thread.
+
+    QGIS publishes its selection (seq increases on every change); the viewer
+    polls it. Viewer clicks are queued until QGIS collects them on its own
+    thread (the server thread must not touch QGIS objects).
+    """
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._seq = 0
+        self._points: list = []
+        self._picks: list = []
+
+    def set_qgis_selection(self, points) -> int:
+        clean = []
+        for p in list(points or [])[:MAX_SELECTION_POINTS]:
+            try:
+                x, y = float(p[0]), float(p[1])
+            except (TypeError, ValueError, IndexError):
+                continue
+            if x == x and y == y and abs(x) != float("inf") and abs(y) != float("inf"):
+                clean.append([x, y])
+        with self._lock:
+            self._seq += 1
+            self._points = clean
+            return self._seq
+
+    def selection(self) -> dict:
+        with self._lock:
+            return {"seq": self._seq, "points": [list(p) for p in self._points]}
+
+    def add_viewer_pick(self, x: float, y: float) -> None:
+        with self._lock:
+            self._picks.append((float(x), float(y)))
+            del self._picks[:-20]  # keep only the latest clicks
+
+    def pop_viewer_picks(self) -> list:
+        with self._lock:
+            picks, self._picks = self._picks, []
+            return picks
+
+
 class QuietCorsHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, fmt, *args):
         pass
@@ -53,8 +102,22 @@ class QuietCorsHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(204)
         self.end_headers()
 
+    def _bridge(self):
+        return getattr(self.server, "bridge", None)
+
+    def do_GET(self):  # noqa: N802 (http.server naming)
+        if self.path.split("?", 1)[0] == SELECTION_ENDPOINT:
+            bridge = self._bridge()
+            self._send_json(200, bridge.selection() if bridge else {"seq": 0, "points": []})
+            return
+        super().do_GET()
+
     def do_POST(self):  # noqa: N802 (http.server naming)
-        if self.path.split("?", 1)[0] != SCENE_STATE_ENDPOINT:
+        path = self.path.split("?", 1)[0]
+        if path == VIEWER_PICK_ENDPOINT:
+            self._handle_viewer_pick()
+            return
+        if path != SCENE_STATE_ENDPOINT:
             self._send_json(404, {"ok": False, "error": "not found"})
             return
         try:
@@ -77,6 +140,26 @@ class QuietCorsHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json(500, {"ok": False, "error": str(exc)})
             return
         self._send_json(200, {"ok": True, "written": written})
+
+    def _handle_viewer_pick(self) -> None:
+        bridge = self._bridge()
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except (TypeError, ValueError):
+            length = 0
+        if bridge is None or length <= 0 or length > MAX_PICK_BYTES:
+            self._send_json(400, {"ok": False, "error": "bad request"})
+            return
+        try:
+            payload = json.loads(self.rfile.read(length).decode("utf-8"))
+            x, y = float(payload["x"]), float(payload["y"])
+            if not (x == x and y == y) or abs(x) == float("inf") or abs(y) == float("inf"):
+                raise ValueError("coordinates must be finite")
+        except Exception as exc:
+            self._send_json(400, {"ok": False, "error": f"bad request: {exc}"})
+            return
+        bridge.add_viewer_pick(x, y)
+        self._send_json(200, {"ok": True})
 
     def _send_json(self, status: int, body: dict) -> None:
         data = json.dumps(body).encode("utf-8")
@@ -154,10 +237,12 @@ class PlanX3DServer:
         self.port = None
         self._httpd = None
         self._thread = None
+        self.bridge = SelectionBridge()
 
         mimetypes.add_type("application/json", ".geojson")
         mimetypes.add_type("image/tiff", ".tif")
         mimetypes.add_type("application/javascript", ".js")
+        mimetypes.add_type("image/webp", ".webp")  # not in older Python tables
 
     @property
     def is_running(self) -> bool:
@@ -181,6 +266,7 @@ class PlanX3DServer:
                 continue
             try:
                 self._httpd = ReusableTcpServer((self.host, port), handler)
+                self._httpd.bridge = self.bridge
                 self.port = port
                 break
             except OSError as exc:

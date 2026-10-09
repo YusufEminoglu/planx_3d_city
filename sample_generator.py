@@ -167,7 +167,7 @@ def _block_cells() -> list:
 
 def _build_blocks() -> list:
     feats = []
-    functions = ["KONUT", "TICARET", "KARMA", "EGITIM", "SAGLIK", "PARK", "KONUT", "KONUT", "KARMA"]
+    functions = ["RESIDENTIAL", "COMMERCIAL", "MIXED", "EDUCATION", "HEALTH", "PARK", "RESIDENTIAL", "RESIDENTIAL", "MIXED"]
     for idx, (c, r, x0, y0, x1, y1) in enumerate(_block_cells()):
         feat = QgsFeature()
         feat.setGeometry(_rect_polygon(x0, y0, x1, y1))
@@ -179,7 +179,7 @@ def _build_blocks() -> list:
 def _build_buildings() -> list:
     feats = []
     rnd = _LCG(7)
-    functions = ["KONUT", "TICARET", "KARMA", "EGITIM", "SAGLIK"]
+    functions = ["RESIDENTIAL", "COMMERCIAL", "MIXED", "EDUCATION", "HEALTH"]
     bid = 0
     for c, r, x0, y0, x1, y1 in _block_cells():
         # 4 - 7 buildings per block, simple rectangular footprints
@@ -194,7 +194,7 @@ def _build_buildings() -> list:
             floors = rnd.randint(2, 9)
             func = rnd.choice(functions)
             bid += 1
-            feat.setAttributes([f"B{bid}", floors, func, "AYRIK", round(bw * bh, 1)])
+            feat.setAttributes([f"B{bid}", floors, func, round(bw * bh, 1)])
             feats.append(feat)
     return feats
 
@@ -297,21 +297,20 @@ def generate_sample_project(parent_dir: Path | None = None) -> dict:
 
     _write_dem(dem_path)
     _save_vector([_build_roi()], "Polygon", [("name", QVariant.String)], roi_path)
-    _save_vector(_build_blocks(), "Polygon", [("ada_id", QVariant.String), ("uipfonksiyon", QVariant.String)], blocks_path)
+    _save_vector(_build_blocks(), "Polygon", [("block_id", QVariant.String), ("function", QVariant.String)], blocks_path)
     _save_vector(
         _build_buildings(),
         "Polygon",
         [
-            ("bina_id", QVariant.String),
-            ("katadedi", QVariant.Int),
-            ("uipfonksiyon", QVariant.String),
-            ("nizam", QVariant.String),
+            ("building_id", QVariant.String),
+            ("floors", QVariant.Int),
+            ("function", QVariant.String),
             ("aream2", QVariant.Double),
         ],
         buildings_path,
     )
-    _save_vector(_build_roads(), "LineString", [("yol_id", QVariant.String), ("yol_turu", QVariant.String)], roads_path)
-    _save_vector(_build_trees(), "Point", [("agac_id", QVariant.String), ("height", QVariant.Double)], trees_path)
+    _save_vector(_build_roads(), "LineString", [("road_id", QVariant.String), ("road_type", QVariant.String)], roads_path)
+    _save_vector(_build_trees(), "Point", [("tree_id", QVariant.String), ("height", QVariant.Double)], trees_path)
     _save_vector(_build_fences(), "Polygon", [("fence_id", QVariant.String)], fences_path)
     _save_vector(_build_waterlines(), "LineString", [("stream_id", QVariant.String), ("width", QVariant.Double)], waterlines_path)
 

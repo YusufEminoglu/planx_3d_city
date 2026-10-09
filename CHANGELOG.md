@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.0.0] - 2026-10-09
+
+- Engineering (roadmap phase 6, second round): the viewer is split into modules by role (`core/` scene, settings, state and scene build; `terrain/`; `layers/` per layer; `analysis/`; `ui/` docks, Model Studio, tour, picking, exports, QGIS link); `app.js` is down from 11,157 to about 900 lines (start-up and the frame loop), with no import cycles and identical rendering. A UI smoke test drives every dock and setting, the analyses, scenarios, tour, Model Studio and the exports in CI; a unit test checks that every relative import resolves.
+- Engineering (roadmap phase 6, first round): ESLint and JSDoc type checks, a benchmark gate and visual regression tests in CI; app.js split into modules (UI text, asset catalogue, geography, attributes, textures) with identical rendering.
+- Planning tools (roadmap phase 5, second round): viewshed from a picked point; comparing two zoning scenarios (Split: B | A); CityJSON 2.0 export (LoD1 buildings); MP4 tour videos rendered frame by frame with WebCodecs (720p to 4K, captions); portable packages ready for GitHub/GitLab Pages and Netlify; WebXR (VR headsets) with teleport; a 3D preview panel in QGIS with two-way building selection.
+- Fix: zoning envelopes were never drawn.
+- Planning tools (roadmap phase 5, first round): GPU sun-hours and sky-view-factor analysis for every street, square and roof (replaces the shadow heatmap); zoning what-if scenarios (site coverage, FAR, maximum height, setback) with capacity against the existing buildings and an existing | scenario split view; OGC 3D Tiles 1.1 export georeferenced from the QGIS export (CesiumJS, ArcGIS, Unreal); shareable view links; screenshots up to 8K.
+- Fix: the sun stood on the opposite side of the sky (morning shadows fell east, noon shadows south); sun, wind plumes and tree wind now follow the compass. Status messages are visible again.
+- Visual quality (roadmap phase 4, second round): hip and gable roofs follow the real footprint (straight skeleton: L, T and U plans get proper ridges and valleys); window glass is glossy and reflects the sky; water lines reflect the sky; optional depth of field for presentation shots and optional wind sway for tree crowns (Effects menu).
+- Visual quality (roadmap phase 4, first round): a physical sky with sky-based image lighting and horizon-tinted fog (Effects > atmosphere: Cinematic or Clean); the settled frame is antialiased (4x MSAA) with ground-truth ambient occlusion (GTAO) replacing SSAO; at night single windows light up in warm or cool light instead of whole facades glowing.
+- Exporter (roadmap phase 3): the DEM is cropped to the viewer's scene bounds and written as a tiled DEFLATE GeoTIFF (falls back to a copy), GeoJSON coordinates are written with 3 decimals instead of 15, and unchanged file-based layers are not rewritten on re-export.
+- Turkish removed: the viewer and the QGIS dialog are English-only (no TR language toggle or bilingual text); the Modern Turkish theme, Urban_TR facades, TurkishTile roof and TR-UIP assistant are gone; attribute lookups use English/OSM column names (`floors`, `building:levels`, `function`, `landuse`, `population`, `width`...). Projects with Turkish column names need them mapped in the field mapping. Exported vector data now lives in `web/data/vector` (was `web/data/yerlesim`); re-export existing projects.
+- Viewer performance (roadmap phase 1): buildings are merged into shared-material tiles (10k buildings: 44,249 -> 1,848 draw calls), building picking uses a BVH, layers and the DEM load in parallel, the scene renders only when something changes, and the pixel ratio adapts while the view moves.
+- `?perf=1` performance overlay and a headless benchmark under `tests/bench`.
+- Fixes: the effect composer and label renderer now follow window resizes; the SSAO view no longer flickers with plain frames when the camera is still.
+- Viewer performance (roadmap phase 2, first round): building layer build ~3x faster, road/path ribbons use ~3 m quads instead of ~1 m (roads 1.84 M -> 0.61 M triangles on a 10k-building test city), floor-slab LOD beyond 550 m.
+- Sun shadows now actually render, follow the view (sharper close-ups) and refresh after the scene loads.
+- Photographic textures ship as WebP (8.2 MB -> 1.5 MB).
+- Viewer performance (roadmap phase 2, second round): building geometry is built and merged in a pool of module workers (main-thread fallback); static layers (blocks, roads, sidewalks, paths, fences...) are merged too (10k-building city: 450 draw calls); terrain height lookups no longer scan every block (quadratic on large cities); merged vertices take about half the memory; the scene is not drawn behind the loading screen. 50k-building city: scene ready 61.5 s -> 29.0 s.
+
 ## [1.0.3] - 2026-09-16
 
 - Redesign plugin icon to high-end 3D tactile brand design with circular teal pedestal, zero margin, and refreshed documentation links.

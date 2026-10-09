@@ -2,7 +2,7 @@
 name=PlanX 3D City Viewer
 qgisMinimumVersion=3.28
 description=Export QGIS layers and launch the interactive PlanX 3D City web viewer.
-version=1.0.3
+version=2.0.0
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 about=PlanX 3D City Viewer maps user-exported DEM, ROI, road, building, block, parcel, optional urban furniture layers, and optional raster plan texture workflows to a browser-based Three.js city cockpit with narrative keyframes, terrain quality controls, mobility, wind impact, and building statistics overlays. Developed with feedback from educational workflows at Dokuz Eylul University, Department of City and Regional Planning. Online User Manual & Documentation: https://geophilo.com/planx_3d_city/ | If you find this plugin helpful, please consider starring the repository on GitLab (https://gitlab.com/geophilo1/planx_3d_city)!
@@ -10,7 +10,7 @@ tracker=https://gitlab.com/geophilo1/planx_3d_city/-/issues
 repository=https://gitlab.com/geophilo1/planx_3d_city
 category=Web
 homepage=https://geophilo.com/planx_3d_city/
-tags=planx,3d city,urban planning,three.js,geojson,geotiff,dem,raster texture,mobility,wind,narrative,keyframe,QGIS
+tags=planx,3d city,urban planning,three.js,geojson,geotiff,dem,raster texture,mobility,wind,narrative,keyframe,3d tiles,cityjson,sun hours,viewshed,zoning,webxr,QGIS
 icon=icons/icon.png
 qgisMaximumVersion=4.99
 experimental=False
@@ -19,9 +19,18 @@ hasProcessingProvider=no
 plugin_dependencies=
 license=MIT
 changelog=
+    2.0.0 - Faster viewer, planning tools and exchange formats.
+        - Performance: merged building tiles (10k buildings: 44,249 -> 447 draw calls), worker-built geometry, on-demand rendering, BVH picking; 50k-building scenes load about twice as fast.
+        - Visual quality: physical sky and sky lighting, 4x MSAA and GTAO, lit windows at night, straight-skeleton hip and gable roofs, glossy glass, optional depth of field and tree wind.
+        - Planning tools: GPU sun hours, sky view factor and viewshed; zoning what-if scenarios with existing | A and B | A split views.
+        - Exchange and output: 3D Tiles 1.1 and CityJSON 2.0 export, view links, screenshots up to 8K, MP4 tour videos, WebXR, portable packages ready for GitHub/GitLab Pages and Netlify.
+        - QGIS: a 3D preview panel with two-way building selection.
+        - Exporter: DEM cropped to the scene (tiled DEFLATE GeoTIFF), lighter GeoJSON, unchanged layers kept on re-export.
+        - Fix: the sun stood on the opposite side of the sky; zoning envelopes were never drawn.
+        - Breaking: English-only UI and attribute names (map Turkish column names in the field mapping); exported data moved to web/data/vector, so re-export existing projects.
     1.0.3 - Redesign plugin icon to high-end 3D tactile brand design with circular teal pedestal, zero margin, and refreshed documentation links.
     PlanX 3D City Viewer 1.0.0 - Flagship Official Release.
-        - Includes 1-click OSM Urban Harvester expansion, Atmosphere & Lighting Studio, Visual Readiness Gauge, WebGL Performance Tier Estimator, TR-UIP Planning Standards Assistant, Volumetric GFA Calculator, GeoTIFF Edge Blending, and Keyboard Shortcuts HUD.
+        - Includes 1-click OSM Urban Harvester expansion, Atmosphere & Lighting Studio, Visual Readiness Gauge, WebGL Performance Tier Estimator, Volumetric GFA Calculator, GeoTIFF Edge Blending, and Keyboard Shortcuts HUD.
         - Added dynamic 0-100 percent Scene Readiness Score and Pre-Flight WebGL Performance Tier predictor (Ultra 60+ FPS, High Performance, Heavy Urban Scene) to quality report.
     PlanX 3D City Viewer 0.8.66 - Atmosphere & Lighting Studio presets.
         - Added 5 visual lighting presets (Midday Sunlight Clean, Golden Hour Architectural, Overcast Soft Studio, Night Lights & Glow, Morning Mist) to QGIS publisher.

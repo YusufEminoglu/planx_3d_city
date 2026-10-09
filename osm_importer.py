@@ -147,28 +147,28 @@ def _building_floors(tags: dict) -> int:
 def _building_function(tags: dict) -> str:
     raw = (tags.get("building") or "").lower()
     if raw in ("apartments", "residential", "house", "detached", "terrace", "dormitory"):
-        return "KONUT"
+        return "RESIDENTIAL"
     if raw in ("commercial", "retail", "supermarket", "kiosk", "office"):
-        return "TICARET"
+        return "COMMERCIAL"
     if raw in ("school", "university", "college", "kindergarten"):
-        return "EGITIM"
+        return "EDUCATION"
     if raw in ("hospital", "clinic"):
-        return "SAGLIK"
+        return "HEALTH"
     if raw in ("industrial", "warehouse", "manufacture"):
-        return "SANAYI"
+        return "INDUSTRIAL"
     if raw in ("mosque", "church", "temple", "synagogue", "cathedral", "chapel"):
-        return "DINI"
+        return "RELIGIOUS"
     if raw in ("public", "civic", "government", "townhall"):
-        return "KAMU"
+        return "PUBLIC"
     if raw in ("yes", "") and tags.get("amenity"):
         amenity = tags["amenity"].lower()
         if amenity in ("school", "university"):
-            return "EGITIM"
+            return "EDUCATION"
         if amenity in ("hospital", "clinic"):
-            return "SAGLIK"
+            return "HEALTH"
         if amenity in ("place_of_worship",):
-            return "DINI"
-    return "KARMA"
+            return "RELIGIOUS"
+    return "MIXED"
 
 
 def _road_class(tags: dict) -> str:
@@ -179,14 +179,14 @@ def _green_function(tags: dict) -> str:
     if tags.get("leisure") in ("park", "garden", "playground"):
         return "PARK"
     if tags.get("leisure") == "pitch":
-        return "SPOR"
+        return "SPORT"
     if tags.get("landuse") in ("forest", "grass", "meadow", "recreation_ground"):
-        return "YESIL_ALAN"
+        return "GREEN"
     if tags.get("landuse") == "cemetery":
-        return "MEZARLIK"
+        return "CEMETERY"
     if tags.get("natural") in ("wood", "scrub"):
-        return "ORMAN"
-    return "YESIL_ALAN"
+        return "FOREST"
+    return "GREEN"
 
 
 def _way_polygon(element) -> QgsGeometry | None:
@@ -276,16 +276,16 @@ def import_osm_bbox(min_lon: float, min_lat: float, max_lon: float, max_lat: flo
 
     buildings_layer, b_pr = _make_layer(
         f"OSM Buildings ({suffix})", "Polygon", epsg_dest,
-        [("osm_id", QVariant.String), ("katadedi", QVariant.Int),
-         ("uipfonksiyon", QVariant.String), ("name", QVariant.String)],
+        [("osm_id", QVariant.String), ("floors", QVariant.Int),
+         ("function", QVariant.String), ("name", QVariant.String)],
     )
     roads_layer, r_pr = _make_layer(
         f"OSM Roads ({suffix})", "LineString", epsg_dest,
-        [("osm_id", QVariant.String), ("yol_turu", QVariant.String), ("name", QVariant.String)],
+        [("osm_id", QVariant.String), ("road_type", QVariant.String), ("name", QVariant.String)],
     )
     blocks_layer, k_pr = _make_layer(
         f"OSM Greens ({suffix})", "Polygon", epsg_dest,
-        [("osm_id", QVariant.String), ("uipfonksiyon", QVariant.String), ("name", QVariant.String)],
+        [("osm_id", QVariant.String), ("function", QVariant.String), ("name", QVariant.String)],
     )
     trees_layer, t_pr = _make_layer(
         f"OSM Trees ({suffix})", "Point", epsg_dest,

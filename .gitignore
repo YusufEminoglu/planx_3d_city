@@ -8,4 +8,8 @@ Thumbs.db
 web/data/planx_manifest.json
 web/data/dem/*
 web/data/texture/*
-web/data/yerlesim/*
+web/data/vector/*
+web/data/planx_scene_state.json
+web/data/models/
+node_modules/
+tests/visual/output/

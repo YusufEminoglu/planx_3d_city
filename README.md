@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="icons/icon_main.svg" width="96" alt="PlanX 3D City Viewer icon"/>
+<img src="icons/icon.png" width="96" alt="PlanX 3D City Viewer icon"/>
 
 # PlanX 3D City Viewer
 
@@ -31,202 +31,9 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 - Bundled browser libraries under `web/assets/vendor`
 - The package does not ship generated DEM/settlement data. Export from QGIS creates `web/data` at runtime.
 
-## Latest Release Notes
+## Release Notes
 
-### 0.8.57
-
-- Added automatic layer auto-matching on dialog opening so matching QGIS layers (DEM, Buildings, Roads, ROI, Blocks, Trees, etc.) are paired instantly.
-- Added a prominent hero header quick export button (`🚀 Export & Open 3D Viewer`) to launch the browser cockpit directly without switching tab pages.
-- Improved missing input error messages with actionable tips (`Auto-match layers`, `Try with sample data`).
-- Removed orphaned root files and cleaned unneeded residual data folders.
-
-### 0.8.29
-
-- Fixed roofs and walls that could turn invisible from some camera angles (and flip while orbiting); building wall and roof materials are now double-sided.
-- Gable, Shed, and Hip roofs now follow the real building footprint and orientation instead of an axis-aligned bounding box, are centered on the footprint, and keep a small (<= 0.30 m) eave.
-- Shed roofs now close their raised sides instead of leaving them open.
-
-### 0.8.18
-
-- Fixes exported sidewalk polygon visibility and gives sidewalks a dedicated elevation layer above roads.
-- Adds an optional Pedestrian paths input for inner-block walkways (`mypedestrian_paths.geojson`) in both Vector Plan and Raster Plan Texture modes.
-- Keeps raster-mode buildings seated on the textured DEM surface with a raster-specific building base offset, without changing Vector Plan building placement.
-
-### 0.8.17
-
-- Adds 40 Modern Turkish facade PNG textures: `Urban_TR_A_1` through `Urban_TR_D_10`, with four facade families and 1-10 storey variants.
-- Adds a `Modern Turkish` asset theme and automatically maps Turkish facade families to each building's parsed floor count.
-- Gives the first floor an entrance/commercial/lobby character while upper floors keep repeatable modern apartment facade language.
-
-### 0.8.16
-
-- Places Raster Plan Texture GeoTIFFs by their own projected bounding box inside the terrain extent, instead of stretching `siteplan.tif` over the full DEM.
-- Keeps the 0.8.15 scene orientation fix and raises the plan texture processing cap to 4096 px for wide DEM context workflows.
-
-### 0.8.15
-
-- Fixes the scene-wide left/right orientation in both Vector Plan and Raster Plan Texture modes by correcting the projected-coordinate to local-coordinate transform.
-- Keeps DEM sampling, island plateaus, buildings, hardscape, roads, furniture, walk mode, and raster plan textures aligned with the corrected local X axis.
-
-### 0.8.14
-
-- Fixes Raster Plan Texture Mode orientation: siteplan GeoTIFF pixels are normalized from their georeferenced X/Y resolution signs before they become the terrain CanvasTexture, preventing mirrored plan textures.
-- Leaves basemap PNG texture orientation unchanged.
-
-### 0.8.13
-
-- Cleans the QGIS Hub Bandit B310 finding in the OpenStreetMap importer by validating the Overpass endpoint scheme before `urlopen` and documenting the narrow suppression.
-- Removes the unused OSM importer typing import and Flake8 style warnings reported by the Hub scan.
-
-### 0.8.12
-
-- Prevents the web viewer from getting stuck at `Processing city layers...` when one vector layer fails during scene build.
-- Skips only the problematic layer, keeps terrain/basemap and other layers rendering, and reports the skipped layer in the status text.
-- Hides the loading overlay on catastrophic scene errors instead of leaving an infinite spinner.
-
-### 0.8.11
-
-- Adds an Outside ROI terrain toggle. Keep the wide DEM/blank context visible, or clip the terrain surface to the ROI for a clean model-only view.
-- Persists and exports the outside-ROI terrain preference.
-
-### 0.8.10
-
-- Makes Layers panel visibility authoritative, including a stale async rebuild guard so disabled buildings cannot reappear.
-- Adds Blocks visibility and Block transparency controls. Transparency defaults to `0` for fully visible blocks.
-- Makes QGIS basemap texture win when enabled, so DEM plus satellite/basemap review is a clean workflow.
-- Skips island plateau in hidden block-only review states so pure topography plus basemap stays pure.
-
-### 0.8.9
-
-- Sets the facade texture scale to a tuned 4.85x default and exposes a Building panel slider for final scene-level adjustment.
-- Migrates older browser settings so island plateau does not remain silently disabled after an upgrade.
-- Subdivides hardscape slabs before terrain drape, reducing paved-surface instability next to islands and plateau edges.
-- Supports polygon holes in islands, hardscape, and building geometry.
-
-### 0.8.8
-
-- Re-enables island plateau by default so block surfaces and the underlying DEM are aligned again unless disabled.
-- Separates hardscape, parcel, road, and vehicle elevation offsets to reduce z-fighting between islands, hardscape, and OSM roads.
-- Enlarges building facade texture scale by 8x for more readable windows and floor lines.
-- Reorders QGIS Data page actions and moves Save preset / Load preset to the right side.
-- Adds a bundled English HTML user guide available from the new 0 Guide panel.
-
-### 0.8.7
-
-- Stabilizes terrain placement by making all draped layers clamp to the final smoothed terrain mesh, not the raw DEM sampler.
-- Adds DEM smoothing controls for abrupt elevation jumps: smooth passes, smooth strength, and max slope clamp.
-- Allows Vector Plan Mode to run without a DEM by using a flat presentation plane.
-- Supports wide DEM context with ROI-only texture: outside the ROI the terrain stays visible in a blank colour, while the selected texture appears normally inside the ROI.
-
-### 0.8.6
-
-- Restores the released source tree into the development plugin folder and bumps the package metadata.
-- Makes Vector Plan Mode genuinely DEM-only capable: missing ROI, blocks, parcels, buildings and roads load as empty layers instead of stopping the viewer.
-- Derives terrain bounds from the DEM raster extent when no vector layer is present, so DEM-only exports open over the real georeferenced raster.
-- Keeps island plateau flattening off by default in both the publisher and viewer; it remains available as a presentation cleanup toggle.
-- Cache-busts the viewer module as `app.js?v=0.8.6` so updated cockpit code is loaded after plugin updates.
-
-### 0.7.3
-
-- Makes English the primary default language in the QGIS publisher and browser cockpit.
-- Keeps Turkish as the secondary UI language through the browser language toggle and bilingual QGIS guidance text.
-- Extends browser translation coverage to dashboard metrics, dock tooltips, camera controls, Narrative Studio, Walk HUD, minimap, status pills, placeholders, and empty-state text.
-- Updates QGIS publish reports, overwrite confirmations, portable export messages, and the style assistant to use consistent English-first product language.
-
-### 0.7.2
-
-- Hardens DEM sampling at raster and ROI boundaries so edge pixels are no longer repeated into artificial upward triangle spikes.
-- Adds a terrain boundary spike limiter around DEM edges and ROI clip edges, reducing isolated edge outliers while preserving the general terrain shape.
-- Adds `Portable ZIP olustur` on the QGIS Publish page for complete viewer handoff as one zip file.
-- Supports optional `planx_tour.json` inside the portable ZIP; the browser auto-loads `data/planx_tour.json` so Narrative Studio keyframes can travel to another computer.
-
-### 0.7.1
-
-- Expands the procedural material library with `Civic Heritage` and `Coastal Light` themes.
-- Adds more street-furniture variants with actual procedural geometry: heritage lanterns, bollards, campus lights, stone seats, eco benches, compact stops, steel canopies, and solar bins.
-- Adds offline procedural textures for facade, roof, paving, hardscape, and road materials; the viewer no longer relies on external texture URLs.
-- Improves theme switching so roof, paving, street furniture, and function facade defaults follow the selected asset theme.
-
-### 0.7.0
-
-- Adds `Portable viewer klasoru` on the QGIS Publish page for classroom, review, and presentation handoff.
-- Copies `web/src`, `web/assets/vendor`, and the current exported `web/data` into one timestamped portable folder.
-- Writes launch scripts and a small guide into the portable folder so the scene can be opened by double-clicking `Start-PlanX-Viewer.bat` on Windows, or manually with `py -3 -m http.server 8080` and `http://127.0.0.1:8080/src/`.
-- Clarifies that Narrative Studio JSON stores only tour/viewer state and must travel with the exported data for a complete scene handoff.
-
-### 0.6.9
-
-- Adds a curated `Asset Theme / Material Pool` selector in the QGIS publisher.
-- Exports `assetTheme`, `assetPools`, and `pedestrianStyle` into `planx_manifest.json` so the viewer uses only the selected visual pool.
-- Upgrades pedestrians to lightweight procedural low-poly people with arms, legs, shoes, and subtle walk-cycle limb motion.
-- Applies theme-aware restrained palettes to pedestrians, cars, trees, and street-furniture style fallbacks without adding glTF assets or significantly increasing package size.
-
-### 0.6.8
-
-- Marks `0.6.7` as the first verified stable cockpit baseline after testing with the exported QGIS profile data.
-- Clips the terrain surface, raster plan texture, and QGIS basemap texture visually to the exported ROI boundary.
-- Hides untrimmed DEM/basemap pixels outside the study area while keeping the terrain stable and opaque inside the ROI.
-
-### 0.6.7
-
-- Fixes the viewer startup render loop by initializing recording state before animation begins.
-- Resolves the regression where dashboard metrics loaded but the 3D scene stayed as a blank blue viewport.
-- Verified with the exported QGIS profile data that the 3D scene renders and dock buttons open again.
-
-### 0.6.6
-
-- Fixes a viewer regression where project data and dashboard statistics loaded, but the 3D viewport could remain a blank blue background in vector mode.
-- Keeps the terrain surface opaque by default instead of cutting it with the island mask, so roads, buildings, furniture, DEM texture, and basemap views have a stable visual ground.
-- Makes dock buttons more reliable by using delegated click handling and higher z-index values for the viewer controls.
-
-### 0.6.5
-
-- Applies robust DEM median sampling, percentile clamping, and boundary smoothing to terrain mesh vertices, so plan texture and basemap texture views inherit the cleaner edge behavior.
-- Adds a QGIS `Basemap export size` selector: `1024`, `2048`, `4096`, or `8192`. The default is `4096`; higher values are sharper but slower and produce larger PNG files.
-- Stabilizes WebM recording by using one consistent render path while recording, avoiding flicker caused by switching between postprocessed and direct render frames.
-
-### 0.6.4
-
-- Replaces the plugin icon with a more polished lightweight SVG mark.
-- Adds an optional QGIS basemap/XYZ raster layer selector in the publisher dialog.
-- During export, the selected basemap layer is rendered from QGIS to `web/data/texture/basemap.png`.
-- The browser viewer can drape that rendered QGIS basemap over the terrain, avoiding browser-side projection and CORS problems that direct XYZ loading can cause.
-
-### 0.6.3
-
-- Adds a QGIS field mapping option for tree height so tree sizes can be controlled from an attribute column.
-- The viewer reads the mapped tree height field first, then falls back to common aliases such as `height`, `boy`, and `yukseklik`.
-- Stabilizes the ROI model-base edge by using median DEM sampling, percentile clamping, and smoothing along the study-area boundary.
-- Reduces DEM boundary spikes that caused broken or jagged build-side edges near the ROI boundary.
-
-### 0.6.2
-
-- Improves building and street-furniture ground clamping so objects sit on terrain, roads, or sidewalks instead of dropping below the surface.
-- Replaces fully random car and pedestrian colors with restrained urban palettes.
-- Improves Walk Mode with smoother terrain following, sprint/crouch controls, and a compact help HUD.
-- Adds scrollable QGIS publisher pages for smaller windows and mouse-wheel navigation.
-- Clarifies that Narrative Studio JSON stores camera/tour/state only; it does not embed DEM, GeoJSON, imagery, or the complete viewer.
-- Adds viewer controls for building footprint/extrusion modes and DEM topography tint modes.
-- Documents XYZ tile and portable viewer folder export as future global-user workflows.
-
-### 0.6.1
-
-- Corrects the ROI model base: the `-5 m` base is now the negative extrusion of the full study-area polygon, not only a boundary wall.
-- Keeps the old advanced control power available while integrating the important controls into the new Scene, Layers, Style, Mobility, Street Furniture, Analysis, and Narrative docks.
-- Improves Turkish/English consistency in the browser cockpit labels.
-- Refines car elevation so vehicles stay attached to the road surface instead of floating above it.
-- Refines street furniture orientation: explicit angle fields still override, while lights rotate 180 degrees from the road axis and benches/bus stops rotate 90 degrees toward the roadside by default.
-
-### 0.6.0
-
-- Professional cockpit layout with Scene, Layers, Analysis, and Narrative docks.
-- Narrative Studio keyframes for camera position, target, layer states, analysis states, sun time, captions, local storage, and JSON import/export.
-- ROI-based build-sides behave as a solid model-base support around the terrain.
-- Building placement samples the footprint against the DEM so buildings are less likely to hover on sloped terrain.
-- DEM mesh quality control gives smoother terrain surfaces for higher-detail presentations.
-- Field mapping now supports custom building statistics fields, land-use/function fields, odor/noise source fields, road hierarchy/access fields, and furniture direction fields.
-- Lights, benches, trash bins, and bus stops can use explicit direction fields such as `planx_angle`, `angle`, `rotation`, `heading`, `bearing`, `azimuth`, or `yon`. If no direction field is mapped, the viewer aligns them to the nearest road axis.
-- glTF model support is documented as a future optional workflow and is not enabled in this package yet.
+See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
 ## Quick Start
 
@@ -247,7 +54,7 @@ PlanX 3D City Viewer is a QGIS publisher plugin for preparing GIS layers, export
 7. If your roads layer has a pedestrian/vehicle access field, map it under the road access dropdown — cars will not spawn on pedestrian-only roads.
 8. Field mapping is optional (population, dwelling, vehicle, land-use, odor/noise source, furniture direction).
 9. In `2 Kontrol`, inspect the quality report. Required / Recommended / Optional roles are colour-coded and update live with the publish mode.
-10. In `3 Stil`, optionally pick an Asset Theme (Modern Urban, Mediterranean, Campus, Eco, etc.), toggle island plateau flattening, or apply per-feature styles.
+10. In `3 Style`, optionally pick an Asset Theme (Modern Urban, Mediterranean, Campus, Eco, etc.), toggle island plateau flattening, or apply per-feature styles.
 11. Click **Export and open 3D Viewer**.
 12. Use `4 Yayin` to copy the viewer URL, reopen the browser, open exported data, create a portable viewer folder, create a portable ZIP, or stop the local server.
 
@@ -257,17 +64,17 @@ The plugin writes the viewer inputs to fixed paths:
 
 - `web/data/dem/mydem.tif`
 - optional raster texture mode file: `web/data/texture/siteplan.tif`
-- `web/data/yerlesim/roi.geojson`
-- `web/data/yerlesim/myroads.geojson`
-- `web/data/yerlesim/mybuildings.geojson`
-- `web/data/yerlesim/myblocks.geojson`
-- `web/data/yerlesim/myparcels.geojson`
+- `web/data/vector/roi.geojson`
+- `web/data/vector/myroads.geojson`
+- `web/data/vector/mybuildings.geojson`
+- `web/data/vector/myblocks.geojson`
+- `web/data/vector/myparcels.geojson`
 - optional `mytrees`, `myhardscape`, `mysidewalks`, `mypedestrian_paths`, `mylights`, `mybenches`, `mytrashbins`, `mybusstops`
 - `web/data/planx_manifest.json`
 
 Optional layers can be left empty. The plugin writes empty GeoJSON files so the viewer remains stable.
 
-The repository intentionally excludes generated `web/data/dem`, `web/data/texture`, and `web/data/yerlesim` files. This keeps the QGIS Plugin Hub zip smaller and prevents one user's project data from becoming part of the distributed plugin.
+The repository intentionally excludes generated `web/data/dem`, `web/data/texture`, and `web/data/vector` files. This keeps the QGIS Plugin Hub zip smaller and prevents one user's project data from becoming part of the distributed plugin.
 
 The manifest records the export time, QGIS project title, source layer names, targets, CRS values, feature counts, and empty optional inputs. The viewer uses it to show project provenance and data health without requiring the user to remember how the export was produced.
 
@@ -298,15 +105,15 @@ Use this workflow when you already have a clipped 2D settlement plan as a GeoTIF
 - ROI, buildings, blocks, parcels, hardscape, and sidewalks should be polygon layers. Pedestrian paths may be line or polygon layers.
 - Roads should be line layers.
 - Trees, lights, benches, trash bins, and bus stops should be point layers.
-- Buildings should ideally include `katadedi` and `uipfonksiyon`.
-- Roads can optionally include a pedestrian/vehicle access field such as `yol_turu`, `tur`, `tip`, or `access`. Select that field in the QGIS dialog to prevent cars from using pedestrian-only roads.
-- Furniture point layers can optionally include a direction field in degrees, for example `planx_angle`, `angle`, `rotation`, `heading`, `bearing`, `azimuth`, or `yon`. If no direction field is mapped, benches, lights, trash bins, and bus stops align automatically to the nearest road direction.
+- Buildings should ideally include `floors` (or `building:levels`) and `function`.
+- Roads can optionally include a pedestrian/vehicle access field such as `road_type`, `highway`, `type`, or `access`. Select that field in the QGIS dialog to prevent cars from using pedestrian-only roads.
+- Furniture point layers can optionally include a direction field in degrees, for example `planx_angle`, `angle`, `rotation`, `heading`, `bearing`, `azimuth`, or `direction`. If no direction field is mapped, benches, lights, trash bins, and bus stops align automatically to the nearest road direction.
 
 The plugin reports missing required data, empty required layers, CRS differences, geometry mismatches, and missing recommended fields.
 
 ## Feature-Level Styling
 
-Use the `3 Stil` page to add style fields and apply values to selected features.
+Use the `3 Style` page to add style fields and apply values to selected features.
 
 The same page also includes `Asset Theme / Material Pool`. Themes such as `Modern Urban`, `Mediterranean`, `Campus`, `Eco`, `Dense Urban`, `Civic Heritage`, and `Coastal Light` define lightweight visual pools for pedestrians, cars, trees, street furniture, facades, roofs, and paving. This selection changes only the browser visualization; it does not alter GIS geometry or attributes. Pedestrians and most material variants are procedural, so the plugin remains small and Plugin Hub friendly without relying on external texture URLs.
 
@@ -322,7 +129,7 @@ Buildings:
 
 - `planx_facade`: `UrbanA`, `UrbanB`, `UrbanC`, `UrbanD`
 - `planx_roof_shape`: `Flat`, `Pyramid`, `Gable`, `Shed`, `Hip`
-- `planx_roof_texture`: `RoofA`, `GermanTile`, `TurkishTile`, `USShingle`
+- `planx_roof_texture`: `RoofA`, `RoofC`, `GermanTile`, `USShingle`
 - `planx_roof_color`: Hex color
 
 Feature-level style attributes override global viewer controls.
@@ -375,7 +182,7 @@ The viewer also includes basic topography review modes: normal texture, elevatio
 ## Global User Workflows
 
 - Buildings can be shown as footprint only, extruded volumes, or extruded volumes with roofs.
-- Building height is read from explicit height fields when present, then falls back to `katadedi x floor height`.
+- Building height is read from explicit height fields when present, then falls back to `floors x floor height`.
 - Trees remain procedural in this release. Species/height-driven variants and glTF models can be added later after model licensing and package-size decisions.
 - Tree height can be mapped in the QGIS publisher. Use a numeric field in meters for best results.
 - QGIS basemap/XYZ layers can be selected in the publisher. The plugin renders the selected basemap through QGIS into a local PNG texture for the current project extent, which is more robust than asking the browser to fetch XYZ tiles directly.
@@ -403,9 +210,48 @@ These overlays are for plan review and classroom discussion, not engineering-gra
 
 - If the viewer opens but data is missing, rerun export and check the `2 Kontrol` report.
 - If scale looks wrong, check that the data is in a metric CRS rather than EPSG:4326 degrees.
-- If buildings look flat, verify `katadedi` values.
-- If function coloring is weak, verify `uipfonksiyon`.
+- If buildings look flat, verify the `floors` values or the mapped floor-count field.
+- If function coloring is weak, verify the `function` field or the mapped land-use field.
 - If selected feature styling is not visible, save edits in QGIS and export again.
+
+## Development
+
+The plugin needs no Node.js: the viewer is plain ES modules with an import
+map. Node is only used for the development checks, which CI also runs:
+
+```bash
+npm ci                                              # ESLint, TypeScript, Playwright (dev only)
+npm run lint                                        # ESLint over the viewer and test scripts
+npm run typecheck                                   # tsc --checkJs on modules with // @ts-check
+npm test                                            # viewer unit tests (node --test)
+python -m unittest discover -s tests -p 'test_*.py' # exporter and server unit tests
+npx playwright install chromium                     # once, for the browser checks
+npm run bench:data && npm run bench:check           # 1000-building benchmark gate
+npm run visual                                      # visual regression (fixed cameras)
+npm run smoke                                       # UI smoke test (docks, settings, analyses, exports)
+```
+
+`npm run bench:check -- --update` and `npm run visual -- --update` write new
+baselines when a change is intended.
+
+Viewer source layout (`web/src`): the top level holds self-contained
+libraries with unit tests (building geometry and batching, roof skeleton,
+exposure analysis, 3D Tiles, CityJSON, video export, catalogue, geography,
+attributes, textures). The viewer itself is organised by role:
+
+| Folder | Contents |
+|---|---|
+| `core/` | scene, camera and composer (`scene.js`), shared state (`state.js`), settings, rendering, data loading, scene build, scene-state sync, Model Studio storage |
+| `terrain/` | DEM, terrain mesh and textures, `terrainLocalYAt()` |
+| `layers/` | one module per layer: buildings, ground (blocks, parcels, fences, water), trees, landmarks, furniture, mobility, zoning, emissions, environment |
+| `analysis/` | sun hours, sky view factor and viewshed drapes |
+| `ui/` | docks, Model Studio, tour, picking, view links, exports, recording, minimap, dashboard, bookmarks, QGIS link |
+
+`app.js` only wires them together: start-up, walk mode and the frame loop.
+Values that several modules replace (scene origin, loaded data, terrain,
+interaction modes) live on the `state` object in `core/state.js`; objects
+that are only changed in place (scene, layer groups, settings) are exported
+by their own modules.
 
 ## 🧩 Part of the PlanX ecosystem
 

@@ -13,14 +13,29 @@ from typing import Optional
 from qgis.PyQt.QtCore import QSize
 from qgis.PyQt.QtGui import QColor
 from qgis.core import (
+    QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
     QgsCoordinateTransformContext,
     QgsMapRendererParallelJob,
     QgsMapSettings,
+    QgsPointXY,
     QgsProject,
     QgsRasterFileWriter,
     QgsRasterPipe,
     QgsVectorFileWriter,
+)
+
+from .export_utils import (
+    ExportCache,
+    coordinate_precision,
+    dem_clip_window,
+    dem_creation_options,
+    file_signature,
+    georeference_control_xy,
+    georeference_record,
+    PUBLISHING_README,
+    static_hosting_files,
+    union_bounds,
 )
 
 
@@ -60,18 +75,6 @@ ASSET_THEME_PRESETS = {
         "roofs": ["RoofA", "RoofB", "GermanTile", "USShingle", "StandingSeam"],
         "paving": ["Asphalt", "StoneA", "Cobble", "Concrete", "PlazaGranite"],
     },
-    "Modern Turkish": {
-        "pedestrians": ["Commuter", "Urban Casual", "Office", "Student", "Visitor"],
-        "cars": ["White", "Graphite", "Silver", "Navy", "Slate", "Burgundy"],
-        "trees": ["Plane", "Street Linden", "Compact Maple", "Columnar", "Olive", "Cypress", "Jacaranda", "Pine"],
-        "lights": ["Modern Arc", "Slim Post", "Dual Head", "Classic Post"],
-        "benches": ["Wood Plank", "Concrete Slab", "Slim Urban", "Stone Seat"],
-        "bins": ["Square Box", "Dual Recycle", "Cylinder", "Compact"],
-        "busstops": ["Glass Shelter", "Steel Canopy", "Minimal Canopy", "Compact Marker"],
-        "facades": ["Urban_TR_A", "Urban_TR_B", "Urban_TR_C", "Urban_TR_D"],
-        "roofs": ["TurkishTile", "CeramicLight", "StandingSeam", "RoofA"],
-        "paving": ["Concrete", "StoneA", "WarmStone", "Asphalt", "PlazaGranite"],
-    },
     "Mediterranean": {
         "pedestrians": ["Casual Linen", "Warm Neutral", "Student", "Visitor"],
         "cars": ["Ivory", "Terracotta", "Olive", "Slate", "Sand"],
@@ -81,7 +84,7 @@ ASSET_THEME_PRESETS = {
         "bins": ["Cylinder", "Square Box", "Dual Recycle", "Compact"],
         "busstops": ["Minimal Canopy", "Wood Cabin", "Glass Shelter", "Compact Marker"],
         "facades": ["MediterraneanStucco", "UrbanB", "UrbanD", "CoastalWhite"],
-        "roofs": ["TurkishTile", "CeramicLight", "GermanTile", "RoofA"],
+        "roofs": ["RoofC", "CeramicLight", "GermanTile", "RoofA"],
         "paving": ["StoneA", "WarmStone", "Cobble", "Concrete"],
     },
     "Campus": {
@@ -105,7 +108,7 @@ ASSET_THEME_PRESETS = {
         "bins": ["Dual Recycle", "Compact", "Cylinder", "Solar Compactor"],
         "busstops": ["Wood Cabin", "Minimal Canopy", "Glass Shelter"],
         "facades": ["EcoTimber", "UrbanD", "UrbanB", "UrbanA"],
-        "roofs": ["GreenRoof", "SolarRoof", "RoofA", "TurkishTile"],
+        "roofs": ["GreenRoof", "SolarRoof", "RoofA", "RoofC"],
         "paving": ["Permeable", "Cobble", "StoneA", "Concrete"],
     },
     "Dense Urban": {
@@ -129,7 +132,7 @@ ASSET_THEME_PRESETS = {
         "bins": ["Cylinder", "Square Box", "Dual Recycle", "Compact"],
         "busstops": ["Steel Canopy", "Glass Shelter", "Minimal Canopy"],
         "facades": ["CivicStone", "MediterraneanStucco", "UrbanB", "UrbanC"],
-        "roofs": ["GermanTile", "CeramicLight", "TurkishTile", "StandingSeam"],
+        "roofs": ["GermanTile", "CeramicLight", "RoofC", "StandingSeam"],
         "paving": ["WarmStone", "StoneA", "Cobble", "PlazaGranite"],
     },
     "Coastal Light": {
@@ -141,7 +144,7 @@ ASSET_THEME_PRESETS = {
         "bins": ["Cylinder", "Dual Recycle", "Compact", "Square Box"],
         "busstops": ["Minimal Canopy", "Glass Shelter", "Wood Cabin"],
         "facades": ["CoastalWhite", "MediterraneanStucco", "UrbanD", "CampusGlass"],
-        "roofs": ["CeramicLight", "RoofA", "SolarRoof", "TurkishTile"],
+        "roofs": ["CeramicLight", "RoofA", "SolarRoof", "RoofC"],
         "paving": ["WarmStone", "Permeable", "StoneA", "Concrete"],
     },
 }
@@ -260,12 +263,14 @@ frozen scene.
 """
 import functools
 import http.server
+import mimetypes
 import socketserver
 import threading
 import webbrowser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+mimetypes.add_type("image/webp", ".webp")  # viewer textures; missing from older Python tables
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -306,6 +311,13 @@ if __name__ == "__main__":
     )
     copied.append(str(serve_path))
 
+    # Static-hosting entry points (GitHub/GitLab Pages, Netlify): the folder
+    # can be published as it is.
+    for name, content in static_hosting_files().items():
+        hosting_path = output_path / name
+        hosting_path.write_text(content, encoding="utf-8")
+        copied.append(str(hosting_path))
+
     readme_path = output_path / "README_PORTABLE_VIEWER.txt"
     readme_path.write_text(
         "\n".join(
@@ -330,6 +342,8 @@ if __name__ == "__main__":
                 "- Narrative Studio JSON files store camera/tour/viewer state only. They do not embed DEM, GeoJSON, imagery, or the viewer app.",
                 "- If this package includes data/planx_tour.json, the viewer can auto-load it on another computer.",
                 "- If you export a newer project from QGIS, create a fresh portable folder so the copied data stays in sync.",
+                "",
+                *PUBLISHING_README,
             ]
         ),
         encoding="utf-8",
@@ -393,7 +407,7 @@ def write_empty_geojson(path: Path) -> None:
 def web_data_paths(web_root: str) -> tuple[Path, Path]:
     data_root = Path(web_root) / "data"
     dem_dir = data_root / "dem"
-    vector_dir = data_root / "yerlesim"
+    vector_dir = data_root / "vector"
     dem_dir.mkdir(parents=True, exist_ok=True)
     vector_dir.mkdir(parents=True, exist_ok=True)
     return dem_dir, vector_dir
@@ -459,17 +473,23 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
     export_crs = _target_export_crs(layer_map)
     if feedback and export_crs is not None:
         feedback(f"Export CRS -> {export_crs.authid() or export_crs.description()}")
+    cache = ExportCache(Path(web_root) / "data")
 
     dem_path = dem_dir / "mydem.tif"
     dem_layer = layer_map.get("dem")
     if dem_layer is None:
         if dem_path.exists():
             dem_path.unlink()
+        cache.forget(dem_path)
         manifest_inputs.append(_layer_manifest("dem", None, "dem/mydem.tif", True, required_inputs))
     else:
         try:
-            _export_dem(dem_layer, dem_path)
+            view = _viewer_bounds(layer_map, dem_layer.crs())
+            note = _export_dem(dem_layer, dem_path, view_bounds=view, cache=cache, optimize=True)
+            if feedback and note:
+                feedback(f"DEM -> {dem_path.name}: {note}")
         except ExportError as exc:
+            cache.forget(dem_path)
             # DEM is optional in all modes; keep export alive and let the viewer
             # fall back to its flat-terrain mode.
             if dem_path.exists():
@@ -513,18 +533,29 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
         empty = layer is None
         if layer is None:
             write_empty_geojson(out_path)
+            cache.forget(out_path)
         else:
+            signature = _vector_signature(layer, export_crs)
+            if cache.is_fresh(out_path, signature):
+                if feedback:
+                    feedback(f"{LABELS[key]} unchanged -> kept {out_path.name}")
+                written.append(str(out_path))
+                manifest_inputs.append(_layer_manifest(key, layer, f"vector/{filename}", empty, required_inputs))
+                continue
             _export_vector(layer, out_path, export_crs)
+            cache.record(out_path, signature)
         written.append(str(out_path))
-        manifest_inputs.append(_layer_manifest(key, layer, f"yerlesim/{filename}", empty, required_inputs))
+        manifest_inputs.append(_layer_manifest(key, layer, f"vector/{filename}", empty, required_inputs))
         if feedback:
             feedback(f"{LABELS[key]} -> {out_path.name}")
+    cache.save()
 
     road_access = _road_access_manifest(layer_map)
     field_mappings = _field_mappings_manifest(layer_map)
     analysis_defaults = _analysis_defaults_manifest(layer_map)
     viewer_defaults = _viewer_defaults_manifest(layer_map)
     asset_theme, asset_pools, pedestrian_style = _asset_theme_manifest(layer_map)
+    georeference = _georeference(layer_map, export_crs)
     manifest_path = write_manifest(
         web_root,
         manifest_inputs,
@@ -540,6 +571,7 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
         asset_theme,
         asset_pools,
         pedestrian_style,
+        georeference,
     )
     written.append(str(manifest_path))
     return written
@@ -560,6 +592,7 @@ def write_manifest(
     asset_theme: str,
     asset_pools: dict,
     pedestrian_style: dict,
+    georeference: Optional[dict] = None,
 ) -> Path:
     data_root = Path(web_root) / "data"
     data_root.mkdir(parents=True, exist_ok=True)
@@ -589,6 +622,7 @@ def write_manifest(
         "assetPools": asset_pools,
         "pedestrianStyle": pedestrian_style,
         "inputs": inputs,
+        "georeference": georeference,
         "summary": {
             "emptyOptionalInputs": [item["key"] for item in inputs if item.get("optional") and item.get("empty")],
             "crs": sorted({item.get("crs") for item in inputs if item.get("crs")}),
@@ -603,8 +637,8 @@ def _road_access_manifest(layer_map: dict) -> Optional[dict]:
     field = (layer_map.get("road_access_field") or "").strip()
     if not field:
         return None
-    no_car_values = str(layer_map.get("road_no_car_values") or "yaya,pedestrian,foot,walk,path")
-    vehicle_values = str(layer_map.get("road_vehicle_values") or "tasit,taşıt,vehicle,car,arac,araç,motorlu")
+    no_car_values = str(layer_map.get("road_no_car_values") or "pedestrian,foot,walk,path")
+    vehicle_values = str(layer_map.get("road_vehicle_values") or "vehicle,car,motor_vehicle")
     return {
         "field": field,
         "noCarKeywords": [v.strip() for v in no_car_values.split(",") if v.strip()],
@@ -837,9 +871,15 @@ def _export_vector(layer, out_path: Path, target_crs=None) -> None:
     options.driverName = "GeoJSON"
     options.fileEncoding = "UTF-8"
     options.layerName = out_path.stem
+    output_crs = layer.crs() if hasattr(layer, "crs") else None
     if target_crs is not None and target_crs.isValid() and hasattr(layer, "crs") and layer.crs().isValid():
         if layer.crs().authid() != target_crs.authid():
             options.ct = QgsCoordinateTransform(layer.crs(), target_crs, QgsProject.instance())
+            output_crs = target_crs
+    # The GeoJSON driver writes 15 decimals by default; millimetres (or ~1 cm
+    # in degrees) are plenty for the viewer and cut file size substantially.
+    is_geographic = bool(output_crs is not None and output_crs.isValid() and output_crs.isGeographic())
+    options.layerOptions = [f"COORDINATE_PRECISION={coordinate_precision(is_geographic)}"]
     transform_context = QgsProject.instance().transformContext()
     result = QgsVectorFileWriter.writeAsVectorFormatV3(layer, str(out_path), transform_context, options)
 
@@ -849,16 +889,39 @@ def _export_vector(layer, out_path: Path, target_crs=None) -> None:
         raise ExportError(f"Could not export {layer.name()} to {out_path}: {message}")
 
 
-def _export_dem(layer, out_path: Path) -> None:
+def _export_dem(layer, out_path: Path, view_bounds=None, cache=None, optimize: bool = False) -> Optional[str]:
+    """Write a raster to out_path; returns a short note for the export log.
+
+    With optimize=True (the DEM), a local GDAL-readable source is cropped to
+    the viewer's scene bounds plus a margin and written as a DEFLATE-compressed
+    tiled GeoTIFF; anything GDAL cannot handle falls back to a plain copy.
+    """
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    source_path = _local_raster_source(layer)
+    signature = None
+    if optimize and source_path:
+        signature = ["dem-v1", source_path, file_signature(source_path), list(view_bounds) if view_bounds else None]
+        if cache is not None and cache.is_fresh(out_path, signature):
+            return "unchanged, kept"
     if out_path.exists():
         out_path.unlink()
 
-    source_path = _local_raster_source(layer)
     if source_path and os.path.exists(source_path):
+        if optimize:
+            note = _gdal_optimized_dem(source_path, out_path, view_bounds)
+            if note:
+                if cache is not None:
+                    cache.record(out_path, signature)
+                return note
+            if out_path.exists():
+                out_path.unlink()
         shutil.copy2(source_path, out_path)
-        return
+        if cache is not None:
+            cache.record(out_path, signature)
+        return "copied"
 
+    if cache is not None:
+        cache.forget(out_path)
     provider = layer.dataProvider()
     pipe = QgsRasterPipe()
     if not pipe.set(provider.clone()):
@@ -875,6 +938,116 @@ def _export_dem(layer, out_path: Path) -> None:
     )
     if result != QgsRasterFileWriter.NoError:
         raise ExportError(f"Could not export DEM {layer.name()} to {out_path}")
+    return "written"
+
+
+def _gdal_optimized_dem(source_path: str, out_path: Path, view_bounds) -> Optional[str]:
+    """Crop/compress with GDAL; returns a note, or None to fall back to a copy."""
+    try:
+        from osgeo import gdal
+    except ImportError:
+        return None
+    src = None
+    dst = None
+    try:
+        src = gdal.Open(source_path)
+        if src is None or src.RasterCount < 1:
+            return None
+        gt = src.GetGeoTransform()
+        width, height = src.RasterXSize, src.RasterYSize
+        window = None
+        # Only north-up rasters can be cropped by a simple projected window.
+        if gt and gt[2] == 0 and gt[4] == 0 and gt[5] < 0:
+            dem_bounds = (gt[0], gt[3] + gt[5] * height, gt[0] + gt[1] * width, gt[3])
+            window = dem_clip_window(view_bounds, dem_bounds, gt[1], gt[5])
+        is_float = src.GetRasterBand(1).DataType in (gdal.GDT_Float32, gdal.GDT_Float64)
+        options = {"format": "GTiff", "creationOptions": dem_creation_options(is_float)}
+        if window:
+            options["projWin"] = [window[0], window[3], window[2], window[1]]
+        dst = gdal.Translate(str(out_path), src, **options)
+        if dst is None:
+            return None
+        if window:
+            return f"cropped to scene ({dst.RasterXSize}x{dst.RasterYSize} of {width}x{height} px), compressed"
+        return "compressed"
+    except Exception:  # noqa: BLE001 - any GDAL failure falls back to a plain copy
+        return None
+    finally:
+        dst = None
+        src = None
+
+
+# Layers the viewer derives its scene bounds from (ROI first), mirroring
+# deriveVectorBounds() in web/src/app.js.
+VIEWER_BOUNDS_KEYS = ("blocks", "roads", "buildings", "parcels", "sidewalks", "pedestrian_paths")
+
+
+def _georeference(layer_map: dict, crs) -> Optional[dict]:
+    """WGS84 control points around the scene centre (for 3D Tiles), or None."""
+    try:
+        if crs is None or not crs.isValid() or crs.isGeographic():
+            return None
+        bounds = _viewer_bounds(layer_map, crs)
+        if bounds is None:
+            return None
+        centre = ((bounds[0] + bounds[2]) / 2.0, (bounds[1] + bounds[3]) / 2.0)
+        xy = georeference_control_xy(centre)
+        wgs84 = QgsCoordinateReferenceSystem("EPSG:4326")
+        transform = QgsCoordinateTransform(crs, wgs84, QgsProject.instance())
+        lonlat = []
+        for x, y in xy:
+            p = transform.transform(QgsPointXY(x, y))
+            lonlat.append((p.x(), p.y()))
+        return georeference_record(crs.authid(), xy, lonlat)
+    except Exception:  # noqa: BLE001 - georeferencing is optional metadata
+        return None
+
+
+def _viewer_bounds(layer_map: dict, crs):
+    """Viewer scene bounds in `crs`, or None when they cannot be determined."""
+    roi = layer_map.get("roi")
+    layers = [roi] if roi is not None else [layer_map.get(k) for k in VIEWER_BOUNDS_KEYS]
+    boxes = []
+    for layer in layers:
+        if layer is None:
+            continue
+        layer.updateExtents()
+        extent = layer.extent()
+        if extent.isNull():
+            continue
+        if crs is not None and crs.isValid() and layer.crs().isValid() and layer.crs() != crs:
+            try:
+                extent = QgsCoordinateTransform(layer.crs(), crs, QgsProject.instance()).transformBoundingBox(extent)
+            except Exception:  # noqa: BLE001 - an untransformable extent disables cropping
+                return None
+        boxes.append((extent.xMinimum(), extent.yMinimum(), extent.xMaximum(), extent.yMaximum()))
+    return union_bounds(boxes)
+
+
+def _vector_signature(layer, target_crs):
+    """What a GeoJSON export depends on, or None when it cannot be trusted.
+
+    Only file-backed OGR layers without pending edits get a signature; the
+    data file and its usual sidecars (shapefile .dbf/.shx/.prj, GeoPackage
+    -wal) are fingerprinted by size and mtime.
+    """
+    try:
+        if layer.providerType() != "ogr" or layer.isModified():
+            return None
+    except AttributeError:
+        return None
+    path = _local_raster_source(layer)
+    main = file_signature(path)
+    if main is None:
+        return None
+    base = os.path.splitext(path)[0]
+    sidecars = [file_signature(base + ext) for ext in (".dbf", ".shx", ".prj", ".cpg")]
+    sidecars.append(file_signature(path + "-wal"))
+    target = target_crs.authid() if target_crs is not None and target_crs.isValid() else ""
+    return [
+        "vector-v1", layer.source(), main, sidecars, layer.subsetString(),
+        layer.crs().authid(), target, layer.featureCount(),
+    ]
 
 
 def _export_basemap(layer_map: dict, out_path: Path) -> None:

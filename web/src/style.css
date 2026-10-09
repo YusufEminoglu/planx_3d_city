@@ -96,71 +96,64 @@ ul {
     transform: scale(1.05);
 }
 
-.lang-btn {
-    left: 50px;
-    font-size: 0.9rem;
-    font-weight: bold;
-    font-family: 'Montserrat', sans-serif;
-}
-
 .scene-btn {
-    left: 90px;
+    left: 50px;
     font-size: 1rem;
 }
 
 .layers-btn {
-    left: 140px;
+    left: 100px;
     font-size: 1rem;
     font-weight: 800;
 }
 
 .analysis-btn {
-    left: 290px;
+    left: 250px;
     font-size: 1rem;
     font-weight: 800;
 }
 
 .style-btn {
-    left: 190px;
+    left: 150px;
     font-size: 1rem;
     font-weight: 800;
 }
 
 .mobility-btn {
-    left: 240px;
+    left: 200px;
     font-size: 1rem;
     font-weight: 800;
 }
 
 .furniture-btn {
-    left: 340px;
+    left: 300px;
     font-size: 1rem;
     font-weight: 800;
 }
 
 .narrative-btn {
-    left: 390px;
+    left: 350px;
     font-size: 0.95rem;
     font-weight: 800;
 }
 
 .advanced-btn {
-    left: 440px;
+    left: 400px;
     font-size: 1rem;
 }
 
 .walk-btn {
-    left: 490px;
+    left: 450px;
     font-size: 1.1rem;
     padding-bottom: 2px;
 }
 
 .game-btn {
-    left: 540px;
+    left: 500px;
     font-size: 1.1rem;
 }
 .fences-btn {
-    left: 590px;
+    left: 550px;
     font-size: 1.1rem;
 }
 
@@ -672,11 +665,11 @@ ul {
     to { transform: rotate(360deg); }
 }
 
-/* Recording Panel Container — walk butonunun sağında */
+/* Recording panel container, in the toolbar slot after the mobility button */
 #recording-container {
     position: absolute;
     top: 0;
-    left: 290px;
+    left: 250px;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -775,6 +768,23 @@ ul {
     background: rgba(56, 189, 248, 0.22);
     border-color: rgba(56, 189, 248, 0.55);
     color: #38bdf8;
+}
+
+.cam-select {
+    flex: 0 0 auto;
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.85);
+    border: 1px solid rgba(255,255,255,0.14);
+    padding: 5px 6px;
+    border-radius: 10px;
+    font-size: 0.78rem;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.cam-select option {
+    color: #0f172a;
 }
 
 #btn-toggle-rec {
@@ -925,7 +935,7 @@ ul {
 .tooltip-row span:first-child { color: #94a3b8; }
 .tooltip-row span:last-child { color: #f1f5f9; font-weight: 600; max-width: 130px; text-align: right; }
 
-/* ── Sapan Modu / Game HUD ───────────────────────────────────── */
+/* ── Slingshot game HUD ───────────────────────────────────────── */
 .game-hud {
     position: fixed;
     top: 0; left: 0;
@@ -1497,11 +1507,11 @@ body {
 }
 
 .model-studio-btn {
-    left: 640px;
+    left: 600px;
     font-size: 1.15rem;
 }
 .bike-btn {
-    left: 690px;
+    left: 650px;
     font-size: 1.1rem;
 }
 #model-studio-dock {
@@ -1692,3 +1702,90 @@ body.presentation-mode .lil-gui {
     pointer-events: none !important;
     transition: opacity 0.3s ease-in-out;
 }
+
+/* Exposure analysis legend (sun hours / sky view factor). */
+#exposure-legend {
+    position: fixed;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    z-index: 30;
+    min-width: 300px;
+    max-width: min(520px, calc(100vw - 32px));
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.86);
+    color: #e2e8f0;
+    font: 12px/1.4 'Montserrat', sans-serif;
+    pointer-events: none;
+}
+#exposure-legend .exposure-title { font-weight: 700; margin-bottom: 6px; }
+#exposure-legend .exposure-bar { height: 10px; border-radius: 5px; }
+#exposure-legend .exposure-scale { display: flex; justify-content: space-between; margin-top: 3px; font-variant-numeric: tabular-nums; }
+#exposure-legend .exposure-note { margin-top: 4px; color: #94a3b8; font-size: 11px; }
+
+/* Status toast (setStatus). */
+#dem-status {
+    position: fixed;
+    left: 16px;
+    bottom: 16px;
+    z-index: 40;
+    max-width: min(460px, calc(100vw - 32px));
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(15, 23, 42, 0.88);
+    color: #e2e8f0;
+    font: 12px/1.4 'Montserrat', sans-serif;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.25s, transform 0.25s;
+}
+#dem-status.is-visible { opacity: 1; transform: none; }
+#dem-status.is-error { background: rgba(127, 29, 29, 0.92); }
+
+/* Zoning scenario: split divider and summary table. */
+#split-divider {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    margin-left: -2px;
+    z-index: 25;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.35);
+    cursor: ew-resize;
+    touch-action: none;
+}
+#split-divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -9px;
+    width: 22px;
+    height: 44px;
+    margin-top: -22px;
+    border-radius: 11px;
+    background: #f8fafc;
+    box-shadow: 0 1px 6px rgba(15, 23, 42, 0.4);
+}
+#split-divider .split-label {
+    position: absolute;
+    top: 72px;
+    padding: 3px 8px;
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.8);
+    color: #f8fafc;
+    font: 600 11px/1.3 'Montserrat', sans-serif;
+    white-space: nowrap;
+    pointer-events: none;
+}
+#split-divider .split-left { right: 10px; }
+#split-divider .split-right { left: 10px; }
+.scenario-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 6px; }
+.scenario-table th, .scenario-table td { padding: 2px 4px; text-align: right; }
+.scenario-table th:first-child, .scenario-table td:first-child { text-align: left; }
+[data-scenario-view].active { outline: 2px solid #38bdf8; }
+
+/* Picking a point in the scene (viewshed observer). */
+body.picking-point canvas { cursor: crosshair; }

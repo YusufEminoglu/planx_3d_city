@@ -1,0 +1,20 @@
+// @ts-check
+// Module worker: builds and merges building geometry off the main thread.
+// See buildBuildingBuckets() in building_geometry.js for the message format.
+import { buildBuildingBuckets } from './building_geometry.js';
+
+const BUFFERS = ['position', 'normal', 'uv', 'color', 'planxId', 'planxGlow'];
+// The DOM typings see `self` as a Window; in a worker it is the worker scope.
+const scope = /** @type {any} */ (self);
+
+scope.onmessage = (event) => {
+  const { id, specs, looks } = event.data;
+  try {
+    const buckets = buildBuildingBuckets(specs, looks);
+    const transfer = [];
+    for (const b of buckets) for (const k of BUFFERS) if (b[k]) transfer.push(b[k].buffer);
+    scope.postMessage({ id, buckets }, transfer);
+  } catch (err) {
+    scope.postMessage({ id, error: String(err?.stack || err) });
+  }
+};

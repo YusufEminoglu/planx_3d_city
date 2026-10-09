@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PlanX 3D City - 3D Urban Cockpit</title>
-    <meta name="description" content="PlanX 3D City: an English-first, Turkish-supported 3D urban cockpit for DEM, plan, road, parcel, building and street-life data.">
+    <meta name="description" content="PlanX 3D City: a 3D urban cockpit for DEM, plan, road, parcel, building and street-life data.">
 
     <link rel="stylesheet" href="style.css?v=0.8.39">
 
@@ -12,7 +12,8 @@
         {
             "imports": {
                 "three": "../assets/vendor/three/build/three.module.js",
-                "three/addons/": "../assets/vendor/three/examples/jsm/"
+                "three/addons/": "../assets/vendor/three/examples/jsm/",
+                "three-mesh-bvh": "../assets/vendor/three-mesh-bvh/index.module.js"
             }
         }
     </script>
@@ -29,7 +30,6 @@
 
     <div id="ui-container">
         <button id="panel-toggle" class="panel-btn" title="Toggle dashboard" data-i18n-title="togglePanel">☰</button>
-        <button id="lang-toggle" class="panel-btn lang-btn" title="Switch to Turkish" data-i18n-title="toggleLanguage">TR</button>
         <button id="scene-toggle" class="panel-btn scene-btn" data-dock-target="scene-dock" title="Scene dock" data-i18n-title="dockTitleScene">●</button>
         <button id="layers-toggle" class="panel-btn layers-btn" data-dock-target="layer-dock" title="Layer dock" data-i18n-title="dockTitleLayers">☷</button>
         <button id="style-toggle" class="panel-btn style-btn" data-dock-target="style-dock" title="Style dock" data-i18n-title="dockTitleStyle">◩</button>
@@ -51,6 +51,16 @@
                 <div class="cam-row">
                     <button id="btn-screenshot" class="cam-action-btn" title="Screenshot" data-i18n-title="screenshot"><span data-i18n="screenshot">Screenshot</span></button>
                     <button id="btn-auto-orbit" class="cam-action-btn orbit-btn" title="Orbit" data-i18n-title="orbit"><span data-i18n="orbit">Orbit</span></button>
+                </div>
+
+                <div class="cam-row">
+                    <select id="screenshot-size" class="cam-select" title="Screenshot size">
+                        <option value="screen">Screen</option>
+                        <option value="2x">2x</option>
+                        <option value="4k">4K</option>
+                        <option value="8k">8K</option>
+                    </select>
+                    <button id="btn-copy-view" class="cam-action-btn" title="Copy a link that opens this view"><span>Copy view link</span></button>
                 </div>
 
                 <div class="cam-row cam-slider-row">
@@ -274,6 +284,22 @@
         <label><input type="checkbox" data-setting="highlightViolations"> <span>Highlight Violations</span></label>
         <label><span>Zoning Setback (m)</span> <input type="range" min="0" max="10.0" step="0.5" data-setting="zoningSetback"></label>
         <label><span>Max Height Allowed (m)</span> <input type="range" min="10" max="150" step="5" data-setting="zoningMaxHeight"></label>
+        <label><span>A: site coverage (max share of plot)</span> <input type="range" min="0.05" max="1" step="0.05" data-setting="zoningCoverage"></label>
+        <label><span>A: floor area ratio (FAR)</span> <input type="range" min="0.1" max="10" step="0.1" data-setting="zoningFar"></label>
+        <div class="dock-actions">
+            <button data-scenario-view="Massing" title="What the rules allow on every plot">Scenario massing</button>
+            <button data-scenario-view="Split" title="Existing buildings left, scenario A right; drag the divider">Split: existing | A</button>
+            <button data-scenario-view="SplitAB" title="Scenario B left, scenario A right">Split: B | A</button>
+            <button data-scenario-view="Off">Off</button>
+        </div>
+        <details class="scenario-b">
+            <summary>Scenario B rules (for Split: B | A)</summary>
+            <label><span>B: site coverage</span> <input type="range" min="0.05" max="1" step="0.05" data-setting="zoningBCoverage"></label>
+            <label><span>B: FAR</span> <input type="range" min="0.1" max="10" step="0.1" data-setting="zoningBFar"></label>
+            <label><span>B: max height (m)</span> <input type="range" min="6" max="150" step="3" data-setting="zoningBMaxHeight"></label>
+            <label><span>B: setback (m)</span> <input type="range" min="0" max="10" step="0.5" data-setting="zoningBSetback"></label>
+        </details>
+        <div id="scenario-summary"></div>
         <div class="dock-section">
             <p class="dock-section-title" data-i18n="shadowStudyTitle">Shadow study</p>
             <p class="dock-note" data-i18n="shadowStudyNote">Jump to solstices &amp; equinoxes, then play the day to see how shadows move.</p>
@@ -287,10 +313,13 @@
                 <button id="shadow-play-day" data-i18n="shadowPlayDay">Play day (6→18)</button>
                 <button id="shadow-stop" data-i18n="shadowStop">Stop</button>
             </div>
+            <label><span>Viewshed radius (m)</span> <input type="range" min="100" max="2000" step="50" data-setting="viewshedRadius"></label>
             <label><span data-i18n="shadowPlaySpeed">Day playback speed</span> <input type="range" min="0.5" max="6" step="0.5" data-setting="autoTimeSpeed"></label>
             <div class="dock-actions">
-                <button id="shadow-compute" data-i18n="shadowCompute">Compute shadow heatmap</button>
-                <button id="shadow-clear" data-i18n="shadowClear">Clear heatmap</button>
+                <button id="shadow-compute" data-i18n="shadowCompute">Sun hours (this day)</button>
+                <button id="svf-compute">Sky view factor</button>
+                <button id="viewshed-pick" title="Click, then click the observer position in the scene">Viewshed from a point</button>
+                <button id="shadow-clear" data-i18n="shadowClear">Clear analysis</button>
             </div>
         </div>
     </aside>
@@ -312,8 +341,29 @@
             <button id="tour-pause" data-i18n="pauseTour">Pause</button>
             <button id="tour-export" data-i18n="exportJson">Export JSON</button>
         </div>
+        <div class="dock-actions">
+            <select id="tour-video-size" class="dock-text" title="Video size">
+                <option value="720">720p</option>
+                <option value="1080" selected>1080p</option>
+                <option value="2160">4K</option>
+            </select>
+            <button id="tour-video" title="Render every frame of the tour at its exact time and save an MP4">Render tour video (MP4)</button>
+        </div>
         <input id="tour-import" type="file" accept="application/json" class="dock-file">
         <div id="tour-list" class="tour-list"></div>
+        <div class="dock-section">
+            <p class="dock-section-title">3D exchange</p>
+            <p class="dock-note">OGC 3D Tiles 1.1 (tileset.json + glTF) of the visible scene, placed on the globe, for CesiumJS, Cesium ion, ArcGIS and Unreal. Heights are the DEM's: add the local geoid height to sit on an ellipsoid-based globe.</p>
+            <label><span>Height offset (m)</span> <input id="tiles-height-offset" type="number" step="0.1" value="0" class="dock-text" style="width:90px"></label>
+            <label><input id="tiles-include-terrain" type="checkbox"> <span>Include terrain</span></label>
+            <div class="dock-actions">
+                <button id="tiles-export">Export 3D Tiles (.zip)</button>
+            </div>
+            <p class="dock-note">CityJSON 2.0: buildings as LoD1 solids in the export CRS, with their attributes (QGIS, FME, cjio, 3DCityDB).</p>
+            <div class="dock-actions">
+                <button id="cityjson-export">Export CityJSON</button>
+            </div>
+        </div>
     </aside>
  
     <aside class="dock-panel hidden" id="model-studio-dock" style="width: 360px;">
@@ -403,6 +453,7 @@
         <canvas id="compass-canvas" width="48" height="48"></canvas>
     </div>
 
+    <div id="split-divider" style="display:none" title="Drag to compare"><span class="split-label split-left">Existing</span><span class="split-label split-right">Scenario</span></div>
     <div id="scene-state-indicator" title="Scene auto-saved to the project so the portable ZIP can freeze it">💾 <span data-i18n="sceneSaved">Scene saved</span></div>
 
     <!-- Keyboard Shortcuts Modal -->
