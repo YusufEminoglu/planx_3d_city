@@ -7,7 +7,8 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { SSAOPass } from 'three/addons/postprocessing/SSAOPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import {
   BUILDING_TILE_SIZE, addBuildingBuckets, buildingHitData, buildingHitKey, buildingPickTargets,
@@ -43,7 +44,7 @@ const i18n = {
     statBld: 'Total Buildings:', statBlock: 'Blocks:', statParcel: 'Parcels:', statFlr: 'Avg Floors:',
     carDensity: 'Car Density', 
     sfFolder: 'Street Furniture', sfLights: 'Lights', sfBenches: 'Benches', sfBins: 'Trash Bins', sfStops: 'Bus Stops',
-    fxFolder: 'Time & Effects', timeOfDay: 'Time of Day', sSsa: 'SSAO (Shadows)', sBloom: 'Bloom (Glow)',
+    fxFolder: 'Time & Effects', timeOfDay: 'Time of Day', sSsa: 'Ambient occlusion + AA', sBloom: 'Bloom (Glow)',
     pedDensity: 'Pedestrian Density',
     weather: 'Weather',
     showSidewalks: 'Sidewalks', showCrosswalks: 'Crosswalks', showPedestrianPaths: 'Block Paths',
@@ -236,7 +237,7 @@ camera.position.set(0, 420, 580);
 // No preserveDrawingBuffer: screenshots render and read back in the same task,
 // and recording uses captureStream, so neither needs the buffer kept.
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-// Count draw calls per frame across all passes (shadows, SSAO, bloom);
+// Count draw calls per frame across all passes (shadows, AO, bloom);
 // animate() resets the counters before each frame it draws.
 renderer.info.autoReset = false;
 // Adaptive resolution: while the view moves and the frame rate drops, the
@@ -259,18 +260,29 @@ labelRenderer.domElement.style.top = '0px';
 labelRenderer.domElement.style.pointerEvents = 'none';
 document.getElementById('map').appendChild(labelRenderer.domElement);
 
+// Settled-frame composite: beauty pass into a 4x MSAA half-float target (so
+// the frame users look at most is antialiased), ground-truth AO blended onto
+// it, night bloom, then OutputPass for colour space conversion. (SSAOPass,
+// used before, re-rendered the scene without MSAA and ignored this pass.)
 const renderPass = new RenderPass(scene, camera);
-const ssaoPass = new SSAOPass(scene, camera, window.innerWidth, window.innerHeight);
-ssaoPass.kernelRadius = 8;
-ssaoPass.minDistance = 0.005;
-ssaoPass.maxDistance = 0.1;
+const composerTarget = new THREE.WebGLRenderTarget(
+  window.innerWidth * renderer.getPixelRatio(), window.innerHeight * renderer.getPixelRatio(),
+  { type: THREE.HalfFloatType, samples: 4 }
+);
+const aoPass = new GTAOPass(scene, camera, window.innerWidth, window.innerHeight);
+// Scene units are metres: occlusion reaches a few metres (alleys, eaves,
+// building bases) without darkening whole blocks.
+aoPass.updateGtaoMaterial({ radius: 4, distanceExponent: 1.5, thickness: 3, scale: 1.2, samples: 16 });
+aoPass.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 16 });
+aoPass.blendIntensity = 0.9;
 
 const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.2, 0.4, 0.85);
 
-const composer = new EffectComposer(renderer);
+const composer = new EffectComposer(renderer, composerTarget);
 composer.addPass(renderPass);
-composer.addPass(ssaoPass);
+composer.addPass(aoPass);
 composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -473,7 +485,7 @@ let _lastSSAORender = 0;
 // On-demand rendering. A frame is drawn while something moves (camera,
 // traffic, weather, tours, fly-to, time-lapse) or shortly after any input or
 // scene change; otherwise the last frame stays on screen and the GPU idles.
-// The SSAO/bloom composite is drawn once when the view settles, and a slow
+// The AO/bloom composite is drawn once when the view settles, and a slow
 // heartbeat repaints anything that changed without going through here.
 const RENDER_HEARTBEAT_MS = 1000;
 let _renderKeepAliveUntil = 0;
@@ -3125,6 +3137,7 @@ function updateTimeOfDay() {
   
   // Toggle bloom based on night mode and settings
   bloomPass.strength = (isNight && settings.enableBloom) ? 1.2 : 0.0;
+  bloomPass.enabled = bloomPass.strength > 0;
   
   // We will apply emissive changes when generating materials, 
   // but let's just trigger a scene rebuild if day/night status changes to refresh building windows.
@@ -9190,7 +9203,7 @@ function animate() {
 
   applyTourPlayback();
 
-  // SSAO settle: run full SSAO only when camera has been still 300ms
+  // Settle: run the full composite (AO, MSAA, bloom) only once the camera has been still 300ms
   // → smooth orbit at 60fps, quality rendering when static
   const _now = performance.now();
   const _camMoving = (_now - _lastCameraMove) < 300;
@@ -9406,6 +9419,19 @@ window.__planxPerf = {
     camera.position.copy(start);
     camera.lookAt(controls.target);
     return total / steps;
+  },
+  // Cost of one settled post-processed frame (AO, bloom, output) at the
+  // current view, against a plain render.
+  timeComposer(frames = 4) {
+    if (typeof composer === 'undefined') return null;
+    const gl = renderer.getContext();
+    const px = new Uint8Array(4);
+    composer.render();
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    const t0 = performance.now();
+    for (let i = 0; i < frames; i++) composer.render();
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    return { composerMs: (performance.now() - t0) / frames, plainMs: this.timeRender(frames) };
   }
 };
 
