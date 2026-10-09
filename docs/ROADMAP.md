@@ -146,6 +146,37 @@ somut bir dosyaya/fonksiyona bağlanır ve ölçülebilir bir hedefle biter.
 >   metadata gerekmez). Duvar shader'ı her binanın `planxGlow` oranı kadar
 >   rastgele pencereyi sıcak/soğuk ışıkla yakıyor; bloom'a yetecek parlaklıkta.
 > - Kalan: TAA/SMAA (hareket karesi için), DoF, cam yansıması, 4.4–4.6.
+>
+> **Durum (ikinci tur):**
+> - **TAA/SMAA gereksiz:** hareket kareleri zaten varsayılan çerçeve
+>   tamponunun MSAA'sıyla (`antialias: true`) çiziliyor, durağan kare 4x MSAA
+>   composer'dan geçiyor. Vendor'daki kullanılmayan SMAA/SSAO dosyaları silindi.
+> - **4.4 Çatılar:** `web/src/roof_skeleton.js` — basit çokgen için straight
+>   skeleton (kinetik dalga cephesi; kenar ve bölünme olayları kuyruktan
+>   alınırken canlı cepheye karşı doğrulanıyor, sıfır genişlikli bölgeler
+>   seviye mahyaya dönüşüyor). Hip/Gable artık her saçak kenarına aynı eğimde
+>   kendi düzlemini veriyor: L/T/U planlarda doğru mahya ve dereler. Gable,
+>   hip ucundaki tepe noktasını mahya boyunca duvara kaydırıyor. Çatı dokusu
+>   satırları her yüzün saçağına paralel. Başarısızlıkta (yüz alanı ayak izini
+>   tam örtmezse) eski tek mahyalı çözüme düşüyor. `tests/js` altında
+>   kare/dikdörtgen/L/T/U/düzensiz ve 200 rastgele blok testi; 6.000 rastgele
+>   çokgenlik stres testinde hata yok. CI artık Python ve JS birim testlerini
+>   çalıştırıyor.
+> - **Cam yansıması:** pencere maskesi (ızgara + pencere dikdörtgeni) piksel
+>   başına bir kez hesaplanıyor; gündüz camı parlak yapıp gökyüzü yansımasını
+>   artırıyor, gece aynı maske pencereleri yakıyor.
+> - **DoF (sunum):** Efektler → Depth of field. Durağan karede BokehPass;
+>   odak ekran merkezinin zemindeki noktası, bulanıklık göreli derinliğe göre
+>   (sokakta da şehir üstünde de aynı his). Kapalıyken maliyeti yok.
+> - **4.5 Su ve bitki:** su hatları daha parlak ve tam gökyüzü yansıması
+>   alıyor (normal map birleştirmeyi bozacağı için eklenmedi). Ağaç tepeleri
+>   için isteğe bağlı rüzgâr salınımı (vertex shader, ağaç başına faz, analiz
+>   rüzgâr yönü); açıkken görüntüleyici kare çizmeye devam eder, gölgeler
+>   sabit kalır. Çim instancing yapılmadı (veri modelinde çim alanı yok).
+> - **4.6 WebGPU — ertelendi:** r160 → r17x yükseltmesi ve `onBeforeCompile`
+>   ile yapılan tüm shader yamalarının (bina batch'i, pencereler, gökyüzü,
+>   rüzgâr) TSL/node malzemelerine yeniden yazılmasını gerektiriyor; WebGL2
+>   yolu bugün darboğaz değil. Ayrı bir faz olarak ele alınmalı.
 
 1. **Fiziksel gökyüzü + IBL** — `Sky` → PMREM ortam haritası; saat/enlem ile senkron (enlem zaten DEM'den türetiliyor). Gece için şehir ışıkları + yıldız.
 2. **Modern post-process zinciri** — SSAO yerine **GTAO/N8AO**, TAA veya SMAA, ACES/AgX tone mapping, hafif bloom, yükseklik sisi, DoF (sunum modu).

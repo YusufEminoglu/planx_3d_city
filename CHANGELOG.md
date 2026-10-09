@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Visual quality (roadmap phase 4, second round): hip and gable roofs follow the real footprint (straight skeleton: L, T and U plans get proper ridges and valleys); window glass is glossy and reflects the sky; water lines reflect the sky; optional depth of field for presentation shots and optional wind sway for tree crowns (Effects menu).
 - Visual quality (roadmap phase 4, first round): a physical sky with sky-based image lighting and horizon-tinted fog (Effects > atmosphere: Cinematic or Clean); the settled frame is antialiased (4x MSAA) with ground-truth ambient occlusion (GTAO) replacing SSAO; at night single windows light up in warm or cool light instead of whole facades glowing.
 - Exporter (roadmap phase 3): the DEM is cropped to the viewer's scene bounds and written as a tiled DEFLATE GeoTIFF (falls back to a copy), GeoJSON coordinates are written with 3 decimals instead of 15, and unchanged file-based layers are not rewritten on re-export.
 - Turkish removed: the viewer and the QGIS dialog are English-only (no TR language toggle or bilingual text); the Modern Turkish theme, Urban_TR facades, TurkishTile roof and TR-UIP assistant are gone; attribute lookups use English/OSM column names (`floors`, `building:levels`, `function`, `landuse`, `population`, `width`...). Projects with Turkish column names need them mapped in the field mapping. Exported vector data now lives in `web/data/vector` (was `web/data/yerlesim`); re-export existing projects.
