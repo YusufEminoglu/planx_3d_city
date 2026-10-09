@@ -770,6 +770,23 @@ ul {
     color: #38bdf8;
 }
 
+.cam-select {
+    flex: 0 0 auto;
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.85);
+    border: 1px solid rgba(255,255,255,0.14);
+    padding: 5px 6px;
+    border-radius: 10px;
+    font-size: 0.78rem;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.cam-select option {
+    color: #0f172a;
+}
+
 #btn-toggle-rec {
     font-size: 0.64rem;
     font-weight: 800;

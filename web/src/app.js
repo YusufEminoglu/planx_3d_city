@@ -20,6 +20,7 @@ import { insetShapeFromRings, shapeFromRings } from './building_geometry.js';
 import { batchStaticGroup } from './mesh_merge.js';
 import { createAtmosphere } from './atmosphere.js';
 import { applyWindSway, setWind, updateWind, windActive } from './wind.js';
+import { captureSize, captureTiled, hashWithView, viewFromHash } from './capture.js';
 
 const urlParams = new URLSearchParams(window.location.search);
 const isPortableMode = urlParams.has('portable') || urlParams.get('portable') === '1';
@@ -551,6 +552,9 @@ let _flyOrigin = null;
 let _flyTarget = null;
 let _flyControlsTarget = null;
 let _flyT = 1.0;
+
+// A view link (#view=...) is applied once, when the first scene is ready.
+let _initialViewApplied = false;
 
 const BOOKMARK_STORAGE_KEY = 'planx_3d_city_camera_bookmarks';
 let cameraBookmarks = [];
@@ -8474,6 +8478,10 @@ async function rebuildScene() {
   }
   layerBuildTimings['Scene: total'] = Math.round(performance.now() - tScene);
   setSceneState('sceneReady');
+  if (!_initialViewApplied) {
+    _initialViewApplied = true;
+    applyView(viewFromHash(location.hash));
+  }
 
   hideLoadingOverlay();
 }
@@ -9674,22 +9682,98 @@ if (btnRecord && btnStop) {
 }
 
 // --- Screenshot ---
-function takeScreenshot() {
-  // Render one clean frame first (without UI)
+function renderCleanFrame() {
+  if (useComposite()) renderComposite(); else renderer.render(scene, camera);
+}
+
+// Screenshot at the size picked next to the button: the screen itself, or a
+// larger image rendered in screen-sized tiles (2x, 4K, 8K).
+async function takeScreenshot() {
+  const preset = document.getElementById('screenshot-size')?.value || 'screen';
   uiContainer.style.visibility = 'hidden';
   if (globalGui) globalGui.domElement.style.visibility = 'hidden';
   setDynamicPixelRatio(MAX_PIXEL_RATIO);
-  if (useComposite()) renderComposite(); else renderer.render(scene, camera);
-
-  const canvas = document.querySelector('canvas');
-  const link = document.createElement('a');
-  link.download = `planx_3d_city_${Date.now()}.png`;
-  link.href = canvas.toDataURL('image/png');
-  link.click();
-
-  uiContainer.style.visibility = '';
-  if (globalGui) globalGui.domElement.style.visibility = '';
+  try {
+    let blob;
+    if (preset === 'screen') {
+      renderCleanFrame();
+      blob = await new Promise((resolve) => renderer.domElement.toBlob(resolve, 'image/png'));
+    } else {
+      const { width, height } = captureSize(preset, camera.aspect, renderer.domElement.width);
+      setStatus(`Rendering ${width} x ${height} screenshot...`);
+      blob = await captureTiled({
+        renderer, camera, width, height,
+        render: renderCleanFrame,
+        onProgress: (f) => setStatus(`Rendering ${width} x ${height} screenshot... ${Math.round(f * 100)}%`)
+      });
+      setStatus(`Screenshot ${width} x ${height} saved.`);
+    }
+    if (blob) {
+      const link = document.createElement('a');
+      link.download = `planx_3d_city_${Date.now()}.png`;
+      link.href = URL.createObjectURL(blob);
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+    }
+  } catch (err) {
+    setStatus(`Screenshot failed: ${err?.message || err}`, true);
+  } finally {
+    uiContainer.style.visibility = '';
+    if (globalGui) globalGui.domElement.style.visibility = '';
+    requestRender();
+  }
 }
+
+// --- View links: the camera in the URL hash ---
+function currentView() {
+  return {
+    position: camera.position.toArray(),
+    target: controls.target.toArray(),
+    fov: camera.fov,
+    timeOfDay: settings.timeOfDay
+  };
+}
+
+function applyView(view, { fly = false } = {}) {
+  if (!view) return;
+  if (view.fov !== camera.fov) {
+    camera.fov = view.fov;
+    settings.fov = view.fov;
+    camera.updateProjectionMatrix();
+  }
+  if (Number.isFinite(view.timeOfDay) && view.timeOfDay !== settings.timeOfDay) {
+    settings.timeOfDay = view.timeOfDay;
+    updateTimeOfDay();
+  }
+  if (fly) {
+    _flyOrigin = camera.position.clone();
+    _flyTarget = new THREE.Vector3(...view.position);
+    _flyControlsTarget = new THREE.Vector3(...view.target);
+    _flyT = 0;
+  } else {
+    camera.position.set(...view.position);
+    controls.target.set(...view.target);
+    controls.update();
+  }
+  _lastCameraMove = performance.now();
+  sun.shadow.needsUpdate = true;
+  requestRender();
+}
+
+async function copyViewLink() {
+  const hash = hashWithView(location.hash, currentView());
+  history.replaceState(null, '', hash);
+  const url = location.href;
+  try {
+    await navigator.clipboard.writeText(url);
+    setStatus('View link copied.');
+  } catch {
+    window.prompt('Copy this view link:', url);
+  }
+}
+
+window.addEventListener('hashchange', () => applyView(viewFromHash(location.hash), { fly: true }));
+document.getElementById('btn-copy-view')?.addEventListener('click', copyViewLink);
 
 const btnScreenshot = document.getElementById('btn-screenshot');
 if (btnScreenshot) btnScreenshot.addEventListener('click', takeScreenshot);
