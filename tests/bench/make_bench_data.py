@@ -14,9 +14,12 @@ import argparse
 import json
 import math
 import struct
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+from export_utils import georeference_control_xy, georeference_record  # noqa: E402
 DATA = ROOT / "web" / "data"
 ORIGIN_X = 500000.0
 ORIGIN_Y = 4500000.0
@@ -34,6 +37,33 @@ class LCG:
     def random(self):
         self.s = (6364136223846793005 * self.s + 1442695040888963407) & ((1 << 64) - 1)
         return (self.s >> 11) / float(1 << 53)
+
+
+def utm_to_lonlat(x, y, zone):
+    """Inverse transverse Mercator on WGS84 (northern hemisphere, Snyder
+    1987), so the benchmark manifest can carry a georeference without pyproj."""
+    a = 6378137.0
+    f = 1 / 298.257223563
+    k0 = 0.9996
+    e2 = f * (2 - f)
+    ep2 = e2 / (1 - e2)
+    x -= 500000.0
+    mu = (y / k0) / (a * (1 - e2 / 4 - 3 * e2 ** 2 / 64 - 5 * e2 ** 3 / 256))
+    e1 = (1 - math.sqrt(1 - e2)) / (1 + math.sqrt(1 - e2))
+    p1 = (mu + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * math.sin(2 * mu)
+          + (21 * e1 ** 2 / 16 - 55 * e1 ** 4 / 32) * math.sin(4 * mu)
+          + (151 * e1 ** 3 / 96) * math.sin(6 * mu) + (1097 * e1 ** 4 / 512) * math.sin(8 * mu))
+    n1 = a / math.sqrt(1 - e2 * math.sin(p1) ** 2)
+    t1 = math.tan(p1) ** 2
+    c1 = ep2 * math.cos(p1) ** 2
+    r1 = a * (1 - e2) / (1 - e2 * math.sin(p1) ** 2) ** 1.5
+    d = x / (n1 * k0)
+    lat = p1 - (n1 * math.tan(p1) / r1) * (
+        d ** 2 / 2 - (5 + 3 * t1 + 10 * c1 - 4 * c1 ** 2 - 9 * ep2) * d ** 4 / 24
+        + (61 + 90 * t1 + 298 * c1 + 45 * t1 ** 2 - 252 * ep2 - 3 * c1 ** 2) * d ** 6 / 720)
+    lon = (d - (1 + 2 * t1 + c1) * d ** 3 / 6
+           + (5 - 2 * c1 + 28 * t1 - 3 * c1 ** 2 + 8 * ep2 + 24 * t1 ** 2) * d ** 5 / 120) / math.cos(p1)
+    return math.degrees(lon) + (zone - 1) * 6 - 180 + 3, math.degrees(lat)
 
 
 def rect(x0, y0, x1, y1):
@@ -170,6 +200,10 @@ def main():
         "mode": "vector", "flexibleInputs": True, "project": {"title": f"Benchmark {args.buildings}"},
         "requiredInputs": [], "optionalInputs": [], "inputs": [],
     }
+    # Georeference (EPSG:32635, as the QGIS export writes it) so the 3D Tiles
+    # export can be exercised headless.
+    xy = georeference_control_xy((ORIGIN_X + extent / 2, ORIGIN_Y + extent / 2))
+    manifest["georeference"] = georeference_record("EPSG:32635", xy, [utm_to_lonlat(x, y, 35) for x, y in xy])
     dem = DATA / "dem" / "mydem.tif"
     if args.dem:
         write_geotiff(dem, ORIGIN_X - 2 * STREET, ORIGIN_Y - 2 * STREET, extent + 4 * STREET, 4.0)

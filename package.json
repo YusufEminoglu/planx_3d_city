@@ -4,12 +4,13 @@
   "description": "Development tooling for the PlanX 3D City viewer (not needed to use the plugin).",
   "type": "module",
   "scripts": {
-    "lint": "eslint web/src tests/js tests/bench tests/visual",
+    "lint": "eslint web/src tests/js tests/bench tests/visual tests/smoke",
     "typecheck": "tsc -p tsconfig.checkjs.json",
     "test": "node --test tests/js/*.test.mjs",
     "bench:data": "python3 tests/bench/make_bench_data.py --buildings 1000",
     "bench:check": "node tests/bench/check_bench.mjs",
-    "visual": "node tests/visual/visual.mjs"
+    "visual": "node tests/visual/visual.mjs",
+    "smoke": "node tests/smoke/smoke.mjs"
   },
   "devDependencies": {
     "eslint": "10.1.0",

@@ -36,3 +36,4 @@ tsconfig.checkjs.json
 types
 node_modules
 tests/visual
+tests/smoke

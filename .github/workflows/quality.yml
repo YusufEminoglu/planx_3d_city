@@ -92,6 +92,11 @@ jobs:
       - name: Visual regression (fixed cameras)
         run: npm run visual
 
+      # Docks, every dock setting, analyses, scenarios, tour, Model Studio,
+      # picking and exports, failing on any page or console error.
+      - name: UI smoke test
+        run: npm run smoke
+
       - name: Upload visual differences
         if: failure()
         uses: actions/upload-artifact@v4
