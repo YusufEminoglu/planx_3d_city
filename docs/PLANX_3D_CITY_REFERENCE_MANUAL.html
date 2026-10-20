@@ -104,7 +104,7 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 <nav id="sidebar">
 <div id="sidebar-header">
 <span class="logo">PlanX 3D City Viewer</span>
-<span class="subtitle">Academic Reference Manual · v1.0.1</span>
+<span class="subtitle">Academic Reference Manual · v2.1.2 Flagship</span>
 </div>
 <div id="search-wrap">
 <input type="text" id="search" placeholder="Search…" autocomplete="off">
@@ -197,6 +197,17 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 <li><a href="#style-tools" data-name="styletools" data-display="building style block style qgis field tools">Building &amp; Block Style Field Tools</a></li>
 <li><a href="#interpret-style" data-name="interpretstyle" data-display="interpretation guide style tools">Interpretation Guide: Style Tools</a></li>
 </ul></li>
+<li class="toc-group">
+<button class="toc-group-btn" aria-expanded="true" style="border-left:4px solid #00bcd4; background: linear-gradient(90deg, #00bcd418 0%, transparent 100%)"><span class="arrow">▼</span> 11. Real-World Digital Twin Atlas</button>
+<ul class="toc-algs">
+<li><a href="#atlas-overview" data-name="atlasoverview" data-display="konak digital twin 30 4-panel comparison atlas">Konak Digital Twin Atlas Overview</a></li>
+<li><a href="#atlas-massing" data-name="atlasmassing" data-display="volumetric 3d massing and typology boards">Volumetric 3D Massing &amp; Typologies</a></li>
+<li><a href="#atlas-facades" data-name="atlasfacades" data-display="architectural materials facades and roofs">Architectural Materials &amp; Roofs</a></li>
+<li><a href="#atlas-diurnal" data-name="atlasdiurnal" data-display="diurnal atmospheric cycles and solar shadows">Diurnal Cycles &amp; Shadow Studies</a></li>
+<li><a href="#atlas-environmental" data-name="atlasenvironmental" data-display="in-browser spatial analytics svf wind viewshed">Environmental Analytics: SVF, Wind &amp; Solar</a></li>
+<li><a href="#atlas-zoning" data-name="atlaszoning" data-display="urban planning uip regulations and masterplan scenarios">TR-UIP Zoning &amp; Masterplan Scenarios</a></li>
+<li><a href="#atlas-cockpit" data-name="atlascockpit" data-display="interactive cockpit tools inspection and export">Interactive Cockpit &amp; Export Formats</a></li>
+</ul></li>
 </ul>
 <div id="sidebar-footer">
 <a href="#appendix-a">📊 Appendix A: File Contract Reference</a>
@@ -213,13 +224,13 @@ tr:nth-child(even) td { background: var(--table-stripe); }
   <iframe src="https://www.youtube-nocookie.com/embed/eBUEsKhlvlc" title="PlanX 3D City Viewer &mdash; video walkthrough" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
 </div>
 
-<h1 class="subtitle">Comprehensive Academic Reference Manual · v1.0.0 Flagship Edition</h1>
+<h1 class="subtitle">Comprehensive Academic Reference Manual · v2.1.2 Flagship Edition</h1>
 <p style="color:var(--muted);font-size:.9em;">Yusuf Eminoğlu · August 2026 · <a href="https://github.com/YusufEminoglu/planx_3d_city">github.com/YusufEminoglu/planx_3d_city</a></p>
 
 <!-- Step-by-Step Workflow Guide -->
 <section id="step-by-step-guide" style="background:var(--sidebar-bg); border:2px solid var(--accent); border-radius:14px; padding:28px; margin:28px 0 40px; box-shadow:0 10px 30px rgba(0,0,0,0.15);">
-  <h2 style="margin-top:0; border-bottom:2px solid var(--accent); color:var(--accent); padding-bottom:8px; font-size:1.6rem;">🚀 Visual Step-by-Step Workflow Guide (v1.0 Flagship)</h2>
-  <p style="margin-bottom:24px; font-size:1rem; color:var(--fg);">Transform your QGIS GIS layers into an interactive 3D web cockpit in 4 simple steps:</p>
+  <h2 style="margin-top:0; border-bottom:2px solid var(--accent); color:var(--accent); padding-bottom:8px; font-size:1.6rem;">🚀 Visual Step-by-Step Workflow Guide (v2.1.2 Flagship)</h2>
+  <p style="margin-bottom:24px; font-size:1rem; color:var(--fg);">Transform your QGIS GIS layers into an interactive 3D web cockpit in 4 simple steps, demonstrated with real Konak test data (2,367 building footprints + Copernicus 30m DEM):</p>
   
   <div style="display:flex; flex-direction:column; gap:32px; margin-top:20px;">
     
@@ -227,12 +238,20 @@ tr:nth-child(even) td { background: var(--table-stripe); }
     <div style="background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:20px; box-shadow:0 4px 12px rgba(0,0,0,0.08);">
       <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
         <span style="background:var(--accent); color:#ffffff; border-radius:50%; width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; font-weight:bold; font-size:1.1rem;">1</span>
-        <h3 style="margin:0; font-size:1.25rem; color:var(--fg);">Step 1: Data Preparation &amp; 1-Click OSM Harvester (1 Data Tab)</h3>
+        <h3 style="margin:0; font-size:1.25rem; color:var(--fg);">Step 1: Data Preparation &amp; Automated Layer Mapping (1 Data Tab)</h3>
       </div>
-      <p style="font-size:0.95rem; color:var(--fg); line-height:1.6; margin-bottom:14px;">Select your DEM raster and vector layers (Buildings, Roads, Blocks, Parcels, Vegetation, Urban Furniture). Or click <b>"Import from OpenStreetMap"</b> to harvest a 10-layer urban dataset in 1 click, or <b>"Try with sample data"</b> for instant demo testing.</p>
-      <img src="assets/images/step1_guide.jpg" alt="Step 1 Data Tab Mockup (illustrative concept)" style="width:100%; max-width:100%; border-radius:8px; border:1px solid var(--border); margin-top:8px;" />
-      <p style="font-size:0.8rem; color:var(--muted); margin:6px 0 0;">Above: illustrative concept. Below: the actual Data page.</p>
-      <img src="assets/images/real_step1_data.png" alt="The real PlanX 3D City Publisher Data page" style="width:100%; max-width:100%; border-radius:8px; border:1px solid var(--border); margin-top:8px;" />
+      <p style="font-size:0.95rem; color:var(--fg); line-height:1.6; margin-bottom:14px;">Select your DEM raster and vector layers (Buildings, Roads, Blocks, Parcels, Trees, Hardscape). The intelligent layer matcher automatically maps loaded layers to their corresponding 3D scene roles. Or click <b>"Import from OpenStreetMap"</b> to harvest a 10-layer urban dataset in 1 click.</p>
+      
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top:12px;">
+        <div>
+          <span style="font-size:0.8rem; font-weight:600; color:var(--muted); display:block; margin-bottom:4px;">QGIS Publisher: Data Tab &amp; Layer Auto-Match</span>
+          <img src="assets/images/real_step1_data.png" alt="PlanX 3D City Publisher Data Tab" style="width:100%; border-radius:8px; border:1px solid var(--border);" />
+        </div>
+        <div>
+          <span style="font-size:0.8rem; font-weight:600; color:var(--muted); display:block; margin-bottom:4px;">Resulting 3D Scene: Topography &amp; Urban Fabric</span>
+          <img src="guide_img/shot_01_overview_konak_dem.png" alt="3D Overview Konak DEM" style="width:100%; border-radius:8px; border:1px solid var(--border);" />
+        </div>
+      </div>
     </div>
 
     <!-- Step 2 -->
@@ -242,21 +261,37 @@ tr:nth-child(even) td { background: var(--table-stripe); }
         <h3 style="margin:0; font-size:1.25rem; color:var(--fg);">Step 2: Readiness &amp; WebGL Performance Audit (2 Check Tab)</h3>
       </div>
       <p style="font-size:0.95rem; color:var(--fg); line-height:1.6; margin-bottom:14px;">Click <b>"Generate quality report"</b> to inspect your <b>0-100% Scene Readiness Score</b>, automatic metric UTM CRS reprojection advice, and pre-flight <b>WebGL Performance Tier Estimator</b> (60+ FPS predictor) before exporting.</p>
-      <img src="assets/images/step2_guide.jpg" alt="Step 2 Quality Report Check Mockup (illustrative concept)" style="width:100%; max-width:100%; border-radius:8px; border:1px solid var(--border); margin-top:8px;" />
-      <p style="font-size:0.8rem; color:var(--muted); margin:6px 0 0;">Above: illustrative concept. Below: the actual Check page (a report table, not a separate scoring window).</p>
-      <img src="assets/images/real_step2_check.png" alt="The real PlanX 3D City Publisher Check page" style="width:100%; max-width:100%; border-radius:8px; border:1px solid var(--border); margin-top:8px;" />
+      
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top:12px;">
+        <div>
+          <span style="font-size:0.8rem; font-weight:600; color:var(--muted); display:block; margin-bottom:4px;">QGIS Publisher: Readiness Score &amp; Quality Audit</span>
+          <img src="assets/images/real_step2_check.png" alt="PlanX 3D City Publisher Check Tab" style="width:100%; border-radius:8px; border:1px solid var(--border);" />
+        </div>
+        <div>
+          <span style="font-size:0.8rem; font-weight:600; color:var(--muted); display:block; margin-bottom:4px;">Validated Spatial Orthographic Plan Projection</span>
+          <img src="guide_img/shot_03_ortho_topdown_plan.png" alt="PlanX 3D Orthographic Top-Down Plan" style="width:100%; border-radius:8px; border:1px solid var(--border);" />
+        </div>
+      </div>
     </div>
 
     <!-- Step 3 -->
     <div style="background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:20px; box-shadow:0 4px 12px rgba(0,0,0,0.08);">
       <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
         <span style="background:#8e44ad; color:#ffffff; border-radius:50%; width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; font-weight:bold; font-size:1.1rem;">3</span>
-        <h3 style="margin:0; font-size:1.25rem; color:var(--fg);">Step 3: TR-UIP Planning Standards &amp; GFA Calculator (3 Style Tab)</h3>
+        <h3 style="margin:0; font-size:1.25rem; color:var(--fg);">Step 3: TR-UIP Planning Standards &amp; Volumetric Styling (3 Style Tab)</h3>
       </div>
       <p style="font-size:0.95rem; color:var(--fg); line-height:1.6; margin-bottom:14px;">Click <b>"Apply TR-UIP Standard Styles"</b> to auto-theme buildings by land-use function according to Turkish Spatial Planning Regulations (Mekânsal Planlar Yapım Yönetmeliği: Konut, Ticaret, Karma, Sanayi, Park, Eğitim, Sağlık, İbadet, Resmi). Run <b>"Volumetric GFA &amp; Population Calculator"</b> and choose visual <b>Atmosphere Presets</b> (Golden Hour, Midday, Night Glow, Morning Mist).</p>
-      <img src="assets/images/step3_guide.jpg" alt="Step 3 Style Tab Mockup (illustrative concept)" style="width:100%; max-width:100%; border-radius:8px; border:1px solid var(--border); margin-top:8px;" />
-      <p style="font-size:0.8rem; color:var(--muted); margin:6px 0 0;">Above: illustrative concept. Below: the actual Style page.</p>
-      <img src="assets/images/real_step3_style.png" alt="The real PlanX 3D City Publisher Style page" style="width:100%; max-width:100%; border-radius:8px; border:1px solid var(--border); margin-top:8px;" />
+      
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top:12px;">
+        <div>
+          <span style="font-size:0.8rem; font-weight:600; color:var(--muted); display:block; margin-bottom:4px;">QGIS Publisher: TR-UIP Theming &amp; Atmosphere Presets</span>
+          <img src="assets/images/real_step3_style.png" alt="PlanX 3D City Publisher Style Tab" style="width:100%; border-radius:8px; border:1px solid var(--border);" />
+        </div>
+        <div>
+          <span style="font-size:0.8rem; font-weight:600; color:var(--muted); display:block; margin-bottom:4px;">Regulatory Compliance Envelopes &amp; Land Uses</span>
+          <img src="guide_img/4panel_13_zoning_regulations_uip.png" alt="TR-UIP Zoning & Envelopes" style="width:100%; border-radius:8px; border:1px solid var(--border);" />
+        </div>
+      </div>
     </div>
 
     <!-- Step 4 -->
@@ -266,9 +301,17 @@ tr:nth-child(even) td { background: var(--table-stripe); }
         <h3 style="margin:0; font-size:1.25rem; color:var(--fg);">Step 4: Interactive Web Cockpit &amp; Portable Package (4 Publish Tab)</h3>
       </div>
       <p style="font-size:0.95rem; color:var(--fg); line-height:1.6; margin-bottom:14px;">Click <b>"Export and open 3D Viewer"</b> to launch the browser cockpit. Press <b>H</b> for Keyboard Shortcuts HUD, <b>W</b> for Walk Mode, and <b>P</b> for Clean Presentation Mode. Export a self-contained portable ZIP for student handoff or jury review.</p>
-      <img src="assets/images/step4_guide.jpg" alt="Step 4 Web Cockpit Viewer Mockup (illustrative concept)" style="width:100%; max-width:100%; border-radius:8px; border:1px solid var(--border); margin-top:8px;" />
-      <p style="font-size:0.8rem; color:var(--muted); margin:6px 0 0;">Above: illustrative concept. Below: the actual Publish page (pre-export state).</p>
-      <img src="assets/images/real_step4_publish.png" alt="The real PlanX 3D City Publisher Publish page" style="width:100%; max-width:100%; border-radius:8px; border:1px solid var(--border); margin-top:8px;" />
+      
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top:12px;">
+        <div>
+          <span style="font-size:0.8rem; font-weight:600; color:var(--muted); display:block; margin-bottom:4px;">QGIS Publisher: Launch &amp; Portable Distribution Hub</span>
+          <img src="assets/images/real_step4_publish.png" alt="PlanX 3D City Publisher Publish Tab" style="width:100%; border-radius:8px; border:1px solid var(--border);" />
+        </div>
+        <div>
+          <span style="font-size:0.8rem; font-weight:600; color:var(--muted); display:block; margin-bottom:4px;">Interactive 3D Web Decision Cockpit (60 FPS PBR)</span>
+          <img src="guide_img/4panel_30_masterplan_synthesis.png" alt="PlanX 3D Decision Cockpit" style="width:100%; border-radius:8px; border:1px solid var(--border);" />
+        </div>
+      </div>
     </div>
 
   </div>
@@ -288,6 +331,20 @@ tr:nth-child(even) td { background: var(--table-stripe); }
   <li><b>Three.js Web Viewer</b> (<code>web/src/app.js</code>) — A single-page application using Three.js with OrbitControls, PointerLockControls, Sky, EffectComposer (SSAO + UnrealBloomPass), CSS2DRenderer, and GLTFLoader. No build step, no Node.js dependency — works directly in any modern browser.</li>
 </ol>
 <p>The pipeline is <b>one-directional</b>: QGIS layers → GeoJSON files → browser. The only reverse channel is the <code>/api/scene-state</code> save endpoint, which persists viewer settings (layer visibility, colors, asset selections, Model Studio models) so they survive export refreshes and portable ZIP freezing.</p>
+
+
+<figure id="fig-arch-synthesis" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_30_masterplan_synthesis.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_30_masterplan_synthesis.png" alt="Figure 1.1: Complete Digital Twin Synthesis Pipeline (GIS Ingestion to Decision Cockpit)" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Figure 1.1: Complete Digital Twin Synthesis Pipeline (GIS Ingestion to Decision Cockpit)</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Pipeline Overview · 4-Panel Grid</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Four-quadrant synthesis showing the progression from raw 2D QGIS layers and Copernicus 30m DEM (top-left), to parametric volumetric building extrusion (top-right), in-browser GPU environmental microclimate analytics (bottom-left), and live masterplan decision support with split scenario comparison (bottom-right). Rendered with 2,367 actual buildings in Konak, Izmir.</p>
+  </figcaption>
+</figure>
 
 <h3 id="theory-arch">Theoretical Background: 3D City Modeling</h3>
 <p>Three-dimensional city modelling has evolved from simple geometric extrusions of building footprints to semantically rich, multi-resolution representations capable of supporting urban analysis, participatory planning, and digital twin applications. The theoretical foundation rests on two complementary paradigms: <b>GIS-based 3D modelling</b>, which emphasises geospatial accuracy, coordinate reference systems, and attribute linkage, and <b>computer-graphics-based procedural modelling</b>, which prioritises visual fidelity, real-time rendering, and interactive exploration.</p>
@@ -360,6 +417,20 @@ $$H_{\text{building}} = n_{\text{floors}} \times h_{\text{floor}} \tag{4}$$
 <tr><td><code>parcels</code></td><td>Polygon</td><td>Recommended</td><td>—</td><td>Cadastral parcels. Rendered as optional boundary lines with configurable colour and opacity.</td></tr>
 <tr><td><code>plan_texture</code></td><td>Raster (GeoTIFF)</td><td>—</td><td>Required</td><td>Raster plan or orthophoto draped as a terrain texture. Placed by its own projected bounding box.</td></tr>
 <tr><td><code>basemap</code></td><td>Raster (GeoTIFF/PNG)</td><td>Optional</td><td>Optional</td><td>QGIS-exported basemap image. When enabled, it replaces the procedural terrain colour.</td></tr></table>
+
+
+<figure id="fig-data-terrain" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_12_terrain_slopes_aspect.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_12_terrain_slopes_aspect.png" alt="Figure 2.1: Topographic Surface Modeling & Copernicus DEM Integration" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Figure 2.1: Topographic Surface Modeling & Copernicus DEM Integration</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Copernicus 30m DEM · Elevation Mesh</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Topographic mesh analysis of the Konak coastal ridge: (top-left) 30m Copernicus DEM mesh draped with urban vector parcels; (top-right) hypsometric gradient and slope classification; (bottom-left) orthographic planimetric projection; (bottom-right) vertical elevation transect from the Aegean waterfront to the southern hill crest.</p>
+  </figcaption>
+</figure>
 
 <h3 id="theory-data">Theoretical Background: Geospatial Data for 3D</h3>
 <p>The quality and semantic richness of input data fundamentally determine the utility of any 3D city model. Döllner &amp; Buchholz (2005) established the concept of <b>continuous levels of quality</b> (CLOQ), arguing that 3D city models must accommodate heterogeneous data sources — from coarse block models derived from cadastral maps to architecturally detailed BIM-derived models. The PlanX viewer operationalises this by accepting layers at any level of detail: a building layer with only footprints (no attributes) produces a LoD1 block model, while one with <code>floor_count</code>, <code>roof_shape</code>, and <code>function</code> fields enables LoD2 visualisation with semantic colouring.</p>
@@ -472,6 +543,34 @@ $$\omega_{t+\Delta t} = \omega_t \cdot e^{-\lambda \Delta t} \tag{9}$$
 <tr><td><b>Solar Animation</b> (⏱)</td><td>Off</td><td>Auto-rotates sun direction at configurable speed (hours/second). Creates a day-cycle timelapse effect.</td></tr>
 </table>
 
+
+<figure id="fig-diurnal-cycle" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_06_diurnal_cycle.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_06_diurnal_cycle.png" alt="Figure 4.1: Diurnal Atmospheric Lighting Cycle & Solar Elevation Progression" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Figure 4.1: Diurnal Atmospheric Lighting Cycle & Solar Elevation Progression</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atmospheric Solar Engine · 4-Panel Grid</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Evaluation of the astronomical solar engine across four diurnal states: (top-left) soft dawn haze at 06:45; (top-right) solar noon zenith illumination at 12:00 with minimal ground shadow; (bottom-left) golden hour warm low-angle scattering at 18:15; (bottom-right) nocturnal city simulation at 22:30 featuring procedural window luminescence and street lighting.</p>
+  </figcaption>
+</figure>
+
+
+<figure id="fig-shadow-studies" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_07_shadow_progression.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_07_shadow_progression.png" alt="Figure 4.2: Diurnal Shadow Casting Progression & Street Canyon Shading" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Figure 4.2: Diurnal Shadow Casting Progression & Street Canyon Shading</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Microclimate Shadows · Cascaded Shadow Maps</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Real-time cascaded shadow map studies: (top-left) morning shadow casting westward across residential corridors at 08:00; (top-right) solar noon direct vertical insolation at 12:00; (top-right) mid-afternoon eastward shadow elongation at 15:30; (bottom-right) evening canyon shading at 18:30.</p>
+  </figcaption>
+</figure>
+
 <h3 id="math-sky">Mathematical Formulation: Sky &amp; Solar Model</h3>
 <p>The sky is rendered using Three.js's <code>Sky</code> shader, which implements the Preetham et al. (1999) analytical sky model. The spectral radiance \(L(\lambda, \theta, \gamma)\) at wavelength \(\lambda\), view zenith \(\theta\), and scattering angle \(\gamma\) is:</p>
 $$L(\lambda, \theta, \gamma) = L_0(\lambda) \cdot F(\theta, \gamma) \cdot T(\lambda, \theta) \tag{10}$$
@@ -527,6 +626,34 @@ $$(u, v) = \left( \frac{x - x_{\min}}{x_{\max} - x_{\min}}, \frac{y - y_{\min}}{
 <tr><td><b>Facade Texture Scale</b></td><td>4.85×</td><td>Global scale multiplier for the facade texture UV coordinates. Adjust to make window and floor lines visually match the building's physical storey count.</td></tr>
 </table>
 <p><b>Roof geometry:</b> Gable, shed, and hip roofs follow the real building footprint polygon and orientation (not an axis-aligned bounding box). The roof is centered on the footprint with a ≤0.30 m eave. Shed roofs close their raised sides. All roof and wall materials are double-sided to prevent invisible faces from certain camera angles.</p>
+
+
+<figure id="fig-massing-modes" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_01_massing_typologies.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_01_massing_typologies.png" alt="Figure 5.1: Volumetric 3D Massing Modes & Typological Procedural Extrusions" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Figure 5.1: Volumetric 3D Massing Modes & Typological Procedural Extrusions</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Procedural Extrusions · CGA Shape Rules</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Comparison of procedural extrusion algorithms applied to 2,367 real footprints in Konak: (top-left) Auto Smart Massing with adaptive setbacks; (top-right) Podium + Tower typology with commercial street wall base; (bottom-left) Stepped Setback High-Rise preserving street daylight; (bottom-right) Perimeter Courtyard Block maximizing interior courtyard openness.</p>
+  </figcaption>
+</figure>
+
+
+<figure id="fig-facade-materials" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_03_facade_materials_urban.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_03_facade_materials_urban.png" alt="Figure 5.2: Procedural Facade Texturing & Material PBR Libraries" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Figure 5.2: Procedural Facade Texturing & Material PBR Libraries</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">PBR Facades · Multi-Story Mapping</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Evaluation of procedural PBR facade materials: (top-left) Contemporary Multi-Family Residential A-F; (top-right) Aegean Terracotta Clinker Brick masonry; (bottom-left) Commercial Glazed Structural Curtain Wall; (bottom-right) Sustainable Nordic Timber vertical louvers.</p>
+  </figcaption>
+</figure>
 
 <h3 id="math-buildings">Mathematical Formulation: Building Extrusion &amp; Roofs</h3>
 <p>Building footprint polygons are extruded using Three.js <code>ExtrudeGeometry</code>. Given a footprint defined by an ordered sequence of vertices \(\{ (x_k, y_k) \}_{k=0}^{n-1}\) in the horizontal plane, the extrusion produces a polyhedral mesh with the following face decomposition: one bottom face (capped), \(n\) side faces (quads), and one top face. The side-face vertices are:</p>
@@ -605,6 +732,20 @@ $$\mathbf{n}_{\text{miter}} = \frac{\mathbf{n}_{i-1} + \mathbf{n}_i}{\|\mathbf{n
 <tr><td><b>Solar Animation</b></td><td>Off</td><td>Auto-rotates the sun direction at a configurable speed (hours per second). Creates a day-cycle animation from dawn to dusk. The sky colour, shadow direction, and ambient light update continuously.</td></tr>
 </table>
 
+
+<figure id="fig-urban-assets" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_23_model_studio_assets.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_23_model_studio_assets.png" alt="Figure 6.1: Digital Twin Micro-Details: Urban Furnishings & Street Furnishings" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Figure 6.1: Digital Twin Micro-Details: Urban Furnishings & Street Furnishings</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">InstancedMesh Assets · 60 FPS</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Contextual streetscape enrichment: (top-left) waterfront promenade pedestrian furniture and safety barriers; (top-right) commercial boulevard street trees and modern luminaires; (bottom-left) residential sidewalk street lighting grid; (bottom-right) landscaped interior courtyard greenery.</p>
+  </figcaption>
+</figure>
+
 <h3 id="math-effects">Mathematical Formulation: SSAO &amp; Post-Processing</h3>
 <p>Screen-Space Ambient Occlusion (SSAO) was introduced by Shanmugam &amp; Arikan (2007) and refined through Horizon-Based Ambient Occlusion (HBAO) by Bavoil &amp; Sainz (2008). The PlanX viewer uses the Three.js <code>SSAOPass</code>, which implements the following per-pixel obscurance integral:</p>
 $$A(\mathbf{p}) = \frac{1}{\pi} \int_{\Omega} V(\mathbf{p}, \boldsymbol{\omega}) \, (\mathbf{n} \cdot \boldsymbol{\omega}) \, d\boldsymbol{\omega} \tag{26}$$
@@ -637,6 +778,48 @@ $$L_{\text{bloom}}(\mathbf{p}) = \max(0, L(\mathbf{p}) - \tau) * G_{\sigma_1} * 
   <li><code>transition</code> — easing function for the camera movement (linear, ease-in-out).</li>
 </ul>
 <p>Tours are created externally (via the <b>Narrative Studio</b> companion tool or hand-authored JSON) and loaded into the viewer. The viewer's tour player shows a progress bar, play/pause controls, and a keyframe list. The portable ZIP export optionally includes a tour file so recipients see the curated narrative.</p>
+
+
+<figure id="fig-environmental-analytics" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_08_solar_exposure_radiation.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_08_solar_exposure_radiation.png" alt="Figure 7.1: Cumulative Solar Radiation & Photovoltaic Potential Analysis" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Figure 7.1: Cumulative Solar Radiation & Photovoltaic Potential Analysis</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">In-Browser GPU Compute · Solar Radiation</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">GPU-accelerated solar insolation compute on building envelopes: (top-left) cumulative solar irradiation heatmap identifying high-yield rooftop solar capture zones; (top-right) peak solar noon intensity; (bottom-left) morning east facade exposure; (bottom-right) afternoon west facade overheating zones.</p>
+  </figcaption>
+</figure>
+
+
+<figure id="fig-svf-wind" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_09_sky_view_factor_urban.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_09_sky_view_factor_urban.png" alt="Figure 7.2: Sky View Factor (SVF) & Canyon Openness Calculation" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Figure 7.2: Sky View Factor (SVF) & Canyon Openness Calculation</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Urban Heat Island · SVF Ray Casting</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Numerical assessment of urban geometry impact on radiant cooling and Urban Heat Island (UHI) mitigation: (top-left) spatial SVF distribution showing deep canyon entrapment vs open boulevards; (top-right) enclosed perimeter courtyard openness; (bottom-left) waterfront sea exposure (SVF ≈ 0.95); (bottom-right) hillside canyon obstruction.</p>
+  </figcaption>
+</figure>
+
+
+<figure id="fig-scenarios-ab" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_14_scenario_planning_ab.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_14_scenario_planning_ab.png" alt="Figure 7.3: Masterplan Multi-Scenario Exploration (A vs B vs Baseline)" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Figure 7.3: Masterplan Multi-Scenario Exploration (A vs B vs Baseline)</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Scenario What-If · Split Slider</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Comparative urban design evaluation: (top-left) baseline existing built environment; (top-right) Scenario A compact transit-oriented density; (bottom-left) Scenario B mixed-use podium revitalisation; (bottom-right) interactive split-slider comparative review.</p>
+  </figcaption>
+</figure>
 
 <h3 id="math-tours">Mathematical Formulation: Keyframe Interpolation</h3>
 <p>Camera interpolation between keyframes uses spherical linear interpolation (slerp) for the camera orientation (represented as a quaternion) and cubic Hermite interpolation for position:</p>
@@ -751,6 +934,432 @@ $$\mathbf{q}(t) = \frac{\sin((1-t)\Omega)}{\sin\Omega} \mathbf{q}_0 + \frac{\sin
 <h3 id="interpret-style">Interpretation Guide: Style Tools</h3>
 <p><b>Mass attribute editing.</b> The Apply to Selected tool is most efficient when used with QGIS's selection tools: (1) Use "Select by expression" to target buildings with specific characteristics (e.g. <code>"land_use" = 'commercial'</code>); (2) Use the Apply to Selected tool to set the PlanX fields for that group; (3) Repeat for each land-use category. This workflow can style hundreds of buildings in minutes.</p>
 <p><b>Field population priority.</b> Populate fields in order of visual impact: (1) <code>floor_count</code> — controls the single most visible aspect (building height); (2) <code>function</code> — enables colour-coded land-use visualisation; (3) <code>roof_shape</code> — adds architectural character; (4) <code>building_type</code> — only affects the click-info panel. For rapid prototyping, populating only <code>floor_count</code> produces a useful massing model.</p>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- 11. REAL-WORLD DIGITAL TWIN ATLAS (30 4-PANEL BOARDS) -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h2 id="atlas-overview">11. Real-World Digital Twin Atlas (Konak Comparative Gallery)</h2>
+<p>This atlas presents thirty comprehensive, publication-grade 4-panel comparison boards systematically rendered with the <b>Konak real test dataset</b> (2,367 building footprints from <code>sa_bolgesi/sa.gpkg</code> fused with Copernicus 30m Digital Elevation Model). Each figure compares four distinct algorithmic states, typologies, environmental metrics, or urban design scenarios rendered at 1600&times;1000 resolution in the WebGL decision cockpit.</p>
+
+<h3 id="atlas-massing">11.1 Volumetric 3D Massing, Typologies &amp; Architectural Features</h3>
+<p>Procedural extrusion algorithms translate 2D cadastral parcel footprints into multi-tier 3D building envelopes, modeling architectural setbacks, podiums, cantilevers, and roof geometries.</p>
+
+
+<figure id="atlas-4p-01" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_01_massing_typologies.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_01_massing_typologies.png" alt="Atlas Board 01: Volumetric 3D Massing Modes — Typological Morphology" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 01: Volumetric 3D Massing Modes — Typological Morphology</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 01 · Volumetric Massing</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Comparative procedural extrusion: Auto Smart Massing (adaptive street setbacks), Podium + Tower (commercial street wall with recessed tower), Stepped Setback High-Rise (solar daylight preservation), and Perimeter Courtyard Block (enclosed residential green space).</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-02" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_02_massing_architectural.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_02_massing_architectural.png" alt="Atlas Board 02: Architectural Massing Features — Pilotis, Crowns &amp; Roofs" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 02: Architectural Massing Features — Pilotis, Crowns &amp; Roofs</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 02 · Architectural Articulation</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Urban articulation features: Cantilever &amp; pilotis ground level permeability, penthouse recessed rooftop crowns, multi-plane hipline roof extrusions, and contextual massing ensembles.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-05" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_05_roof_typologies.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_05_roof_typologies.png" alt="Atlas Board 05: Roof Morphology &amp; Skyline Geometry" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 05: Roof Morphology &amp; Skyline Geometry</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 05 · Roof Morphologies</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Parametric roof generation: Mediterranean hip terracotta tile roofs, northern gable and mansard roofs, modernist flat rooftops with penthouse units, and planimetric roof landscape projection.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-18" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_18_building_typologies_scale.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_18_building_typologies_scale.png" alt="Atlas Board 18: Morphological Scale — Low-Rise, Mid-Rise &amp; High-Rise" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 18: Morphological Scale — Low-Rise, Mid-Rise &amp; High-Rise</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 18 · Morphological Scale</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Multi-scale urban density transitions: Aegean historic low-rise stone quarter, medium-rise perimeter housing blocks, high-rise commercial towers, and landmark high-density civic nodes.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-21" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_21_street_canyon_profiles.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_21_street_canyon_profiles.png" alt="Atlas Board 21: Street Canyon Morphology &amp; Enclosure Ratios (H/W)" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 21: Street Canyon Morphology &amp; Enclosure Ratios (H/W)</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 21 · Street Canyons</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Urban street canyon profiles: wide commercial transit boulevard, residential canyon (H/W &approx; 1.5), semi-enclosed residential courtyards, and deep narrow hillside pedestrian stairways.</p>
+  </figcaption>
+</figure>
+
+
+<h3 id="atlas-facades">11.2 Architectural Materials, Facades &amp; Heritage Textures</h3>
+<p>Physically-based rendering (PBR) materials, UV texture scaling, and cultural material vocabularies allow contextual visual alignment across historical and modern districts.</p>
+
+
+<figure id="atlas-4p-03" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_03_facade_materials_urban.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_03_facade_materials_urban.png" alt="Atlas Board 03: Architectural Facade Texturing — Modern Urban Finishes" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 03: Architectural Facade Texturing — Modern Urban Finishes</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 03 · Facade Materials</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Procedural facade shaders: contemporary multi-family residential, Anatolian red terracotta clinker brick, commercial structural glazed curtain wall, and sustainable Nordic timber vertical louvers.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-04" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_04_facade_heritage_concrete.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_04_facade_heritage_concrete.png" alt="Atlas Board 04: Architectural Materials — Heritage &amp; Brutalist Textures" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 04: Architectural Materials — Heritage &amp; Brutalist Textures</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 04 · Heritage Textures</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Context-sensitive architectural languages: Brutalist board-marked concrete, Aegean traditional ashlar stone masonry, multi-pitch terracotta tile roofs, and articulated brick cornices.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-17" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_17_render_styles.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_17_render_styles.png" alt="Atlas Board 17: Styling Engines — Photorealism, Diagrams &amp; Cartography" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 17: Styling Engines — Photorealism, Diagrams &amp; Cartography</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 17 · Rendering Styles</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Multi-mode presentation rendering: realistic PBR sunlight shading, thematic cartographic land-use coloring, diffuse architectural clay model, and nocturnal city glow with window luminescence.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-23" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_23_model_studio_assets.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_23_model_studio_assets.png" alt="Atlas Board 23: Urban Furnishings &amp; Digital Twin Detail" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 23: Urban Furnishings &amp; Digital Twin Detail</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 23 · Street Furnishings</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Instanced 3D street furniture: waterfront promenade railings and benches, pedestrian boulevard street trees and modern lamps, residential sidewalk furniture, and courtyard pocket greenery.</p>
+  </figcaption>
+</figure>
+
+
+<h3 id="atlas-diurnal">11.3 Diurnal Atmospheric Cycles, Solar Angles &amp; Night Lighting</h3>
+<p>Astronomical solar equations compute real-time sun vectors based on site latitude, day of year, and solar time, creating accurate shadows and Rayleigh/Mie atmospheric scattering.</p>
+
+
+<figure id="atlas-4p-06" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_06_diurnal_cycle.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_06_diurnal_cycle.png" alt="Atlas Board 06: Diurnal Atmospheric Cycle &amp; Sun Angles" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 06: Diurnal Atmospheric Cycle &amp; Sun Angles</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 06 · Diurnal Cycle</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Continuous daylight cycle: dawn mist (06:45), midday solar zenith (12:00), cinematic golden hour sunset (18:15), and nocturnal illuminated city (22:30).</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-07" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_07_shadow_progression.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_07_shadow_progression.png" alt="Atlas Board 07: Shadow Studies — Microclimate &amp; Insolation Impact" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 07: Shadow Studies — Microclimate &amp; Insolation Impact</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 07 · Shadow Studies</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Hourly shadow casting: morning shadows reaching westward across transit corridors (08:00), solar noon minimum footprint (12:00), afternoon shadow elongation (15:30), and evening canyon shading (18:30).</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-22" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_22_night_illumination.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_22_night_illumination.png" alt="Atlas Board 22: Night Urban Lighting &amp; Illumination Simulation" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 22: Night Urban Lighting &amp; Illumination Simulation</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 22 · Nocturnal Simulation</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Nocturnal city rendering: regional skyline overview under dark sky, sunset twilight transition, warm interior window illumination simulation, and early dawn sky brightening.</p>
+  </figcaption>
+</figure>
+
+
+<h3 id="atlas-environmental">11.4 In-Browser Spatial Analytics: Solar, SVF, Wind &amp; Viewshed</h3>
+<p>Client-side GPU shaders calculate environmental performance metrics directly within the browser, providing instant quantitative feedback without external simulation software.</p>
+
+
+<figure id="atlas-4p-08" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_08_solar_exposure_radiation.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_08_solar_exposure_radiation.png" alt="Atlas Board 08: Solar Radiation Heatmap &amp; Photovoltaic Potential" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 08: Solar Radiation Heatmap &amp; Photovoltaic Potential</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 08 · Solar Radiation</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">In-browser GPU solar irradiance compute: cumulative insolation heatmap on roofs and facades, peak noon solar exposure, morning east facade solar gain, and afternoon west facade overheating zones.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-09" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_09_sky_view_factor_urban.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_09_sky_view_factor_urban.png" alt="Atlas Board 09: Sky View Factor (SVF) &amp; Urban Canyon Openness" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 09: Sky View Factor (SVF) &amp; Urban Canyon Openness</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 09 · Sky View Factor</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Sky View Factor (SVF) ray-casting across the Konak fabric: spatial SVF distribution heatmap, enclosed courtyard openness, waterfront open sky exposure (SVF &approx; 0.95), and hillside canyon obstruction.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-10" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_10_pedestrian_wind_comfort.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_10_pedestrian_wind_comfort.png" alt="Atlas Board 10: Pedestrian Wind Comfort &amp; Microclimate Flow" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 10: Pedestrian Wind Comfort &amp; Microclimate Flow</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 10 · Wind Comfort</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Vector streamline wind simulation: particle flow lines through street corridors, coastal sea breeze penetration, high-rise downdraft buffeting, and pilotis ground-level breeze channeling.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-11" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_11_viewshed_visibility.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_11_viewshed_visibility.png" alt="Atlas Board 11: Viewshed Analysis &amp; Visual Impact Assessment" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 11: Viewshed Analysis &amp; Visual Impact Assessment</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 11 · Viewshed Analysis</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Observer line-of-sight ray casting: visual cone ray-casting from observer vantage, regional visibility cone from the Aegean Bay, hillside viewpoint overlooking the harbor, and waterfront sea-facing horizon.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-12" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_12_terrain_slopes_aspect.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_12_terrain_slopes_aspect.png" alt="Atlas Board 12: Topography &amp; Digital Elevation Integration" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 12: Topography &amp; Digital Elevation Integration</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 12 · DEM Topography</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Topographic mesh analysis: 30m Copernicus DEM mesh draped with vector parcels, steep hillside slopes and contour lines, planar topographic basin projection, and shoreline-to-ridge vertical transect.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-29" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_29_dem_elevation_contour.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_29_dem_elevation_contour.png" alt="Atlas Board 29: Topographic Analysis — Elevation Gradients &amp; Contours" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 29: Topographic Analysis — Elevation Gradients &amp; Contours</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 29 · Elevation Contours</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Hypsometric DEM analysis: raw elevation gradient, contour lines overlay at 5m intervals, hillside shaded relief, and coastal sea-level datum boundary.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-20" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_20_coastal_waterfront.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_20_coastal_waterfront.png" alt="Atlas Board 20: Coastal Interface — Waterfront Edge &amp; Sea Interaction" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 20: Coastal Interface — Waterfront Edge &amp; Sea Interaction</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 20 · Coastal Interface</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Coastal urban morphology: waterfront pedestrian promenade, Gulf of Izmir bay overview, evening sunset over the sea, and marine sea-breeze microclimate interaction.</p>
+  </figcaption>
+</figure>
+
+
+<h3 id="atlas-zoning">11.5 Urban Planning, TR-UIP Regulations &amp; Masterplan Scenarios</h3>
+<p>Built-in spatial planning standards enforce Turkish Spatial Planning Regulations (TR-UIP) land-use colors, volumetric height envelopes (Gabari), and comparative what-if scenarios.</p>
+
+
+<figure id="atlas-4p-13" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_13_zoning_regulations_uip.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_13_zoning_regulations_uip.png" alt="Atlas Board 13: Urban Planning Regulations — TR-UIP Standard Compliance" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 13: Urban Planning Regulations — TR-UIP Standard Compliance</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 13 · TR-UIP Regulations</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Statutory zoning compliance: standard TR-UIP color classification (Konut, Ticaret, Donatı, Park), allowable maximum height limit envelopes (Gabari), Gross Floor Area (FAR/EMSAL) envelopes, and building attribute scorecards.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-14" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_14_scenario_planning_ab.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_14_scenario_planning_ab.png" alt="Atlas Board 14: Master Plan Scenario Comparison (A vs B vs Baseline)" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 14: Master Plan Scenario Comparison (A vs B vs Baseline)</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 14 · Masterplan Scenarios</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Urban scenario exploration: baseline existing built environment, Scenario A compact transit-oriented development, Scenario B mixed-use podium revitalisation, and live interactive split slider comparison.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-19" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_19_urban_density_metrics.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_19_urban_density_metrics.png" alt="Atlas Board 19: Urban Density Metrics — FAR, TAKS &amp; Volumetric Mass" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 19: Urban Density Metrics — FAR, TAKS &amp; Volumetric Mass</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 19 · Density Metrics</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Density quantification: Floor Area Ratio (FAR/EMSAL) volumetric envelopes, ground coverage caps (TAKS/Hmax), real-time building metric calculator, and scene-wide aggregated density statistics.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-30" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_30_masterplan_synthesis.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_30_masterplan_synthesis.png" alt="Atlas Board 30: Integrated Digital Twin Synthesis — From GIS to Decision Cockpit" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 30: Integrated Digital Twin Synthesis — From GIS to Decision Cockpit</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 30 · Digital Twin Synthesis</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">The complete end-to-end PlanX workflow: GIS vector and DEM data ingestion, volumetric procedural massing, in-browser environmental microclimate analytics, and actionable masterplan decision support.</p>
+  </figcaption>
+</figure>
+
+
+<h3 id="atlas-cockpit">11.6 Interactive Cockpit Tools, Navigation &amp; Open Export Pipelines</h3>
+<p>Comprehensive user controls allow free 3D inspection, attribute interrogation, narrative camera tours, and export to open 3D standards (glTF/GLB, GeoJSON, GeoTIFF, and standalone HTML5).</p>
+
+
+<figure id="atlas-4p-15" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_15_camera_perspectives.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_15_camera_perspectives.png" alt="Atlas Board 15: Camera Viewpoints — Multi-Scale Urban Observation" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 15: Camera Viewpoints — Multi-Scale Urban Observation</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 15 · Camera Perspectives</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Multi-scale viewing paradigms: regional aerial vantage point, orthographic top-down plan view, waterfront low-angle perspective, and human-scale eye-level street view.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-16" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_16_camera_modes.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_16_camera_modes.png" alt="Atlas Board 16: Navigation Paradigms — Orbit, Walk, Ortho &amp; Flight" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 16: Navigation Paradigms — Orbit, Walk, Ortho &amp; Flight</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 16 · Navigation Modes</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Camera controller modes: free 360&deg; Orbit navigation, top-down 2D/3D orthographic mode, automated cinematic keyframe tour flight path, and first-person Walk mode with terrain-following.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-24" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_24_measurement_tools.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_24_measurement_tools.png" alt="Atlas Board 24: Precision Measurement &amp; Spatial Inspection" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 24: Precision Measurement &amp; Spatial Inspection</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 24 · Measurement Tools</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Interactive 3D measurement tools: building height and dimension gauge, terrain slope and elevation profile, regulatory height clearance verification, and aggregated scene metrics.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-25" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_25_export_formats.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_25_export_formats.png" alt="Atlas Board 25: Export &amp; Interoperability Pipeline" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 25: Export &amp; Interoperability Pipeline</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 25 · Export Formats</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Open format exchange: export drawer showing GLTF/GLB 3D mesh, GeoJSON vector layers, standalone self-contained HTML5 package, and high-resolution raster plan captures.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-26" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_26_data_attributes_inspector.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_26_data_attributes_inspector.png" alt="Atlas Board 26: Attribute Inspector &amp; Semantic Data Query" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 26: Attribute Inspector &amp; Semantic Data Query</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 26 · Semantic Query</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Interactive feature inspection: click-to-inspect building metadata card, land-use semantic classification, solar irradiance performance score, and zoning capacity allowance review.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-27" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_27_interactive_controls.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_27_interactive_controls.png" alt="Atlas Board 27: Interactive Cockpit UI &amp; User Experience" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 27: Interactive Cockpit UI &amp; User Experience</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 27 · Cockpit UI</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Modern user interface: spatial analytics dock and compute hub, narrative keyframe flight director, advanced settings and export drawer, and real-time contextual HUD cards.</p>
+  </figcaption>
+</figure>
+
+<figure id="atlas-4p-28" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+  <a href="guide_img/4panel_28_presentation_modes.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
+    <img src="guide_img/4panel_28_presentation_modes.png" alt="Atlas Board 28: Presentation, Jury &amp; Stakeholder Engagement Modes" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+  </a>
+  <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 28: Presentation, Jury &amp; Stakeholder Engagement Modes</strong>
+      <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 28 · Presentation Modes</span>
+    </div>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Dedicated presentation views: distraction-free fullscreen presentation mode, dual split comparative review, automated guided tour playback, and cinematic visual storytelling.</p>
+  </figcaption>
+</figure>
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <!-- APPENDICES -->

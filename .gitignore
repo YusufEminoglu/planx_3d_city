@@ -13,3 +13,5 @@ web/data/planx_scene_state.json
 web/data/models/
 node_modules/
 tests/visual/output/
+web/data/.*
+web/data/*

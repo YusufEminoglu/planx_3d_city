@@ -1067,7 +1067,8 @@ def _viewer_bounds(layer_map: dict, crs):
     for layer in layers:
         if layer is None:
             continue
-        layer.updateExtents()
+        if hasattr(layer, "updateExtents"):
+            layer.updateExtents()
         extent = layer.extent()
         if extent.isNull():
             continue

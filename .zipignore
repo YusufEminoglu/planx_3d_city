@@ -20,6 +20,7 @@ docs/index.html
 docs/build_screenshots.py
 docs/ROADMAP.md
 docs/assets
+docs/guide_img
 .github
 
 # Benchmark harness (writes its own synthetic web/data; not used by the plugin).
