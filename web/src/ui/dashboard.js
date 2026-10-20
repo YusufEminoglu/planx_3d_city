@@ -56,7 +56,7 @@ export function updateDashboard(data) {
       const title = state.projectManifest.project?.title || 'PlanX 3D City Project';
       const exportedAt = state.projectManifest.exportedAt ? new Date(state.projectManifest.exportedAt).toLocaleString() : '-';
       const crs = state.projectManifest.summary?.crs?.length ? state.projectManifest.summary.crs.join(', ') : t('crsUnknown');
-      const modeLabel = isRasterTextureMode() ? 'Raster Plan Texture' : 'Vector Plan';
+      const modeLabel = isRasterTextureMode() ? 'Unified (Plan Texture + Vector)' : 'Unified 3D Scene';
       const accessField = state.projectManifest.roadAccess?.field ? `<br>Traffic filter: ${state.projectManifest.roadAccess.field}` : '';
       const themeLabel = state.projectManifest.assetTheme || settings.assetTheme || 'Modern Urban';
       meta.innerHTML = `<strong>${title}</strong><br>Mode: ${modeLabel}<br>Asset theme: ${themeLabel}<br>Export: ${exportedAt}<br>CRS: ${crs}${accessField}`;

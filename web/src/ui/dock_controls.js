@@ -1,5 +1,5 @@
 // Dock controls mirror the settings: select options and current values.
-import { ROOF_SHAPE_OPTIONS, textureSets, assetThemePresets, TREE_VARIANT_CATALOG } from '../catalog.js';
+import { ROOF_SHAPE_OPTIONS, BUILDING_MODE_OPTIONS, textureSets, assetThemePresets, TREE_VARIANT_CATALOG, roofTextureLabel } from '../catalog.js';
 import { uniqueAssetVariants, settings, blockCategoryStylesActive } from '../core/settings.js';
 
 export function updateBlockStyleModeUi() {
@@ -18,7 +18,7 @@ export function populateDockSelects() {
     roofTexture: Object.keys(textureSets.roof),
     pavementStyle: Object.keys(textureSets.pavement),
     terrainAnalysisMode: ['Texture', 'Elevation tint', 'Slope tint'],
-    buildingMode: ['Footprint only', 'Extruded', 'Extruded + roof'],
+    buildingMode: BUILDING_MODE_OPTIONS,
     hardscapeStyle: Object.keys(textureSets.hardscape),
     roadStyle: Object.keys(textureSets.road),
     roadColorMode: ['Default', 'Amenity distance', 'Access / traffic'],
@@ -31,10 +31,12 @@ export function populateDockSelects() {
     stopStyle: uniqueAssetVariants('busstops', ['Glass Shelter', 'Minimal Canopy', 'Wood Cabin']),
     weather: ['Clear', 'Rain', 'Snow']
   };
+  const selectLabelFn = { roofTexture: roofTextureLabel };
   document.querySelectorAll('.dock-panel select[data-setting]').forEach((select) => {
     const key = select.dataset.setting;
     if (!selectOptions[key]) return;
-    select.innerHTML = selectOptions[key].map((value) => `<option value="${value}">${value}</option>`).join('');
+    const labelFn = selectLabelFn[key] || ((v) => v);
+    select.innerHTML = selectOptions[key].map((value) => `<option value="${value}">${labelFn(value)}</option>`).join('');
   });
 }
 

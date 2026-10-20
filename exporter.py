@@ -43,8 +43,8 @@ MODE_VECTOR = "vector"
 MODE_RASTER_TEXTURE = "raster_texture"
 PLUGIN_VERSION_FALLBACK = "0.8.28"
 VECTOR_REQUIRED_INPUTS = ()
-VECTOR_RECOMMENDED_INPUTS = ("dem", "roi", "roads", "buildings", "blocks", "parcels")
-RASTER_TEXTURE_REQUIRED_INPUTS = ("roi", "plan_texture", "roads", "buildings")
+VECTOR_RECOMMENDED_INPUTS = ("dem", "plan_texture", "roi", "roads", "buildings", "blocks", "parcels")
+RASTER_TEXTURE_REQUIRED_INPUTS = ()
 REQUIRED_INPUTS = VECTOR_REQUIRED_INPUTS
 OPTIONAL_INPUTS = ("trees", "hardscape", "sidewalks", "pedestrian_paths", "bike_lanes", "lights", "benches", "trashbins", "busstops", "fences", "waterlines", "mosques", "tumulus")
 VECTOR_OPTIONAL_INPUTS = VECTOR_RECOMMENDED_INPUTS + OPTIONAL_INPUTS
@@ -71,9 +71,21 @@ ASSET_THEME_PRESETS = {
         "benches": ["Wood Plank", "Concrete Slab", "Curved Metal", "Slim Urban", "Stone Seat"],
         "bins": ["Square Box", "Dual Recycle", "Cylinder", "Compact", "Solar Compactor"],
         "busstops": ["Glass Shelter", "Minimal Canopy", "Steel Canopy", "Wood Cabin", "Compact Marker"],
-        "facades": ["UrbanA", "UrbanB", "UrbanC", "UrbanD", "UrbanE"],
-        "roofs": ["RoofA", "RoofB", "GermanTile", "USShingle", "StandingSeam"],
+        "facades": ["ResidentialA", "ResidentialB", "ResidentialC", "ResidentialD", "ResidentialE", "ResidentialF", "UrbanA", "UrbanB", "UrbanC", "UrbanD", "UrbanE", "UrbanF", "CurtainWall"],
+        "roofs": ["TurkishTile", "RoofA", "RoofB", "GermanTile", "USShingle", "StandingSeam", "GravelBallast"],
         "paving": ["Asphalt", "StoneA", "Cobble", "Concrete", "PlazaGranite"],
+    },
+    "Modern Turkish": {
+        "pedestrians": ["Commuter", "Urban Casual", "Student", "Visitor", "Warm Neutral"],
+        "cars": ["White", "Silver", "Graphite", "Slate", "Navy"],
+        "trees": ["Plane", "Olive", "Cypress", "Street Linden", "Compact Maple", "Pine", "Broadleaf"],
+        "lights": ["Modern Arc", "Slim Post", "Dual Head", "Classic Post"],
+        "benches": ["Wood Plank", "Concrete Slab", "Curved Metal", "Slim Urban"],
+        "bins": ["Square Box", "Dual Recycle", "Cylinder", "Compact"],
+        "busstops": ["Glass Shelter", "Minimal Canopy", "Steel Canopy"],
+        "facades": ["ResidentialA", "ResidentialB", "ResidentialC", "ResidentialD", "ResidentialE", "ResidentialF", "AnatolianBrick", "UrbanF"],
+        "roofs": ["TurkishTile", "CeramicLight", "RoofA", "StandingSeam"],
+        "paving": ["Asphalt", "StoneA", "Concrete", "WarmStone"],
     },
     "Mediterranean": {
         "pedestrians": ["Casual Linen", "Warm Neutral", "Student", "Visitor"],
@@ -83,8 +95,8 @@ ASSET_THEME_PRESETS = {
         "benches": ["Wood Plank", "Curved Metal", "Stone Seat", "Classic Iron"],
         "bins": ["Cylinder", "Square Box", "Dual Recycle", "Compact"],
         "busstops": ["Minimal Canopy", "Wood Cabin", "Glass Shelter", "Compact Marker"],
-        "facades": ["MediterraneanStucco", "UrbanB", "UrbanD", "CoastalWhite"],
-        "roofs": ["RoofC", "CeramicLight", "GermanTile", "RoofA"],
+        "facades": ["MediterraneanStucco", "ResidentialA", "ResidentialC", "ResidentialE", "UrbanB", "UrbanD", "CoastalWhite", "AnatolianBrick"],
+        "roofs": ["TurkishTile", "RoofC", "CeramicLight", "GermanTile", "RoofA"],
         "paving": ["StoneA", "WarmStone", "Cobble", "Concrete"],
     },
     "Campus": {
@@ -95,8 +107,8 @@ ASSET_THEME_PRESETS = {
         "benches": ["Wood Plank", "Concrete Slab", "Slim Urban", "Eco Timber"],
         "bins": ["Dual Recycle", "Square Box", "Compact", "Solar Compactor"],
         "busstops": ["Glass Shelter", "Minimal Canopy", "Steel Canopy"],
-        "facades": ["CampusGlass", "UrbanC", "UrbanA", "UrbanB"],
-        "roofs": ["RoofA", "RoofC", "USShingle", "SolarRoof"],
+        "facades": ["CampusGlass", "CurtainWall", "UrbanC", "UrbanA", "UrbanB", "BrutalistConcrete"],
+        "roofs": ["RoofA", "RoofC", "USShingle", "SolarRoof", "GravelBallast"],
         "paving": ["Concrete", "CampusPaver", "StoneA", "Asphalt"],
     },
     "Eco": {
@@ -107,8 +119,8 @@ ASSET_THEME_PRESETS = {
         "benches": ["Eco Timber", "Wood Plank", "Stone Seat", "Concrete Slab"],
         "bins": ["Dual Recycle", "Compact", "Cylinder", "Solar Compactor"],
         "busstops": ["Wood Cabin", "Minimal Canopy", "Glass Shelter"],
-        "facades": ["EcoTimber", "UrbanD", "UrbanB", "UrbanA"],
-        "roofs": ["GreenRoof", "SolarRoof", "RoofA", "RoofC"],
+        "facades": ["EcoTimber", "NordicTimber", "UrbanD", "UrbanB", "UrbanA"],
+        "roofs": ["GreenRoof", "SolarRoof", "RoofA", "RoofC", "CopperPatina"],
         "paving": ["Permeable", "Cobble", "StoneA", "Concrete"],
     },
     "Dense Urban": {
@@ -119,8 +131,8 @@ ASSET_THEME_PRESETS = {
         "benches": ["Concrete Slab", "Curved Metal", "Slim Urban", "Stone Seat"],
         "bins": ["Square Box", "Compact", "Dual Recycle", "Solar Compactor"],
         "busstops": ["Glass Shelter", "Steel Canopy", "Minimal Canopy", "Compact Marker"],
-        "facades": ["DenseBrick", "UrbanA", "UrbanC", "UrbanD"],
-        "roofs": ["StandingSeam", "RoofA", "RoofB", "USShingle"],
+        "facades": ["ResidentialB", "ResidentialD", "ResidentialF", "DenseBrick", "IndustrialLoft", "CurtainWall", "UrbanA", "UrbanC", "UrbanD", "UrbanF"],
+        "roofs": ["StandingSeam", "TurkishTile", "RoofA", "RoofB", "USShingle", "GravelBallast"],
         "paving": ["Asphalt", "Concrete", "Grid", "PlazaGranite"],
     },
     "Civic Heritage": {
@@ -131,8 +143,8 @@ ASSET_THEME_PRESETS = {
         "benches": ["Classic Iron", "Stone Seat", "Wood Plank", "Concrete Slab"],
         "bins": ["Cylinder", "Square Box", "Dual Recycle", "Compact"],
         "busstops": ["Steel Canopy", "Glass Shelter", "Minimal Canopy"],
-        "facades": ["CivicStone", "MediterraneanStucco", "UrbanB", "UrbanC"],
-        "roofs": ["GermanTile", "CeramicLight", "RoofC", "StandingSeam"],
+        "facades": ["CivicStone", "HeritageStone", "MediterraneanStucco", "UrbanB", "UrbanC"],
+        "roofs": ["CopperPatina", "LeadMansard", "GermanTile", "CeramicLight", "RoofC", "StandingSeam"],
         "paving": ["WarmStone", "StoneA", "Cobble", "PlazaGranite"],
     },
     "Coastal Light": {
@@ -143,7 +155,7 @@ ASSET_THEME_PRESETS = {
         "benches": ["Wood Plank", "Eco Timber", "Stone Seat", "Slim Urban"],
         "bins": ["Cylinder", "Dual Recycle", "Compact", "Square Box"],
         "busstops": ["Minimal Canopy", "Glass Shelter", "Wood Cabin"],
-        "facades": ["CoastalWhite", "MediterraneanStucco", "UrbanD", "CampusGlass"],
+        "facades": ["CoastalWhite", "MediterraneanStucco", "NordicTimber", "UrbanD", "CampusGlass"],
         "roofs": ["CeramicLight", "RoofA", "SolarRoof", "RoofC"],
         "paving": ["WarmStone", "Permeable", "StoneA", "Concrete"],
     },
@@ -433,28 +445,22 @@ def export_mode(layer_map: dict) -> str:
 
 
 def required_inputs_for_mode(mode: str) -> tuple[str, ...]:
-    return RASTER_TEXTURE_REQUIRED_INPUTS if mode == MODE_RASTER_TEXTURE else VECTOR_REQUIRED_INPUTS
+    return ()
 
 
 def optional_inputs_for_mode(mode: str) -> tuple[str, ...]:
-    if mode == MODE_RASTER_TEXTURE:
-        return ("blocks", "parcels") + OPTIONAL_INPUTS
     return VECTOR_OPTIONAL_INPUTS
 
 
 def recommended_inputs_for_mode(mode: str) -> tuple[str, ...]:
-    if mode == MODE_RASTER_TEXTURE:
-        return ("dem",)
     return VECTOR_RECOMMENDED_INPUTS
 
 
 def validate_inputs(layer_map: dict) -> list[str]:
-    required_inputs = required_inputs_for_mode(export_mode(layer_map))
-    missing = []
-    for key in required_inputs:
-        if layer_map.get(key) is None:
-            missing.append(LABELS[key])
-    return missing
+    all_layer_keys = ("dem", "plan_texture", "basemap") + tuple(VECTOR_TARGETS.keys())
+    if not any(layer_map.get(key) is not None for key in all_layer_keys):
+        return ["At least one raster or vector layer"]
+    return []
 
 
 def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
@@ -503,19 +509,25 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
 
     terrain_texture = None
     base_map_texture = None
-    if mode == MODE_RASTER_TEXTURE:
-        texture_path = texture_dir / "siteplan.tif"
-        _export_dem(layer_map["plan_texture"], texture_path)
+    texture_path = texture_dir / "siteplan.tif"
+    plan_texture_layer = layer_map.get("plan_texture")
+    if plan_texture_layer is not None:
+        _export_dem(plan_texture_layer, texture_path)
         terrain_texture = {
             "key": "plan_texture",
             "target": "texture/siteplan.tif",
             "label": LABELS["plan_texture"],
+            "sourceLayer": plan_texture_layer.name(),
+            "bounds": _layer_bounds_in_crs(plan_texture_layer, export_crs),
         }
         written.append(str(texture_path))
-        manifest_inputs.append(_layer_manifest("plan_texture", layer_map["plan_texture"], "texture/siteplan.tif", False, required_inputs))
+        manifest_inputs.append(_layer_manifest("plan_texture", plan_texture_layer, "texture/siteplan.tif", False, required_inputs))
+    else:
+        if texture_path.exists():
+            texture_path.unlink()
 
+    basemap_path = texture_dir / "basemap.png"
     if layer_map.get("basemap") is not None:
-        basemap_path = texture_dir / "basemap.png"
         _export_basemap(layer_map, basemap_path)
         base_map_texture = {
             "key": "basemap",
@@ -523,9 +535,13 @@ def export_all(layer_map: dict, web_root: str, feedback=None) -> list[str]:
             "label": LABELS["basemap"],
             "sourceLayer": layer_map["basemap"].name(),
             "size": int(layer_map.get("basemap_export_size") or 4096),
+            "bounds": _layer_bounds_in_crs(layer_map["basemap"], export_crs),
         }
         written.append(str(basemap_path))
         manifest_inputs.append(_layer_manifest("basemap", layer_map["basemap"], "texture/basemap.png", False, required_inputs))
+    else:
+        if basemap_path.exists():
+            basemap_path.unlink()
 
     for key, filename in VECTOR_TARGETS.items():
         out_path = vector_dir / filename
@@ -603,7 +619,7 @@ def write_manifest(
         "plugin": "planx_3d_city",
         "version": plugin_version(),
         "mode": mode,
-        "flexibleInputs": mode == MODE_VECTOR,
+        "flexibleInputs": True,
         "exportedAt": datetime.now().astimezone().isoformat(timespec="seconds"),
         "project": {
             "title": project_title,
@@ -679,7 +695,10 @@ def _analysis_defaults_manifest(layer_map: dict) -> dict:
 def _viewer_defaults_manifest(layer_map: dict) -> dict:
     latitude = layer_map.get("latitude")
     if latitude is None:
-        latitude = _derive_latitude_from_dem(layer_map.get("dem"))
+        for lat_key in ("dem", "plan_texture", "roi", "buildings", "roads", "blocks"):
+            latitude = _derive_latitude_from_dem(layer_map.get(lat_key))
+            if latitude is not None:
+                break
     tree_count_raw = layer_map.get("tree_random_variant_count", (layer_map.get("asset_pool_counts") or {}).get("trees", 8))
     try:
         tree_variant_count = int(tree_count_raw)
@@ -691,8 +710,13 @@ def _viewer_defaults_manifest(layer_map: dict) -> dict:
     if tree_render_mode not in ("Stylized", "Realistic"):
         tree_render_mode = "Stylized"
     atmo_name = str(layer_map.get("atmosphere_preset") or "Midday Sunlight Clean").strip()
+    has_plan_texture = layer_map.get("plan_texture") is not None
+    has_blocks = layer_map.get("blocks") is not None
+    default_island_transparency = 0.5 if (has_plan_texture and has_blocks) else 0.0
     return {
         "atmospherePreset": atmo_name,
+        "buildingMode": "Auto Smart Massing",
+        "showTerrainTexture": has_plan_texture,
         "showTerrainSides": True,
         "terrainSideDrop": 5.0,
         "terrainSideColor": "#d9fbf5",
@@ -711,7 +735,7 @@ def _viewer_defaults_manifest(layer_map: dict) -> dict:
         "flattenIslands": bool(layer_map.get("flatten_islands", True)),
         "islandPlateauTransition": float(layer_map.get("island_plateau_transition") or 6.0),
         "showIslands": True,
-        "islandTransparency": 0.0,
+        "islandTransparency": default_island_transparency,
         "latitude": float(latitude) if latitude is not None else 39.0,
         "dayOfYear": int(layer_map.get("day_of_year") or 172),
         "treeRenderMode": tree_render_mode,
@@ -837,6 +861,7 @@ def _target_export_crs(layer_map: dict):
     """Choose one stable CRS for all vector exports so mixed-CRS projects stay aligned in the web viewer."""
     candidates = (
         "dem",
+        "plan_texture",
         "roi",
         "roads",
         "buildings",
@@ -851,6 +876,11 @@ def _target_export_crs(layer_map: dict):
         "benches",
         "trashbins",
         "busstops",
+        "fences",
+        "waterlines",
+        "mosques",
+        "tumulus",
+        "basemap",
     )
     for key in candidates:
         layer = layer_map.get(key)
@@ -860,6 +890,26 @@ def _target_export_crs(layer_map: dict):
         if crs and crs.isValid():
             return crs
     return None
+
+
+def _layer_bounds_in_crs(layer, crs) -> Optional[dict]:
+    """Return {minX, minY, maxX, maxY} of `layer` transformed to `crs`, or None."""
+    if layer is None or not hasattr(layer, "extent"):
+        return None
+    try:
+        extent = layer.extent()
+        if extent.isNull():
+            return None
+        if crs is not None and crs.isValid() and hasattr(layer, "crs") and layer.crs().isValid() and layer.crs() != crs:
+            extent = QgsCoordinateTransform(layer.crs(), crs, QgsProject.instance()).transformBoundingBox(extent)
+        return {
+            "minX": float(extent.xMinimum()),
+            "minY": float(extent.yMinimum()),
+            "maxX": float(extent.xMaximum()),
+            "maxY": float(extent.yMaximum()),
+        }
+    except Exception:
+        return None
 
 
 def _export_vector(layer, out_path: Path, target_crs=None) -> None:
@@ -979,7 +1029,11 @@ def _gdal_optimized_dem(source_path: str, out_path: Path, view_bounds) -> Option
 
 # Layers the viewer derives its scene bounds from (ROI first), mirroring
 # deriveVectorBounds() in web/src/app.js.
-VIEWER_BOUNDS_KEYS = ("blocks", "roads", "buildings", "parcels", "sidewalks", "pedestrian_paths")
+VIEWER_BOUNDS_KEYS = (
+    "blocks", "roads", "buildings", "parcels", "sidewalks", "pedestrian_paths",
+    "trees", "hardscape", "bike_lanes", "fences", "waterlines", "mosques", "tumulus",
+    "lights", "benches", "trashbins", "busstops", "plan_texture", "basemap", "dem",
+)
 
 
 def _georeference(layer_map: dict, crs) -> Optional[dict]:

@@ -66,18 +66,42 @@ export function demSamplerBounds() {
 export function deriveVectorBounds(data) {
   const roi = asFeatureCollection(data?.roi, 'ROI');
   if (roi.features.length) return geometryBounds(roi.features);
+  const furniture = data?.furniture || {};
   const candidates = [
     asFeatureCollection(data?.blocksFc, 'Blocks').features,
     asFeatureCollection(data?.roadsFc, 'Roads').features,
     asFeatureCollection(data?.buildingsFc, 'Buildings').features,
     asFeatureCollection(data?.parcelsFc, 'Parcels').features,
+    asFeatureCollection(data?.treesFc, 'Trees').features,
+    asFeatureCollection(data?.hardscape, 'Hardscape').features,
     asFeatureCollection(data?.sidewalks, 'Sidewalks').features,
-    asFeatureCollection(data?.pedestrianPaths, 'Pedestrian paths').features
+    asFeatureCollection(data?.pedestrianPaths, 'Pedestrian paths').features,
+    asFeatureCollection(data?.bikeLanes, 'Bike lanes').features,
+    asFeatureCollection(data?.fences, 'Fences').features,
+    asFeatureCollection(data?.waterlines, 'Water lines').features,
+    asFeatureCollection(data?.mosques, 'Mosques').features,
+    asFeatureCollection(data?.tumulus, 'Tumulus').features,
+    asFeatureCollection(furniture?.lights, 'Lights').features,
+    asFeatureCollection(furniture?.benches, 'Benches').features,
+    asFeatureCollection(furniture?.bins, 'Trash bins').features,
+    asFeatureCollection(furniture?.busstops, 'Bus stops').features
   ]
     .filter((features) => features.length)
     .map((features) => geometryBounds(features))
     .filter(Boolean);
-  return candidates.length ? candidates.reduce((acc, b) => acc ? mergeBounds(acc, b) : b, null) : null;
+  if (candidates.length) {
+    return candidates.reduce((acc, b) => acc ? mergeBounds(acc, b) : b, null);
+  }
+  const texBounds = state.projectManifest?.terrainTexture?.bounds || state.projectManifest?.baseMapTexture?.bounds;
+  if (texBounds && [texBounds.minX, texBounds.maxX, texBounds.minY, texBounds.maxY].every(Number.isFinite)) {
+    return {
+      minX: Number(texBounds.minX),
+      maxX: Number(texBounds.maxX),
+      minY: Number(texBounds.minY),
+      maxY: Number(texBounds.maxY)
+    };
+  }
+  return null;
 }
 
 function fallbackSceneBounds() {
@@ -239,6 +263,24 @@ export async function loadTerrainTextureFromGeoTiff() {
   const raster = await image.readRasters({ interleave: true, width: outW, height: outH });
   const orientation = terrainTextureRasterOrientation(image);
   const textureBounds = geoTiffImageBounds(image);
+  if (textureBounds) {
+    const isFallbackBounds = !state.bounds || (
+      state.bounds.minX === -500 && state.bounds.maxX === 500 &&
+      state.bounds.minY === -500 && state.bounds.maxY === 500
+    );
+    if (isFallbackBounds) {
+      state.bounds = { ...textureBounds };
+      state.centerX = (textureBounds.minX + textureBounds.maxX) / 2;
+      state.centerY = (textureBounds.minY + textureBounds.maxY) / 2;
+      if (state.demSampler?.flat) {
+        state.demSampler.bounds = { ...textureBounds };
+        state.demSampler.originX = textureBounds.minX;
+        state.demSampler.originY = textureBounds.minY;
+        state.demSampler.resX = Math.max(1, textureBounds.maxX - textureBounds.minX);
+        state.demSampler.resY = Math.max(1, textureBounds.maxY - textureBounds.minY);
+      }
+    }
+  }
   const sourceCanvas = document.createElement('canvas');
   sourceCanvas.width = outW;
   sourceCanvas.height = outH;
@@ -1034,10 +1076,14 @@ export async function buildTerrain(blocksFc, buildToken = state.sceneBuildToken)
   zMax = finalStats.max;
   buildTerrainSurfaceCache(pos, segments, width, depth);
   geo.computeVertexNormals();
+  const useBaseMapTexture = settings.showXyzTiles && state.baseMapTexture;
+  const useRasterTexture = !useBaseMapTexture && isRasterTextureMode() && settings.showTerrainTexture && state.terrainTexture;
   const useTopoTint = settings.terrainAnalysisMode && settings.terrainAnalysisMode !== 'Texture';
   if (useTopoTint) {
     const colors = [];
     const normals = geo.attributes.normal;
+    const blendWithDrape = Boolean(useRasterTexture || useBaseMapTexture);
+    const white = new THREE.Color(0xffffff);
     for (let i = 0; i < pos.count; i++) {
       const z = pos.getZ(i);
       let color;
@@ -1048,13 +1094,12 @@ export async function buildTerrain(blocksFc, buildToken = state.sceneBuildToken)
         const tZ = (z - zMin) / Math.max(1e-6, zMax - zMin);
         color = new THREE.Color().setHSL(0.58 - tZ * 0.45, 0.62, 0.42 + tZ * 0.18);
       }
+      if (blendWithDrape) color.lerp(white, 0.25);
       colors.push(color.r, color.g, color.b);
     }
     geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   }
 
-  const useBaseMapTexture = settings.showXyzTiles && state.baseMapTexture;
-  const useRasterTexture = !useBaseMapTexture && isRasterTextureMode() && settings.showTerrainTexture && state.terrainTexture;
   const groundTex = useBaseMapTexture
     ? state.baseMapTexture
     : (useRasterTexture
@@ -1071,10 +1116,11 @@ export async function buildTerrain(blocksFc, buildToken = state.sceneBuildToken)
   const terrainOpacity = useRasterTexture ? settings.terrainTextureOpacity : 1;
   const roiMaskTexture = createRoiMaskTexture(width, depth);
   const clipTerrainToRoi = !settings.showOutsideRoiTerrain && !!roiMaskTexture;
+  const keepDrapeUnderTint = useTopoTint && (useRasterTexture || useBaseMapTexture);
   const maskTextureToRoi = settings.showOutsideRoiTerrain && !useTopoTint && !!roiMaskTexture && !!groundTex;
   const materialOptions = {
     color: maskTextureToRoi ? new THREE.Color(settings.terrainOutsideColor || '#edf2ef') : 0xffffff,
-    map: useTopoTint || maskTextureToRoi ? null : groundTex,
+    map: (useTopoTint && !keepDrapeUnderTint) || maskTextureToRoi ? null : groundTex,
     alphaMap: clipTerrainToRoi ? roiMaskTexture : null,
     alphaTest: clipTerrainToRoi ? 0.02 : 0,
     vertexColors: useTopoTint,

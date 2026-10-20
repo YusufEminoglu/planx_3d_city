@@ -13,6 +13,7 @@ BLOCK_STYLE_FIELDS = {
 BUILDING_STYLE_FIELDS = {
     "planx_color": QVariant.String,
     "planx_facade": QVariant.String,
+    "planx_massing": QVariant.String,
     "planx_roof_shape": QVariant.String,
     "planx_roof_texture": QVariant.String,
     "planx_roof_color": QVariant.String,

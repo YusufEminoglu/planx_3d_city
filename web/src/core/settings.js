@@ -1,13 +1,13 @@
 // Viewer settings and styles: the settings object (defaults, then what the
 // user saved in this browser), per-function building styles, block category
 // styles and the asset theme helpers that fill settings from a theme.
-import { textureSets, assetThemePresets } from '../catalog.js';
+import { textureSets, assetThemePresets, BUILDING_MODE_OPTIONS } from '../catalog.js';
 import { propFirst, normalizeHexColor, presetValue, roofShapeValue, setFieldNameResolver } from '../props.js';
 import { state } from './state.js';
 import { isPortableMode } from './scene.js';
 
 export const FACADE_TEXTURE_SCALE_MULTIPLIER = 4.85;
-export const SETTINGS_SCHEMA_VERSION = 9;
+export const SETTINGS_SCHEMA_VERSION = 10;
 
 export const functionColorState = {};
 export const functionFacadeState = {};
@@ -89,7 +89,10 @@ export function resolveFacadeForLevels(key, _levels) {
   return normalizeFacadeKey(key);
 }
 
-export function facadeTextureFloorRows(_key, fallback = 10) {
+export function facadeTextureFloorRows(key, fallback = 10) {
+  const normalized = normalizeFacadeKey(key);
+  if (/^Residential[ABCD]$/.test(normalized)) return 4;
+  if (/^Residential[EF]$/.test(normalized)) return 5;
   return fallback;
 }
 
@@ -132,12 +135,12 @@ export const settings = {
   parcelBoundaryOpacity: 0.35,
   hardscapeStyle: 'Cobble',
   hardscapeHeight: 0.30,
-  buildingMode: 'Extruded + roof',
+  buildingMode: 'Auto Smart Massing',
   terrainAnalysisMode: 'Texture',
   assetTheme: 'Modern Urban',
   showXyzTiles: false,
   xyzTileUrl: '',
-  roofTexture: 'RoofA',
+  roofTexture: 'TurkishTile',
   roofShape: 'Pyramid',
   roofHeight: 2.0,
   roadStyle: 'Asphalt',
@@ -342,11 +345,16 @@ function loadPersistedSettings() {
       if (schemaVersion < 9) {
         settings.showIslands = true;
         settings.islandTransparency = 0;
-        settings.buildingMode = 'Extruded + roof';
+      }
+      if (schemaVersion < 10) {
+        settings.buildingMode = 'Auto Smart Massing';
       }
     }
+    if (!BUILDING_MODE_OPTIONS.includes(settings.buildingMode)) {
+      settings.buildingMode = 'Auto Smart Massing';
+    }
     settings.roofShape = roofShapeValue(settings.roofShape, 'Pyramid');
-    settings.roofTexture = presetValue(settings.roofTexture, textureSets.roof, 'RoofA');
+    settings.roofTexture = presetValue(settings.roofTexture, textureSets.roof, 'TurkishTile');
   } catch (err) {
     console.warn('Could not restore PlanX viewer settings', err);
   }
@@ -358,11 +366,12 @@ function defaultFunctionBuildingStyle(fn, index = 0) {
   return {
     color: getSemanticColor(fn) || ['#f1f5f9', '#dbeafe', '#fee2e2', '#dcfce7', '#fef3c7', '#ede9fe'][index % 6],
     facade: normalizeFacadeKey(facadeOptions[index % Math.max(1, facadeOptions.length)] || 'UrbanA'),
+    massing: 'Auto Smart Massing',
     facadeScale: settings.facadeTextureScale,
     floorHeight: settings.floorHeight,
     roofShape: roofShapeValue(settings.roofShape, 'Pyramid'),
     roofHeight: settings.roofHeight,
-    roofTexture: presetValue(settings.roofTexture, textureSets.roof, 'RoofA'),
+    roofTexture: presetValue(settings.roofTexture, textureSets.roof, 'TurkishTile'),
     roofColor: '#ffffff',
     setbackEnabled: true
   };
@@ -373,6 +382,7 @@ function sanitizeFunctionBuildingStyle(style, fallback) {
   return {
     color: normalizeHexColor(base.color, fallback.color),
     facade: normalizeFacadeKey(base.facade || fallback.facade),
+    massing: BUILDING_MODE_OPTIONS.includes(base.massing) ? base.massing : (fallback.massing || 'Auto Smart Massing'),
     facadeScale: Math.max(1, Math.min(8, Number(base.facadeScale) || fallback.facadeScale)),
     floorHeight: Math.max(2.4, Math.min(6, Number(base.floorHeight) || fallback.floorHeight)),
     roofShape: roofShapeValue(base.roofShape, fallback.roofShape),

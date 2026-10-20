@@ -1,7 +1,7 @@
 // The advanced settings panel (lil-gui), with per-function building styles.
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 import { t } from '../ui_text.js';
-import { ROOF_SHAPE_OPTIONS, textureSets } from '../catalog.js';
+import { ROOF_SHAPE_OPTIONS, BUILDING_MODE_OPTIONS, textureSets } from '../catalog.js';
 import { state } from '../core/state.js';
 import {
   functionColorState, functionFacadeState, uniqueAssetVariants, settings, ensureFunctionBuildingStyle,
@@ -71,7 +71,7 @@ export function addGui() {
   parcels.add(settings, 'parcelBoundaryOpacity', 0.05, 1.0, 0.01).name(t('boundOp')).onChange(rebuildScene);
 
   const bld = globalGui.addFolder(t('bld'));
-  bld.add(settings, 'buildingMode', ['Footprint only', 'Extruded', 'Extruded + roof']).name('Building mode').onChange(rebuildScene);
+  bld.add(settings, 'buildingMode', BUILDING_MODE_OPTIONS).name('Building mode').onChange(rebuildScene);
   bld.add(settings, 'facadeTextureScale', 1.0, 8.0, 0.05).name('Facade scale').onChange(rebuildScene);
   bld.add(settings, 'floorHeight', 2.5, 5.0, 0.05).name(t('floorH')).onChange(rebuildScene);
   bld.add(settings, 'roofShape', ROOF_SHAPE_OPTIONS).name(t('roofShape')).onChange(rebuildScene);

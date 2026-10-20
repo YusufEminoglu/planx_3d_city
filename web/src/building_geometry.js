@@ -469,6 +469,92 @@ export function glowFor(x, z) {
   return 0.2 + (Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1) * 0.8;
 }
 
+export const MASSING_MODE_MAP = {
+  'Auto Smart Massing': 'auto',
+  'auto': 'auto',
+  'Extruded + roof': 'extrude+roof',
+  'extrude+roof': 'extrude+roof',
+  'Podium + tower': 'podium',
+  'podium': 'podium',
+  'Stepped tower': 'stepped',
+  'stepped': 'stepped',
+  'Courtyard block': 'courtyard',
+  'courtyard': 'courtyard',
+  'Cantilever / pilotis': 'cantilever',
+  'cantilever': 'cantilever',
+  'Penthouse crown': 'penthouse',
+  'penthouse': 'penthouse',
+  'Extruded': 'extrude',
+  'extrude': 'extrude',
+  'Footprint only': 'footprint',
+  'footprint': 'footprint'
+};
+
+/**
+ * Resolve a building's volumetric massing mode from explicit setting/property
+ * or automatically from building typology (levels, footprint area, function).
+ */
+export function resolveBuildingMassing(requestedMode, opts = {}) {
+  const raw = String(requestedMode || 'Auto Smart Massing').trim();
+  const mapped = MASSING_MODE_MAP[raw] || 'auto';
+  if (mapped !== 'auto') return mapped;
+
+  const levels = Math.max(1, Number(opts.levels) || 1);
+  const footprintArea = Math.max(0, Number(opts.footprintArea) || 0);
+  const fn = String(opts.functionName || '').toLowerCase();
+  const hasHoles = Boolean(opts.hasHoles);
+  const seed = Math.abs(Math.round(Number(opts.seed) || 0));
+
+  if (levels <= 1) return 'extrude+roof';
+  if (levels >= 9) return 'stepped';
+  if (footprintArea >= 520 && !hasHoles && levels >= 3 && levels <= 8) return 'courtyard';
+  const isCivicOrCommercial = /commercial|office|mixed|retail|civic|public|education|health|hotel|ticaret|kamu|karma|ofis|idari|avm/.test(fn);
+  if (levels >= 4 && (isCivicOrCommercial || footprintArea >= 360)) return 'podium';
+  if (levels >= 5) return (seed % 2 === 0) ? 'penthouse' : 'cantilever';
+  if (levels >= 3 && footprintArea >= 240 && (seed % 3 === 0)) return 'penthouse';
+  return 'extrude+roof';
+}
+
+function signedRingArea2D(pts) {
+  if (!pts || pts.length < 3) return 0;
+  let a = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const p1 = pts[i];
+    const p2 = pts[(i + 1) % pts.length];
+    const x1 = Array.isArray(p1) ? p1[0] : p1.x;
+    const y1 = Array.isArray(p1) ? p1[1] : (p1.y ?? p1.z);
+    const x2 = Array.isArray(p2) ? p2[0] : p2.x;
+    const y2 = Array.isArray(p2) ? p2[1] : (p2.y ?? p2.z);
+    a += (x1 * y2 - x2 * y1);
+  }
+  return a * 0.5;
+}
+
+function tryInsetRing2D(ring, distance) {
+  if (!ring || ring.length < 3 || distance <= 0) return null;
+  const origArea = signedRingArea2D(ring);
+  if (Math.abs(origArea) < 9.0) return null;
+  const insetPts = offsetLocalRing(ring, distance, false);
+  if (!insetPts || insetPts.length < 3) return null;
+  if (insetPts.some((p) => !Number.isFinite(p.x) || !Number.isFinite(p.y))) return null;
+  const newArea = signedRingArea2D(insetPts);
+  if ((newArea > 0) !== (origArea > 0)) return null;
+  const ratio = Math.abs(newArea) / Math.abs(origArea);
+  if (Math.abs(newArea) < 4.5 || ratio < 0.12 || ratio > 0.96) return null;
+  return insetPts;
+}
+
+function buildTierShape(rings, insetDist) {
+  const outerPts = tryInsetRing2D(rings[0], insetDist);
+  if (!outerPts) return null;
+  const shape = new THREE.Shape();
+  outerPts.forEach((pt, i) => {
+    if (i === 0) shape.moveTo(pt.x, pt.y); else shape.lineTo(pt.x, pt.y);
+  });
+  const footprint = outerPts.map((pt) => new THREE.Vector3(pt.x, 0, pt.y));
+  return { shape, footprint, outerPts };
+}
+
 const SLAB_THICKNESS = 0.12;
 
 function extrudeUp(shape, depth) {
@@ -537,24 +623,112 @@ export function buildBuildingBuckets(specs, looks) {
     }
 
     const outer = spec.rings[0];
-    const podium = spec.podiumHeight;
-    let towerShape = shape;
-    let towerFootprint = outer.map(([x, z]) => new THREE.Vector3(x, 0, z));
-    if (podium > 0) {
-      addExtrude(null, L.podiumWall, extrudeUp(shape, podium), baseY, spec, glow);
-      const inset = insetShapeFromRings(spec.rings, spec.setback);
-      if (inset) {
-        towerShape = inset;
-        const outerInset = offsetLocalRing(outer, spec.setback, false);
-        if (outerInset && outerInset.length >= 3) towerFootprint = outerInset.map((p) => new THREE.Vector3(p.x, 0, p.y));
+    const outerFootprint = outer.map(([x, z]) => new THREE.Vector3(x, 0, z));
+    const outerArea = Math.abs(signedRingArea2D(outer));
+    const minSpan = Math.sqrt(Math.max(16, outerArea));
+    const mode = spec.mode || 'extrude+roof';
+    let topShape = shape;
+    let topFootprint = outerFootprint;
+    let topY = baseY + spec.height;
+
+    if (mode === 'stepped' && spec.height >= 8) {
+      const h1 = spec.height * 0.42;
+      const h2 = spec.height * 0.34;
+      const h3 = Math.max(1.0, spec.height - h1 - h2);
+      const step1 = Math.max(1.1, Math.min(minSpan * 0.14, (spec.setback || 0) + 1.4));
+      const step2 = step1 * 1.95;
+      const tier2 = buildTierShape(spec.rings, step1);
+      const tier3 = tier2 ? buildTierShape(spec.rings, step2) : null;
+
+      addExtrude(L.cap || L.roof, L.podiumWall || L.wall, extrudeUp(shape, h1), baseY, spec, glow);
+      if (tier2) {
+        addExtrude(L.cap || L.roof, L.towerWall || L.wall, extrudeUp(tier2.shape, h2), baseY + h1, spec, glow);
+        topShape = tier2.shape;
+        topFootprint = tier2.footprint;
+      } else {
+        addExtrude(L.cap || L.roof, L.towerWall || L.wall, extrudeUp(shape, h2), baseY + h1, spec, glow);
       }
-      addExtrude(L.cap, L.towerWall, extrudeUp(towerShape, spec.height - podium), baseY + podium, spec, glow);
+      if (tier3) {
+        addExtrude(L.cap, L.towerWall || L.wall, extrudeUp(tier3.shape, h3), baseY + h1 + h2, spec, glow);
+        topShape = tier3.shape;
+        topFootprint = tier3.footprint;
+      } else {
+        addExtrude(L.cap, L.towerWall || L.wall, extrudeUp(topShape, h3), baseY + h1 + h2, spec, glow);
+      }
+    } else if (mode === 'podium' && spec.height >= 6) {
+      const podiumH = spec.podiumHeight > 0
+        ? spec.podiumHeight
+        : Math.min(spec.height * 0.42, Math.max(spec.floorHeight || 3.2, (spec.floorHeight || 3.2) * Math.min(3, Math.max(1, Math.floor((spec.levels || 4) * 0.35)))));
+      const towerInset = Math.max(1.5, Math.min(minSpan * 0.18, (spec.setback || 0) + 1.8));
+      const towerTier = buildTierShape(spec.rings, towerInset);
+      addExtrude(L.cap || L.roof, L.podiumWall || L.wall, extrudeUp(shape, podiumH), baseY, spec, glow);
+      if (towerTier) {
+        topShape = towerTier.shape;
+        topFootprint = towerTier.footprint;
+      }
+      addExtrude(L.cap, L.towerWall || L.wall, extrudeUp(topShape, Math.max(1.0, spec.height - podiumH)), baseY + podiumH, spec, glow);
+    } else if (mode === 'courtyard' && spec.rings.length === 1) {
+      const courtWall = Math.max(2.2, Math.min(6.5, minSpan * 0.22));
+      const innerRing = tryInsetRing2D(outer, courtWall);
+      if (innerRing && Math.abs(signedRingArea2D(innerRing)) >= 9.0) {
+        const courtShape = shapeFromRings(spec.rings);
+        const holePath = new THREE.Path();
+        const rev = innerRing.slice().reverse();
+        rev.forEach((pt, i) => {
+          if (i === 0) holePath.moveTo(pt.x, pt.y); else holePath.lineTo(pt.x, pt.y);
+        });
+        courtShape.holes.push(holePath);
+        const plinthH = Math.min(1.2, (spec.floorHeight || 3.2) * 0.32);
+        addExtrude(L.cap || L.roof, L.podiumWall || L.wall, extrudeUp(shape, plinthH), baseY, spec, glow);
+        addExtrude(L.cap, L.wall, extrudeUp(courtShape, Math.max(1.0, spec.height - plinthH)), baseY + plinthH, spec, glow);
+        topShape = courtShape;
+      } else {
+        addExtrude(L.cap, L.wall, extrudeUp(shape, spec.height), baseY, spec, glow);
+      }
+    } else if (mode === 'cantilever' && spec.height >= 6) {
+      const groundH = Math.min(spec.height * 0.34, Math.max(spec.floorHeight || 3.2, (spec.floorHeight || 3.2) * ((spec.levels || 4) >= 6 ? 2 : 1)));
+      const recess = Math.max(1.2, Math.min(minSpan * 0.16, 2.2));
+      const coreTier = buildTierShape(spec.rings, recess);
+      const baseShape = coreTier ? coreTier.shape : shape;
+      addExtrude(null, L.podiumWall || L.wall, extrudeUp(baseShape, groundH), baseY, spec, glow);
+      if (L.slab) {
+        addWhole(L.slab, extrudeUp(shape, SLAB_THICKNESS * 1.4), baseY + groundH - SLAB_THICKNESS * 0.7, spec, glow);
+      }
+      addExtrude(L.cap, L.towerWall || L.wall, extrudeUp(shape, Math.max(1.0, spec.height - groundH)), baseY + groundH, spec, glow);
+    } else if (mode === 'penthouse' && spec.height >= 5.5) {
+      const crownH = Math.min(spec.height * 0.24, Math.max((spec.floorHeight || 3.2) * 0.9, 2.6));
+      const mainH = Math.max(2.4, spec.height - crownH);
+      const crownInset = Math.max(1.2, Math.min(minSpan * 0.16, 2.2));
+      const crownTier = buildTierShape(spec.rings, crownInset);
+      addExtrude(L.cap || L.roof, L.wall, extrudeUp(shape, mainH), baseY, spec, glow);
+      if (L.slab) {
+        addWhole(L.slab, extrudeUp(shape, SLAB_THICKNESS * 1.4), baseY + mainH, spec, glow);
+      }
+      if (crownTier) {
+        addExtrude(L.cap, L.towerWall || L.wall, extrudeUp(crownTier.shape, crownH), baseY + mainH, spec, glow);
+        topShape = crownTier.shape;
+        topFootprint = crownTier.footprint;
+      } else {
+        topY = baseY + mainH;
+      }
     } else {
-      addExtrude(L.cap, L.wall, extrudeUp(shape, spec.height), baseY, spec, glow);
+      const podium = spec.podiumHeight;
+      if (podium > 0) {
+        addExtrude(L.cap || L.roof, L.podiumWall || L.wall, extrudeUp(shape, podium), baseY, spec, glow);
+        const inset = insetShapeFromRings(spec.rings, spec.setback);
+        if (inset) {
+          topShape = inset;
+          const outerInset = offsetLocalRing(outer, spec.setback, false);
+          if (outerInset && outerInset.length >= 3) topFootprint = outerInset.map((p) => new THREE.Vector3(p.x, 0, p.y));
+        }
+        addExtrude(L.cap, L.towerWall || L.wall, extrudeUp(topShape, spec.height - podium), baseY + podium, spec, glow);
+      } else {
+        addExtrude(L.cap, L.wall, extrudeUp(shape, spec.height), baseY, spec, glow);
+      }
     }
 
     if (spec.ledges && spec.levels > 1) {
-      // Every floor shares one slab outline per setback (podium and tower).
+      const podium = spec.podiumHeight;
       const slabGeoms = new Map();
       for (let i = 1; i < spec.levels; i++) {
         const setback = ((i === 1 && podium > 0) ? 0 : (podium > 0 ? spec.setback : 0)) - spec.ledges.projection;
@@ -567,9 +741,9 @@ export function buildBuildingBuckets(specs, looks) {
       }
     }
 
-    if (spec.mode === 'extrude+roof' && spec.roof) {
-      const roofGeo = roofGeometryFor(towerShape, towerFootprint, spec.roof.shape, spec.roof.height);
-      addWhole(L.roof, roofGeo, baseY + podium + (spec.height - podium) + 0.04, spec, glow);
+    if (mode !== 'extrude' && spec.roof) {
+      const roofGeo = roofGeometryFor(topShape, topFootprint, spec.roof.shape, spec.roof.height);
+      addWhole(L.roof, roofGeo, topY + 0.04, spec, glow);
     }
   }
 

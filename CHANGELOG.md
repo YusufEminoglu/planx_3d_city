@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0] - 2026-10-20
+
+- Building models and facades: added `ResidentialA`–`ResidentialF` photo facades, `UrbanF`, `CurtainWall`, `NordicTimber`, `HeritageStone`, `AnatolianBrick`, `IndustrialLoft`, and `BrutalistConcrete` procedural facades, plus `TurkishTile`, `CopperPatina`, `GravelBallast`, and `LeadMansard` roof presets and the `Modern Turkish` theme.
+- Volumetric 3D massing modes: added `Auto Smart Massing` (default), `Podium + tower`, `Stepped tower`, `Courtyard block`, `Cantilever / pilotis`, and `Penthouse crown` modes selectable globally, per building function in the Style dock, and per feature in QGIS Quick Style (`planx_massing`).
+- Unified raster and vector mode: removed the separate `Publish mode` selector and mandatory layer restrictions so any combination of raster or vector layers can be exported and analyzed (including Solar/Shadow, SVF, Viewshed, Wind, and Elevation/Slope tint blended over `plan_texture`).
+- Layer combo ergonomics: all layer selectors initialize empty (`None`) and only auto-populate on strict geometry-compatible token matches, with a new `Clear all layers` button.
+
 ## [2.0.1] - 2026-10-09
 
 - The repository and issue tracker moved to GitHub: https://github.com/YusufEminoglu/planx_3d_city (plugin metadata, README and reference manual links updated).

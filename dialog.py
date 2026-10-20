@@ -105,6 +105,7 @@ FIELD_MAPPING_DEFS = (
 
 ASSET_THEME_OPTIONS = (
     "Modern Urban",
+    "Modern Turkish",
     "Mediterranean",
     "Campus",
     "Eco",
@@ -526,19 +527,21 @@ class PlanX3DCityDialog(QDialog):
         page = QWidget()
         root = QVBoxLayout(page)
 
-        required_group = QGroupBox("Data layers")
+        required_group = QGroupBox("Data layers (Unified Raster & Vector)")
         required_grid = QGridLayout(required_group)
         mode_label = QLabel(
-            "<b>Publish mode</b><br><span style='color:#64748b'>Vector plan workflow or raster plan texture workflow.</span>"
+            "<b>Unified scene inputs</b><br><span style='color:#64748b'>"
+            "Select any combination of raster (DEM, Plan texture GeoTIFF) and vector layers on a single level. "
+            "No layer is mandatory; unmatched slots stay empty.</span>"
         )
+        mode_label.setWordWrap(True)
         self.mode_combo = QComboBox()
-        self.mode_combo.addItem("Vector Plan Mode", MODE_VECTOR)
+        self.mode_combo.addItem("Unified Scene Mode", MODE_VECTOR)
         self.mode_combo.addItem("Raster Plan Texture Mode", MODE_RASTER_TEXTURE)
-        required_grid.addWidget(mode_label, 0, 0)
-        required_grid.addWidget(self.mode_combo, 0, 1)
-        required_grid.addWidget(QLabel(""), 0, 2)
+        self.mode_combo.setVisible(False)
+        required_grid.addWidget(mode_label, 0, 0, 1, 3)
         for row, key in enumerate(("dem", "plan_texture", "roi", "roads", "buildings", "blocks", "parcels"), start=1):
-            self._add_layer_row(required_grid, row, key, required=(key != "plan_texture"))
+            self._add_layer_row(required_grid, row, key, required=False)
         self._add_road_access_row(required_grid, 8)
         root.addWidget(required_group)
 
@@ -604,10 +607,14 @@ class PlanX3DCityDialog(QDialog):
             "Layers are reprojected to a local UTM CRS and added to the current project."
         )
         self.auto_match_button = QPushButton("Auto-match layers")
+        self.auto_match_button.setToolTip("Match project layers by exact or whole-word layer name aliases; unmatched slots stay empty.")
+        self.clear_layers_button = QPushButton("Clear all layers")
+        self.clear_layers_button.setToolTip("Reset all layer combo boxes to empty (None).")
         self.check_button = QPushButton("Generate quality report")
         self.export_button = QPushButton("Export and open 3D Viewer")
         self.export_button.setObjectName("primaryButton")
         actions.addWidget(self.auto_match_button)
+        actions.addWidget(self.clear_layers_button)
         actions.addWidget(self.sample_button)
         actions.addWidget(self.osm_button)
         actions.addWidget(self.check_button)
@@ -623,6 +630,7 @@ class PlanX3DCityDialog(QDialog):
         self.save_preset_button.clicked.connect(self._save_preset)
         self.load_preset_button.clicked.connect(self._load_preset)
         self.auto_match_button.clicked.connect(self._auto_match_layers)
+        self.clear_layers_button.clicked.connect(self._clear_all_layers)
         self.check_button.clicked.connect(self._refresh_report)
         self.export_button.clicked.connect(lambda: self.exportRequested.emit(self.selected_layers()))
         self.mode_combo.currentIndexChanged.connect(self._refresh_report)
@@ -681,10 +689,14 @@ class PlanX3DCityDialog(QDialog):
         label.setMinimumWidth(INPUT_LABEL_MIN_WIDTH)
         label.setWordWrap(True)
         box = QgsMapLayerComboBox()
-        box.setAllowEmptyLayer(True)
-        box.setFilters(QgsMapLayerProxyModel.RasterLayer if key == "dem" else QgsMapLayerProxyModel.VectorLayer)
-        if key in ("plan_texture", "basemap"):
+        box.blockSignals(True)
+        if key in ("dem", "plan_texture", "basemap"):
             box.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        else:
+            box.setFilters(QgsMapLayerProxyModel.VectorLayer)
+        box.setAllowEmptyLayer(True)
+        box.setLayer(None)
+        box.blockSignals(False)
         if role == "required":
             badge_text = "Missing"
         elif role == "recommended":
@@ -897,13 +909,41 @@ class PlanX3DCityDialog(QDialog):
         quick = QGroupBox("Quick style for selected features")
         form = QFormLayout(quick)
         self.block_texture_combo = QComboBox()
-        self.block_texture_combo.addItems(["", "None", "SoftNoise", "FineGrid"])
+        self.block_texture_combo.addItems([
+            "", "None", "SoftNoise", "FineGrid", "ParkGreen",
+            "ResidentialBeige", "CivicGravel", "CoastalSand", "Water",
+        ])
         self.facade_combo = QComboBox()
-        self.facade_combo.addItems(["", "UrbanA", "UrbanB", "UrbanC", "UrbanD"])
+        self.facade_combo.addItems([
+            "",
+            "ResidentialA", "ResidentialB", "ResidentialC", "ResidentialD", "ResidentialE", "ResidentialF",
+            "UrbanA", "UrbanB", "UrbanC", "UrbanD", "UrbanE", "UrbanF",
+            "CampusGlass", "CurtainWall", "EcoTimber", "NordicTimber",
+            "CivicStone", "HeritageStone", "DenseBrick", "AnatolianBrick",
+            "IndustrialLoft", "BrutalistConcrete", "CoastalWhite", "MediterraneanStucco",
+        ])
+        self.massing_combo = QComboBox()
+        self.massing_combo.addItems([
+            "",
+            "Auto Smart Massing",
+            "Extruded + roof",
+            "Podium + tower",
+            "Stepped tower",
+            "Courtyard block",
+            "Cantilever / pilotis",
+            "Penthouse crown",
+            "Extruded",
+            "Footprint only",
+        ])
         self.roof_shape_combo = QComboBox()
-        self.roof_shape_combo.addItems(["", "Flat", "Pyramid", "Gable", "Cone", "Prism"])
+        self.roof_shape_combo.addItems(["", "Flat", "Pyramid", "Hip", "Gable", "Shed"])
         self.roof_texture_combo = QComboBox()
-        self.roof_texture_combo.addItems(["", "RoofA", "RoofC", "GermanTile", "USShingle"])
+        self.roof_texture_combo.addItems([
+            "",
+            "TurkishTile", "RoofA", "RoofB", "RoofC", "RoofD",
+            "GermanTile", "USShingle", "StandingSeam", "GreenRoof",
+            "SolarRoof", "CeramicLight", "CopperPatina", "GravelBallast", "LeadMansard",
+        ])
         self.color_btn = QPushButton("Pick color")
         self.roof_color_btn = QPushButton("Pick roof color")
         self.color_value = ""
@@ -911,6 +951,7 @@ class PlanX3DCityDialog(QDialog):
         form.addRow("Block/building color", self.color_btn)
         form.addRow("Block texture", self.block_texture_combo)
         form.addRow("Building facade", self.facade_combo)
+        form.addRow("Building massing", self.massing_combo)
         form.addRow("Roof shape", self.roof_shape_combo)
         form.addRow("Roof texture", self.roof_texture_combo)
         form.addRow("Roof color", self.roof_color_btn)
@@ -1058,8 +1099,10 @@ class PlanX3DCityDialog(QDialog):
         matched = []
         missing = []
 
-        # Layer selections
+        # Layer selections: clear first so unmatched slots stay empty
         for key, box in self.layer_boxes.items():
+            box.blockSignals(True)
+            box.setLayer(None)
             entry = data.get(key)
             if isinstance(entry, dict) and entry.get("_layer_name"):
                 layer = by_name.get(entry["_layer_name"])
@@ -1068,6 +1111,7 @@ class PlanX3DCityDialog(QDialog):
                     matched.append(f"{key}={entry['_layer_name']}")
                 else:
                     missing.append(f"{key}({entry['_layer_name']})")
+            box.blockSignals(False)
 
         # Mode
         if data.get("mode") and hasattr(self, "mode_combo"):
@@ -1288,42 +1332,67 @@ class PlanX3DCityDialog(QDialog):
             canvas.setExtent(combined)
             canvas.refresh()
 
+    def _clear_all_layers(self) -> None:
+        """Reset every layer combo box to None (empty) and clear field mappings."""
+        for box in self.layer_boxes.values():
+            box.blockSignals(True)
+            box.setLayer(None)
+            box.blockSignals(False)
+        for combo in getattr(self, "field_mapping_combos", {}).values():
+            combo.blockSignals(True)
+            combo.setCurrentIndex(0)
+            combo.blockSignals(False)
+        self._refresh_report()
+        self.set_status("All layer selections cleared. Select only the layers you want to publish.")
+
     def _auto_match_layers_quiet(self) -> None:
-        """Run auto-matching on dialog opening if no layer is currently selected."""
-        if any(box.currentLayer() is not None for box in self.layer_boxes.values()):
-            return
+        """Run strict auto-matching on dialog opening; unmatched slots remain None."""
         layers = list(QgsProject.instance().mapLayers().values())
         used_ids = set()
         matched = []
         for key in ("dem", "plan_texture", "basemap", "roi", "roads", "buildings", "blocks", "parcels") + OPTIONAL_INPUTS:
-            candidate = self._best_layer_match(key, layers, used_ids)
-            if candidate is None:
+            box = self.layer_boxes.get(key)
+            if box is None:
                 continue
-            self.layer_boxes[key].setLayer(candidate)
-            used_ids.add(candidate.id())
-            matched.append(LABELS[key])
+            candidate = self._best_layer_match(key, layers, used_ids)
+            box.blockSignals(True)
+            if candidate is None:
+                box.setLayer(None)
+            else:
+                box.setLayer(candidate)
+                used_ids.add(candidate.id())
+                matched.append(LABELS[key])
+            box.blockSignals(False)
         if matched:
-            self.set_status("Auto-matched layers from current project: " + ", ".join(matched[:5]) + ("..." if len(matched) > 5 else "") + ". Ready to export!")
+            self.set_status("Auto-matched layers from current project: " + ", ".join(matched[:5]) + ("..." if len(matched) > 5 else "") + ". Unmatched slots left empty.")
 
     def _auto_match_layers(self) -> None:
         layers = list(QgsProject.instance().mapLayers().values())
         used_ids = set()
         matched = []
         for key in ("dem", "plan_texture", "basemap", "roi", "roads", "buildings", "blocks", "parcels") + OPTIONAL_INPUTS:
-            candidate = self._best_layer_match(key, layers, used_ids)
-            if candidate is None:
+            box = self.layer_boxes.get(key)
+            if box is None:
                 continue
-            self.layer_boxes[key].setLayer(candidate)
-            used_ids.add(candidate.id())
-            matched.append(f"{LABELS[key]} = {candidate.name()}")
+            candidate = self._best_layer_match(key, layers, used_ids)
+            box.blockSignals(True)
+            if candidate is None:
+                box.setLayer(None)
+            else:
+                box.setLayer(candidate)
+                used_ids.add(candidate.id())
+                matched.append(f"{LABELS[key]} = {candidate.name()}")
+            box.blockSignals(False)
         self._refresh_report()
         if matched:
-            self.set_status("Auto-match completed: " + "; ".join(matched[:6]) + (" ..." if len(matched) > 6 else ""))
+            self.set_status("Auto-match completed (unmatched slots cleared): " + "; ".join(matched[:6]) + (" ..." if len(matched) > 6 else ""))
         else:
-            self.set_status("No suitable layer names were found for auto-match.", error=True)
+            self.set_status("No high-confidence layer names found; all layer slots left empty.", error=False)
 
     def _best_layer_match(self, key: str, layers: list, used_ids: set):
         aliases = AUTO_MATCH_ALIASES.get(key, ())
+        expected = EXPECTED_GEOMETRIES.get(key, "")
+        expected_tokens = [token.strip() for token in expected.split("/") if token.strip()]
         best = None
         best_score = 0
         for layer in layers:
@@ -1333,15 +1402,27 @@ class PlanX3DCityDialog(QDialog):
                 continue
             if key not in ("dem", "plan_texture", "basemap") and not hasattr(layer, "featureCount"):
                 continue
+            if key not in ("dem", "plan_texture", "basemap") and expected_tokens:
+                geom = self._geometry_name(layer)
+                if geom != "-" and not any(token in geom for token in expected_tokens):
+                    continue
             name = self._normalize_name(layer.name())
+            name_tokens = name.split()
+            if not name:
+                continue
             score = 0
             for alias in aliases:
                 normalized_alias = self._normalize_name(alias)
+                if not normalized_alias:
+                    continue
+                alias_tokens = normalized_alias.split()
                 if name == normalized_alias:
                     score = max(score, 100)
-                elif normalized_alias in name:
-                    score = max(score, 40 + len(normalized_alias))
-            if score > best_score:
+                elif alias_tokens and len(alias_tokens) <= len(name_tokens):
+                    n_len = len(alias_tokens)
+                    if any(name_tokens[i:i + n_len] == alias_tokens for i in range(len(name_tokens) - n_len + 1)):
+                        score = max(score, 80 + len(normalized_alias))
+            if score >= 80 and score > best_score:
                 best = layer
                 best_score = score
         return best
@@ -1361,13 +1442,13 @@ class PlanX3DCityDialog(QDialog):
         missing = validate_inputs(layer_map)
         if missing:
             warnings.append("Missing required inputs: " + ", ".join(missing))
-        if mode == MODE_VECTOR:
-            missing_recommended = [LABELS[k] for k in recommended_keys if layer_map.get(k) is None]
-            if missing_recommended:
-                warnings.append("Recommended layers missing (viewer will skip them): " + ", ".join(missing_recommended))
-            warnings.append("Vector Plan Mode has no mandatory layer. DEM is recommended for real topography; without it, the viewer uses a flat presentation plane.")
-        if mode == MODE_RASTER_TEXTURE:
-            warnings.append("Raster Plan Texture mode expects the plan GeoTIFF, DEM and ROI to use the same metric CRS and clipped study area.")
+        missing_recommended = [LABELS[k] for k in recommended_keys if layer_map.get(k) is None]
+        if missing_recommended:
+            warnings.append("Recommended layers not selected (viewer will skip them): " + ", ".join(missing_recommended))
+        warnings.append(
+            "Unified mode has no mandatory layer: you can publish any combination of raster (DEM, Plan texture GeoTIFF) "
+            "and vector layers. Without DEM, the viewer uses a flat presentation plane."
+        )
         road_access_field = layer_map.get("road_access_field")
         if road_access_field:
             warnings.append(f"Road access filter active: cars will avoid no-car/pedestrian values in '{road_access_field}'.")
@@ -1384,8 +1465,6 @@ class PlanX3DCityDialog(QDialog):
                 role = "Recommended"
             else:
                 role = "Optional"
-            if key == "plan_texture" and mode != MODE_RASTER_TEXTURE:
-                role = "Not used"
             if layer is None:
                 if key in required_keys:
                     status = "Missing"
@@ -1421,6 +1500,8 @@ class PlanX3DCityDialog(QDialog):
         score = 0
         if layer_map.get("buildings") is not None:
             score += 25
+        if layer_map.get("plan_texture") is not None or layer_map.get("basemap") is not None:
+            score += 25
         if layer_map.get("dem") is not None:
             score += 20
         if layer_map.get("building_floors_field"):
@@ -1429,7 +1510,7 @@ class PlanX3DCityDialog(QDialog):
             score += 10
         if crs_values and not any("4326" in c for c in crs_values):
             score += 15
-        for extra_key in ("roads", "blocks", "waterlines", "trees", "lights", "benches"):
+        for extra_key in ("roads", "blocks", "roi", "waterlines", "trees", "lights", "benches"):
             if layer_map.get(extra_key) is not None:
                 score += 4
         score = min(100, score)
@@ -1496,7 +1577,7 @@ class PlanX3DCityDialog(QDialog):
                 elif key in recommended_keys:
                     state, text = "recommended", "Recommended"
                 else:
-                    state, text = "optional", ("Off" if key == "plan_texture" else "Optional")
+                    state, text = "optional", "Optional"
             else:
                 count = self._feature_count(layer)
                 state = "empty" if count == 0 else "ready"
@@ -1584,6 +1665,7 @@ class PlanX3DCityDialog(QDialog):
         values = {
             "planx_color": self.color_value,
             "planx_facade": self.facade_combo.currentText(),
+            "planx_massing": self.massing_combo.currentText(),
             "planx_roof_shape": self.roof_shape_combo.currentText(),
             "planx_roof_texture": self.roof_texture_combo.currentText(),
             "planx_roof_color": self.roof_color_value,
@@ -1777,6 +1859,9 @@ class PlanX3DCityDialog(QDialog):
             combo.blockSignals(False)
 
     def _current_mode(self) -> str:
+        plan_tex_box = self.layer_boxes.get("plan_texture") if hasattr(self, "layer_boxes") else None
+        if plan_tex_box is not None and plan_tex_box.currentLayer() is not None:
+            return MODE_RASTER_TEXTURE
         if not hasattr(self, "mode_combo"):
             return MODE_VECTOR
         return self.mode_combo.currentData() or MODE_VECTOR

@@ -67,6 +67,60 @@ function drawWindowedFacade(ctx, size, palette, opts) {
       ctx.fillStyle = grad;
       ctx.fillRect(x, 0, pilW, size);
     }
+  } else if (columnPattern === 'curtain') {
+    const colStep = size / cols;
+    for (let c = 0; c <= cols; c++) {
+      const x = c * colStep;
+      ctx.fillStyle = `${frame}cc`;
+      ctx.fillRect(x - 1.5, 0, 3, size);
+    }
+  } else if (columnPattern === 'slats') {
+    const slatStep = 6;
+    for (let x = 0; x < size; x += slatStep) {
+      ctx.fillStyle = (Math.floor(x / slatStep) % 2 === 0) ? palette[0] : palette[2];
+      ctx.fillRect(x, 0, slatStep - 1, size);
+      ctx.fillStyle = `${accent}88`;
+      ctx.fillRect(x + slatStep - 1, 0, 1, size);
+    }
+  } else if (columnPattern === 'ashlar') {
+    const blockH = 18;
+    const blockW = 36;
+    for (let y = 0; y < size; y += blockH) {
+      const offset = ((y / blockH) % 2) * (blockW * 0.5);
+      for (let x = -blockW; x < size + blockW; x += blockW) {
+        ctx.fillStyle = ((x + y) % 5 === 0) ? palette[2] : palette[0];
+        ctx.fillRect(x + offset + 1, y + 1, blockW - 2, blockH - 2);
+        ctx.strokeStyle = `${accent}77`;
+        ctx.lineWidth = 0.9;
+        ctx.strokeRect(x + offset + 1, y + 1, blockW - 2, blockH - 2);
+      }
+    }
+  } else if (columnPattern === 'industrial') {
+    const brickH = 7;
+    const brickW = 20;
+    for (let y = 0; y < size; y += brickH) {
+      const offset = ((y / brickH) % 2) * (brickW * 0.5);
+      for (let x = -brickW; x < size + brickW; x += brickW) {
+        ctx.fillStyle = ((x + y) % 6 === 0) ? palette[2] : palette[0];
+        ctx.fillRect(x + offset, y, brickW - 1, brickH - 1);
+      }
+    }
+    const colStep = size / cols;
+    ctx.fillStyle = accent;
+    for (let c = 0; c <= cols; c++) {
+      ctx.fillRect(c * colStep - 2, 0, 4, size);
+    }
+  } else if (columnPattern === 'waffle') {
+    const colStep = size / cols;
+    const rowStep = size / (floors + 1);
+    ctx.strokeStyle = `${accent}aa`;
+    ctx.lineWidth = 3;
+    for (let c = 0; c <= cols; c++) {
+      ctx.beginPath(); ctx.moveTo(c * colStep, 0); ctx.lineTo(c * colStep, size); ctx.stroke();
+    }
+    for (let r = 0; r <= floors + 1; r++) {
+      ctx.beginPath(); ctx.moveTo(0, r * rowStep); ctx.lineTo(size, r * rowStep); ctx.stroke();
+    }
   }
 
   const groundH = groundShop ? (size / (floors + 1)) * 1.6 : 0;
@@ -132,6 +186,58 @@ function drawWindowedFacade(ctx, size, palette, opts) {
           ctx.lineTo(wx + ww, sy);
           ctx.stroke();
         }
+      } else if (glassPattern === 'balcony-bands') {
+        const grad = ctx.createLinearGradient(wx, wy, wx, wy + wh);
+        grad.addColorStop(0, palette[2]);
+        grad.addColorStop(0.65, accent);
+        grad.addColorStop(1, '#1e293b');
+        ctx.fillStyle = grad;
+        ctx.fillRect(wx, wy, ww, wh);
+        // Balcony railing strip across bottom of window bay
+        const railH = Math.max(2, wh * 0.28);
+        ctx.fillStyle = `${frame}cc`;
+        ctx.fillRect(wx - 2, wy + wh - railH, ww + 4, railH);
+        ctx.strokeStyle = `${accent}aa`;
+        ctx.lineWidth = 0.7;
+        ctx.strokeRect(wx - 2, wy + wh - railH, ww + 4, railH);
+      } else if (glassPattern === 'spandrel') {
+        const spandrelH = Math.max(2, wh * 0.24);
+        ctx.fillStyle = accent;
+        ctx.fillRect(wx, wy, ww, spandrelH);
+        const grad = ctx.createLinearGradient(wx, wy + spandrelH, wx + ww, wy + wh);
+        grad.addColorStop(0, palette[2]);
+        grad.addColorStop(0.5, '#64748b');
+        grad.addColorStop(1, accent);
+        ctx.fillStyle = grad;
+        ctx.fillRect(wx, wy + spandrelH, ww, wh - spandrelH);
+      } else if (glassPattern === 'mullion-grid') {
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(wx, wy, ww, wh);
+        const grad = ctx.createLinearGradient(wx, wy, wx + ww, wy + wh);
+        grad.addColorStop(0, `${palette[2]}99`);
+        grad.addColorStop(1, `${accent}cc`);
+        ctx.fillStyle = grad;
+        ctx.fillRect(wx, wy, ww, wh);
+        ctx.strokeStyle = frame;
+        ctx.lineWidth = 0.8;
+        for (let gx = 1; gx < 3; gx++) {
+          ctx.beginPath(); ctx.moveTo(wx + (ww / 3) * gx, wy); ctx.lineTo(wx + (ww / 3) * gx, wy + wh); ctx.stroke();
+        }
+        for (let gy = 1; gy < 3; gy++) {
+          ctx.beginPath(); ctx.moveTo(wx, wy + (wh / 3) * gy); ctx.lineTo(wx + ww, wy + (wh / 3) * gy); ctx.stroke();
+        }
+      } else if (glassPattern === 'french-arch') {
+        ctx.fillStyle = palette[2];
+        ctx.fillRect(wx, wy + wh * 0.18, ww, wh * 0.82);
+        ctx.beginPath();
+        ctx.arc(wx + ww * 0.5, wy + wh * 0.22, ww * 0.5, Math.PI, 0);
+        ctx.fill();
+        ctx.strokeStyle = frame;
+        ctx.lineWidth = 0.9;
+        ctx.beginPath();
+        ctx.moveTo(wx + ww * 0.5, wy + 2);
+        ctx.lineTo(wx + ww * 0.5, wy + wh);
+        ctx.stroke();
       } else {
         const grad = ctx.createLinearGradient(wx, wy, wx + ww, wy + wh);
         grad.addColorStop(0, palette[2]);
@@ -192,10 +298,17 @@ export function proceduralTextureCanvas(name, size = 256) {
     Grid: ['#dbeafe', '#64748b', '#f8fafc'],
     SharedStreet: ['#3a3f44', '#6b7280', '#eef2f7'],
     UrbanE: ['#d8dee7', '#536171', '#f3f6f9'],
+    UrbanF: ['#cbd5e1', '#334155', '#f8fafc'],
     CampusGlass: ['#a9d6e8', '#2f5f73', '#e8f6fb'],
+    CurtainWall: ['#93c5fd', '#1e3a5f', '#e0f2fe'],
     EcoTimber: ['#9a6b3a', '#4f3824', '#d5b07c'],
+    NordicTimber: ['#b07d4f', '#523a24', '#dfc29d'],
     CivicStone: ['#c8c2b6', '#7c7468', '#eee8dd'],
+    HeritageStone: ['#d6cec2', '#786b59', '#f5f0e6'],
     DenseBrick: ['#8f3f2d', '#55261d', '#c2694f'],
+    AnatolianBrick: ['#b4532a', '#7c2d12', '#e2875a'],
+    IndustrialLoft: ['#7c3f2c', '#27272a', '#a85a42'],
+    BrutalistConcrete: ['#a1a1aa', '#52525b', '#d4d4d8'],
     CoastalWhite: ['#f5f1e8', '#92a7b4', '#ffffff'],
     MediterraneanStucco: ['#ead8bd', '#b78b64', '#fff4df']
   }[name] || ['#cbd5e1', '#94a3b8', '#f8fafc'];
@@ -587,8 +700,9 @@ export function createRoofPresetTexture(name) {
   const ctx = c.getContext('2d');
   const bg = {
     RoofA: '#9a7b61', RoofB: '#6f7885', RoofC: '#8e5a49', RoofD: '#5e6368',
-    GermanTile: '#3d4a5c', USShingle: '#2d3340',
-    StandingSeam: '#506070', GreenRoof: '#587642', SolarRoof: '#26364c', CeramicLight: '#d1a16d'
+    TurkishTile: '#a8442a', GermanTile: '#3d4a5c', USShingle: '#2d3340',
+    StandingSeam: '#506070', GreenRoof: '#587642', SolarRoof: '#26364c', CeramicLight: '#d1a16d',
+    CopperPatina: '#437c6c', GravelBallast: '#8b8982', LeadMansard: '#4a525d'
   }[name] || '#9a7b61';
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, 256, 256);
@@ -619,6 +733,71 @@ export function createRoofPresetTexture(name) {
     ctx.strokeStyle = 'rgba(80,45,38,0.25)';
     for (let y = 8; y < 256; y += 20) {
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(256, y + 8); ctx.stroke();
+    }
+  } else if (name === 'TurkishTile') {
+    // Terracotta barrel tiles (Alaturka kiremit) — warm red-orange rows + vertical channels
+    ctx.fillStyle = '#a8442a';
+    ctx.fillRect(0, 0, 256, 256);
+    const colW = 24, rowH = 22;
+    for (let row = 0; row * rowH < 280; row++) {
+      for (let col = 0; col * colW < 280; col++) {
+        const x = col * colW + (row % 2) * 3;
+        const y = row * rowH;
+        const grad = ctx.createLinearGradient(x, y, x + colW, y);
+        grad.addColorStop(0, '#7d2f1a');
+        grad.addColorStop(0.35, '#c45535');
+        grad.addColorStop(0.65, '#d46543');
+        grad.addColorStop(1, '#6e2816');
+        ctx.fillStyle = grad;
+        ctx.fillRect(x + 1, y + 1, colW - 2, rowH - 2);
+        ctx.strokeStyle = 'rgba(55,18,8,0.55)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(x + colW / 2, y + rowH - 1, colW / 2 - 2, 0.15 * Math.PI, 0.85 * Math.PI);
+        ctx.stroke();
+      }
+    }
+  } else if (name === 'CopperPatina') {
+    ctx.fillStyle = '#437c6c';
+    ctx.fillRect(0, 0, 256, 256);
+    for (let x = 0; x < 256; x += 20) {
+      const grad = ctx.createLinearGradient(x, 0, x + 18, 0);
+      grad.addColorStop(0, 'rgba(30,68,58,0.55)');
+      grad.addColorStop(0.5, 'rgba(110,185,162,0.32)');
+      grad.addColorStop(1, 'rgba(24,54,46,0.55)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, 0, 18, 256);
+      ctx.strokeStyle = 'rgba(180,235,215,0.38)';
+      ctx.beginPath(); ctx.moveTo(x + 18, 0); ctx.lineTo(x + 18, 256); ctx.stroke();
+    }
+    for (let y = 32; y < 256; y += 64) {
+      ctx.strokeStyle = 'rgba(24,54,46,0.35)';
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(256, y); ctx.stroke();
+    }
+  } else if (name === 'GravelBallast') {
+    ctx.fillStyle = '#8b8982';
+    ctx.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 2200; i++) {
+      const x = Math.random() * 256;
+      const y = Math.random() * 256;
+      const v = 95 + Math.floor(Math.random() * 85);
+      ctx.fillStyle = `rgba(${v},${v - 2},${v - 6},0.55)`;
+      ctx.fillRect(x, y, 2.2, 2.2);
+    }
+  } else if (name === 'LeadMansard') {
+    ctx.fillStyle = '#4a525d';
+    ctx.fillRect(0, 0, 256, 256);
+    const bw = 28, bh = 36;
+    for (let row = 0; row * bh < 260; row++) {
+      for (let col = 0; col * bw < 260; col++) {
+        const x = col * bw + (row % 2) * (bw * 0.5);
+        const y = row * bh;
+        ctx.strokeStyle = 'rgba(25,30,36,0.65)';
+        ctx.lineWidth = 1.4;
+        ctx.strokeRect(x, y, bw, bh);
+        ctx.strokeStyle = 'rgba(185,198,215,0.28)';
+        ctx.beginPath(); ctx.moveTo(x + 2, y + 2); ctx.lineTo(x + bw - 2, y + 2); ctx.stroke();
+      }
     }
   } else if (name === 'GermanTile') {
     // Dark slate, staggered rectangular tiles with shadow lines

@@ -2,7 +2,7 @@
 // time presets, the theme switch, bookmarks, and the block-category and
 // building-function style editors.
 import { t } from '../ui_text.js';
-import { ROOF_SHAPE_OPTIONS, textureSets } from '../catalog.js';
+import { ROOF_SHAPE_OPTIONS, BUILDING_MODE_OPTIONS, textureSets, roofTextureLabel } from '../catalog.js';
 import { presetValue, roofShapeValue } from '../props.js';
 import { state } from '../core/state.js';
 import {
@@ -117,15 +117,14 @@ export function renderFunctionStyleDock() {
     return;
   }
   host.innerHTML = '';
-  const facadeOptions = uniqueAssetVariants('facades', Object.keys(textureSets.facade))
-    .filter((value) => Object.prototype.hasOwnProperty.call(textureSets.facade, value));
+  const facadeOptions = Object.keys(textureSets.facade);
   const roofOptions = Object.keys(textureSets.roof);
-  const makeSelect = (options, value) => {
+  const makeSelect = (options, value, labelFn = (v) => v) => {
     const select = document.createElement('select');
     options.forEach((item) => {
       const opt = document.createElement('option');
       opt.value = item;
-      opt.textContent = item;
+      opt.textContent = labelFn(item);
       select.appendChild(opt);
     });
     select.value = value;
@@ -187,6 +186,13 @@ export function renderFunctionStyleDock() {
       rebuildScene();
     });
 
+    const massing = makeSelect(BUILDING_MODE_OPTIONS, style.massing || 'Auto Smart Massing');
+    massing.addEventListener('change', () => {
+      style.massing = BUILDING_MODE_OPTIONS.includes(massing.value) ? massing.value : 'Auto Smart Massing';
+      saveFunctionBuildingStyles();
+      rebuildScene();
+    });
+
     const roofShape = makeSelect(ROOF_SHAPE_OPTIONS, style.roofShape);
     roofShape.addEventListener('change', () => {
       style.roofShape = roofShapeValue(roofShape.value, 'Pyramid');
@@ -194,9 +200,9 @@ export function renderFunctionStyleDock() {
       rebuildScene();
     });
 
-    const roofTexture = makeSelect(roofOptions, style.roofTexture);
+    const roofTexture = makeSelect(roofOptions, style.roofTexture, roofTextureLabel);
     roofTexture.addEventListener('change', () => {
-      style.roofTexture = presetValue(roofTexture.value, textureSets.roof, 'RoofA');
+      style.roofTexture = presetValue(roofTexture.value, textureSets.roof, 'TurkishTile');
       saveFunctionBuildingStyles();
       rebuildScene();
     });
@@ -247,6 +253,7 @@ export function renderFunctionStyleDock() {
 
     grid.append(
       makeField('Facade', facade),
+      makeField('Massing', massing),
       makeField('Roof shape', roofShape),
       makeField('Roof texture', roofTexture),
       makeField(t('lblRoofColor') || 'Roof color', roofColor),

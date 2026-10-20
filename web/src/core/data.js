@@ -132,7 +132,14 @@ export function applyManifestDefaults() {
         if (schemaVersion < 9) {
           settings.showIslands = true;
           settings.islandTransparency = 0;
-          settings.buildingMode = 'Extruded + roof';
+        }
+        if (schemaVersion < 10) {
+          settings.buildingMode = 'Auto Smart Massing';
+        }
+      }
+      if (state.projectManifest?.terrainTexture?.target && state.projectManifest?.layers?.blocks?.present) {
+        if (!('islandTransparency' in persisted) || Number(persisted.islandTransparency) === 0) {
+          settings.islandTransparency = Number(state.projectManifest?.viewerDefaults?.islandTransparency ?? 0.5);
         }
       }
       if (!persisted.assetTheme && state.projectManifest.assetTheme) settings.assetTheme = state.projectManifest.assetTheme;
@@ -164,17 +171,14 @@ async function loadTexture(path, repeatX = 1, repeatY = 1) {
 }
 
 export function viewerMode() {
-  return state.projectManifest?.mode || 'vector';
+  return state.projectManifest?.mode || 'unified';
 }
 
 export function isRasterTextureMode() {
-  return viewerMode() === 'raster_texture';
+  return Boolean(state.projectManifest?.terrainTexture?.target || state.projectManifest?.mode === 'raster_texture');
 }
 
-export function manifestRequiresInput(key) {
-  const required = state.projectManifest?.requiredInputs;
-  if (Array.isArray(required)) return required.includes(key);
-  if (isRasterTextureMode()) return ['roi', 'roads', 'buildings'].includes(key);
+export function manifestRequiresInput(_key) {
   return false;
 }
 

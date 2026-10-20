@@ -216,6 +216,10 @@ export async function rebuildScene() {
       loadingText.innerText = t('scenePlanTexture') + '...';
       setSceneState('scenePlanTexture');
       state.terrainTexture = await loadTerrainTextureFromGeoTiff();
+      if (state.bounds) {
+        state.centerX = (state.bounds.minX + state.bounds.maxX) / 2;
+        state.centerY = (state.bounds.minY + state.bounds.maxY) / 2;
+      }
     } catch (err) {
       console.warn('Plan texture could not be loaded; continuing with pavement.', err);
       setStatus(t('planTextureFail'));

@@ -3,6 +3,7 @@
 // the footprint index used for picking and QGIS selection sync.
 import * as THREE from 'three';
 import { BUILDING_TILE_SIZE, addBuildingBuckets, setHoveredBuildingId } from '../building_batch.js';
+import { resolveBuildingMassing } from '../building_geometry.js';
 import { buildBuildingsParallel, lastBuildWorkers } from '../building_workers.js';
 import { textureSets, FACADE_RECIPES } from '../catalog.js';
 import { getPolygonRings, polygonAreaGeo } from '../geo.js';
@@ -163,9 +164,7 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
     uv: null
   });
 
-  const mode = settings.buildingMode === 'Footprint only'
-    ? 'footprint'
-    : (settings.buildingMode === 'Extruded + roof' ? 'extrude+roof' : 'extrude');
+  const globalBuildingMode = settings.buildingMode || 'Auto Smart Massing';
   const specs = [];
   const records = [];
   state.buildingFootprints = [];
@@ -188,6 +187,8 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
     const featureRoofShape = roofShapeValue(roofShapeValue(propFirst(props, ['planx_roof_shape', 'roof_shape']), fnStyle.roofShape), 'Pyramid');
     const featureRoofHeight = parseNumberProp(props, ['planx_roof_height', 'roof_height'], fnStyle.roofHeight);
     const featureRoofColor = normalizeHexColor(propFirst(props, ['planx_roof_color', 'roof_color']), fnStyle.roofColor);
+    const explicitMassing = propFirst(props, ['planx_massing', 'massing']);
+    const preferredMassing = explicitMassing || (globalBuildingMode !== 'Auto Smart Massing' ? globalBuildingMode : (fnStyle.massing || globalBuildingMode));
 
     for (const poly of getPolygonRings(f.geometry)) {
       const outer = poly[0];
@@ -206,6 +207,13 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
       const population = parseNumberProp(props, ['population', 'pop'], Math.round(dwellings * 3.1));
       const vehicles = parseNumberProp(props, ['vehicle', 'cars'], Math.round(dwellings * 0.7));
       const rid = records.length;
+      const mode = resolveBuildingMassing(preferredMassing, {
+        levels,
+        footprintArea,
+        functionName: fn,
+        hasHoles: rings.length > 1,
+        seed: rid
+      });
       state.buildingFootprints[rid] = footprintIndexEntry(poly);
       records.push({
         ...(f.properties || {}),
@@ -213,7 +221,8 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
         planx_calc_floor_area: floorArea,
         planx_calc_dwellings: dwellings,
         planx_calc_population: population,
-        planx_calc_vehicles: vehicles
+        planx_calc_vehicles: vehicles,
+        planx_calc_massing: mode
       });
       const spec = {
         rid,
@@ -240,6 +249,7 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
       }
       const featureRoofTex = roofTextureCache[featureRoofTexture];
       const podiumHeight = (levels > 2 && featureSetback > 0) ? featureFloorHeight : 0;
+      const hasRoof = mode !== 'extrude';
 
       spec.height = height;
       spec.levels = levels;
@@ -247,15 +257,15 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
       spec.podiumHeight = podiumHeight;
       spec.setback = featureSetback;
       spec.ledges = settings.showLedges ? { projection: settings.ledgeProjection } : null;
-      spec.roof = mode === 'extrude+roof' ? { shape: featureRoofShape, height: featureRoofHeight } : null;
+      spec.roof = hasRoof ? { shape: featureRoofShape, height: featureRoofHeight } : null;
       spec.looks = {
         wall: wallLook(facadeTex, featureColor),
-        // Caps take the roof material unless a separate roof mesh covers them.
-        cap: mode === 'extrude+roof' ? null : capLook(featureRoofTex, featureRoofColor),
-        roof: mode === 'extrude+roof' ? roofLook(featureRoofTex, featureRoofColor) : null,
+        // Caps take the roof material so stepped/podium terraces and flat roofs look textured.
+        cap: (mode === 'extrude+roof' && podiumHeight === 0) ? null : capLook(featureRoofTex, featureRoofColor),
+        roof: hasRoof ? roofLook(featureRoofTex, featureRoofColor) : null,
         slab: slabLook
       };
-      if (podiumHeight > 0) {
+      if (podiumHeight > 0 || mode === 'podium' || mode === 'stepped' || mode === 'cantilever' || mode === 'penthouse') {
         let podiumFacadeTex = facadeTex;
         if (settings.showStorefronts) {
           const storefrontFacade = resolveFacadeForLevels(selectedFacade, 1);
@@ -264,8 +274,10 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
           }
           podiumFacadeTex = facadeCache[storefrontFacade] || facadeTex;
         }
+        const towerFloors = Math.max(1, levels - 1);
+        const towerHeight = Math.max(featureFloorHeight, height - (podiumHeight || featureFloorHeight));
         spec.looks.podiumWall = wallLook(podiumFacadeTex, featureColor);
-        spec.looks.towerWall = wallLook(scaledFacadeTexture(featureFacade, Math.max(1, levels - 1), height - podiumHeight, featureFacadeScale) || facadeTex, featureColor);
+        spec.looks.towerWall = wallLook(scaledFacadeTexture(featureFacade, towerFloors, towerHeight, featureFacadeScale) || facadeTex, featureColor);
       }
       specs.push(spec);
     }
