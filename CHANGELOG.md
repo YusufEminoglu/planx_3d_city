@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.1.2] - 2026-10-20
+
+- Updated plugin metadata description and about documentation to reflect volumetric massing, architectural facades, and unified raster/vector workflows.
+
 ## [2.1.1] - 2026-10-20
 
 - Scoped `QgsMapLayerProxyModel.Filter` and `QgsVectorFileWriter`/`QgsRasterFileWriter.WriterError` enum references for zero static Qt6 analyzer warnings while preserving identical QGIS 3 and QGIS 4 runtime behavior.

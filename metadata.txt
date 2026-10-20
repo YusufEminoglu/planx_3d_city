@@ -1,11 +1,25 @@
 [general]
 name=PlanX 3D City Viewer
 qgisMinimumVersion=3.28
-description=Export QGIS layers and launch the interactive PlanX 3D City web viewer.
-version=2.1.1
+description=Interactive 3D city cockpit and urban analysis studio: volumetric massing typologies, architectural facades and roofs, solar and shadow studies, wind and viewshed screening, narrative tours, and CityJSON/3D Tiles export.
+version=2.1.2
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
-about=PlanX 3D City Viewer maps user-exported DEM, ROI, road, building, block, parcel, optional urban furniture layers, and optional raster plan texture workflows to a browser-based Three.js city cockpit with narrative keyframes, terrain quality controls, mobility, wind impact, and building statistics overlays. Developed with feedback from educational workflows at Dokuz Eylul University, Department of City and Regional Planning. Online User Manual & Documentation: https://geophilo.com/planx_3d_city/ | If you find this plugin helpful, please consider starring the repository on GitHub (https://github.com/YusufEminoglu/planx_3d_city)!
+about=
+    PlanX 3D City Viewer transforms QGIS vector and raster layers into an interactive, browser-based 3D city cockpit powered by Three.js and WebGL. Designed for urban planners, architects, and spatial analysts, it bridges 2D GIS datasets with tangible 3D urban morphology and environmental screening.
+    
+    KEY CAPABILITIES:
+    - Volumetric 3D Massing: Automatic smart massing, podium and tower combinations, stepped high-rises, perimeter courtyard blocks, cantilevers with pilotis, and recessed penthouse crowns configured globally, by zoning function, or via QGIS quick styles.
+    - Architectural Facade and Roof Library: High-resolution procedural and photographic facade textures (Residential A-F, Urban F, Curtain Wall, Nordic Timber, Anatolian Brick, Heritage Stone, Industrial Loft, Brutalist Concrete) paired with regional roof presets (Turkish Tile, Copper Patina, Gravel Ballast, Lead Mansard, Flat Terrace).
+    - Unified Layer Workflows: Flexible multi-layer staging supporting DEM elevation surfaces, raster plan textures, aerial basemaps, buildings, zoning blocks, cadastral parcels, road networks, tree canopies, and urban street furniture. No mandatory layers required.
+    - In-Browser Spatial Analytics: Real-time solar shadow studies with interactive sun clock, daily sun exposure, Sky View Factor (SVF), interactive 360-degree viewsheds, pedestrian wind impact screening, and hypsometric terrain tinting.
+    - Presentation and Export Studio: Narrative camera tours with keyframe animation, high-resolution snapshot capture (up to 8K), MP4 cinematic video recording, CityJSON, 3D Tiles, GLTF/GLB models, and standalone offline 3D HTML export packages.
+    - Bidirectional QGIS Integration: Live two-way selection synchronization between the browser viewport and the QGIS map canvas, accompanied by attribute inspection and district-scale density statistics.
+    
+    Runs locally via an embedded lightweight web server (127.0.0.1); no external cloud dependencies or third-party data uploads required. Compatible with QGIS 3.28 through QGIS 4.x. Developed with direct feedback from educational workflows and design studios at Dokuz Eylul University, Department of City and Regional Planning.
+    
+    Online Documentation and Reference Manual: https://geophilo.com/planx_3d_city/
+    Source code and issue tracker: https://github.com/YusufEminoglu/planx_3d_city
 tracker=https://github.com/YusufEminoglu/planx_3d_city/issues
 repository=https://github.com/YusufEminoglu/planx_3d_city
 category=Web
@@ -19,6 +33,8 @@ hasProcessingProvider=no
 plugin_dependencies=
 license=MIT
 changelog=
+    2.1.2 - Comprehensive metadata documentation and capability profile.
+        - Updated metadata description and about documentation to reflect volumetric massing, architectural facades, and unified raster/vector workflows.
     2.1.1 - Qt6 static enum compatibility and clean ZIP file permissions.
         - Scoped QgsMapLayerProxyModel.Filter and QgsVectorFileWriter/QgsRasterFileWriter.WriterError enum references for zero static Qt6 analyzer warnings while keeping QGIS 3 and QGIS 4 runtime behavior identical.
         - Normalized archive entry permissions to 0644 (non-executable) for all Python and asset files.
