@@ -2,7 +2,7 @@
 name=PlanX 3D City Viewer
 qgisMinimumVersion=3.28
 description=Interactive 3D city cockpit and urban analysis studio: volumetric massing typologies, architectural facades and roofs, solar and shadow studies, wind and viewshed screening, narrative tours, and CityJSON/3D Tiles export.
-version=2.1.2
+version=2.1.3
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 about=
@@ -33,6 +33,10 @@ hasProcessingProvider=no
 plugin_dependencies=
 license=MIT
 changelog=
+    2.1.3 - Official academic reference manual and real-world 30-board Konak digital twin atlas.
+        - Built comprehensive academic reference manual featuring 30 publication-grade 4-panel comparison boards and 42 raw feature screenshots rendered with real Konak test data (2,367 building footprints and Copernicus 30m DEM).
+        - Replaced conceptual mockups in the 4-step workflow guide with dual-panel side-by-side comparisons of actual QGIS Publisher dialogs and real 3D WebGL scenes.
+        - Guarded raster layer extent updates in exporter.py against non-vector layer types.
     2.1.2 - Comprehensive metadata documentation and capability profile.
         - Updated metadata description and about documentation to reflect volumetric massing, architectural facades, and unified raster/vector workflows.
     2.1.1 - Qt6 static enum compatibility and clean ZIP file permissions.
