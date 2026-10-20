@@ -934,7 +934,8 @@ def _export_vector(layer, out_path: Path, target_crs=None) -> None:
     result = QgsVectorFileWriter.writeAsVectorFormatV3(layer, str(out_path), transform_context, options)
 
     error_code = result[0] if isinstance(result, tuple) else result
-    if error_code != QgsVectorFileWriter.NoError:
+    no_vec_error = getattr(getattr(QgsVectorFileWriter, "WriterError", QgsVectorFileWriter), "NoError")
+    if error_code != no_vec_error:
         message = result[1] if isinstance(result, tuple) and len(result) > 1 else "unknown writer error"
         raise ExportError(f"Could not export {layer.name()} to {out_path}: {message}")
 
@@ -986,7 +987,8 @@ def _export_dem(layer, out_path: Path, view_bounds=None, cache=None, optimize: b
         layer.crs(),
         QgsCoordinateTransformContext(),
     )
-    if result != QgsRasterFileWriter.NoError:
+    no_ras_error = getattr(getattr(QgsRasterFileWriter, "WriterError", QgsRasterFileWriter), "NoError")
+    if result != no_ras_error:
         raise ExportError(f"Could not export DEM {layer.name()} to {out_path}")
     return "written"
 

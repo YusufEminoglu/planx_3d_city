@@ -691,9 +691,9 @@ class PlanX3DCityDialog(QDialog):
         box = QgsMapLayerComboBox()
         box.blockSignals(True)
         if key in ("dem", "plan_texture", "basemap"):
-            box.setFilters(QgsMapLayerProxyModel.RasterLayer)
+            box.setFilters(getattr(getattr(QgsMapLayerProxyModel, "Filter", QgsMapLayerProxyModel), "RasterLayer"))
         else:
-            box.setFilters(QgsMapLayerProxyModel.VectorLayer)
+            box.setFilters(getattr(getattr(QgsMapLayerProxyModel, "Filter", QgsMapLayerProxyModel), "VectorLayer"))
         box.setAllowEmptyLayer(True)
         box.setLayer(None)
         box.blockSignals(False)

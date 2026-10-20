@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.1.1] - 2026-10-20
+
+- Scoped `QgsMapLayerProxyModel.Filter` and `QgsVectorFileWriter`/`QgsRasterFileWriter.WriterError` enum references for zero static Qt6 analyzer warnings while preserving identical QGIS 3 and QGIS 4 runtime behavior.
+- Normalized ZIP archive entry permissions to `0644` (non-executable) for all shipped files.
+
 ## [2.1.0] - 2026-10-20
 
 - Building models and facades: added `ResidentialA`–`ResidentialF` photo facades, `UrbanF`, `CurtainWall`, `NordicTimber`, `HeritageStone`, `AnatolianBrick`, `IndustrialLoft`, and `BrutalistConcrete` procedural facades, plus `TurkishTile`, `CopperPatina`, `GravelBallast`, and `LeadMansard` roof presets and the `Modern Turkish` theme.

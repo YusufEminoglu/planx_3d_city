@@ -2,7 +2,7 @@
 name=PlanX 3D City Viewer
 qgisMinimumVersion=3.28
 description=Export QGIS layers and launch the interactive PlanX 3D City web viewer.
-version=2.1.0
+version=2.1.1
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 about=PlanX 3D City Viewer maps user-exported DEM, ROI, road, building, block, parcel, optional urban furniture layers, and optional raster plan texture workflows to a browser-based Three.js city cockpit with narrative keyframes, terrain quality controls, mobility, wind impact, and building statistics overlays. Developed with feedback from educational workflows at Dokuz Eylul University, Department of City and Regional Planning. Online User Manual & Documentation: https://geophilo.com/planx_3d_city/ | If you find this plugin helpful, please consider starring the repository on GitHub (https://github.com/YusufEminoglu/planx_3d_city)!
@@ -19,6 +19,9 @@ hasProcessingProvider=no
 plugin_dependencies=
 license=MIT
 changelog=
+    2.1.1 - Qt6 static enum compatibility and clean ZIP file permissions.
+        - Scoped QgsMapLayerProxyModel.Filter and QgsVectorFileWriter/QgsRasterFileWriter.WriterError enum references for zero static Qt6 analyzer warnings while keeping QGIS 3 and QGIS 4 runtime behavior identical.
+        - Normalized archive entry permissions to 0644 (non-executable) for all Python and asset files.
     2.1.0 - Unified raster/vector workflows, volumetric 3D massing modes, and expanded architectural facade and roof catalogue.
         - Building models and facades: added ResidentialA-F photo facades, UrbanF, CurtainWall, NordicTimber, HeritageStone, AnatolianBrick, IndustrialLoft, BrutalistConcrete, plus TurkishTile, CopperPatina, GravelBallast, and LeadMansard roof presets and the Modern Turkish theme.
         - Volumetric 3D massing: Auto Smart Massing (default), Podium + tower, Stepped tower, Courtyard block, Cantilever / pilotis, and Penthouse crown modes selectable globally, per function, or via QGIS Quick Style.
