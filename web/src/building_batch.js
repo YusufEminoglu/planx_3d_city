@@ -14,6 +14,9 @@
 import * as THREE from 'three';
 import { MeshBVH, acceleratedRaycast } from 'three-mesh-bvh';
 import { CanonicalTextures, sharedMaterialFrom } from './mesh_merge.js';
+import {
+  DYNAMIC_FACADE_PARS, DYNAMIC_FACADE_FRAGMENT, DYNAMIC_FACADE_COLOR, dynamicFacadeUniforms
+} from './facade_dynamic.js';
 
 export const BUILDING_TILE_SIZE = 400; // metres, local scene units
 const HOVER_COLOR = new THREE.Color(0x1a5c44).multiplyScalar(1.4);
@@ -207,7 +210,9 @@ export function estimateWindowGrid(texture) {
   return result;
 }
 
-function patchMaterial(mat, windows) {
+// dynamic: a dynamic facade style (facade_dynamic.js) drawn in the shader
+// instead of sampling a facade texture.
+function patchMaterial(mat, windows, dynamic = null) {
   const winUniforms = {
     uPlanxWinGrid: { value: new THREE.Vector2(...(windows?.grid || [1, 1])) },
     uPlanxWinOffset: { value: new THREE.Vector2(...(windows?.offset || [0, 0])) },
@@ -221,6 +226,7 @@ function patchMaterial(mat, windows) {
     shader.uniforms.uPlanxSelected = sharedUniforms.uPlanxSelected;
     shader.uniforms.uPlanxSelectedColor = sharedUniforms.uPlanxSelectedColor;
     Object.assign(shader.uniforms, winUniforms);
+    if (dynamic) Object.assign(shader.uniforms, dynamicFacadeUniforms(dynamic));
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nattribute float planxId;\nattribute float planxGlow;\nattribute float planxAo;\nvarying float vPlanxId;\nvarying float vPlanxGlow;\nvarying float vPlanxAo;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvPlanxId = planxId;\nvPlanxGlow = planxGlow;\nvPlanxAo = planxAo;');
@@ -260,9 +266,14 @@ function patchMaterial(mat, windows) {
         '  float planxLum = dot(sampledDiffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));',
         '  float planxGlass = 1.0 - 0.5 * smoothstep(uPlanxWinLum.x, uPlanxWinLum.y, planxLum);',
         '  planxWin = planxInRect * planxGlass;',
+        '#ifdef PLANX_DYNAMIC_FACADE',
+        '  planxWin = planxDynGlass;',
+        '#endif',
         // Each building lights its own random share of windows at night
         // (planxGlow), in warm or cool light, with some per-window dimming.
-        '  float planxH = planxHash(planxCell + vec2(vPlanxId * 0.731, vPlanxId * 0.197));',
+        // Snapped id: interpolation noise must not change the hash per pixel.
+        '  float planxIdS = floor(vPlanxId + 0.5);',
+        '  float planxH = planxHash(planxCell + vec2(planxIdS * 0.731, planxIdS * 0.197));',
         '  planxLitWin = planxWin * step(1.0 - vPlanxGlow * 0.7, planxH) * (0.6 + 0.4 * fract(planxH * 31.0));',
         '  planxTint = mix(vec3(1.0, 0.78, 0.5), vec3(0.8, 0.88, 1.0), step(0.82, fract(planxH * 17.0)));',
         // By day about a quarter of the windows show blinds or curtains
@@ -294,7 +305,18 @@ function patchMaterial(mat, windows) {
         'if (abs(vPlanxId - uPlanxHover) < 0.5) totalEmissiveRadiance = uPlanxHoverColor;'
       ].join('\n'));
   };
-  mat.customProgramCacheKey = () => 'planx-building-batch';
+  if (dynamic) {
+    mat.defines = { ...(mat.defines || {}), PLANX_DYNAMIC_FACADE: '' };
+    const compile = mat.onBeforeCompile;
+    mat.onBeforeCompile = (shader, renderer) => {
+      compile(shader, renderer);
+      shader.fragmentShader = shader.fragmentShader
+        .replace('varying float vPlanxAo;', `varying float vPlanxAo;\n${DYNAMIC_FACADE_PARS}`)
+        .replace('#include <map_fragment>', `#ifdef USE_MAP\n${DYNAMIC_FACADE_FRAGMENT}\n#endif`)
+        .replace('#include <color_fragment>', DYNAMIC_FACADE_COLOR);
+    };
+  }
+  mat.customProgramCacheKey = () => (dynamic ? 'planx-building-batch-dynamic' : 'planx-building-batch');
 }
 
 function makeBuildingMaterial(src, isWall, isNight) {
@@ -305,7 +327,13 @@ function makeBuildingMaterial(src, isWall, isNight) {
       mat.emissive.setHex(NIGHT_EMISSIVE);
       mat.emissiveIntensity = isNight ? 1 : 0;
     }
-    patchMaterial(mat, isWall && mat.map ? estimateWindowGrid(mat.map) : null);
+    // Facade textures: the window grid given by the building layer (it
+    // also lays the texture out on it) or estimated from the image.
+    const dynamic = isWall ? src.map?.userData?.planxDynamic : null;
+    let windows = null;
+    if (dynamic) windows = { grid: [1, 1], offset: [0, 0], rect: [0, 0, 1, 1], lum: [0, 0] };
+    else if (isWall && mat.map) windows = src.userData?.planxWindowGrid || estimateWindowGrid(mat.map);
+    patchMaterial(mat, windows, dynamic);
   }
   return mat;
 }

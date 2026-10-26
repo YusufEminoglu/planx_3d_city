@@ -4,7 +4,7 @@ import { t } from '../ui_text.js';
 import { state } from '../core/state.js';
 import { isPortableMode, camera, controls } from '../core/scene.js';
 import { settings } from '../core/settings.js';
-import { updateTimeOfDay } from '../core/daylight.js';
+import { checkTimeChange } from '../layers/environment.js';
 
 const BOOKMARK_STORAGE_KEY = 'planx_3d_city_camera_bookmarks';
 export let cameraBookmarks = [];
@@ -67,7 +67,7 @@ function gotoCameraBookmark(id) {
   }
   if (Number.isFinite(bm.timeOfDay)) {
     settings.timeOfDay = bm.timeOfDay;
-    updateTimeOfDay();
+    checkTimeChange();
   }
 }
 

@@ -2,13 +2,14 @@
 // merged into tiles (building_batch.js), with labels, function colours and
 // the footprint index used for picking and QGIS selection sync.
 import * as THREE from 'three';
-import { BUILDING_TILE_SIZE, addBuildingBuckets, setHoveredBuildingId } from '../building_batch.js';
+import { BUILDING_TILE_SIZE, addBuildingBuckets, setHoveredBuildingId, estimateWindowGrid } from '../building_batch.js';
 import { resolveBuildingMassing } from '../building_geometry.js';
 import { buildBuildingsParallel, lastBuildWorkers } from '../building_workers.js';
 import { textureSets, FACADE_RECIPES } from '../catalog.js';
 import { getPolygonRings, polygonAreaGeo } from '../geo.js';
 import { propFirst, normalizeHexColor, presetValue, roofShapeValue, parseNumberProp } from '../props.js';
 import { createRoofPresetTexture } from '../textures.js';
+import { DYNAMIC_FACADE_STYLES, autoDynamicStyle, dynamicFacadeKey, dynamicStyleOfToken } from '../facade_dynamic.js';
 import { state } from '../core/state.js';
 import { buildingGroup, LAYER, buildingFunctionMaterials } from '../core/scene.js';
 import {
@@ -93,23 +94,31 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
       if (isSceneBuildStale(buildToken)) return;
     }
   }
-  // Per-building texture scale cache keyed by (facade_type + floor_count)
-  const facadeScaleCache = {};
-  const scaledFacadeTexture = (facadeKey, texLevels, texHeight, scale) => {
-    const key = `${facadeKey}_${texLevels}_${texHeight.toFixed(2)}_${scale.toFixed(2)}`;
-    if (!facadeScaleCache[key]) {
-      const base = facadeCache[facadeKey];
-      if (base) {
-        const recipe = (typeof FACADE_RECIPES !== 'undefined') ? FACADE_RECIPES[facadeKey] : null;
-        const textureFloorRows = facadeTextureFloorRows(facadeKey, recipe?.floorRows || 10);
-        const repeatV = Math.max(0.025, Math.min(3.0, texLevels / textureFloorRows / scale));
-        const t = base.clone();
-        t.repeat.set(0.5 / scale, repeatV);
-        t.needsUpdate = true;
-        facadeScaleCache[key] = t;
+  // Walls carry facade coordinates in bays and floors (prismGeometry):
+  // a facade texture is laid out with one window column per bay and one
+  // window row per floor, from its recipe or its estimated window grid.
+  // Dynamic facades draw their windows on that grid in the shader.
+  const facadeLayouts = new Map();
+  const facadeLayout = (key, tex) => {
+    if (!facadeLayouts.has(key)) {
+      let grid = null;
+      let uv = null;
+      if (tex && !tex.userData?.planxDynamic) {
+        const est = estimateWindowGrid(tex);
+        const recipe = FACADE_RECIPES[key];
+        const cols = Math.max(1, recipe?.windowCols || est.grid[0]);
+        const rows = Math.max(1, recipe?.floorRows || facadeTextureFloorRows(key, est.grid[1]));
+        const offset = recipe ? [0, 0] : est.offset;
+        grid = { ...est, grid: [cols, rows], offset };
+        uv = Array.from(new THREE.Matrix3().set(1 / cols, 0, offset[0] / cols, 0, 1 / rows, offset[1] / rows, 0, 0, 1).elements);
       }
+      facadeLayouts.set(key, { grid, uv });
     }
-    return facadeScaleCache[key] || facadeCache[facadeKey];
+    return facadeLayouts.get(key);
+  };
+  const facadeTexture = async (key) => {
+    if (!facadeCache[key]) facadeCache[key] = await textureFromSet('facade', key, 1, 1);
+    return facadeCache[key];
   };
 
   // Geometry is built from plain specs (in workers when available) and merged
@@ -136,11 +145,18 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
   };
   const texId = (tex) => (tex ? tex.source.uuid : '-');
   const solid = { castShadow: true, receiveShadow: true, renderOrder: 0 };
-  const wallLook = (tex, color) => ({
-    id: lookFor(`wall|${texId(tex)}`, () => new THREE.MeshStandardMaterial({ map: tex, roughness: 0.72, side: THREE.DoubleSide }), { kind: 'wall', ...solid }),
-    color: linear(color),
-    uv: uvTransform(tex)
-  });
+  const wallLook = (key, tex, color) => {
+    const layout = facadeLayout(key, tex);
+    return {
+      id: lookFor(`wall|${texId(tex)}`, () => {
+        const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.72, side: THREE.DoubleSide });
+        if (layout.grid) mat.userData.planxWindowGrid = layout.grid;
+        return mat;
+      }, { kind: 'wall', ...solid }),
+      color: linear(color),
+      uv: layout.uv
+    };
+  };
   const capLook = (tex, color) => ({
     id: lookFor(`cap|${texId(tex)}`, () => new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, side: THREE.DoubleSide }), { kind: 'other', ...solid }),
     color: linear(color),
@@ -201,7 +217,13 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
     const explicitColor = propFirst(props, ['planx_color', 'color']);
     const featureColor = normalizeHexColor(explicitColor, fnStyle.color);
     const selectedFacadeRaw = presetValue(propFirst(props, ['planx_facade', 'planx_texture', 'facade']), textureSets.facade, fnStyle.facade);
-    const selectedFacade = normalizeFacadeKey(selectedFacadeRaw);
+    let selectedFacade = normalizeFacadeKey(selectedFacadeRaw);
+    // Dynamic (auto): every building draws its own facade, chosen from its
+    // function and height, unless a feature or function asks for one.
+    const explicitFacade = propFirst(props, ['planx_facade', 'planx_texture', 'facade']);
+    if (settings.facadeMode !== 'Catalogue textures' && !explicitFacade && !dynamicStyleOfToken(textureSets.facade[selectedFacade])) {
+      selectedFacade = dynamicFacadeKey(autoDynamicStyle(fn, levels, records.length));
+    }
     const featureFacade = resolveFacadeForLevels(selectedFacade, levels);
     const featureFacadeScale = Math.max(1, Math.min(8, parseNumberProp(props, ['planx_facade_scale', 'facade_scale'], fnStyle.facadeScale)));
     const featureRoofTexture = presetValue(propFirst(props, ['planx_roof_texture', 'roof_texture']), textureSets.roof, fnStyle.roofTexture);
@@ -260,11 +282,9 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
         continue;
       }
 
-      if (!facadeCache[featureFacade]) {
-        facadeCache[featureFacade] = await textureFromSet('facade', featureFacade, 0.5 / featureFacadeScale, 0.5 / featureFacadeScale);
-        if (isSceneBuildStale(buildToken)) return;
-      }
-      const facadeTex = scaledFacadeTexture(featureFacade, levels, height, featureFacadeScale);
+      const facadeTex = await facadeTexture(featureFacade);
+      if (isSceneBuildStale(buildToken)) return;
+      const dynamicStyle = DYNAMIC_FACADE_STYLES[dynamicStyleOfToken(textureSets.facade[featureFacade])];
       if (!roofTextureCache[featureRoofTexture]) {
         roofTextureCache[featureRoofTexture] = createRoofPresetTexture(featureRoofTexture);
       }
@@ -277,6 +297,8 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
       const wallColor = explicitColor ? featureColor : jitterColor(featureColor, rid);
       spec.height = height;
       spec.levels = levels;
+      // Bay width: the style's, scaled by the facade scale setting.
+      spec.bay = (dynamicStyle?.bay || 3.1) * Math.max(0.6, Math.min(1.6, featureFacadeScale / FACADE_TEXTURE_SCALE_MULTIPLIER));
       spec.solar = levels <= 10 && /resid|konut|house|apart|dwell|mesken/i.test(fn);
       spec.floorHeight = featureFloorHeight;
       spec.podiumHeight = podiumHeight;
@@ -284,7 +306,7 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
       spec.ledges = settings.showLedges ? { projection: settings.ledgeProjection } : null;
       spec.roof = hasRoof ? { shape: featureRoofShape, height: featureRoofHeight } : null;
       spec.looks = {
-        wall: wallLook(facadeTex, wallColor),
+        wall: wallLook(featureFacade, facadeTex, wallColor),
         // Terraces and flat roof decks (caps) are gravel; the roof keeps its texture.
         cap: (mode === 'extrude+roof' && podiumHeight === 0) ? null : capLook(terraceTex, '#a9a69d'),
         roof: hasRoof ? roofLook(featureRoofTex, featureRoofColor) : null,
@@ -294,18 +316,11 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
         plant: settings.showRoofDetails !== false ? plantLook : null
       };
       if (podiumHeight > 0 || mode === 'podium' || mode === 'stepped' || mode === 'cantilever' || mode === 'penthouse') {
-        let podiumFacadeTex = facadeTex;
-        if (settings.showStorefronts) {
-          const storefrontFacade = resolveFacadeForLevels(selectedFacade, 1);
-          if (!facadeCache[storefrontFacade]) {
-            facadeCache[storefrontFacade] = await textureFromSet('facade', storefrontFacade, 0.5 / featureFacadeScale, 0.5 / featureFacadeScale);
-          }
-          podiumFacadeTex = facadeCache[storefrontFacade] || facadeTex;
-        }
-        const towerFloors = Math.max(1, levels - 1);
-        const towerHeight = Math.max(featureFloorHeight, height - (podiumHeight || featureFloorHeight));
-        spec.looks.podiumWall = wallLook(podiumFacadeTex, wallColor);
-        spec.looks.towerWall = wallLook(scaledFacadeTexture(featureFacade, towerFloors, towerHeight, featureFacadeScale) || facadeTex, wallColor);
+        let podiumFacade = featureFacade;
+        if (settings.showStorefronts) podiumFacade = resolveFacadeForLevels(selectedFacade, 1);
+        const podiumFacadeTex = (await facadeTexture(podiumFacade)) || facadeTex;
+        spec.looks.podiumWall = wallLook(podiumFacade, podiumFacadeTex, wallColor);
+        spec.looks.towerWall = spec.looks.wall;
       }
       specs.push(spec);
     }

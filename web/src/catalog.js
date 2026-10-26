@@ -61,6 +61,13 @@ export const textureSets = {
     UrbanD: 'assets/facade4.png',
     UrbanE: 'UrbanE',
     UrbanF: 'UrbanF',
+    // Windows drawn in the shader on each wall's bay/floor grid (facade_dynamic.js).
+    DynamicApartment: 'Dynamic:Apartment',
+    DynamicMixedUse: 'Dynamic:MixedUse',
+    DynamicModern: 'Dynamic:Modern',
+    DynamicOffice: 'Dynamic:Office',
+    DynamicHeritage: 'Dynamic:Heritage',
+    DynamicBrick: 'Dynamic:Brick',
     ResidentialA: 'assets/facade_resid_a.webp',
     ResidentialB: 'assets/facade_resid_b.webp',
     ResidentialC: 'assets/facade_resid_c.webp',

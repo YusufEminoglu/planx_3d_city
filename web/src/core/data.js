@@ -5,6 +5,7 @@ import { textureSets } from '../catalog.js';
 import { LOCAL_X_SIGN } from '../geo.js';
 import { propFirst, parseLevel } from '../props.js';
 import { proceduralTextureCanvas } from '../textures.js';
+import { createDynamicFacadeTexture, dynamicStyleOfToken } from '../facade_dynamic.js';
 import { state } from './state.js';
 import { isPortableMode, texLoader } from './scene.js';
 import {
@@ -18,6 +19,9 @@ export async function textureFromSet(setName, key, repeatX = 1, repeatY = 1) {
   if (typeof token === 'string' && (token.startsWith('assets/') || token.startsWith('http'))) {
     return loadTexture(token, repeatX, repeatY);
   }
+  // Dynamic facades: the wall material; windows are drawn by the shader.
+  const dynamic = dynamicStyleOfToken(token);
+  if (dynamic) return createDynamicFacadeTexture(dynamic);
   const tex = proceduralTextureCanvas(token || key);
   tex.repeat.set(repeatX, repeatY);
   tex.needsUpdate = true;

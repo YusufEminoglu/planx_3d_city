@@ -568,6 +568,138 @@ function extrudeUp(shape, depth) {
   return g;
 }
 
+// Walls turn a corner where the outline bends by more than this (radians);
+// gentler bends (curved walls, digitising noise) continue the same facade.
+const WALL_CORNER_ANGLE = 0.3;
+
+/**
+ * Prism over a shape (x, z = shape x, y) from y = 0 to `depth`, like
+ * extrudeUp, but with facade texture coordinates in building units on the
+ * walls: u counts window bays along each wall, v counts floors from the
+ * building's ground. Every wall (outline between two corners) gets a whole
+ * number of bays of about frame.bay metres and restarts at its corner, so
+ * windows are never cut by a corner and rows sit on the floors.
+ * Groups: 0 = caps (u, v = x, z in metres, as ExtrudeGeometry), 1 = walls.
+ * frame: { bay: metres per bay, floor: metres per floor, z0: height of
+ * y = 0 above the building's ground }.
+ */
+export function prismGeometry(shape, depth, frame) {
+  const { shape: outer, holes } = shape.extractPoints(1);
+  const clean = (pts) => {
+    const out = [];
+    for (const p of pts) {
+      const last = out[out.length - 1];
+      if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 1e-4) out.push(p);
+    }
+    if (out.length > 2 && Math.hypot(out[0].x - out[out.length - 1].x, out[0].y - out[out.length - 1].y) < 1e-4) out.pop();
+    return out;
+  };
+  const contour = clean(outer);
+  const holeRings = holes.map(clean).filter((h) => h.length >= 3);
+  if (contour.length < 3) return null;
+  const pos = [];
+  const nor = [];
+  const uv = [];
+
+  // Caps: top faces up, bottom faces down.
+  let tris;
+  try {
+    tris = THREE.ShapeUtils.triangulateShape(contour, holeRings);
+  } catch {
+    return null;
+  }
+  const all = contour.concat(...holeRings);
+  for (const [y, up] of [[depth, 1], [0, -1]]) {
+    for (const t of tris) {
+      const [a, b, c] = t.map((i) => all[i]);
+      // Normal y of (b - a) x (c - a) in (x, y, z) with z = shape y.
+      const ny = (c.x - a.x) * (b.y - a.y) - (b.x - a.x) * (c.y - a.y);
+      const order = (ny >= 0) === (up > 0) ? [a, b, c] : [a, c, b];
+      for (const p of order) {
+        pos.push(p.x, y, p.y);
+        nor.push(0, up, 0);
+        uv.push(p.x, p.y);
+      }
+    }
+  }
+  const capCount = pos.length / 3;
+
+  const bay = Math.max(0.5, frame.bay || 3);
+  const floorH = Math.max(1, frame.floor || 3);
+  const v0 = (frame.z0 || 0) / floorH;
+  const v1 = ((frame.z0 || 0) + depth) / floorH;
+  const ringWalls = (ring, isHole) => {
+    const n = ring.length;
+    let area = 0;
+    for (let i = 0; i < n; i++) {
+      const a = ring[i];
+      const b = ring[(i + 1) % n];
+      area += a.x * b.y - b.x * a.y;
+    }
+    // Outward: right of the edge for a counter-clockwise outline, left
+    // for a hole (the building is outside it).
+    const outSign = (area >= 0 ? 1 : -1) * (isHole ? -1 : 1);
+    const turn = (i) => {
+      const p = ring[(i - 1 + n) % n];
+      const c = ring[i];
+      const q = ring[(i + 1) % n];
+      const a1 = Math.atan2(c.y - p.y, c.x - p.x);
+      const a2 = Math.atan2(q.y - c.y, q.x - c.x);
+      return Math.abs(Math.atan2(Math.sin(a2 - a1), Math.cos(a2 - a1)));
+    };
+    const corners = [];
+    for (let i = 0; i < n; i++) if (turn(i) > WALL_CORNER_ANGLE) corners.push(i);
+    if (!corners.length) corners.push(0);
+    for (let k = 0; k < corners.length; k++) {
+      const start = corners[k];
+      const end = corners[(k + 1) % corners.length];
+      const edges = [];
+      let len = 0;
+      for (let i = start; ; i = (i + 1) % n) {
+        const a = ring[i];
+        const b = ring[(i + 1) % n];
+        const l = Math.hypot(b.x - a.x, b.y - a.y);
+        edges.push({ a, b, s: len, l });
+        len += l;
+        if ((i + 1) % n === end) break;
+      }
+      // Too short for a window: plain wall (u on a cell edge, between windows).
+      const bays = Math.max(1, Math.round(len / bay));
+      const scale = len < bay * 0.55 ? 0 : bays / len;
+      for (const { a, b, s, l } of edges) {
+        if (l < 1e-6) continue;
+        const dx = (b.x - a.x) / l;
+        const dz = (b.y - a.y) / l;
+        const nx = dz * outSign;
+        const nz = -dx * outSign;
+        const ua = scale ? s * scale : 0.02;
+        const ub = scale ? (s + l) * scale : 0.02;
+        const A0 = [a.x, 0, a.y], B0 = [b.x, 0, b.y], B1 = [b.x, depth, b.y], A1 = [a.x, depth, a.y];
+        const uvA0 = [ua, v0], uvB0 = [ub, v0], uvB1 = [ub, v1], uvA1 = [ua, v1];
+        // Wind so the face normal points out (n): (B0 - A0) x (A1 - A0) = (dz, 0, -dx) * l * depth.
+        const quad = outSign > 0
+          ? [[A0, uvA0], [A1, uvA1], [B0, uvB0], [B0, uvB0], [A1, uvA1], [B1, uvB1]]
+          : [[A0, uvA0], [B0, uvB0], [A1, uvA1], [B0, uvB0], [B1, uvB1], [A1, uvA1]];
+        for (const [p, t] of quad) {
+          pos.push(p[0], p[1], p[2]);
+          nor.push(nx, 0, nz);
+          uv.push(t[0], t[1]);
+        }
+      }
+    }
+  };
+  ringWalls(contour, false);
+  holeRings.forEach((h) => ringWalls(h, true));
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.addGroup(0, capCount, 0);
+  geo.addGroup(capCount, pos.length / 3 - capCount, 1);
+  return geo;
+}
+
 function toByte(v) {
   return v <= 0 ? 0 : (v >= 1 ? 255 : Math.round(v * 255));
 }
@@ -733,7 +865,11 @@ export function buildBuildingBuckets(specs, looks) {
     add(look, geo, 0, geo.attributes.position.count, ty, spec.rid, glow, spec.tile, extra);
   };
   // ExtrudeGeometry: group 0 = caps, group 1 = sides.
-  const addExtrude = (capLook, sideLook, geo, ty, spec, glow) => {
+  // A volume of the building from ty up by depth: caps and walls (walls
+  // with facade coordinates in bays and floors, see prismGeometry).
+  const addVolume = (capLook, sideLook, shape, depth, ty, spec, glow) => {
+    const frame = { bay: spec.bay, floor: spec.height / Math.max(1, spec.levels || 1), z0: ty - spec.baseY };
+    const geo = prismGeometry(shape, depth, frame) || extrudeUp(shape, depth);
     const total = geo.attributes.position.count;
     for (const g of geo.groups) {
       const side = g.materialIndex !== 0;
@@ -779,22 +915,22 @@ export function buildBuildingBuckets(specs, looks) {
       const tier2 = buildTierShape(spec.rings, step1);
       const tier3 = tier2 ? buildTierShape(spec.rings, step2) : null;
 
-      addExtrude(L.cap || L.roof, L.podiumWall || L.wall, extrudeUp(shape, h1), baseY, spec, glow);
+      addVolume(L.cap || L.roof, L.podiumWall || L.wall, shape, h1, baseY, spec, glow);
       tiers.push({ from: 0, to: h1, rings: spec.rings, terrace: !!tier2 });
       if (tier2) {
-        addExtrude(L.cap || L.roof, L.towerWall || L.wall, extrudeUp(tier2.shape, h2), baseY + h1, spec, glow);
+        addVolume(L.cap || L.roof, L.towerWall || L.wall, tier2.shape, h2, baseY + h1, spec, glow);
         topShape = tier2.shape;
         topFootprint = tier2.footprint;
       } else {
-        addExtrude(L.cap || L.roof, L.towerWall || L.wall, extrudeUp(shape, h2), baseY + h1, spec, glow);
+        addVolume(L.cap || L.roof, L.towerWall || L.wall, shape, h2, baseY + h1, spec, glow);
       }
       tiers.push({ from: h1, to: h1 + h2, rings: tierRings(tier2), terrace: !!tier3 });
       if (tier3) {
-        addExtrude(L.cap, L.towerWall || L.wall, extrudeUp(tier3.shape, h3), baseY + h1 + h2, spec, glow);
+        addVolume(L.cap, L.towerWall || L.wall, tier3.shape, h3, baseY + h1 + h2, spec, glow);
         topShape = tier3.shape;
         topFootprint = tier3.footprint;
       } else {
-        addExtrude(L.cap, L.towerWall || L.wall, extrudeUp(topShape, h3), baseY + h1 + h2, spec, glow);
+        addVolume(L.cap, L.towerWall || L.wall, topShape, h3, baseY + h1 + h2, spec, glow);
       }
       tiers.push({ from: h1 + h2, to: spec.height, rings: tier3 ? tierRings(tier3) : tierRings(tier2), top: true });
     } else if (mode === 'podium' && spec.height >= 6) {
@@ -803,13 +939,13 @@ export function buildBuildingBuckets(specs, looks) {
         : Math.min(spec.height * 0.42, Math.max(spec.floorHeight || 3.2, (spec.floorHeight || 3.2) * Math.min(3, Math.max(1, Math.floor((spec.levels || 4) * 0.35)))));
       const towerInset = Math.max(1.5, Math.min(minSpan * 0.18, (spec.setback || 0) + 1.8));
       const towerTier = buildTierShape(spec.rings, towerInset);
-      addExtrude(L.cap || L.roof, L.podiumWall || L.wall, extrudeUp(shape, podiumH), baseY, spec, glow);
+      addVolume(L.cap || L.roof, L.podiumWall || L.wall, shape, podiumH, baseY, spec, glow);
       tiers.push({ from: 0, to: podiumH, rings: spec.rings, terrace: !!towerTier });
       if (towerTier) {
         topShape = towerTier.shape;
         topFootprint = towerTier.footprint;
       }
-      addExtrude(L.cap, L.towerWall || L.wall, extrudeUp(topShape, Math.max(1.0, spec.height - podiumH)), baseY + podiumH, spec, glow);
+      addVolume(L.cap, L.towerWall || L.wall, topShape, Math.max(1.0, spec.height - podiumH), baseY + podiumH, spec, glow);
       tiers.push({ from: podiumH, to: Math.max(podiumH + 1, spec.height), rings: tierRings(towerTier), top: true });
     } else if (mode === 'courtyard' && spec.rings.length === 1) {
       const courtWall = Math.max(2.2, Math.min(6.5, minSpan * 0.22));
@@ -823,12 +959,12 @@ export function buildBuildingBuckets(specs, looks) {
         });
         courtShape.holes.push(holePath);
         const plinthH = Math.min(1.2, (spec.floorHeight || 3.2) * 0.32);
-        addExtrude(L.cap || L.roof, L.podiumWall || L.wall, extrudeUp(shape, plinthH), baseY, spec, glow);
-        addExtrude(L.cap, L.wall, extrudeUp(courtShape, Math.max(1.0, spec.height - plinthH)), baseY + plinthH, spec, glow);
+        addVolume(L.cap || L.roof, L.podiumWall || L.wall, shape, plinthH, baseY, spec, glow);
+        addVolume(L.cap, L.wall, courtShape, Math.max(1.0, spec.height - plinthH), baseY + plinthH, spec, glow);
         topShape = courtShape;
         tiers.push({ from: 0, to: spec.height, rings: [outer, rev.map((p) => [p.x, p.y])], top: true });
       } else {
-        addExtrude(L.cap, L.wall, extrudeUp(shape, spec.height), baseY, spec, glow);
+        addVolume(L.cap, L.wall, shape, spec.height, baseY, spec, glow);
         tiers.push({ from: 0, to: spec.height, rings: spec.rings, top: true });
       }
     } else if (mode === 'cantilever' && spec.height >= 6) {
@@ -836,11 +972,11 @@ export function buildBuildingBuckets(specs, looks) {
       const recess = Math.max(1.2, Math.min(minSpan * 0.16, 2.2));
       const coreTier = buildTierShape(spec.rings, recess);
       const baseShape = coreTier ? coreTier.shape : shape;
-      addExtrude(null, L.podiumWall || L.wall, extrudeUp(baseShape, groundH), baseY, spec, glow);
+      addVolume(null, L.podiumWall || L.wall, baseShape, groundH, baseY, spec, glow);
       if (L.slab) {
         addWhole(L.slab, extrudeUp(shape, SLAB_THICKNESS * 1.4), baseY + groundH - SLAB_THICKNESS * 0.7, spec, glow);
       }
-      addExtrude(L.cap, L.towerWall || L.wall, extrudeUp(shape, Math.max(1.0, spec.height - groundH)), baseY + groundH, spec, glow);
+      addVolume(L.cap, L.towerWall || L.wall, shape, Math.max(1.0, spec.height - groundH), baseY + groundH, spec, glow);
       tiers.push({ from: 0, to: groundH, rings: tierRings(coreTier), recessed: true });
       tiers.push({ from: groundH, to: spec.height, rings: spec.rings, top: true });
     } else if (mode === 'penthouse' && spec.height >= 5.5) {
@@ -848,13 +984,13 @@ export function buildBuildingBuckets(specs, looks) {
       const mainH = Math.max(2.4, spec.height - crownH);
       const crownInset = Math.max(1.2, Math.min(minSpan * 0.16, 2.2));
       const crownTier = buildTierShape(spec.rings, crownInset);
-      addExtrude(L.cap || L.roof, L.wall, extrudeUp(shape, mainH), baseY, spec, glow);
+      addVolume(L.cap || L.roof, L.wall, shape, mainH, baseY, spec, glow);
       if (L.slab) {
         addWhole(L.slab, extrudeUp(shape, SLAB_THICKNESS * 1.4), baseY + mainH, spec, glow);
       }
       tiers.push({ from: 0, to: mainH, rings: spec.rings, terrace: !!crownTier, top: !crownTier });
       if (crownTier) {
-        addExtrude(L.cap, L.towerWall || L.wall, extrudeUp(crownTier.shape, crownH), baseY + mainH, spec, glow);
+        addVolume(L.cap, L.towerWall || L.wall, crownTier.shape, crownH, baseY + mainH, spec, glow);
         topShape = crownTier.shape;
         topFootprint = crownTier.footprint;
         tiers.push({ from: mainH, to: spec.height, rings: tierRings(crownTier), top: true });
@@ -864,7 +1000,7 @@ export function buildBuildingBuckets(specs, looks) {
     } else {
       const podium = spec.podiumHeight;
       if (podium > 0) {
-        addExtrude(L.cap || L.roof, L.podiumWall || L.wall, extrudeUp(shape, podium), baseY, spec, glow);
+        addVolume(L.cap || L.roof, L.podiumWall || L.wall, shape, podium, baseY, spec, glow);
         let towerRings = spec.rings;
         const inset = insetShapeFromRings(spec.rings, spec.setback);
         if (inset) {
@@ -875,11 +1011,11 @@ export function buildBuildingBuckets(specs, looks) {
             towerRings = [outerInset.map((p) => [p.x, p.y])];
           }
         }
-        addExtrude(L.cap, L.towerWall || L.wall, extrudeUp(topShape, spec.height - podium), baseY + podium, spec, glow);
+        addVolume(L.cap, L.towerWall || L.wall, topShape, spec.height - podium, baseY + podium, spec, glow);
         tiers.push({ from: 0, to: podium, rings: spec.rings, terrace: towerRings !== spec.rings });
         tiers.push({ from: podium, to: spec.height, rings: towerRings, top: true });
       } else {
-        addExtrude(L.cap, L.wall, extrudeUp(shape, spec.height), baseY, spec, glow);
+        addVolume(L.cap, L.wall, shape, spec.height, baseY, spec, glow);
         tiers.push({ from: 0, to: spec.height, rings: spec.rings, top: true });
       }
     }

@@ -53,7 +53,8 @@ function valueNoise(size, cells, seed) {
   return out;
 }
 
-function fbm(size, octaves, seed) {
+/** Tileable fractal value noise in [0, 1] on a size x size grid. */
+export function fbm(size, octaves, seed) {
   const out = new Float32Array(size * size);
   let amp = 0.5;
   let total = 0;
@@ -67,7 +68,8 @@ function fbm(size, octaves, seed) {
   return out;
 }
 
-function seededRandom(seed) {
+/** Deterministic random numbers in [0, 1). */
+export function seededRandom(seed) {
   let s = seed >>> 0;
   return () => {
     s = (s * 1664525 + 1013904223) >>> 0;

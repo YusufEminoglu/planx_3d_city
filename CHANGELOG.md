@@ -7,6 +7,9 @@
 - Sidewalks: interlocking pavers with a raised curb and a skirt down to the block; they stop at junctions and open where side streets join.
 - Traffic: instanced sedans, hatchbacks, SUVs, vans, taxis and buses (one draw call per model) drive on the right in their lanes, keep their distance, slow down for junctions and turn into connected streets; headlights, tail lights and light pools on the road at night; contact shadows.
 - People: instanced walking people with trousers or skirts, varied skin, clothes, hair and height; limbs swing in the vertex shader; they walk both ways on the sidewalks and paths and follow the street network. Only cars and people near the camera and in view are drawn.
+- Dynamic facades (new default, Style > Facades: `Dynamic (auto)` or `Catalogue textures`): walls get facade coordinates in window bays and floors, with a whole number of bays per wall restarting at every corner, so windows are never cut by a corner and rows sit on the real floors. Six styles (Apartment, Mixed-use, Modern, Office, Heritage, Brick) draw windows, frames, sills, reveals, shutters, balconies, shopfronts with signs, entrances and lobby glazing in the shader over a plaster, render, brick, stone or concrete material; each building varies its proportions, balconies, doors and blinds, chosen automatically from the building's function and height (a `planx_facade` attribute or a Dynamic facade in the Style dock still wins). Catalogue facade textures are laid out on the same grid. Approach after streets.gl, OSM2World, CityEngine CGA and Mapbox faux facades.
+- Fix: lit windows stayed dark at night when the time came from a view link, bookmark or time preset.
+- CI: the static checks check out `osm_3d_model` next to the plugin for the catalogue sync test.
 - Benchmark city: draw calls with traffic and people 2268 -> 144, triangles -24%, scene ready -39%.
 
 ## [2.1.2] - 2026-10-20

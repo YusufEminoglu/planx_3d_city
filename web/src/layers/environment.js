@@ -8,7 +8,7 @@ import { settings } from '../core/settings.js';
 import { updateTimeOfDay } from '../core/daylight.js';
 import { buildFurnitureLayer } from './furniture.js';
 
-let lastTimeOfDay = -1;
+let lastNight = null;
 
 // Lightweight day/night switch — updates only emissive + furniture lights.
 // Does NOT rebuild terrain, geometry or DEM.
@@ -30,13 +30,12 @@ function rebuildLightingOnly() {
 export function checkTimeChange() {
   updateTimeOfDay();
   const isNight = (state.solar.elevationDeg ?? 30) < -3;
-  if (lastTimeOfDay !== -1) {
-    const wasNight = lastTimeOfDay < 6.5 || lastTimeOfDay > 17.5;
-    if (isNight !== wasNight) {
-      rebuildLightingOnly();
-    }
-  }
-  lastTimeOfDay = settings.timeOfDay;
+  // Lit windows follow the sun on every call (one uniform per material):
+  // a time set after the scene was built (view links, tours) used to leave
+  // them dark. Lamps are rebuilt only when day turns to night or back.
+  setBatchedBuildingNight(buildingGroup, isNight);
+  if (lastNight !== null && isNight !== lastNight) rebuildLightingOnly();
+  lastNight = isNight;
 }
 
 export let weatherParticles = null;
