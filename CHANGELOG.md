@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- No Turkish anywhere: Turkish keyword matching removed from the building code, and the roadmap (`docs/ROADMAP.md`) and reference manual are English only (land-use classes, BCR and FAR instead of the Turkish terms).
 - Buildings: floor slabs follow the volume they belong to (they used to span the full footprint on stepped, podium and penthouse towers, leaving wide plates in mid-air); terraces and flat roof decks are gravel with a parapet; flat roofs carry rooftop plant (stair and lift core, air handling units, a water tank, solar water heaters on residential roofs); a stone plinth at street level; walls darken towards the ground (contact shadow); by day some windows show blinds or curtains and glass reflects with a little variation; each building's shade varies slightly. New Style toggle: `Parapets, Plinths & Rooftop Plant`.
 - Roads: neutral asphalt with aggregate, cracks and a normal map, mapped in world metres (no stretching along long roads); lane lines, edge lines, centre lines (double solid on wide roads), stop lines and zebra crossings are painted in the road shader at every junction, including roads that cross without being split; all roads are one draw call. Honours `oneway` and `lanes` attributes. MultiLineString roads are drawn.
 - Sidewalks: interlocking pavers with a raised curb and a skirt down to the block; they stop at junctions and open where side streets join.
@@ -281,7 +282,7 @@
 
 ## [0.8.24] - 2026-05-26
 
-- Improved Turkish field-name matching in attribute detection (nüfus, araç, yükseklik, ağaç_boyu, yön) while preserving legacy aliases.
+- Improved field-name matching in attribute detection while preserving legacy aliases.
 
 ## [0.8.23] - 2026-05-26
 
@@ -462,7 +463,7 @@ Modern cockpit UI, FPS HUD and Shadow Study.
 ## [0.7.9] - 2026-05-22
 
 OpenStreetMap importer and astronomical solar model.
-- New "Import from OpenStreetMap" button on the Data page. Enter a small WGS84 bounding box (or pull it from the current QGIS canvas) and the plugin queries the Overpass API for buildings, roads, parks/greens and trees, reprojects them to the local UTM zone, and adds them as named layers. Bina katadedi, fonksiyon, yol türü ve ağaç yüksekliği otomatik eşlenir. Soft cap ~5 km per side to stay polite to the shared Overpass endpoint.
+- New "Import from OpenStreetMap" button on the Data page. Enter a small WGS84 bounding box (or pull it from the current QGIS canvas) and the plugin queries the Overpass API for buildings, roads, parks/greens and trees, reprojects them to the local UTM zone, and adds them as named layers. Building floor count, function, road type and tree height are mapped automatically. Soft cap ~5 km per side to stay polite to the shared Overpass endpoint.
 - Replaced the simple sine sun model with a NOAA-style solar position calculator. New viewer sliders for **Day of year (1-365)** and **Latitude (deg)** move the sun realistically with season + location. Sunrise/sunset, golden-hour intensity ramp and night detection now follow the actual solar elevation rather than a fixed clock window.
 - The compass widget gains a small live sun marker on the ring showing the sun's true bearing from the current camera.
 - QGIS publisher writes the derived project latitude (from the DEM bbox centroid reprojected to WGS84) and a default day-of-year into `planx_manifest.json` so the viewer starts at a sensible solar pose for the actual site.

@@ -299,7 +299,7 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
       spec.levels = levels;
       // Bay width: the style's, scaled by the facade scale setting.
       spec.bay = (dynamicStyle?.bay || 3.1) * Math.max(0.6, Math.min(1.6, featureFacadeScale / FACADE_TEXTURE_SCALE_MULTIPLIER));
-      spec.solar = levels <= 10 && /resid|konut|house|apart|dwell|mesken/i.test(fn);
+      spec.solar = levels <= 10 && /resid|house|apart|dwell/i.test(fn);
       spec.floorHeight = featureFloorHeight;
       spec.podiumHeight = podiumHeight;
       spec.setback = featureSetback;

@@ -508,7 +508,7 @@ export function resolveBuildingMassing(requestedMode, opts = {}) {
   if (levels <= 1) return 'extrude+roof';
   if (levels >= 9) return 'stepped';
   if (footprintArea >= 520 && !hasHoles && levels >= 3 && levels <= 8) return 'courtyard';
-  const isCivicOrCommercial = /commercial|office|mixed|retail|civic|public|education|health|hotel|ticaret|kamu|karma|ofis|idari|avm/.test(fn);
+  const isCivicOrCommercial = /commercial|office|mixed|retail|civic|public|education|health|hotel/.test(fn);
   if (levels >= 4 && (isCivicOrCommercial || footprintArea >= 360)) return 'podium';
   if (levels >= 5) return (seed % 2 === 0) ? 'penthouse' : 'cantilever';
   if (levels >= 3 && footprintArea >= 240 && (seed % 3 === 0)) return 'penthouse';
