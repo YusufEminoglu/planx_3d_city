@@ -12,7 +12,7 @@ import {
 } from '../core/scene.js';
 import {
   functionColorState, functionFacadeState, blockCategoryColorState, blockCategoryTextureState,
-  applyThemeDefaultsToSettings, uniqueAssetVariants, normalizeFacadeKey, settings, ensureFunctionBuildingStyle,
+  applyThemeDefaultsToSettings, normalizeFacadeKey, settings, ensureFunctionBuildingStyle,
   saveFunctionBuildingStyles, savePersistedSettings, ensureBlockCategoryStyle, saveBlockCategoryStyles
 } from '../core/settings.js';
 import { requestRender } from '../core/render.js';

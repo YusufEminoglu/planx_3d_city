@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+- Buildings: floor slabs follow the volume they belong to (they used to span the full footprint on stepped, podium and penthouse towers, leaving wide plates in mid-air); terraces and flat roof decks are gravel with a parapet; flat roofs carry rooftop plant (stair and lift core, air handling units, a water tank, solar water heaters on residential roofs); a stone plinth at street level; walls darken towards the ground (contact shadow); by day some windows show blinds or curtains and glass reflects with a little variation; each building's shade varies slightly. New Style toggle: `Parapets, Plinths & Rooftop Plant`.
+- Roads: neutral asphalt with aggregate, cracks and a normal map, mapped in world metres (no stretching along long roads); lane lines, edge lines, centre lines (double solid on wide roads), stop lines and zebra crossings are painted in the road shader at every junction, including roads that cross without being split; all roads are one draw call. Honours `oneway` and `lanes` attributes. MultiLineString roads are drawn.
+- Sidewalks: interlocking pavers with a raised curb and a skirt down to the block; they stop at junctions and open where side streets join.
+- Traffic: instanced sedans, hatchbacks, SUVs, vans, taxis and buses (one draw call per model) drive on the right in their lanes, keep their distance, slow down for junctions and turn into connected streets; headlights, tail lights and light pools on the road at night; contact shadows.
+- People: instanced walking people with trousers or skirts, varied skin, clothes, hair and height; limbs swing in the vertex shader; they walk both ways on the sidewalks and paths and follow the street network. Only cars and people near the camera and in view are drawn.
+- Benchmark city: draw calls with traffic and people 2268 -> 144, triangles -24%, scene ready -39%.
+
 ## [2.1.2] - 2026-10-20
 
 - Updated plugin metadata description and about documentation to reflect volumetric massing, architectural facades, and unified raster/vector workflows.

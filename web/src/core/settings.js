@@ -231,6 +231,7 @@ export const settings = {
   showRoadMarkings: true,
   showLedges: true,
   showStorefronts: true,
+  showRoofDetails: true,
   buildingSetback: 1.2,
   ledgeProjection: 0.15,
   showZoningEnvelopes: false,
@@ -310,7 +311,7 @@ export const PERSISTED_SETTING_KEYS = [
   'terrainTileMeters',
   'showFences', 'fenceHeight', 'fenceThickness', 'fenceTexture', 'fenceColor',
   'showWaterlines', 'waterlineWidth',
-  'showRoadMarkings', 'showLedges', 'showStorefronts', 'buildingSetback', 'ledgeProjection',
+  'showRoadMarkings', 'showLedges', 'showStorefronts', 'showRoofDetails', 'buildingSetback', 'ledgeProjection',
   'showZoningEnvelopes', 'highlightViolations', 'zoningSetback', 'zoningMaxHeight', 'zoningCoverage', 'zoningFar', 'scenarioView', 'viewshedRadius', 'zoningBCoverage', 'zoningBFar', 'zoningBMaxHeight', 'zoningBSetback',
   'activeTreeModel', 'activeLightModel', 'activeBenchModel', 'activeBinModel', 'activeBusStopModel', 'activeMosqueModel',
   'activeTumulusModel', 'treeModelPool'

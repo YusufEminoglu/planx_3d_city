@@ -158,6 +158,26 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
     color: linear(0xe2e8f0),
     uv: null
   };
+  // Untextured details: parapets in the wall colour, a stone plinth and
+  // rooftop plant (its pieces carry their own colours).
+  const detail = { kind: 'detail', castShadow: true, receiveShadow: true, renderOrder: 0 };
+  const trimLook = (color) => ({
+    id: lookFor('trim', () => new THREE.MeshStandardMaterial({ roughness: 0.8, side: THREE.DoubleSide }), detail),
+    color: linear(color),
+    uv: null
+  });
+  const plinthLook = (color) => ({
+    id: lookFor('plinth', () => new THREE.MeshStandardMaterial({ roughness: 0.7, side: THREE.DoubleSide }), detail),
+    color: linear(color),
+    uv: null
+  });
+  const plantLook = {
+    id: lookFor('plant', () => new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.15, side: THREE.DoubleSide }), detail),
+    color: [0.5, 0.5, 0.5],
+    uv: null
+  };
+  // Terraces and flat roof decks are gravel ballast, not roof tiles.
+  const terraceTex = createRoofPresetTexture('GravelBallast');
   const footprintLook = (color) => ({
     id: lookFor('footprint', () => new THREE.MeshStandardMaterial({ roughness: 0.82, side: THREE.DoubleSide }), { kind: 'other', castShadow: false, receiveShadow: true, renderOrder: 34 }),
     color: linear(color),
@@ -178,7 +198,8 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
     const featureFloorHeight = parseNumberProp(props, ['planx_floor_height', 'floor_height'], fnStyle.floorHeight);
     const height = buildingHeightFromProps(props, levels, featureFloorHeight);
     const featureSetback = fnStyle.setbackEnabled !== false ? Math.max(0, Number(settings.buildingSetback) || 0) : 0;
-    const featureColor = normalizeHexColor(propFirst(props, ['planx_color', 'color']), fnStyle.color);
+    const explicitColor = propFirst(props, ['planx_color', 'color']);
+    const featureColor = normalizeHexColor(explicitColor, fnStyle.color);
     const selectedFacadeRaw = presetValue(propFirst(props, ['planx_facade', 'planx_texture', 'facade']), textureSets.facade, fnStyle.facade);
     const selectedFacade = normalizeFacadeKey(selectedFacadeRaw);
     const featureFacade = resolveFacadeForLevels(selectedFacade, levels);
@@ -251,19 +272,26 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
       const podiumHeight = (levels > 2 && featureSetback > 0) ? featureFloorHeight : 0;
       const hasRoof = mode !== 'extrude';
 
+      // Neighbours of one function are not painted from one bucket: vary the
+      // shade a little per building (unless its colour is given explicitly).
+      const wallColor = explicitColor ? featureColor : jitterColor(featureColor, rid);
       spec.height = height;
       spec.levels = levels;
+      spec.solar = levels <= 10 && /resid|konut|house|apart|dwell|mesken/i.test(fn);
       spec.floorHeight = featureFloorHeight;
       spec.podiumHeight = podiumHeight;
       spec.setback = featureSetback;
       spec.ledges = settings.showLedges ? { projection: settings.ledgeProjection } : null;
       spec.roof = hasRoof ? { shape: featureRoofShape, height: featureRoofHeight } : null;
       spec.looks = {
-        wall: wallLook(facadeTex, featureColor),
-        // Caps take the roof material so stepped/podium terraces and flat roofs look textured.
-        cap: (mode === 'extrude+roof' && podiumHeight === 0) ? null : capLook(featureRoofTex, featureRoofColor),
+        wall: wallLook(facadeTex, wallColor),
+        // Terraces and flat roof decks (caps) are gravel; the roof keeps its texture.
+        cap: (mode === 'extrude+roof' && podiumHeight === 0) ? null : capLook(terraceTex, '#a9a69d'),
         roof: hasRoof ? roofLook(featureRoofTex, featureRoofColor) : null,
-        slab: slabLook
+        slab: slabLook,
+        trim: settings.showRoofDetails !== false ? trimLook(mixHex(wallColor, '#e7e2d8', 0.35)) : null,
+        plinth: settings.showRoofDetails !== false ? plinthLook(mixHex(wallColor, '#4f4b46', 0.7)) : null,
+        plant: settings.showRoofDetails !== false ? plantLook : null
       };
       if (podiumHeight > 0 || mode === 'podium' || mode === 'stepped' || mode === 'cantilever' || mode === 'penthouse') {
         let podiumFacadeTex = facadeTex;
@@ -276,8 +304,8 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
         }
         const towerFloors = Math.max(1, levels - 1);
         const towerHeight = Math.max(featureFloorHeight, height - (podiumHeight || featureFloorHeight));
-        spec.looks.podiumWall = wallLook(podiumFacadeTex, featureColor);
-        spec.looks.towerWall = wallLook(scaledFacadeTexture(featureFacade, towerFloors, towerHeight, featureFacadeScale) || facadeTex, featureColor);
+        spec.looks.podiumWall = wallLook(podiumFacadeTex, wallColor);
+        spec.looks.towerWall = wallLook(scaledFacadeTexture(featureFacade, towerFloors, towerHeight, featureFacadeScale) || facadeTex, wallColor);
       }
       specs.push(spec);
     }
@@ -295,6 +323,19 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
   }
   // Templates were cloned into the shared materials; their textures stay.
   for (const look of looks) look.material.dispose();
+}
+
+function mixHex(a, b, t) {
+  return `#${new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString()}`;
+}
+
+// Deterministic small shade and warmth change per building.
+function jitterColor(hex, seed) {
+  const h = Math.abs(Math.sin(seed * 12.9898 + 4.1414) * 43758.5453) % 1;
+  const k = Math.abs(Math.sin(seed * 78.233 + 1.618) * 24634.6345) % 1;
+  const c = new THREE.Color(hex);
+  c.offsetHSL((k - 0.5) * 0.025, (h - 0.5) * 0.08, (h - 0.5) * 0.09);
+  return `#${c.getHexString()}`;
 }
 
 // --- QGIS <-> viewer selection sync (only with the PlanX local server) ---

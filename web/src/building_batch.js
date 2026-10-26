@@ -7,7 +7,9 @@
 //   - a planxId vertex attribute links each vertex to its building's
 //     properties for hover, click and fly-to;
 //   - a planxGlow attribute sets each building's share of lit windows at
-//     night (single windows light up on a grid estimated from the facade).
+//     night (single windows light up on a grid estimated from the facade);
+//   - a planxAo attribute darkens walls towards the ground (contact
+//     shadow), and by day some windows show blinds or curtains.
 // Tiles keep frustum culling and raycasting effective on large scenes.
 import * as THREE from 'three';
 import { MeshBVH, acceleratedRaycast } from 'three-mesh-bvh';
@@ -220,8 +222,8 @@ function patchMaterial(mat, windows) {
     shader.uniforms.uPlanxSelectedColor = sharedUniforms.uPlanxSelectedColor;
     Object.assign(shader.uniforms, winUniforms);
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute float planxId;\nattribute float planxGlow;\nvarying float vPlanxId;\nvarying float vPlanxGlow;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvPlanxId = planxId;\nvPlanxGlow = planxGlow;');
+      .replace('#include <common>', '#include <common>\nattribute float planxId;\nattribute float planxGlow;\nattribute float planxAo;\nvarying float vPlanxId;\nvarying float vPlanxGlow;\nvarying float vPlanxAo;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvPlanxId = planxId;\nvPlanxGlow = planxGlow;\nvPlanxAo = planxAo;');
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', [
         '#include <common>',
@@ -236,6 +238,7 @@ function patchMaterial(mat, windows) {
         'uniform float uPlanxWindows;',
         'varying float vPlanxId;',
         'varying float vPlanxGlow;',
+        'varying float vPlanxAo;',
         'float planxHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }'
       ].join('\n'))
       .replace('#include <roughnessmap_fragment>', [
@@ -244,7 +247,10 @@ function patchMaterial(mat, windows) {
         // grid, glass inside the cell's window rectangle.
         'float planxWin = 0.0;',
         'float planxLitWin = 0.0;',
+        'float planxGlassVar = 1.0;',
         'vec3 planxTint = vec3(1.0);',
+        // Contact shadow: walls darken over their lowest metres.
+        'diffuseColor.rgb *= mix(0.58, 1.0, smoothstep(0.0, 1.0, sqrt(vPlanxAo)));',
         '#ifdef USE_MAP',
         'if (uPlanxWindows > 0.5) {',
         '  vec2 planxGridUv = vMapUv * uPlanxWinGrid - uPlanxWinOffset;',
@@ -259,15 +265,21 @@ function patchMaterial(mat, windows) {
         '  float planxH = planxHash(planxCell + vec2(vPlanxId * 0.731, vPlanxId * 0.197));',
         '  planxLitWin = planxWin * step(1.0 - vPlanxGlow * 0.7, planxH) * (0.6 + 0.4 * fract(planxH * 31.0));',
         '  planxTint = mix(vec3(1.0, 0.78, 0.5), vec3(0.8, 0.88, 1.0), step(0.82, fract(planxH * 17.0)));',
+        // By day about a quarter of the windows show blinds or curtains
+        // (light or warm, matt), the rest is glass of slightly varying tilt.
+        '  float planxBlind = step(0.74, fract(planxH * 7.31));',
+        '  vec3 planxCloth = mix(vec3(0.82, 0.8, 0.74), vec3(0.62, 0.46, 0.32), step(0.55, fract(planxH * 5.17)));',
+        '  diffuseColor.rgb = mix(diffuseColor.rgb, planxCloth * 0.6, planxWin * planxBlind * 0.65);',
+        '  planxGlassVar = (0.55 + 0.9 * fract(planxH * 3.71)) * (1.0 - 0.7 * planxBlind);',
         // Glass is glossy: sharper sun highlights and sky reflections.
-        '  roughnessFactor = mix(roughnessFactor, 0.15, planxWin);',
+        '  roughnessFactor = mix(roughnessFactor, mix(0.12, 0.6, planxBlind), planxWin);',
         '}',
         '#endif'
       ].join('\n'))
       .replace('#include <lights_fragment_maps>', [
         '#include <lights_fragment_maps>',
         '#if defined( RE_IndirectSpecular )',
-        `radiance *= 1.0 + ${GLASS_REFLECTION.toFixed(1)} * planxWin;`,
+        `radiance *= 1.0 + ${GLASS_REFLECTION.toFixed(1)} * planxWin * planxGlassVar;`,
         '#endif'
       ].join('\n'))
       .replace('#include <emissivemap_fragment>', [
@@ -309,7 +321,7 @@ function lazyBvhRaycast(raycaster, intersects) {
 /**
  * Turn merged building buffers (buildBuildingBuckets / the worker pool) into
  * meshes in `group`.
- * looks[id] = { material (template), kind: 'wall' | 'slab' | 'other',
+ * looks[id] = { material (template), kind: 'wall' | 'slab' | 'detail' | 'other',
  *               castShadow, receiveShadow, renderOrder }
  * buildingRecords[planxId] = the building's properties, for picking.
  */
@@ -327,6 +339,9 @@ export function addBuildingBuckets(group, buckets, looks, buildingRecords, { isN
     geo.setAttribute('color', new THREE.BufferAttribute(b.color, 3, true));
     geo.setAttribute('planxId', new THREE.BufferAttribute(b.planxId, 1));
     geo.setAttribute('planxGlow', new THREE.BufferAttribute(b.planxGlow, 1, true));
+    geo.setAttribute('planxAo', b.planxAo
+      ? new THREE.BufferAttribute(b.planxAo, 1, true)
+      : new THREE.BufferAttribute(new Uint8Array(b.planxGlow.length).fill(255), 1, true));
     geo.computeBoundingBox();
     geo.computeBoundingSphere();
     // One shared material per look; tiles of the same look reuse it.
@@ -337,7 +352,7 @@ export function addBuildingBuckets(group, buckets, looks, buildingRecords, { isN
     mesh.castShadow = look.castShadow;
     mesh.receiveShadow = look.receiveShadow;
     mesh.renderOrder = look.renderOrder;
-    mesh.userData = { planxBatch: true, planxLodSlab: look.kind === 'slab' };
+    mesh.userData = { planxBatch: true, planxLodSlab: look.kind === 'slab' || look.kind === 'detail' };
     group.add(mesh);
   }
 }
@@ -382,8 +397,9 @@ export function buildingPickTargets(group) {
   return group.children;
 }
 
-// Floor slabs are thin ledges: past SLAB_LOD_DISTANCE they are sub-pixel but
-// still make up a large share of the triangles, so their tiles are hidden.
+// Floor slabs are thin ledges, and parapets, plinths and rooftop plant small
+// details: past SLAB_LOD_DISTANCE they are sub-pixel but still make up a
+// large share of the triangles, so their tiles are hidden.
 const SLAB_LOD_DISTANCE = 550;
 const lodSphere = new THREE.Sphere();
 export function updateBuildingLod(group, camera) {

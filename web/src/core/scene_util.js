@@ -10,6 +10,7 @@ import { setStatus } from '../ui/status.js';
 export function clearGroup(g) {
   while (g.children.length) {
     const c = g.children.pop();
+    if (c.isInstancedMesh) c.dispose();
     if (c.geometry) c.geometry.dispose();
     if (c.material) {
       const mats = Array.isArray(c.material) ? c.material : [c.material];

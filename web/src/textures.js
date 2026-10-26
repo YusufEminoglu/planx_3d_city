@@ -13,6 +13,10 @@ let maxAnisotropy = 1;
 export function setMaxAnisotropy(n) {
   maxAnisotropy = Math.max(1, Number(n) || 1);
 }
+/** Anisotropy for ground textures seen at grazing angles (roads, pavements). */
+export function rendererMaxAnisotropy() {
+  return Math.min(8, maxAnisotropy);
+}
 
 function drawWindowedFacade(ctx, size, palette, opts) {
   const floors = Math.max(3, opts.floorRows | 0);
