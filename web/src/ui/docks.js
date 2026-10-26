@@ -201,7 +201,7 @@ export function renderFunctionStyleDock() {
 
     const roofTexture = makeSelect(roofOptions, style.roofTexture, roofTextureLabel);
     roofTexture.addEventListener('change', () => {
-      style.roofTexture = presetValue(roofTexture.value, textureSets.roof, 'TurkishTile');
+      style.roofTexture = presetValue(roofTexture.value, textureSets.roof, 'ClayTile');
       saveFunctionBuildingStyles();
       rebuildScene();
     });

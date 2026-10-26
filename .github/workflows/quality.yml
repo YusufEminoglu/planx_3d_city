@@ -22,18 +22,21 @@ jobs:
       - uses: actions/checkout@v4
 
       # tests/test_unified_catalog_and_modes.py checks that the sibling
-      # osm_3d_model viewer offers the same facades, roofs and massing modes,
-      # and reads it from ../osm_3d_model. actions/checkout only writes inside
-      # the workspace, so check it out there and move it beside the plugin
-      # (which also keeps it out of the compile, Flake8 and Bandit scans).
-      - name: Check out osm_3d_model (catalogue sync test)
-        uses: actions/checkout@v4
-        with:
-          repository: YusufEminoglu/osm_3d_model
-          path: osm_3d_model
-
-      - name: Place osm_3d_model next to the plugin
-        run: mv osm_3d_model ../osm_3d_model
+      # osm_3d_model viewer shares the material catalogue and massing modes,
+      # and reads it from ../osm_3d_model (beside the plugin, which also keeps
+      # it out of the compile, Flake8 and Bandit scans). A change to the shared
+      # catalogue lands on a branch of the same name in both repos, so use that
+      # branch when osm_3d_model has it and its default branch otherwise.
+      - name: Check out osm_3d_model next to the plugin (catalogue sync test)
+        env:
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          url=https://github.com/YusufEminoglu/osm_3d_model.git
+          if git ls-remote --exit-code --heads "$url" "$BRANCH" >/dev/null; then
+            git clone --depth 1 --branch "$BRANCH" "$url" ../osm_3d_model
+          else
+            git clone --depth 1 "$url" ../osm_3d_model
+          fi
 
       - uses: actions/setup-python@v5
         with:

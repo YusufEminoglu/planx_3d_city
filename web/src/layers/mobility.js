@@ -3,9 +3,9 @@
 // and the traffic on them: instanced cars, buses and taxis driving in lanes
 // through the road network, walking people and bicycles.
 import * as THREE from 'three';
-import { assetColor } from '../catalog.js';
+import { assetColor, textureSets } from '../catalog.js';
 import { getPolygonRings } from '../geo.js';
-import { propFirst, parseNumberProp, featureLabelText, normalizeAccessText, keywordList } from '../props.js';
+import { propFirst, presetValue, parseNumberProp, featureLabelText, normalizeAccessText, keywordList } from '../props.js';
 import { colorObjectFromHex, rgbaFromColor, mixedColor, rendererMaxAnisotropy } from '../textures.js';
 import { buildRoadNetwork, nextLineAtEnd } from '../road_network.js';
 import {
@@ -543,15 +543,21 @@ export async function buildRoadsAndTraffic(roadsFc, buildToken = state.sceneBuil
   traffic.roadNetwork = null;
   if (!roadsFc?.features?.length) return;
 
+  // Road surfaces of the material catalogue: Asphalt, Cobblestone and
+  // ConcretePaver (a shared street: no lane markings).
+  const roadStyle = presetValue(settings.roadStyle, textureSets.road, 'Asphalt');
   let surface = null;
   let tile = ASPHALT_TILE_M;
-  if (settings.roadStyle === 'Asphalt') {
-    surface = createAsphaltSurface();
-  } else if (settings.roadStyle === 'Cobblestone' || settings.roadStyle === 'SharedStreet') {
-    tile = settings.roadStyle === 'Cobblestone' ? 3 : 4;
-    const map = await textureFromSet('road', settings.roadStyle, 1, 1);
+  if (roadStyle === 'ConcretePaver') {
+    surface = createPaverSurface();
+    tile = PAVER_TILE_M;
+  } else if (roadStyle === 'Cobblestone') {
+    tile = 3;
+    const map = await textureFromSet('road', roadStyle, 1, 1);
     if (map) map.anisotropy = rendererMaxAnisotropy();
     surface = { map, normalMap: null };
+  } else {
+    surface = createAsphaltSurface();
   }
   if (isSceneBuildStale(buildToken)) return;
 
@@ -573,8 +579,9 @@ export async function buildRoadsAndTraffic(roadsFc, buildToken = state.sceneBuil
     // Photo / drawn paving keeps its own colours unless a colour mode is on;
     // the neutral asphalt takes the road colour (lifted for its grey).
     let color;
-    if (surface?.map && settings.roadStyle !== 'Asphalt' && settings.roadColorMode === 'Default') color = new THREE.Color(0xffffff);
-    else color = roadVisualColor(line.feature, amenityPoints).multiplyScalar(settings.roadStyle === 'Asphalt' ? 1.3 : 1);
+    if (roadStyle === 'Cobblestone' && settings.roadColorMode === 'Default') color = new THREE.Color(0xffffff);
+    else if (roadStyle === 'ConcretePaver' && settings.roadColorMode === 'Default') color = new THREE.Color(0xbdb5a6);
+    else color = roadVisualColor(line.feature, amenityPoints).multiplyScalar(roadStyle === 'Asphalt' ? 1.3 : 1);
     // Each stretch of road knows its nearest junction (signed distance and
     // clearance): split the ribbon where that changes.
     const junctions = ends.junctions.map((j) => ({ at: j.at * scale, clear: j.clear * scale }));
@@ -608,7 +615,7 @@ export async function buildRoadsAndTraffic(roadsFc, buildToken = state.sceneBuil
     const mat = createRoadMaterial({
       map: surface?.map || null,
       normalMap: surface?.normalMap || null,
-      markings: settings.roadStyle !== 'SharedStreet'
+      markings: roadStyle !== 'ConcretePaver'
     });
     if (!settings.showRoads) {
       mat.transparent = true;

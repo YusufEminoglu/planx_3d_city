@@ -14,15 +14,21 @@ class UnifiedModeAndCatalogTests(unittest.TestCase):
         self.assertIn('"planx_massing": QVariant.String', style_src)
 
         for facade in (
-            "ResidentialA", "ResidentialB", "ResidentialC", "ResidentialD", "ResidentialE", "ResidentialF",
-            "UrbanA", "UrbanB", "UrbanC", "UrbanD", "UrbanE", "UrbanF",
-            "CurtainWall", "NordicTimber", "HeritageStone", "AnatolianBrick",
-            "IndustrialLoft", "BrutalistConcrete",
+            "Apartment", "MixedUse", "Modern", "Office", "Heritage", "Brick", "Villa", "Industrial", "Civic",
+            "ApartmentTextureA", "ApartmentTextureB", "ApartmentTextureC", "ApartmentTextureD",
+            "ApartmentTextureE", "ApartmentTextureF", "ModernTextureA", "ModernTextureB",
         ):
-            self.assertIn(facade, dialog_src, f"{facade} missing in dialog.py Quick Style")
+            self.assertIn(f'"{facade}"', dialog_src, f"{facade} missing in dialog.py Quick Style")
 
-        for roof in ("TurkishTile", "CopperPatina", "GravelBallast", "LeadMansard"):
-            self.assertIn(roof, dialog_src, f"{roof} missing in dialog.py Quick Style")
+        for roof in ("ClayTile", "Slate", "Shingle", "MetalSeam", "Copper", "Lead", "Gravel", "Green", "Solar"):
+            self.assertIn(f'"{roof}"', dialog_src, f"{roof} missing in dialog.py Quick Style")
+
+        for ground in ("Grass", "Gravel", "Sand", "Earth", "Water"):
+            self.assertIn(f'"{ground}"', dialog_src, f"{ground} missing in dialog.py Quick Style")
+
+        # Retired catalogue names must not be offered any more (they still load as aliases).
+        for retired in ("ResidentialA", "UrbanA", "CurtainWall", "TurkishTile", "GravelBallast", "ParkGreen"):
+            self.assertNotIn(f'"{retired}"', dialog_src, f"retired name {retired} still offered in dialog.py")
 
         for massing in (
             "Auto Smart Massing",
@@ -48,11 +54,15 @@ class UnifiedModeAndCatalogTests(unittest.TestCase):
         catalog_src = (PLUGIN_DIR / "web" / "src" / "catalog.js").read_text(encoding="utf-8")
         osm_app_src = (OSM_3D_DIR / "web" / "src" / "app.js").read_text(encoding="utf-8")
 
+        # Facades, roofs and surfaces come from one material catalogue, kept
+        # byte-identical in both viewers.
+        planx_catalogue = (PLUGIN_DIR / "web" / "src" / "material_catalogue.js").read_bytes()
+        osm_catalogue = (OSM_3D_DIR / "web" / "src" / "material_catalogue.js").read_bytes()
+        self.assertEqual(planx_catalogue, osm_catalogue, "material_catalogue.js differs between the two viewers")
+        for name, src in (("planx_3d_city catalog.js", catalog_src), ("osm_3d_model app.js", osm_app_src)):
+            self.assertIn("from './material_catalogue.js'", src, f"{name} does not use the material catalogue")
+
         expected_tokens = (
-            "ResidentialA", "ResidentialB", "ResidentialC", "ResidentialD", "ResidentialE", "ResidentialF",
-            "UrbanF", "CurtainWall", "NordicTimber", "HeritageStone", "AnatolianBrick",
-            "IndustrialLoft", "BrutalistConcrete",
-            "TurkishTile", "CopperPatina", "GravelBallast", "LeadMansard",
             "Modern Turkish",
             "Auto Smart Massing", "Podium + tower", "Stepped tower",
             "Courtyard block", "Cantilever / pilotis", "Penthouse crown",

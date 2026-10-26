@@ -5,11 +5,11 @@ import * as THREE from 'three';
 import { BUILDING_TILE_SIZE, addBuildingBuckets, setHoveredBuildingId, estimateWindowGrid } from '../building_batch.js';
 import { resolveBuildingMassing } from '../building_geometry.js';
 import { buildBuildingsParallel, lastBuildWorkers } from '../building_workers.js';
-import { textureSets, FACADE_RECIPES } from '../catalog.js';
+import { textureSets } from '../catalog.js';
 import { getPolygonRings, polygonAreaGeo } from '../geo.js';
 import { propFirst, normalizeHexColor, presetValue, roofShapeValue, parseNumberProp } from '../props.js';
 import { createRoofPresetTexture } from '../textures.js';
-import { DYNAMIC_FACADE_STYLES, autoDynamicStyle, dynamicFacadeKey, dynamicStyleOfToken } from '../facade_dynamic.js';
+import { DYNAMIC_FACADE_STYLES, autoFacadeName, dynamicStyleOfToken } from '../facade_dynamic.js';
 import { state } from '../core/state.js';
 import { buildingGroup, LAYER, buildingFunctionMaterials } from '../core/scene.js';
 import {
@@ -95,8 +95,8 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
     }
   }
   // Walls carry facade coordinates in bays and floors (prismGeometry):
-  // a facade texture is laid out with one window column per bay and one
-  // window row per floor, from its recipe or its estimated window grid.
+  // a photo facade is laid out with one window column per bay and one
+  // window row per floor, from its known floor rows and estimated grid.
   // Dynamic facades draw their windows on that grid in the shader.
   const facadeLayouts = new Map();
   const facadeLayout = (key, tex) => {
@@ -105,10 +105,9 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
       let uv = null;
       if (tex && !tex.userData?.planxDynamic) {
         const est = estimateWindowGrid(tex);
-        const recipe = FACADE_RECIPES[key];
-        const cols = Math.max(1, recipe?.windowCols || est.grid[0]);
-        const rows = Math.max(1, recipe?.floorRows || facadeTextureFloorRows(key, est.grid[1]));
-        const offset = recipe ? [0, 0] : est.offset;
+        const cols = Math.max(1, est.grid[0]);
+        const rows = Math.max(1, facadeTextureFloorRows(key, est.grid[1]));
+        const offset = est.offset;
         grid = { ...est, grid: [cols, rows], offset };
         uv = Array.from(new THREE.Matrix3().set(1 / cols, 0, offset[0] / cols, 0, 1 / rows, offset[1] / rows, 0, 0, 1).elements);
       }
@@ -193,7 +192,7 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
     uv: null
   };
   // Terraces and flat roof decks are gravel ballast, not roof tiles.
-  const terraceTex = createRoofPresetTexture('GravelBallast');
+  const terraceTex = createRoofPresetTexture('Gravel');
   const footprintLook = (color) => ({
     id: lookFor('footprint', () => new THREE.MeshStandardMaterial({ roughness: 0.82, side: THREE.DoubleSide }), { kind: 'other', castShadow: false, receiveShadow: true, renderOrder: 34 }),
     color: linear(color),
@@ -218,11 +217,12 @@ export async function buildBuildingLayer(buildingsFc, buildToken = state.sceneBu
     const featureColor = normalizeHexColor(explicitColor, fnStyle.color);
     const selectedFacadeRaw = presetValue(propFirst(props, ['planx_facade', 'planx_texture', 'facade']), textureSets.facade, fnStyle.facade);
     let selectedFacade = normalizeFacadeKey(selectedFacadeRaw);
-    // Dynamic (auto): every building draws its own facade, chosen from its
-    // function and height, unless a feature or function asks for one.
+    // Auto by function: each building wears the facade of its function and
+    // height (homes the apartment photo facades, others the dynamic style of
+    // their type), unless the feature names one.
     const explicitFacade = propFirst(props, ['planx_facade', 'planx_texture', 'facade']);
-    if (settings.facadeMode !== 'Catalogue textures' && !explicitFacade && !dynamicStyleOfToken(textureSets.facade[selectedFacade])) {
-      selectedFacade = dynamicFacadeKey(autoDynamicStyle(fn, levels, records.length));
+    if (settings.facadeMode !== 'Function styles' && !explicitFacade) {
+      selectedFacade = autoFacadeName(fn, levels, records.length);
     }
     const featureFacade = resolveFacadeForLevels(selectedFacade, levels);
     const featureFacadeScale = Math.max(1, Math.min(8, parseNumberProp(props, ['planx_facade_scale', 'facade_scale'], fnStyle.facadeScale)));
