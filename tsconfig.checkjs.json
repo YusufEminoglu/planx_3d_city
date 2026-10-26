@@ -34,6 +34,8 @@
     "web/src/video_export.js",
     "web/src/xr.js",
     "web/src/catalog.js",
+    "web/src/material_catalogue.js",
+    "web/src/facade_dynamic.js",
     "web/src/geo.js",
     "web/src/props.js",
     "web/src/textures.js",

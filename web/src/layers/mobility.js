@@ -1,55 +1,29 @@
-// Mobility: roads (with amenity and access colouring), sidewalks, pedestrian
-// paths, crosswalks and bike lanes, and the traffic on them (cars, people,
-// bicycles) moving along road curves.
+// Mobility: roads (asphalt with painted markings, curbs and paved
+// sidewalks, amenity and access colouring), pedestrian paths and bike lanes,
+// and the traffic on them: instanced cars, buses and taxis driving in lanes
+// through the road network, walking people and bicycles.
 import * as THREE from 'three';
-import { assetColor } from '../catalog.js';
+import { assetColor, textureSets } from '../catalog.js';
 import { getPolygonRings } from '../geo.js';
-import { parseNumberProp, featureLabelText, normalizeAccessText, keywordList } from '../props.js';
-import { colorObjectFromHex, rgbaFromColor, mixedColor, createAsphaltTexture } from '../textures.js';
+import { propFirst, presetValue, parseNumberProp, featureLabelText, normalizeAccessText, keywordList } from '../props.js';
+import { colorObjectFromHex, rgbaFromColor, mixedColor, rendererMaxAnisotropy } from '../textures.js';
+import { buildRoadNetwork, nextLineAtEnd } from '../road_network.js';
+import {
+  ASPHALT_TILE_M, PAVER_TILE_M, createAsphaltSurface, createPaverSurface, createRoadMaterial, setRoadMarkingFlags
+} from '../road_surface.js';
+import {
+  VEHICLE_TYPES, createVehicleGeometry, createVehicleMaterial, setVehicleNight, createPersonGeometry,
+  createPersonMaterial, setPeopleTime, createBlobShadowGeometry, createBlobShadowMaterial, createHeadlightPoolMaterial
+} from '../traffic_models.js';
 import { state } from '../core/state.js';
 import {
   roadGroup, carGroup, bikeLaneGroup, bikeGroup, pedestrianGroup, sidewalkGroup, pedestrianPathGroup,
-  crosswalkGroup, LAYER
+  crosswalkGroup, LAYER, camera
 } from '../core/scene.js';
 import { assetPoolVariants, mappedField, buildingFunctionValue, settings } from '../core/settings.js';
 import { textureFromSet, metersToLocal, EMPTY_GEOJSON } from '../core/data.js';
 import { clearGroup, shapeFromLocalPolygon, isSceneBuildStale } from '../core/scene_util.js';
 import { terrainLocalYAt } from '../terrain/terrain.js';
-
-const sidewalkTextureCache = new Map();
-function createSidewalkTexture(baseColor = settings.sidewalkColor) {
-  const base = colorObjectFromHex(baseColor, settings.sidewalkColor || '#c9bfa2');
-  const cacheKey = `sidewalk:${base.getHexString()}`;
-  if (sidewalkTextureCache.has(cacheKey)) return sidewalkTextureCache.get(cacheKey);
-
-  const c = document.createElement('canvas');
-  c.width = 256; c.height = 256;
-  const ctx = c.getContext('2d');
-  ctx.fillStyle = `#${base.getHexString()}`;
-  ctx.fillRect(0, 0, c.width, c.height);
-  ctx.strokeStyle = rgbaFromColor(mixedColor(base, 0x000000, 0.22), 0.34);
-  ctx.lineWidth = 2;
-  for (let x = 0; x <= c.width; x += 64) {
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, c.height); ctx.stroke();
-  }
-  for (let y = 0; y <= c.height; y += 64) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(c.width, y); ctx.stroke();
-  }
-  for (let i = 0; i < 900; i++) {
-    const x = Math.random() * c.width;
-    const y = Math.random() * c.height;
-    const target = Math.random() > 0.55 ? 0xffffff : 0x000000;
-    ctx.fillStyle = rgbaFromColor(mixedColor(base, target, 0.10 + Math.random() * 0.18), 0.14);
-    ctx.fillRect(x, y, 1 + Math.random() * 1.5, 1 + Math.random() * 1.5);
-  }
-  const t = new THREE.CanvasTexture(c);
-  t.wrapS = THREE.RepeatWrapping;
-  t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(2, 12);
-  t.colorSpace = THREE.SRGBColorSpace;
-  sidewalkTextureCache.set(cacheKey, t);
-  return t;
-}
 
 function roadAllowsCars(feature) {
   const access = state.projectManifest?.roadAccess;
@@ -141,54 +115,6 @@ function featureRoadWidth(feature) {
     }
   }
   return Math.max(5, Math.min(20, settings.roadWidth));
-}
-
-function createPedestrianModel(index = 0) {
-  const variants = assetPoolVariants('pedestrians');
-  const variant = variants[index % Math.max(1, variants.length)] || 'Commuter';
-  const outfit = assetColor(variant, [0x1e293b, 0x334155, 0x475569, 0x0f766e][index % 4]);
-  const accent = new THREE.Color(outfit).offsetHSL(0.02, -0.08, 0.08).getHex();
-  const skin = [0xf2c7a0, 0xd7a67f, 0xb9825d, 0x8d5a3b][index % 4];
-  const clothMat = new THREE.MeshStandardMaterial({ color: outfit, roughness: 0.82 });
-  const pantsMat = new THREE.MeshStandardMaterial({ color: accent, roughness: 0.88 });
-  const skinMat = new THREE.MeshStandardMaterial({ color: skin, roughness: 0.65 });
-  const shoeMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.9 });
-  const root = new THREE.Group();
-
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.82, 0.22), clothMat);
-  body.position.y = 1.05;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), skinMat);
-  head.position.y = 1.58;
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.12, 8), skinMat);
-  neck.position.y = 1.39;
-  root.add(body, head, neck);
-
-  const makeLimb = (mat, length, width, yOffset, zOffset = 0) => {
-    const pivot = new THREE.Group();
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, length, width), mat);
-    mesh.position.y = -length * 0.5;
-    mesh.position.z = zOffset;
-    pivot.position.y = yOffset;
-    pivot.add(mesh);
-    return pivot;
-  };
-  const leftArm = makeLimb(clothMat, 0.62, 0.08, 1.34, 0);
-  leftArm.position.x = -0.25;
-  const rightArm = makeLimb(clothMat, 0.62, 0.08, 1.34, 0);
-  rightArm.position.x = 0.25;
-  const leftLeg = makeLimb(pantsMat, 0.72, 0.10, 0.68, 0);
-  leftLeg.position.x = -0.11;
-  const rightLeg = makeLimb(pantsMat, 0.72, 0.10, 0.68, 0);
-  rightLeg.position.x = 0.11;
-  root.add(leftArm, rightArm, leftLeg, rightLeg);
-
-  const leftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.06, 0.24), shoeMat);
-  leftShoe.position.set(-0.11, 0.02, -0.04);
-  const rightShoe = leftShoe.clone();
-  rightShoe.position.x = 0.11;
-  root.add(leftShoe, rightShoe);
-  root.scale.setScalar(0.95 + (index % 5) * 0.025);
-  return { mesh: root, limbRefs: { leftArm, rightArm, leftLeg, rightLeg, leftShoe, rightShoe } };
 }
 
 const bikeLaneTextureCache = new Map();
@@ -413,6 +339,195 @@ function buildBicycleTraffic() {
   }
 }
 
+// --- Road network -----------------------------------------------------------
+// Centre lines, widths, access, one-way and lanes per road, plus the junction
+// topology (road_network.js) shared by the road surface, the sidewalks and
+// the traffic. Rebuilt when the roads or the width settings change; the
+// terrain-following curves are rebuilt with every road build.
+
+const ONEWAY_FORWARD = /^(yes|true|1|forward)$/;
+function roadOneway(props) {
+  const raw = String(propFirst(props, ['oneway', 'one_way']) ?? '').trim().toLowerCase();
+  if (raw === '-1' || raw === 'reverse' || raw === 'backward') return 2;
+  return ONEWAY_FORWARD.test(raw) ? 1 : 0;
+}
+
+function roadLanesPerDirection(props, width, oneway) {
+  const lanes = parseNumberProp(props, ['lanes'], null);
+  if (lanes && lanes > 0) return Math.max(1, Math.min(4, oneway ? Math.round(lanes) : Math.ceil(lanes / 2)));
+  return Math.max(1, Math.min(4, Math.floor((oneway ? width : width / 2) / 3.25)));
+}
+
+function roadLinesFrom(roadsFc) {
+  const lines = [];
+  for (const f of roadsFc?.features || []) {
+    for (const coords of lineSetsFromGeometry(f.geometry)) {
+      const points = [];
+      for (const c of coords || []) {
+        if (!c || c.length < 2) continue;
+        const [x, z] = metersToLocal(c[0], c[1]);
+        if (!Number.isFinite(x) || !Number.isFinite(z)) continue;
+        const last = points[points.length - 1];
+        if (last && Math.hypot(last[0] - x, last[1] - z) < 0.01) continue;
+        points.push([x, z]);
+      }
+      if (points.length < 2) continue;
+      const width = featureRoadWidth(f);
+      const props = f.properties || {};
+      const oneway = roadOneway(props);
+      lines.push({
+        feature: f,
+        points,
+        width,
+        halfWidth: width / 2,
+        oneway,
+        lanes: roadLanesPerDirection(props, width, oneway),
+        allowsCars: roadAllowsCars(f),
+        curve: null
+      });
+    }
+  }
+  return lines;
+}
+
+let roadNetworkCache = { fc: null, key: '', lines: [], network: [] };
+function roadNetworkFor(roadsFc) {
+  const key = `${settings.roadWidth}|${mappedField('road_width_field') || ''}|${JSON.stringify(state.projectManifest?.roadAccess || null)}`;
+  if (roadNetworkCache.fc !== roadsFc || roadNetworkCache.key !== key) {
+    const lines = roadLinesFrom(roadsFc);
+    roadNetworkCache = { fc: roadsFc, key, lines, network: buildRoadNetwork(lines) };
+  }
+  return roadNetworkCache;
+}
+
+// Centre-line curve resampled every ~3 m with the terrain height baked in,
+// so it hugs the DEM; y is the road surface.
+function makeTerrainCurve(points, lift, step = 3) {
+  const xzCurve = new THREE.CatmullRomCurve3(points.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal');
+  const len = xzCurve.getLength();
+  const n = Math.max(points.length, Math.ceil(len / step) + 1);
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const tp = xzCurve.getPointAt(i / n);
+    tp.y = terrainLocalYAt(tp.x, tp.z) + lift;
+    pts.push(tp);
+  }
+  const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+  curve.arcLengthDivisions = Math.max(200, Math.ceil(len / 2));
+  return curve;
+}
+
+function roadCurve(line) {
+  if (!line.curve) line.curve = makeTerrainCurve(line.points, LAYER.road);
+  return line.curve;
+}
+
+// Frames along a curve between two distances: point, right-hand normal
+// (horizontal, right of the curve's direction) and distance along. Sampled
+// every `step` metres, then frames that lie on a straight, evenly sloped
+// stretch are dropped (long straight streets on flat ground need few).
+const FRAME_TOLERANCE = 0.03; // m
+const FRAME_MAX_GAP = 45; // m
+function curveFrames(curve, from, to, step = 3) {
+  const len = curve.getLength();
+  const a = Math.max(0, Math.min(len, from));
+  const b = Math.max(0, Math.min(len, to));
+  if (b - a < 0.05) return [];
+  const n = Math.max(1, Math.ceil((b - a) / step));
+  const all = [];
+  for (let i = 0; i <= n; i++) {
+    const along = a + ((b - a) * i) / n;
+    const u = Math.min(1, along / len);
+    const p = curve.getPointAt(u);
+    const t = curve.getTangentAt(u);
+    const h = Math.hypot(t.x, t.z) || 1;
+    all.push({ p, rx: -t.z / h, rz: t.x / h, along });
+  }
+  if (all.length <= 2) return all;
+  const out = [all[0]];
+  for (let i = 1; i < all.length - 1; i++) {
+    const s0 = out[out.length - 1];
+    const s2 = all[i + 1];
+    if (s2.along - s0.along > FRAME_MAX_GAP) {
+      out.push(all[i]);
+      continue;
+    }
+    // Every skipped frame between s0 and s2 must stay on the chord.
+    let straight = Math.abs(s0.rx * s2.rz - s0.rz * s2.rx) < 0.004;
+    for (let j = all.indexOf(s0) + 1; straight && j <= i; j++) {
+      const f = all[j];
+      const k = (f.along - s0.along) / (s2.along - s0.along);
+      const dx = f.p.x - (s0.p.x + (s2.p.x - s0.p.x) * k);
+      const dy = f.p.y - (s0.p.y + (s2.p.y - s0.p.y) * k);
+      const dz = f.p.z - (s0.p.z + (s2.p.z - s0.p.z) * k);
+      straight = Math.abs(dx) < FRAME_TOLERANCE && Math.abs(dy) < FRAME_TOLERANCE && Math.abs(dz) < FRAME_TOLERANCE;
+    }
+    if (!straight) out.push(all[i]);
+  }
+  out.push(all[all.length - 1]);
+  return out;
+}
+
+// Indexed triangle strips collected into one geometry.
+class StripMesh {
+  constructor(extra = []) {
+    this.pos = [];
+    this.uv = [];
+    this.col = [];
+    this.idx = [];
+    this.extra = Object.fromEntries(extra.map(([name, size]) => [name, { size, data: [] }]));
+  }
+
+  /**
+   * Two rows of vertices [x, y, z] joined into quads; `facing` is the
+   * direction the faces should look (the winding is chosen to match).
+   */
+  strip(rowA, rowB, facing, color, uvA = null, uvB = null, extraA = null, extraB = null) {
+    const n = Math.min(rowA.length, rowB.length);
+    if (n < 2) return;
+    const base = this.pos.length / 3;
+    let flip = false;
+    for (let i = 0; i < n - 1; i++) {
+      const a = rowA[i], b = rowB[i], c = rowA[i + 1];
+      const ux = c[0] - a[0], uy = c[1] - a[1], uz = c[2] - a[2];
+      const vx = b[0] - a[0], vy = b[1] - a[1], vz = b[2] - a[2];
+      const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+      const d = nx * facing[0] + ny * facing[1] + nz * facing[2];
+      if (Math.abs(d) > 1e-9) { flip = d < 0; break; }
+    }
+    for (let i = 0; i < n; i++) {
+      for (const [row, uvs, ex] of [[rowA, uvA, extraA], [rowB, uvB, extraB]]) {
+        this.pos.push(row[i][0], row[i][1], row[i][2]);
+        this.col.push(color.r, color.g, color.b);
+        if (uvs) this.uv.push(uvs[i][0], uvs[i][1]);
+        if (ex) for (const [name, values] of Object.entries(ex)) this.extra[name].data.push(...values[i]);
+      }
+    }
+    for (let i = 0; i < n - 1; i++) {
+      const a = base + i * 2, b = a + 1, c = a + 2, d = a + 3;
+      if (flip) this.idx.push(a, b, c, c, b, d);
+      else this.idx.push(a, c, b, c, d, b);
+    }
+  }
+
+  build() {
+    if (!this.idx.length) return null;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3));
+    if (this.uv.length) geo.setAttribute('uv', new THREE.Float32BufferAttribute(this.uv, 2));
+    for (const [name, { size, data }] of Object.entries(this.extra)) {
+      if (data.length) geo.setAttribute(name, new THREE.Float32BufferAttribute(data, size));
+    }
+    geo.setIndex(this.idx);
+    geo.computeVertexNormals();
+    geo.computeBoundingSphere();
+    return geo;
+  }
+}
+
+const UP = [0, 1, 0];
+
 export async function buildRoadsAndTraffic(roadsFc, buildToken = state.sceneBuildToken) {
   clearGroup(roadGroup);
   clearGroup(carGroup);
@@ -421,330 +536,137 @@ export async function buildRoadsAndTraffic(roadsFc, buildToken = state.sceneBuil
   state.vehicleRoadCurves = [];
   state.cars = [];
   state.pedestrians = [];
+  traffic.lanes = new Map();
+  traffic.vehiclePools = [];
+  traffic.carShadows = null;
+  traffic.headlightPools = null;
+  traffic.roadNetwork = null;
   if (!roadsFc?.features?.length) return;
 
-  let roadTex = null;
-  if (settings.roadStyle === 'Asphalt') {
-    roadTex = null;
-  } else if (settings.roadStyle === 'Cobblestone') {
-    roadTex = await textureFromSet('road', 'Cobblestone', 2, 20);
-  } else if (settings.roadStyle === 'SharedStreet') {
-    roadTex = await textureFromSet('road', 'SharedStreet', 2, 16);
+  // Road surfaces of the material catalogue: Asphalt, Cobblestone and
+  // ConcretePaver (a shared street: no lane markings).
+  const roadStyle = presetValue(settings.roadStyle, textureSets.road, 'Asphalt');
+  let surface = null;
+  let tile = ASPHALT_TILE_M;
+  if (roadStyle === 'ConcretePaver') {
+    surface = createPaverSurface();
+    tile = PAVER_TILE_M;
+  } else if (roadStyle === 'Cobblestone') {
+    tile = 3;
+    const map = await textureFromSet('road', roadStyle, 1, 1);
+    if (map) map.anisotropy = rendererMaxAnisotropy();
+    surface = { map, normalMap: null };
+  } else {
+    surface = createAsphaltSurface();
   }
   if (isSceneBuildStale(buildToken)) return;
 
-  const roadMat = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    map: roadTex,
-    roughness: 0.97,
-    transparent: !settings.showRoads,
-    opacity: settings.showRoads ? 1.0 : 0.0,
-    polygonOffset: true,
-    polygonOffsetFactor: -4,
-    polygonOffsetUnits: -4
-  });
+  const { lines, network } = roadNetworkFor(roadsFc);
+  traffic.roadNetwork = { lines, network };
   const amenityPoints = settings.roadColorMode === 'Amenity distance' ? estimateAmenityPoints() : [];
-
-  for (const f of roadsFc.features) {
-    if (!f.geometry || f.geometry.type !== 'LineString') continue;
-    const xzPts = [];
-    for (const c of f.geometry.coordinates) {
-      const [x, z] = metersToLocal(c[0], c[1]);
-      xzPts.push(new THREE.Vector3(x, 0, z));
-    }
-    if (xzPts.length < 2) continue;
-    const featureWidth = featureRoadWidth(f);
-
-    // Resample XZ path every ~3 m and bake terrain Y so the curve hugs DEM surface
-    const xzCurve = new THREE.CatmullRomCurve3(xzPts, false, 'centripetal');
-    const roadLen = xzCurve.getLength();
-    const nSamples = Math.max(xzPts.length, Math.ceil(roadLen / 3) + 1);
-    const terrainPts = [];
-    for (let i = 0; i <= nSamples; i++) {
-      const tp = xzCurve.getPointAt(i / nSamples);
-      tp.y = terrainLocalYAt(tp.x, tp.z) + LAYER.road;
-      terrainPts.push(tp);
-    }
-    const curve = new THREE.CatmullRomCurve3(terrainPts, false, 'centripetal');
+  const roads = new StripMesh([['aRoad', 4], ['aRoadB', 4]]);
+  for (let li = 0; li < lines.length; li++) {
+    const line = lines[li];
+    line.curve = null;
+    const curve = roadCurve(line);
+    curve.planxRoad = line;
     state.roadCurves.push(curve);
-    if (roadAllowsCars(f)) state.vehicleRoadCurves.push(curve);
-    // One ribbon vertex per terrain sample: the samples already carry the DEM
-    // height, and subdividing them 3x only interpolated the spline (~1 quad/m).
-    const segments = Math.max(24, terrainPts.length);
-    const centers = curve.getPoints(segments);
-    const left = [];
-    const right = [];
-    for (let i = 0; i < centers.length; i++) {
-      const p = centers[i];
-      const t = curve.getTangent(i / (centers.length - 1));
-      const n = new THREE.Vector3(-t.z, 0, t.x).normalize().multiplyScalar(featureWidth * 0.5);
-      left.push(new THREE.Vector3(p.x + n.x, p.y, p.z + n.z));
-      right.push(new THREE.Vector3(p.x - n.x, p.y, p.z - n.z));
+    if (line.allowsCars) state.vehicleRoadCurves.push(curve);
+    const len = curve.getLength();
+    const scale = len / Math.max(1e-6, network[li].length);
+    const ends = network[li];
+    const hw = line.halfWidth;
+    // Photo / drawn paving keeps its own colours unless a colour mode is on;
+    // the neutral asphalt takes the road colour (lifted for its grey).
+    let color;
+    if (roadStyle === 'Cobblestone' && settings.roadColorMode === 'Default') color = new THREE.Color(0xffffff);
+    else if (roadStyle === 'ConcretePaver' && settings.roadColorMode === 'Default') color = new THREE.Color(0xbdb5a6);
+    else color = roadVisualColor(line.feature, amenityPoints).multiplyScalar(roadStyle === 'Asphalt' ? 1.3 : 1);
+    // Each stretch of road knows its nearest junction (signed distance and
+    // clearance): split the ribbon where that changes.
+    const junctions = ends.junctions.map((j) => ({ at: j.at * scale, clear: j.clear * scale }));
+    const cuts = [0];
+    for (let j = 1; j < junctions.length; j++) cuts.push((junctions[j - 1].at + junctions[j].at) / 2);
+    cuts.push(len);
+    for (let k = 0; k < cuts.length - 1; k++) {
+      const jn = junctions[k] || null;
+      const frames = curveFrames(curve, cuts[k], cuts[k + 1], 3);
+      const rowA = [], rowB = [], uvA = [], uvB = [], exA = { aRoad: [], aRoadB: [] }, exB = { aRoad: [], aRoadB: [] };
+      for (const { p, rx, rz, along } of frames) {
+        const ax = p.x + rx * hw, az = p.z + rz * hw;
+        const bx = p.x - rx * hw, bz = p.z - rz * hw;
+        rowA.push([ax, p.y, az]);
+        rowB.push([bx, p.y, bz]);
+        // World-space texture coordinates: overlapping roads match.
+        uvA.push([ax / tile, az / tile]);
+        uvB.push([bx / tile, bz / tile]);
+        const roadB = [line.lanes, line.oneway, jn ? along - jn.at : 1e4, jn ? jn.clear : 0];
+        exA.aRoad.push([hw, along, hw, len]);
+        exB.aRoad.push([-hw, along, hw, len]);
+        exA.aRoadB.push(roadB);
+        exB.aRoadB.push(roadB);
+      }
+      roads.strip(rowA, rowB, UP, color, uvA, uvB, exA, exB);
     }
-    const positions = [];
-    const uvs = [];
-    const indices = [];
-    for (let i = 0; i < left.length; i++) {
-      positions.push(left[i].x, left[i].y, left[i].z);
-      positions.push(right[i].x, right[i].y, right[i].z);
-      const v = i / Math.max(1, left.length - 1);
-      uvs.push(0, v, 1, v);
+  }
+  if (isSceneBuildStale(buildToken)) return;
+  const roadGeo = roads.build();
+  if (roadGeo) {
+    const mat = createRoadMaterial({
+      map: surface?.map || null,
+      normalMap: surface?.normalMap || null,
+      markings: roadStyle !== 'ConcretePaver'
+    });
+    if (!settings.showRoads) {
+      mat.transparent = true;
+      mat.opacity = 0;
     }
-    for (let i = 0; i < left.length - 1; i++) {
-      const a = i * 2;
-      const b = a + 1;
-      const c = a + 2;
-      const d = a + 3;
-      indices.push(a, c, b, c, d, b);
-    }
-    const roadGeo = new THREE.BufferGeometry();
-    roadGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    roadGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-    roadGeo.setIndex(indices);
-    roadGeo.computeVertexNormals();
-    const featureColor = roadVisualColor(f, amenityPoints);
-    const featureRoadMat = roadMat.clone();
-    if (settings.roadStyle === 'Asphalt') {
-      featureRoadMat.map = createAsphaltTexture(`#${featureColor.getHexString()}`);
-      featureRoadMat.color = new THREE.Color(0xffffff);
-    } else {
-      featureRoadMat.color = featureColor;
-    }
-    featureRoadMat.needsUpdate = true;
-    if (isSceneBuildStale(buildToken)) return;
-    const mesh = new THREE.Mesh(roadGeo, featureRoadMat);
+    setRoadMarkingFlags({
+      markings: settings.showRoadMarkings && settings.showRoads,
+      crosswalks: settings.showCrosswalks && settings.showRoads
+    });
+    const mesh = new THREE.Mesh(roadGeo, mat);
     mesh.receiveShadow = true;
     mesh.renderOrder = 30;
     roadGroup.add(mesh);
-
-    // Procedural Road Markings
-    if (settings.showRoadMarkings && settings.showRoads) {
-      const roadLenMark = xzCurve.getLength();
-      
-      const markingMat = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        roughness: 0.9,
-        polygonOffset: true,
-        polygonOffsetFactor: -5,
-        polygonOffsetUnits: -5
-      });
-      
-      if (!buildRoadsAndTraffic.dashedTex) {
-        const markCanvas = document.createElement('canvas');
-        markCanvas.width = 16; markCanvas.height = 64;
-        const markCtx = markCanvas.getContext('2d');
-        markCtx.fillStyle = 'rgba(0,0,0,0)';
-        markCtx.fillRect(0, 0, 16, 64);
-        markCtx.fillStyle = '#ffffff';
-        markCtx.fillRect(6, 0, 4, 32);
-        const t = new THREE.CanvasTexture(markCanvas);
-        t.wrapS = THREE.RepeatWrapping;
-        t.wrapT = THREE.RepeatWrapping;
-        t.repeat.set(1, 1);
-        buildRoadsAndTraffic.dashedTex = t;
-      }
-
-      const dashedMarkingMat = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        map: buildRoadsAndTraffic.dashedTex,
-        transparent: true,
-        roughness: 0.9,
-        polygonOffset: true,
-        polygonOffsetFactor: -5,
-        polygonOffsetUnits: -5
-      });
-
-      // 1. Center Dashed Line
-      if (featureWidth >= 5.0) {
-        const centerPos = [];
-        const centerUvs = [];
-        const centerInd = [];
-        const mHalf = 0.06;
-        
-        for (let i = 0; i < centers.length; i++) {
-          const p = centers[i];
-          const tangent = curve.getTangent(i / (centers.length - 1));
-          const norm = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize().multiplyScalar(mHalf);
-          
-          centerPos.push(p.x + norm.x, p.y + 0.012, p.z + norm.z);
-          centerPos.push(p.x - norm.x, p.y + 0.012, p.z - norm.z);
-          
-          const distRatio = (i / (centers.length - 1)) * roadLenMark;
-          centerUvs.push(0, distRatio / 4.0);
-          centerUvs.push(1, distRatio / 4.0);
-        }
-        for (let i = 0; i < centers.length - 1; i++) {
-          const a = i * 2;
-          const b = a + 1;
-          const c = a + 2;
-          const d = a + 3;
-          centerInd.push(a, c, b, c, d, b);
-        }
-        const centerGeo = new THREE.BufferGeometry();
-        centerGeo.setAttribute('position', new THREE.Float32BufferAttribute(centerPos, 3));
-        centerGeo.setAttribute('uv', new THREE.Float32BufferAttribute(centerUvs, 2));
-        centerGeo.setIndex(centerInd);
-        centerGeo.computeVertexNormals();
-        
-        const centerMesh = new THREE.Mesh(centerGeo, dashedMarkingMat);
-        centerMesh.renderOrder = 31;
-        roadGroup.add(centerMesh);
-      }
-
-      // 2. Outer Shoulder Lines
-      if (featureWidth >= 6.0) {
-        const shoulderOffset = (featureWidth / 2) - 0.25;
-        const sHalf = 0.04;
-        
-        const leftShoulderPos = [];
-        const rightShoulderPos = [];
-        const shInd = [];
-        
-        for (let i = 0; i < centers.length; i++) {
-          const p = centers[i];
-          const tangent = curve.getTangent(i / (centers.length - 1));
-          const norm = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-          
-          const lp = new THREE.Vector3().addScaledVector(norm, shoulderOffset).add(p);
-          leftShoulderPos.push(lp.x + norm.x * sHalf, lp.y + 0.012, lp.z + norm.z * sHalf);
-          leftShoulderPos.push(lp.x - norm.x * sHalf, lp.y + 0.012, lp.z - norm.z * sHalf);
-          
-          const rp = new THREE.Vector3().addScaledVector(norm, -shoulderOffset).add(p);
-          rightShoulderPos.push(rp.x + norm.x * sHalf, rp.y + 0.012, rp.z + norm.z * sHalf);
-          rightShoulderPos.push(rp.x - norm.x * sHalf, rp.y + 0.012, rp.z - norm.z * sHalf);
-        }
-        for (let i = 0; i < centers.length - 1; i++) {
-          const a = i * 2;
-          const b = a + 1;
-          const c = a + 2;
-          const d = a + 3;
-          shInd.push(a, c, b, c, d, b);
-        }
-        
-        const leftGeo = new THREE.BufferGeometry();
-        leftGeo.setAttribute('position', new THREE.Float32BufferAttribute(leftShoulderPos, 3));
-        leftGeo.setIndex(shInd);
-        leftGeo.computeVertexNormals();
-        const leftMesh = new THREE.Mesh(leftGeo, markingMat);
-        leftMesh.renderOrder = 31;
-        roadGroup.add(leftMesh);
-        
-        const rightGeo = new THREE.BufferGeometry();
-        rightGeo.setAttribute('position', new THREE.Float32BufferAttribute(rightShoulderPos, 3));
-        rightGeo.setIndex(shInd);
-        rightGeo.computeVertexNormals();
-        const rightMesh = new THREE.Mesh(rightGeo, markingMat);
-        rightMesh.renderOrder = 31;
-        roadGroup.add(rightMesh);
-      }
-    }
   }
 
-  if (settings.showCars && state.vehicleRoadCurves.length > 0) {
-    const carVariants = assetPoolVariants('cars');
-    const carColors = carVariants.length
-      ? carVariants.map((name, index) => assetColor(name, [0x1f2937, 0x334155, 0x475569, 0x64748b, 0x0f766e][index % 5]))
-      : [0x1f2937, 0x334155, 0x475569, 0x64748b, 0x0f766e];
-    const spawnCount = Math.min(300, state.vehicleRoadCurves.length * Math.floor(10 * settings.carDensity));
-    for (let i = 0; i < spawnCount; i++) {
-      const curve = state.vehicleRoadCurves[Math.floor(Math.random() * state.vehicleRoadCurves.length)];
-      const car = new THREE.Group();
-      const cMat = new THREE.MeshStandardMaterial({ color: carColors[i % carColors.length], roughness: 0.25, metalness: 0.4 });
-      const glassMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1 });
-    
-    // Base body
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.6, 4.2), cMat);
-    body.position.y = 0.4;
-    // Cabin
-    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 2.2), cMat);
-    cabin.position.set(0, 0.95, 0.2);
-    // Windows
-    const winF = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.4), glassMat);
-    winF.position.set(0, 0.95, -0.91);
-    winF.rotation.x = -Math.PI + 0.3;
-    const winB = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.4), glassMat);
-    winB.position.set(0, 0.95, 1.31);
-    winB.rotation.x = -0.3;
-
-    const isNight = (state.solar.elevationDeg ?? 30) < -3;
-    const hMat = new THREE.MeshStandardMaterial({ color: 0xffffee, emissive: isNight ? 0xffffff : 0x000000, emissiveIntensity: isNight ? 5.0 : 0 });
-    const bMat = new THREE.MeshStandardMaterial({ color: 0x550000, emissive: isNight ? 0xff0000 : 0x000000, emissiveIntensity: isNight ? 5.0 : 0 });
-    
-    // Headlights (Front: -Z)
-    const hlR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.1), hMat);
-    hlR.position.set(0.6, 0.5, -2.15);
-    const hlL = hlR.clone();
-    hlL.position.set(-0.6, 0.5, -2.15);
-
-    // Headlight Beams (Fakelight cone)
-    if (isNight) {
-      const beamGeo = new THREE.ConeGeometry(1.5, 6, 8, 1, true);
-      const beamMat = new THREE.MeshBasicMaterial({ color: 0xffffee, transparent: true, opacity: 0.15, blending: THREE.AdditiveBlending, depthWrite: false });
-      const beamR = new THREE.Mesh(beamGeo, beamMat);
-      beamR.position.set(0.6, 0.2, -5.0);
-      beamR.rotation.x = -Math.PI / 2;
-      const beamL = beamR.clone();
-      beamL.position.set(-0.6, 0.2, -5.0);
-      car.add(beamR, beamL);
-    }
-
-    // Brake lights (Back: +Z)
-    const blR = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.15, 0.1), bMat);
-    blR.position.set(0.6, 0.5, 2.15);
-    const blL = blR.clone();
-    blL.position.set(-0.6, 0.5, 2.15);
-
-      car.add(body, cabin, winF, winB, hlR, hlL, blR, blL);
-      carGroup.add(car);
-      car.renderOrder = 40;
-      state.cars.push({ car, curve, t: Math.random(), speed: 0.0002 + Math.random() * 0.0006 });
-    }
-  }
-
+  if (settings.showCars) spawnVehicles(lines);
   buildBicycleTraffic();
-
 }
 
-export function buildPedestrianLayer() {
-  clearGroup(pedestrianGroup);
-  state.pedestrians = [];
-  if (!settings.showPedestrians) return;
-  const candidateRoutes = state.roadCurves.map((curve) => ({ curve, surface: 'sidewalk' }))
-    .concat(settings.showPedestrianPaths ? state.pedestrianPathCurves.map((curve) => ({ curve, surface: 'path' })) : []);
-  if (!candidateRoutes.length) return;
-  const pedCount = Math.min(600, candidateRoutes.length * Math.floor(20 * settings.pedestrianDensity));
-  for (let i = 0; i < pedCount; i++) {
-    const route = candidateRoutes[Math.floor(Math.random() * candidateRoutes.length)];
-    const { mesh: pedGeo, limbRefs } = createPedestrianModel(i);
-    pedestrianGroup.add(pedGeo);
-    pedGeo.renderOrder = 41;
-    state.pedestrians.push({
-      mesh: pedGeo,
-      limbRefs,
-      curve: route.curve,
-      surface: route.surface,
-      t: Math.random(),
-      speed: 0.0001 + Math.random() * 0.0001,
-      phase: Math.random() * Math.PI * 2,
-      walkAmplitude: 0.45 + Math.random() * 0.15,
-      offsetDir: (Math.random() > 0.5 ? 1 : -1),
-      lateralOffset: route.surface === 'path' ? (Math.random() - 0.5) * 0.45 : null
-    });
-  }
-}
+// --- Sidewalks and curbs ------------------------------------------------------
 
-function buildSidewalkPolygonLayer(sidewalks, buildToken = state.sceneBuildToken) {
-  const sidewalkTex = createSidewalkTexture(settings.sidewalkColor);
+const SIDEWALK_WIDTH = 1.9;
+const CURB_WIDTH = 0.18;
+const CURB_COLOR = 0xb4b1a9;
+
+function sidewalkMaterial(withNormals) {
+  const paver = createPaverSurface();
   const mat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
-    map: sidewalkTex,
-    roughness: 0.96,
+    map: paver.map,
+    normalMap: withNormals ? paver.normalMap : null,
+    vertexColors: true,
+    roughness: 0.9,
     metalness: 0.0,
     side: THREE.DoubleSide,
     polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2
+    polygonOffsetFactor: -3,
+    polygonOffsetUnits: -3
   });
+  if (withNormals) mat.normalScale.set(0.8, 0.8);
+  return mat;
+}
+
+function buildSidewalkPolygonLayer(sidewalks, buildToken = state.sceneBuildToken) {
+  // Plain material (no normal map) so the static batcher can merge them.
+  const mat = sidewalkMaterial(false);
+  mat.vertexColors = false;
+  mat.color = colorObjectFromHex(settings.sidewalkColor, '#c9bfa2');
+  mat.map = mat.map.clone();
+  mat.map.repeat.set(1 / PAVER_TILE_M, 1 / PAVER_TILE_M);
+  mat.map.needsUpdate = true;
   for (const f of sidewalks.features || []) {
     for (const poly of getPolygonRings(f.geometry)) {
       const outer = poly[0];
@@ -776,77 +698,84 @@ function buildSidewalkPolygonLayer(sidewalks, buildToken = state.sceneBuildToken
   }
 }
 
+// [from, to] minus the gaps on one side of a line.
+function openIntervals(from, to, gaps, side, scale) {
+  let parts = [[from, to]];
+  for (const g of gaps) {
+    if (g.side !== side) continue;
+    const a = g.from * scale;
+    const b = g.to * scale;
+    parts = parts.flatMap(([p, q]) => (b <= p || a >= q ? [[p, q]] : [[p, Math.min(q, a)], [Math.max(p, b), q]]));
+  }
+  return parts.filter(([p, q]) => q - p > 0.5);
+}
+
+// Paved sidewalks along both sides of every road, with a raised curb (top
+// stone and face down to the carriageway) and an outer skirt down to the
+// block. They stop at junctions and leave openings where side streets join.
 function buildProceduralSidewalkStrips(roadsFc, buildToken = state.sceneBuildToken) {
   if (!roadsFc?.features?.length) return;
+  const { lines, network } = roadNetworkFor(roadsFc);
+  const walk = new StripMesh();
+  const curb = new StripMesh();
+  const walkColor = colorObjectFromHex(settings.sidewalkColor, '#c9bfa2');
+  const curbColor = new THREE.Color(CURB_COLOR);
+  const skirtColor = new THREE.Color(CURB_COLOR).multiplyScalar(0.8);
+  const lift = LAYER.sidewalk - LAYER.road;
 
-  const swWidth = 1.3;
-  const sidewalkTex = createSidewalkTexture(settings.sidewalkColor);
-  const swMat = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    map: sidewalkTex,
-    roughness: 0.95,
-    metalness: 0.0,
-    side: THREE.DoubleSide,
-    polygonOffset: true,
-    polygonOffsetFactor: -3,
-    polygonOffsetUnits: -3
-  });
-
-  for (const f of roadsFc.features) {
-    if (!f.geometry || f.geometry.type !== 'LineString') continue;
-    const xzPtsW = [];
-    for (const c of f.geometry.coordinates) {
-      const [x, z] = metersToLocal(c[0], c[1]);
-      xzPtsW.push(new THREE.Vector3(x, 0, z));
-    }
-    if (xzPtsW.length < 2) continue;
-    const featureWidth = featureRoadWidth(f);
-    const xzCurveW = new THREE.CatmullRomCurve3(xzPtsW, false, 'centripetal');
-    const wLen = xzCurveW.getLength();
-    const nW = Math.max(xzPtsW.length, Math.ceil(wLen / 6) + 1);
-    const wPts = [];
-    for (let i = 0; i <= nW; i++) {
-      const tp = xzCurveW.getPointAt(i / nW);
-      tp.y = terrainLocalYAt(tp.x, tp.z) + LAYER.sidewalk;
-      wPts.push(tp);
-    }
-    const curve = new THREE.CatmullRomCurve3(wPts, false, 'centripetal');
-    const segments = Math.max(24, wPts.length * 2); // ~3 m per quad (samples are 6 m apart)
-    const centers = curve.getPoints(segments);
-
+  for (let li = 0; li < lines.length; li++) {
+    const line = lines[li];
+    const curve = roadCurve(line);
+    const len = curve.getLength();
+    const info = network[li];
+    const scale = len / Math.max(1e-6, info.length);
+    const hw = line.halfWidth;
+    // Sidewalks stop at the kerb line of every crossing road.
+    const cuts = info.gaps.concat(info.junctions.flatMap((j) => {
+      const r = Math.max(0, j.clear - 0.5);
+      return [{ from: j.at - r, to: j.at + r, side: -1 }, { from: j.at - r, to: j.at + r, side: 1 }];
+    }));
     for (const side of [-1, 1]) {
-      const innerOff = featureWidth * 0.5 * side;
-      const outerOff = (featureWidth * 0.5 + swWidth) * side;
-      const positions = [];
-      const uvs = [];
-      const indices = [];
-
-      for (let i = 0; i < centers.length; i++) {
-        const p = centers[i];
-        const tang = curve.getTangent(i / (centers.length - 1));
-        const n = new THREE.Vector3(-tang.z, 0, tang.x).normalize();
-        const li = new THREE.Vector3(p.x + n.x * innerOff, p.y, p.z + n.z * innerOff);
-        const ri = new THREE.Vector3(p.x + n.x * outerOff, p.y, p.z + n.z * outerOff);
-        positions.push(li.x, li.y, li.z, ri.x, ri.y, ri.z);
-        const v = i / Math.max(1, centers.length - 1);
-        uvs.push(0, v, 1, v);
+      for (const [a, b] of openIntervals(0, len, cuts, side, scale)) {
+        const frames = curveFrames(curve, a, b, 3);
+        if (frames.length < 2) continue;
+        const at = (f, off, y) => [f.p.x + f.rx * off * side, y, f.p.z + f.rz * off * side];
+        const top = (f) => f.p.y + lift;
+        const inner = frames.map((f) => at(f, hw, f.p.y - 0.02));
+        const curbIn = frames.map((f) => at(f, hw, top(f) + 0.012));
+        const curbOut = frames.map((f) => at(f, hw + CURB_WIDTH, top(f) + 0.012));
+        const walkIn = frames.map((f) => at(f, hw + CURB_WIDTH, top(f)));
+        const walkOut = frames.map((f) => at(f, hw + SIDEWALK_WIDTH, top(f)));
+        const skirt = frames.map((f) => at(f, hw + SIDEWALK_WIDTH, top(f) - 1.1));
+        const towardRoad = [-frames[0].rx * side, 0, -frames[0].rz * side];
+        const awayFromRoad = [frames[0].rx * side, 0, frames[0].rz * side];
+        curb.strip(inner, curbIn, towardRoad, curbColor);
+        curb.strip(curbIn, curbOut, UP, curbColor);
+        curb.strip(walkOut, skirt, awayFromRoad, skirtColor);
+        // Pavers run along the street.
+        const uvIn = frames.map((f) => [f.along / PAVER_TILE_M, CURB_WIDTH / PAVER_TILE_M]);
+        const uvOut = frames.map((f) => [f.along / PAVER_TILE_M, SIDEWALK_WIDTH / PAVER_TILE_M]);
+        walk.strip(walkIn, walkOut, UP, walkColor, uvIn, uvOut);
       }
-
-      for (let i = 0; i < centers.length - 1; i++) {
-        const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
-        indices.push(a, c, b, c, d, b);
-      }
-
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-      geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-      geo.setIndex(indices);
-      geo.computeVertexNormals();
-      const mesh = new THREE.Mesh(geo, swMat);
-      mesh.receiveShadow = true;
-      mesh.renderOrder = 32;
-      sidewalkGroup.add(mesh);
     }
+    if (isSceneBuildStale(buildToken)) return;
+  }
+  const walkGeo = walk.build();
+  if (walkGeo) {
+    const mesh = new THREE.Mesh(walkGeo, sidewalkMaterial(true));
+    mesh.receiveShadow = true;
+    mesh.renderOrder = 32;
+    sidewalkGroup.add(mesh);
+  }
+  const curbGeo = curb.build();
+  if (curbGeo) {
+    const mesh = new THREE.Mesh(curbGeo, new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.82, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3
+    }));
+    mesh.receiveShadow = true;
+    mesh.castShadow = true;
+    mesh.renderOrder = 32;
+    sidewalkGroup.add(mesh);
   }
 }
 
@@ -973,65 +902,609 @@ export function buildPedestrianPathLayer(paths = EMPTY_GEOJSON, buildToken = sta
   }
 }
 
+// Crosswalks are painted by the road shader in front of every junction end
+// (road_surface.js); this only switches them on or off.
 export function buildCrosswalkLayer(roadsFc) {
   clearGroup(crosswalkGroup);
-  if (!settings.showCrosswalks) return;
-  if (!roadsFc?.features?.length) return;
+  setRoadMarkingFlags({
+    markings: settings.showRoadMarkings && settings.showRoads,
+    crosswalks: settings.showCrosswalks && settings.showRoads
+  });
+}
 
-  const cwMat = new THREE.MeshStandardMaterial({ color: 0xf0ede5, roughness: 0.85 });
-  const stripeW = 0.38;
-  const stripeGap = 0.30;
-  const stripeCount = 5;
-  const totalLen = stripeCount * stripeW + (stripeCount - 1) * stripeGap;
+// --- Traffic --------------------------------------------------------------------
+// Cars drive on the right in lanes, keep their distance (intelligent driver
+// model), slow down for junctions and turn into a connected street at the
+// end of theirs. People walk both ways on the sidewalks and paths. All of
+// them are instanced, one draw call per vehicle model and per outfit, and
+// only those near the camera and in view are drawn (InstancePool).
 
-  for (const f of roadsFc.features) {
-    if (!f.geometry || f.geometry.type !== 'LineString') continue;
-    const coords = f.geometry.coordinates;
-    if (coords.length < 2) continue;
-    const cwLen = featureRoadWidth(f) + 2.6;
+const MAX_CARS = 600;
+const MAX_PEOPLE = 900;
+const CAR_LENGTH_GAP = 2.0; // s0: standstill gap, m
+const CAR_HEADWAY = 1.3; // T: time gap, s
+const CAR_ACCEL = 1.6; // m/s2
+const CAR_BRAKE = 2.6; // comfortable deceleration, m/s2
+const TURN_SPEED = 5; // m/s through junctions
+const CAR_DRAW_DISTANCE = 450; // m
+const PERSON_DRAW_DISTANCE = 240; // m
 
-    const [px, pz] = metersToLocal(coords[0][0], coords[0][1]);
-    const [nx, nz] = metersToLocal(coords[1][0], coords[1][1]);
-    const y = terrainLocalYAt(px, pz) + LAYER.road + 0.018;
+const traffic = {
+  lanes: new Map(),
+  vehiclePools: [],
+  carShadows: null,
+  headlightPools: null,
+  personPools: [],
+  peopleShadows: null,
+  roadNetwork: null,
+  pathNetwork: null,
+  pathLines: []
+};
 
-    const dx = nx - px;
-    const dz = nz - pz;
-    const len = Math.sqrt(dx * dx + dz * dz);
-    if (len < 0.001) continue;
+const tmpP = new THREE.Vector3();
+const tmpT = new THREE.Vector3();
+const tmpX = new THREE.Vector3();
+const tmpY = new THREE.Vector3();
+const tmpZ = new THREE.Vector3();
+const tmpM = new THREE.Matrix4();
+const tmpQ = new THREE.Quaternion();
+const tmpS = new THREE.Vector3();
+const tmpPos = new THREE.Vector3();
+const Y_AXIS = new THREE.Vector3(0, 1, 0);
+const viewFrustum = new THREE.Frustum();
+const viewMatrix = new THREE.Matrix4();
+const viewSphere = new THREE.Sphere();
 
-    const rdx = dx / len;
-    const rdz = dz / len;
-    const roadAngle = Math.atan2(rdx, rdz);
+// Instances near the camera and in view are packed at the front of an
+// InstancedMesh each frame and mesh.count is set to how many there are, so
+// far and hidden ones cost nothing. Per-instance attributes follow their
+// owner when it changes slot.
+class InstancePool {
+  /** @param {any} mesh THREE.InstancedMesh  @param {string[]} attrs per-instance attribute names */
+  constructor(mesh, attrs = []) {
+    this.mesh = mesh;
+    this.attrs = attrs.map((name) => (name === 'instanceColor' ? mesh.instanceColor : mesh.geometry.attributes[name]));
+    this.n = 0;
+    this.moved = false;
+    mesh.count = 0;
+  }
 
-    for (let s = 0; s < stripeCount; s++) {
-      const offset = -totalLen / 2 + s * (stripeW + stripeGap) + stripeW / 2;
-      const stripeGeo = new THREE.BoxGeometry(cwLen, 0.02, stripeW);
-      const stripe = new THREE.Mesh(stripeGeo, cwMat);
-      stripe.position.set(px + rdx * offset, y, pz + rdz * offset);
-      stripe.rotation.y = roadAngle;
-      stripe.renderOrder = 35;
-      crosswalkGroup.add(stripe);
+  begin() {
+    this.n = 0;
+    this.moved = false;
+  }
+
+  /** @param {{ slot?: number, data?: number[][] }} owner  @param {any} matrix */
+  push(owner, matrix) {
+    const k = this.n++;
+    this.mesh.setMatrixAt(k, matrix);
+    if (owner && owner.slot !== k) {
+      owner.slot = k;
+      this.attrs.forEach((attr, i) => {
+        const v = owner.data[i];
+        attr.array.set(v, k * v.length);
+      });
+      this.moved = true;
     }
+  }
+
+  end() {
+    this.mesh.count = this.n;
+    this.mesh.instanceMatrix.needsUpdate = true;
+    if (this.moved) for (const attr of this.attrs) attr.needsUpdate = true;
   }
 }
 
-// Moves the traffic along its curves every frame: cars, bicycles (wheels
-// spinning) and walking people (arms and legs swinging).
-export function updateTraffic(time, delta) {
-  for (const c of state.cars) {
-    c.t += c.speed * settings.trafficSpeed;
-    if (c.t > 1) c.t = 0;
-    const safe = Math.min(Math.max(c.t, 0.01), 0.99);
-    const pos = c.curve.getPointAt(safe);
-    const tan = c.curve.getTangentAt(safe);
-    const roadY = terrainLocalYAt(pos.x, pos.z) + LAYER.road + LAYER.carExtra;
-    c.car.position.set(pos.x, roadY, pos.z);
-    // Flatten tangent (no Y tilt) and negate (car front faces -Z)
-    const horiz = Math.sqrt(tan.x * tan.x + tan.z * tan.z);
-    if (horiz > 0.001) {
-      c.car.lookAt(pos.x - tan.x / horiz, roadY, pos.z - tan.z / horiz);
+function makePooledMesh(geometry, material, capacity, renderOrder, attrs = []) {
+  const mesh = new THREE.InstancedMesh(geometry, material, Math.max(1, capacity));
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  // Instances move every frame: the mesh-level bounds would be stale.
+  mesh.frustumCulled = false;
+  mesh.renderOrder = renderOrder;
+  return new InstancePool(mesh, attrs);
+}
+
+function updateViewFrustum() {
+  camera.updateMatrixWorld();
+  viewMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  viewFrustum.setFromProjectionMatrix(viewMatrix);
+}
+
+function inView(pos, radius, maxDistance) {
+  if (camera.position.distanceToSquared(pos) > maxDistance * maxDistance) return false;
+  viewSphere.center.copy(pos);
+  viewSphere.radius = radius;
+  return viewFrustum.intersectsSphere(viewSphere);
+}
+
+function weightedPick(items, rand) {
+  let total = 0;
+  for (const [, w] of items) total += w;
+  let r = rand * total;
+  for (const [v, w] of items) {
+    r -= w;
+    if (r <= 0) return v;
+  }
+  return items[items.length - 1][0];
+}
+
+// Real-world paint shares, plus the asset theme's palette.
+const CAR_PAINTS = [
+  [0xf1f1ee, 24], [0x15171b, 14], [0x6f747b, 13], [0xb6babf, 15], [0x1d3a70, 8], [0x8b1a1a, 8],
+  [0x2b4a3b, 3], [0x5e4330, 3], [0xc8b796, 3], [0x3b6e8f, 3]
+];
+function carPaint(rand) {
+  const theme = assetPoolVariants('cars');
+  if (theme.length && rand() < 0.3) return assetColor(theme[Math.floor(rand() * theme.length)], 0x6f747b);
+  return weightedPick(CAR_PAINTS, rand());
+}
+const TAXI_YELLOW = 0xf2c200;
+const BUS_PAINTS = [0xf4f4f0, 0x2f6fb3, 0xd9e4ea];
+const VEHICLE_MIX = [['sedan', 30], ['hatchback', 26], ['suv', 16], ['van', 9], ['taxi', 12], ['bus', 4]];
+
+function laneKey(line, dir, lane) {
+  return `${line}:${dir}:${lane}`;
+}
+function joinLane(car) {
+  car.laneKey = laneKey(car.line, car.dir, car.lane);
+  if (!traffic.lanes.has(car.laneKey)) traffic.lanes.set(car.laneKey, []);
+  traffic.lanes.get(car.laneKey).push(car);
+}
+function leaveLane(car) {
+  const list = traffic.lanes.get(car.laneKey);
+  if (!list) return;
+  const i = list.indexOf(car);
+  if (i >= 0) list.splice(i, 1);
+}
+
+// Right of the direction of travel: lane 0 is the kerb lane.
+function laneOffset(line, lane) {
+  if (line.oneway) {
+    const laneW = line.width / line.lanes;
+    return line.halfWidth - laneW * (lane + 0.5);
+  }
+  const laneW = line.halfWidth / line.lanes;
+  return laneW * (lane + 0.5);
+}
+
+function carDirectionAllowed(line, dir) {
+  if (!line?.allowsCars) return false;
+  if (line.oneway === 1) return dir > 0;
+  if (line.oneway === 2) return dir < 0;
+  return true;
+}
+
+function spawnVehicles(lines) {
+  const rand = Math.random;
+  const lanes = [];
+  let total = 0;
+  lines.forEach((line, li) => {
+    if (!line.allowsCars || !line.curve) return;
+    const len = line.curve.getLength();
+    if (len < 8) return;
+    for (const dir of [1, -1]) {
+      if (!carDirectionAllowed(line, dir)) continue;
+      for (let lane = 0; lane < line.lanes; lane++) {
+        lanes.push({ li, dir, lane, len, from: total });
+        total += len;
+      }
+    }
+  });
+  if (!lanes.length) return;
+  const density = Math.max(0, Math.min(1, Number(settings.carDensity) || 0));
+  const count = Math.min(MAX_CARS, Math.round(total * (0.0015 + 0.02 * density)));
+  if (count <= 0) return;
+
+  // Place cars, then drop any that would overlap in their lane.
+  const placed = [];
+  for (let i = 0; i < count; i++) {
+    const at = rand() * total;
+    let lo = 0;
+    let hi = lanes.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (lanes[mid].from <= at) lo = mid; else hi = mid - 1;
+    }
+    const ln = lanes[lo];
+    const line = lines[ln.li];
+    let type = weightedPick(VEHICLE_MIX, rand());
+    if (type === 'bus' && (line.halfWidth < 3.4 || ln.len < 60 || ln.lane !== 0)) type = 'sedan';
+    const spec = VEHICLE_TYPES.find((v) => v.name === type);
+    placed.push({ line: ln.li, dir: ln.dir, lane: ln.lane, s: at - ln.from, spec });
+  }
+  placed.sort((a, b) => (a.line - b.line) || (a.dir - b.dir) || (a.lane - b.lane) || (a.s - b.s));
+  const kept = [];
+  for (const c of placed) {
+    const prev = kept[kept.length - 1];
+    if (prev && prev.line === c.line && prev.dir === c.dir && prev.lane === c.lane
+      && c.s - prev.s < (prev.spec.L + c.spec.L) / 2 + 6) continue;
+    kept.push(c);
+  }
+
+  const material = createVehicleMaterial();
+  const byType = new Map();
+  for (const c of kept) {
+    if (!byType.has(c.spec.name)) byType.set(c.spec.name, []);
+    byType.get(c.spec.name).push(c);
+  }
+  const color = new THREE.Color();
+  for (const [name, cars] of byType) {
+    const spec = cars[0].spec;
+    const pool = makePooledMesh(createVehicleGeometry(spec), material, cars.length, 40);
+    // Allocate instanceColor, then let the pool move it with the cars.
+    pool.mesh.setColorAt(0, color.setHex(0xffffff));
+    pool.attrs = [pool.mesh.instanceColor];
+    pool.mesh.receiveShadow = true;
+    pool.mesh.name = `vehicles:${name}`;
+    for (const c of cars) {
+      const paint = name === 'taxi' ? TAXI_YELLOW : name === 'bus' ? BUS_PAINTS[Math.floor(rand() * BUS_PAINTS.length)] : carPaint(rand);
+      color.setHex(paint);
+      const v0 = (name === 'bus' ? 9 : 10 + rand() * 4) * (lines[c.line].halfWidth >= 5 ? 1.25 : 1);
+      const car = {
+        pool,
+        slot: -1,
+        data: [[color.r, color.g, color.b]],
+        spec,
+        line: c.line,
+        dir: c.dir,
+        lane: c.lane,
+        s: c.s,
+        v: v0 * (0.5 + rand() * 0.5),
+        v0,
+        latR: laneOffset(lines[c.line], c.lane),
+        pos: new THREE.Vector3(),
+        quat: new THREE.Quaternion(),
+        placed: false,
+        laneKey: ''
+      };
+      joinLane(car);
+      state.cars.push(car);
+    }
+    carGroup.add(pool.mesh);
+    traffic.vehiclePools.push(pool);
+  }
+
+  traffic.carShadows = makePooledMesh(createBlobShadowGeometry(), createBlobShadowMaterial(0.6), state.cars.length, 39);
+  carGroup.add(traffic.carShadows.mesh);
+  traffic.headlightPools = makePooledMesh(createBlobShadowGeometry(), createHeadlightPoolMaterial(), state.cars.length, 39);
+  carGroup.add(traffic.headlightPools.mesh);
+  updateVehicles(0, true);
+}
+
+function updateVehicles(dt, force = false) {
+  const net = traffic.roadNetwork;
+  if (!net || !state.cars.length) return;
+  const { lines, network } = net;
+  if (dt > 0) {
+    // Leaders: sort every lane by distance travelled.
+    for (const list of traffic.lanes.values()) list.sort((a, b) => a.s - b.s);
+    for (const list of traffic.lanes.values()) {
+      for (let i = 0; i < list.length; i++) {
+        const car = list[i];
+        const len = lines[car.line].curve.getLength();
+        // Slow down towards a junction (or a turn-around at a dead end).
+        const toEnd = len - car.s;
+        const vMax = Math.min(car.v0, TURN_SPEED + Math.sqrt(2 * CAR_BRAKE * Math.max(0, toEnd - 4)));
+        let interaction = 0;
+        const leader = list[i + 1];
+        if (leader) {
+          const gap = Math.max(0.1, leader.s - car.s - (leader.spec.L + car.spec.L) / 2);
+          const sStar = CAR_LENGTH_GAP + car.v * CAR_HEADWAY + (car.v * (car.v - leader.v)) / (2 * Math.sqrt(CAR_ACCEL * CAR_BRAKE));
+          interaction = (Math.max(0, sStar) / gap) ** 2;
+        }
+        const a = CAR_ACCEL * (1 - (car.v / Math.max(0.1, vMax)) ** 4 - interaction);
+        car.v = Math.max(0, Math.min(car.v0 * 1.05, car.v + Math.max(-9, a) * dt));
+      }
+    }
+    for (const car of state.cars) {
+      car.s += car.v * dt;
+      let guard = 0;
+      while (guard++ < 4) {
+        const len = lines[car.line].curve.getLength();
+        if (car.s <= len) break;
+        const over = car.s - len;
+        const next = nextLineAtEnd(network, car.line, car.dir, Math.random(), (li, d) => carDirectionAllowed(lines[li], d));
+        leaveLane(car);
+        const target = lines[next.line];
+        const tLen = target.curve.getLength();
+        const at = next.at * (tLen / Math.max(1e-6, network[next.line].length));
+        if (next.line === car.line && !carDirectionAllowed(target, next.dir)) {
+          // Dead end of a one-way street: re-enter at its start.
+          car.s = 0;
+        } else {
+          car.dir = next.dir;
+          car.s = (car.dir > 0 ? at : tLen - at) + over;
+        }
+        car.line = next.line;
+        car.lane = Math.min(car.lane, target.lanes - 1);
+        car.v = Math.min(car.v, TURN_SPEED + 1);
+        joinLane(car);
+      }
     }
   }
+
+  const k = force ? 1 : 1 - Math.exp(-dt * 12);
+  const kr = force ? 1 : 1 - Math.exp(-dt * 9);
+  for (const car of state.cars) {
+    const line = lines[car.line];
+    const curve = line.curve;
+    const len = curve.getLength();
+    const u = Math.min(1, Math.max(0, (car.dir > 0 ? car.s : len - car.s) / len));
+    curve.getPointAt(u, tmpP);
+    curve.getTangentAt(u, tmpT).multiplyScalar(car.dir);
+    const h = Math.hypot(tmpT.x, tmpT.z) || 1;
+    // Lane changes after a turn glide over.
+    car.latR += (laneOffset(line, car.lane) - car.latR) * (force ? 1 : Math.min(1, dt * 1.5));
+    tmpPos.set(tmpP.x - (tmpT.z / h) * car.latR, tmpP.y + 0.02, tmpP.z + (tmpT.x / h) * car.latR);
+    tmpZ.copy(tmpT).normalize();
+    tmpX.crossVectors(Y_AXIS, tmpZ).normalize();
+    tmpY.crossVectors(tmpZ, tmpX);
+    tmpM.makeBasis(tmpX, tmpY, tmpZ);
+    tmpQ.setFromRotationMatrix(tmpM);
+    if (!car.placed || force) {
+      car.pos.copy(tmpPos);
+      car.quat.copy(tmpQ);
+      car.placed = true;
+    } else {
+      car.pos.lerp(tmpPos, k);
+      car.quat.slerp(tmpQ, kr);
+    }
+  }
+  writeVehicleMatrices();
+}
+
+function writeVehicleMatrices() {
+  const night = (state.solar.elevationDeg ?? 30) < -3;
+  setVehicleNight(night);
+  for (const pool of traffic.vehiclePools) pool.begin();
+  traffic.carShadows?.begin();
+  traffic.headlightPools?.begin();
+  for (const car of state.cars) {
+    if (!inView(car.pos, car.spec.L, CAR_DRAW_DISTANCE)) continue;
+    tmpS.set(1, 1, 1);
+    tmpM.compose(car.pos, car.quat, tmpS);
+    car.pool.push(car, tmpM);
+    if (traffic.carShadows) {
+      tmpS.set(car.spec.W * 1.25, 1, car.spec.L * 1.08);
+      tmpPos.copy(car.pos).addScaledVector(Y_AXIS, 0.015);
+      tmpM.compose(tmpPos, car.quat, tmpS);
+      traffic.carShadows.push(null, tmpM);
+    }
+    if (night && traffic.headlightPools) {
+      tmpZ.set(0, 0, 1).applyQuaternion(car.quat);
+      tmpS.set(car.spec.W * 1.7, 1, 11);
+      tmpPos.copy(car.pos).addScaledVector(tmpZ, car.spec.L / 2 + 5.2).addScaledVector(Y_AXIS, 0.03);
+      tmpM.compose(tmpPos, car.quat, tmpS);
+      traffic.headlightPools.push(null, tmpM);
+    }
+  }
+  for (const pool of traffic.vehiclePools) pool.end();
+  traffic.carShadows?.end();
+  traffic.headlightPools?.end();
+}
+
+// --- People ---------------------------------------------------------------------
+
+const SKIN_TONES = [[0xf1c8a5, 3], [0xe0ac86, 4], [0xc68e66, 4], [0xa06f4c, 3], [0x7a4f34, 2], [0x5a3a26, 1]];
+const SHIRTS = [[0xf2f2ef, 5], [0x1f2a44, 4], [0x18181b, 4], [0x6b7280, 3], [0x9b2c2c, 2], [0x2f5d50, 2], [0xc9b28f, 2],
+  [0x8fb3d9, 3], [0xd97706, 1], [0x7c3a6b, 1], [0x3f6212, 1]];
+const PANTS = [[0x2a3a5a, 6], [0x1b1c20, 5], [0x5b5f66, 3], [0x8a7a5c, 3], [0x3c3530, 2], [0xd6cfc2, 1]];
+const SKIRTS = [[0x1b1c20, 3], [0x7c2d3a, 2], [0x2a3a5a, 2], [0xa3a3a3, 1], [0x5f6f52, 1], [0xc9a37e, 1]];
+const HAIR = [[0x16110d, 6], [0x3b2617, 5], [0x6b4a2e, 3], [0xb08d57, 1], [0x9a9a9a, 1]];
+const STRIDE = 1.45; // m per walking cycle
+const PERSON_ATTRS = ['iWalk', 'iSkin', 'iShirt', 'iPants', 'iHair'];
+
+function sidewalkCentre(line) {
+  return line.halfWidth + CURB_WIDTH + (SIDEWALK_WIDTH - CURB_WIDTH) / 2;
+}
+
+function personRoutes() {
+  const routes = [];
+  traffic.roadNetwork.lines.forEach((line, li) => {
+    if (!line.curve) return;
+    const len = line.curve.getLength();
+    if (len < 4) return;
+    for (const side of [-1, 1]) routes.push({ kind: 'road', li, side, len, offset: sidewalkCentre(line) });
+  });
+  traffic.pathLines = [];
+  traffic.pathNetwork = null;
+  if (settings.showPedestrianPaths && state.pedestrianPathCurves.length) {
+    traffic.pathLines = state.pedestrianPathCurves.map((curve) => ({
+      curve,
+      points: curve.getSpacedPoints(Math.max(2, Math.ceil(curve.getLength() / 6))).map((p) => [p.x, p.z]),
+      halfWidth: 1
+    }));
+    traffic.pathNetwork = buildRoadNetwork(traffic.pathLines);
+    traffic.pathLines.forEach((pl, li) => {
+      const len = pl.curve.getLength();
+      if (len >= 4) routes.push({ kind: 'path', li, side: 1, len, offset: 0 });
+    });
+  }
+  return routes;
+}
+
+export function buildPedestrianLayer() {
+  clearGroup(pedestrianGroup);
+  state.pedestrians = [];
+  traffic.personPools = [];
+  traffic.peopleShadows = null;
+  if (!settings.showPedestrians) return;
+  if (!traffic.roadNetwork) traffic.roadNetwork = { lines: roadNetworkCache.lines, network: roadNetworkCache.network };
+  const routes = personRoutes();
+  if (!routes.length) return;
+  const rand = Math.random;
+  let total = 0;
+  for (const r of routes) total += r.len;
+  const density = Math.max(0, Math.min(1, Number(settings.pedestrianDensity) || 0));
+  const count = Math.min(MAX_PEOPLE, Math.round(total * (0.0015 + 0.012 * density)));
+  if (count <= 0) return;
+  const theme = assetPoolVariants('pedestrians');
+  const color = new THREE.Color();
+  const rgb = (hex) => color.setHex(hex).toArray();
+  const people = [];
+  for (let i = 0; i < count; i++) {
+    let at = rand() * total;
+    let route = routes[0];
+    for (const r of routes) {
+      if (at <= r.len) { route = r; break; }
+      at -= r.len;
+    }
+    const idle = rand() < 0.1;
+    const v = idle ? 0 : 0.95 + rand() * 0.6;
+    const outfit = rand() < 0.38 ? 1 : 0;
+    const shirt = theme.length && rand() < 0.35 ? assetColor(theme[Math.floor(rand() * theme.length)], 0x334155) : weightedPick(SHIRTS, rand());
+    people.push({
+      outfit,
+      slot: -1,
+      // Same order as PERSON_ATTRS: gait (phase, angular frequency, swing, bob) and colours.
+      data: [
+        [rand() * Math.PI * 2, (2 * Math.PI * v) / STRIDE, v > 0 ? 0.42 + rand() * 0.12 : 0, v > 0 ? 0.035 : 0],
+        rgb(weightedPick(SKIN_TONES, rand())),
+        rgb(shirt),
+        rgb(weightedPick(outfit === 1 ? SKIRTS : PANTS, rand())),
+        rgb(weightedPick(HAIR, rand()))
+      ],
+      kind: route.kind,
+      line: route.li,
+      side: route.side,
+      dir: rand() < 0.5 ? 1 : -1,
+      s: at,
+      v,
+      latAbs: route.offset + (route.kind === 'road' ? (rand() - 0.5) * 0.9 : (rand() - 0.5) * 0.6),
+      yaw: rand() * Math.PI * 2,
+      height: rand() < 0.07 ? 0.62 + rand() * 0.15 : 0.92 + rand() * 0.16,
+      hitAt: -1,
+      pos: new THREE.Vector3(),
+      yawSmooth: 0,
+      placed: false
+    });
+  }
+
+  const material = createPersonMaterial();
+  for (const outfit of [0, 1]) {
+    const group = people.filter((p) => p.outfit === outfit);
+    if (!group.length) continue;
+    const geo = createPersonGeometry(outfit === 1 ? 'skirt' : 'trousers');
+    for (const [i, name] of PERSON_ATTRS.entries()) {
+      const size = group[0].data[i].length;
+      geo.setAttribute(name, new THREE.InstancedBufferAttribute(new Float32Array(group.length * size), size));
+    }
+    const pool = makePooledMesh(geo, material, group.length, 41, PERSON_ATTRS);
+    pool.mesh.receiveShadow = true;
+    pool.mesh.name = outfit === 1 ? 'people:skirt' : 'people:trousers';
+    for (const p of group) p.pool = pool;
+    pedestrianGroup.add(pool.mesh);
+    traffic.personPools.push(pool);
+  }
+  state.pedestrians = people;
+  traffic.peopleShadows = makePooledMesh(createBlobShadowGeometry(), createBlobShadowMaterial(0.42), people.length, 40);
+  pedestrianGroup.add(traffic.peopleShadows.mesh);
+  updatePeople(0, 0, true);
+}
+
+function personLine(p) {
+  if (p.kind === 'path') return traffic.pathLines[p.line];
+  return traffic.roadNetwork?.lines[p.line];
+}
+
+function updatePeople(dt, now, force = false) {
+  if (!state.pedestrians.length) return;
+  const k = force ? 1 : 1 - Math.exp(-dt * 8);
+  const lift = LAYER.sidewalk - LAYER.road;
+  for (const pool of traffic.personPools) pool.begin();
+  traffic.peopleShadows?.begin();
+  for (const p of state.pedestrians) {
+    let line = personLine(p);
+    if (!line?.curve) continue;
+    let len = line.curve.getLength();
+    if (dt > 0 && p.v > 0) {
+      p.s += p.v * dt;
+      if (p.s > len) {
+        const isPath = p.kind === 'path';
+        const network = isPath ? traffic.pathNetwork : traffic.roadNetwork?.network;
+        const next = network ? nextLineAtEnd(network, p.line, p.dir, Math.random()) : { line: p.line, at: p.dir > 0 ? len : 0, dir: -p.dir };
+        const target = isPath ? traffic.pathLines[next.line] : traffic.roadNetwork.lines[next.line];
+        const tLen = target.curve.getLength();
+        const at = next.at * (tLen / Math.max(1e-6, network ? network[next.line].length : len));
+        p.line = next.line;
+        p.dir = next.dir;
+        p.s = Math.min(tLen, (p.dir > 0 ? at : tLen - at) + (p.s - len));
+        if (!isPath) p.latAbs = sidewalkCentre(target) + (Math.random() - 0.5) * 0.9;
+        line = target;
+        len = tLen;
+      }
+    }
+    const curve = line.curve;
+    const u = Math.min(1, Math.max(0, (p.dir > 0 ? p.s : len - p.s) / len));
+    curve.getPointAt(u, tmpP);
+    curve.getTangentAt(u, tmpT);
+    const h = Math.hypot(tmpT.x, tmpT.z) || 1;
+    const off = p.kind === 'path' ? p.latAbs : p.latAbs * p.side;
+    tmpPos.set(tmpP.x - (tmpT.z / h) * off, tmpP.y + (p.kind === 'path' ? 0.03 : lift + 0.005), tmpP.z + (tmpT.x / h) * off);
+    const yaw = p.v > 0 ? Math.atan2(tmpT.x * p.dir, tmpT.z * p.dir) : p.yaw;
+    if (!p.placed || force) {
+      p.pos.copy(tmpPos);
+      p.yawSmooth = yaw;
+      p.placed = true;
+    } else {
+      p.pos.lerp(tmpPos, k);
+      let dy = yaw - p.yawSmooth;
+      dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+      p.yawSmooth += dy * Math.min(1, dt * 6);
+    }
+    if (!inView(p.pos, 1.2, PERSON_DRAW_DISTANCE)) continue;
+    // Slingshot hit: squash, then stretch back.
+    let sx = p.height;
+    let sy = p.height;
+    if (p.hitAt >= 0) {
+      const age = now - p.hitAt;
+      if (age < 0.12) { sx *= 1.45; sy *= 0.45; }
+      else if (age < 0.3) { sx *= 0.85; sy *= 1.6; }
+      else p.hitAt = -1;
+    }
+    tmpQ.setFromAxisAngle(Y_AXIS, p.yawSmooth);
+    tmpS.set(sx, sy, sx);
+    tmpM.compose(p.pos, tmpQ, tmpS);
+    p.pool.push(p, tmpM);
+    if (traffic.peopleShadows) {
+      tmpS.set(0.75 * p.height, 1, 0.75 * p.height);
+      tmpPos.copy(p.pos).addScaledVector(Y_AXIS, 0.01);
+      tmpM.compose(tmpPos, tmpQ, tmpS);
+      traffic.peopleShadows.push(null, tmpM);
+    }
+  }
+  for (const pool of traffic.personPools) pool.end();
+  traffic.peopleShadows?.end();
+}
+
+/**
+ * Slingshot game: the person hit by the ray (within maxDistance) squashes.
+ * @returns {boolean} whether someone was hit
+ */
+export function hitPedestrian(raycaster, maxDistance = 40) {
+  let best = null;
+  for (const pool of traffic.personPools) {
+    const mesh = pool.mesh;
+    if (!mesh.parent || !mesh.count) continue;
+    mesh.computeBoundingSphere();
+    for (const hit of raycaster.intersectObject(mesh, false)) {
+      if (hit.distance < maxDistance && (!best || hit.distance < best.distance)) best = { ...hit, pool };
+    }
+  }
+  if (!best) return false;
+  const person = state.pedestrians.find((p) => p.pool === best.pool && p.slot === best.instanceId);
+  if (person) person.hitAt = performance.now() / 1000;
+  return true;
+}
+
+// Moves the traffic every frame: cars, bicycles (wheels spinning) and
+// walking people (limbs swing in the shader).
+export function updateTraffic(time, delta) {
+  const dt = Math.min(0.1, Math.max(0, delta || 0));
+  if (state.cars.length || state.pedestrians.length) updateViewFrustum();
+  updateVehicles(dt * Math.max(0, Number(settings.trafficSpeed) || 0));
+  setPeopleTime(time / 1000);
+  updatePeople(dt, time / 1000);
   for (const b of state.bikes) {
     b.t += b.speed * Math.max(0, settings.bikeSpeed || 0);
     if (b.t > 1) b.t = 0;
@@ -1046,32 +1519,5 @@ export function updateTraffic(time, delta) {
       b.mesh.lookAt(pos.x - tan.x / horiz, bikeY, pos.z - tan.z / horiz);
     }
     for (const wheel of b.wheels || []) wheel.rotation.x -= delta * 8 * (settings.bikeSpeed || 0);
-  }
-  for (const p of state.pedestrians) {
-    p.t += p.speed;
-    if (p.t > 1) p.t = 0;
-    const safe = Math.min(Math.max(p.t, 0.01), 0.99);
-    const pos = p.curve.getPointAt(safe);
-    const tan = p.curve.getTangentAt(safe);
-    const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
-    const offsetMag = p.surface === 'path'
-      ? (p.lateralOffset || 0)
-      : (settings.roadWidth * 0.5 + 0.3) * p.offsetDir;
-    pos.add(right.multiplyScalar(offsetMag));
-
-    const pedY = terrainLocalYAt(pos.x, pos.z) + (p.surface === 'path' ? LAYER.path + 0.10 : LAYER.sidewalk + 0.08);
-    const walkT = time * 0.006 + p.phase;
-    const swing = Math.sin(walkT) * p.walkAmplitude;
-    const counter = -swing;
-    if (p.limbRefs) {
-      p.limbRefs.leftArm.rotation.x = counter;
-      p.limbRefs.rightArm.rotation.x = swing;
-      p.limbRefs.leftLeg.rotation.x = swing;
-      p.limbRefs.rightLeg.rotation.x = counter;
-      p.limbRefs.leftShoe.position.z = -0.04 + Math.max(0, swing) * 0.08;
-      p.limbRefs.rightShoe.position.z = -0.04 + Math.max(0, counter) * 0.08;
-    }
-    p.mesh.position.set(pos.x, pedY + Math.abs(Math.sin(walkT * 2)) * 0.025, pos.z);
-    p.mesh.lookAt(pos.clone().add(tan.clone().multiplyScalar(p.offsetDir))); // look along direction
   }
 }

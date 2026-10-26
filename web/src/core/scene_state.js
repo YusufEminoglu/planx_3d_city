@@ -145,7 +145,7 @@ function applySceneStateSettings(state) {
     else settings[key] = saved[key];
   }
   settings.roofShape = roofShapeValue(settings.roofShape, 'Pyramid');
-  settings.roofTexture = presetValue(settings.roofTexture, textureSets.roof, 'RoofA');
+  settings.roofTexture = presetValue(settings.roofTexture, textureSets.roof, 'ClayTile');
 }
 
 function applySceneStateStyles(state) {

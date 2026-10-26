@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased]
+
+- No Turkish anywhere: Turkish keyword matching removed from the building code, and the roadmap (`docs/ROADMAP.md`) and reference manual are English only (land-use classes, BCR and FAR instead of the Turkish terms).
+- Buildings: floor slabs follow the volume they belong to (they used to span the full footprint on stepped, podium and penthouse towers, leaving wide plates in mid-air); terraces and flat roof decks are gravel with a parapet; flat roofs carry rooftop plant (stair and lift core, air handling units, a water tank, solar water heaters on residential roofs); a stone plinth at street level; walls darken towards the ground (contact shadow); by day some windows show blinds or curtains and glass reflects with a little variation; each building's shade varies slightly. New Style toggle: `Parapets, Plinths & Rooftop Plant`.
+- Roads: neutral asphalt with aggregate, cracks and a normal map, mapped in world metres (no stretching along long roads); lane lines, edge lines, centre lines (double solid on wide roads), stop lines and zebra crossings are painted in the road shader at every junction, including roads that cross without being split; all roads are one draw call. Honours `oneway` and `lanes` attributes. MultiLineString roads are drawn.
+- Sidewalks: interlocking pavers with a raised curb and a skirt down to the block; they stop at junctions and open where side streets join.
+- Traffic: instanced sedans, hatchbacks, SUVs, vans, taxis and buses (one draw call per model) drive on the right in their lanes, keep their distance, slow down for junctions and turn into connected streets; headlights, tail lights and light pools on the road at night; contact shadows.
+- People: instanced walking people with trousers or skirts, varied skin, clothes, hair and height; limbs swing in the vertex shader; they walk both ways on the sidewalks and paths and follow the street network. Only cars and people near the camera and in view are drawn.
+- Dynamic facades (new default, Style > Facades): walls get facade coordinates in window bays and floors, with a whole number of bays per wall restarting at every corner, so windows are never cut by a corner and rows sit on the real floors. Six styles (Apartment, Mixed-use, Modern, Office, Heritage, Brick) draw windows, frames, sills, reveals, shutters, balconies, shopfronts with signs, entrances and lobby glazing in the shader over a plaster, render, brick, stone or concrete material; each building varies its proportions, balconies, doors and blinds, chosen automatically from the building's function and height (a `planx_facade` attribute still wins). Catalogue facade textures are laid out on the same grid. Approach after streets.gl, OSM2World, CityEngine CGA and Mapbox faux facades.
+- One material catalogue for facades, roofs and surfaces, shared with 3D OSM Model (`web/src/material_catalogue.js`, kept identical in both; a test checks it), English names only. Facades: Apartment, MixedUse, Modern, Office, Heritage, Brick and the new Villa, Industrial (loading doors with roll-up shutters, strip windows) and Civic (round-headed windows and entrances) are dynamic; ApartmentTextureA–F and ModernTextureA–B are photo facades laid out on each wall's window grid. Roofs: ClayTile, Slate, Shingle, MetalSeam, Copper, Lead, Gravel, Green, Solar. Surfaces: Asphalt, Cobblestone and ConcretePaver (roads and walks), GraniteSlab, ConcreteSlab and GrassPaver (walks), Grass, Gravel, Sand, Earth and Water (block grounds). Style > Facades is now `Auto by function` (homes wear the apartment photo facades, low homes villas, other buildings the dynamic style of their type) or `Function styles`. Older names in saved settings, themes and QGIS attributes still load as the entry chosen for them (for example ResidentialA → ApartmentTextureA, CurtainWall → Office, TurkishTile → ClayTile, PlazaGranite → GraniteSlab). The drawn procedural facades and the unused facade.webp, facade2–4.png and roof.webp are removed.
+- Fix: lit windows stayed dark at night when the time came from a view link, bookmark or time preset.
+- CI: the static checks check out `osm_3d_model` next to the plugin for the catalogue sync test (its branch of the same name when there is one).
+- Benchmark city: draw calls with traffic and people 2268 -> 205, triangles -24%, scene ready -39%.
+
 ## [2.1.2] - 2026-10-20
 
 - Updated plugin metadata description and about documentation to reflect volumetric massing, architectural facades, and unified raster/vector workflows.
@@ -268,7 +282,7 @@
 
 ## [0.8.24] - 2026-05-26
 
-- Improved Turkish field-name matching in attribute detection (nüfus, araç, yükseklik, ağaç_boyu, yön) while preserving legacy aliases.
+- Improved field-name matching in attribute detection while preserving legacy aliases.
 
 ## [0.8.23] - 2026-05-26
 
@@ -449,7 +463,7 @@ Modern cockpit UI, FPS HUD and Shadow Study.
 ## [0.7.9] - 2026-05-22
 
 OpenStreetMap importer and astronomical solar model.
-- New "Import from OpenStreetMap" button on the Data page. Enter a small WGS84 bounding box (or pull it from the current QGIS canvas) and the plugin queries the Overpass API for buildings, roads, parks/greens and trees, reprojects them to the local UTM zone, and adds them as named layers. Bina katadedi, fonksiyon, yol türü ve ağaç yüksekliği otomatik eşlenir. Soft cap ~5 km per side to stay polite to the shared Overpass endpoint.
+- New "Import from OpenStreetMap" button on the Data page. Enter a small WGS84 bounding box (or pull it from the current QGIS canvas) and the plugin queries the Overpass API for buildings, roads, parks/greens and trees, reprojects them to the local UTM zone, and adds them as named layers. Building floor count, function, road type and tree height are mapped automatically. Soft cap ~5 km per side to stay polite to the shared Overpass endpoint.
 - Replaced the simple sine sun model with a NOAA-style solar position calculator. New viewer sliders for **Day of year (1-365)** and **Latitude (deg)** move the sun realistically with season + location. Sunrise/sunset, golden-hour intensity ramp and night detection now follow the actual solar elevation rather than a fixed clock window.
 - The compass widget gains a small live sun marker on the ring showing the sun's true bearing from the current camera.
 - QGIS publisher writes the derived project latitude (from the DEM bbox centroid reprojected to WGS84) and a default day-of-year into `planx_manifest.json` so the viewer starts at a sensible solar pose for the actual site.

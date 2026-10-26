@@ -3,7 +3,7 @@
 // See buildBuildingBuckets() in building_geometry.js for the message format.
 import { buildBuildingBuckets } from './building_geometry.js';
 
-const BUFFERS = ['position', 'normal', 'uv', 'color', 'planxId', 'planxGlow'];
+const BUFFERS = ['position', 'normal', 'uv', 'color', 'planxId', 'planxGlow', 'planxAo'];
 // The DOM typings see `self` as a Window; in a worker it is the worker scope.
 const scope = /** @type {any} */ (self);
 

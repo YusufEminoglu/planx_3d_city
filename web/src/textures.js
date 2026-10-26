@@ -1,9 +1,11 @@
 // @ts-check
-// Procedural textures drawn on canvases: facades with window grids, roofs,
-// asphalt, pavements, block surfaces, water, fences, leaves. Deterministic
-// apart from a little noise, and cached by the callers.
+// Procedural textures drawn on canvases: roofs, asphalt, pavements, block
+// surfaces, water, fences, leaves. Recipes are named after the material
+// catalogue (material_catalogue.js). Deterministic apart from a little noise,
+// and cached by the callers.
 import * as THREE from 'three';
-import { FACADE_RECIPES, assetColor, textureSets } from './catalog.js';
+import { assetColor } from './catalog.js';
+import { catalogueName, surfacesFor } from './material_catalogue.js';
 import { normalizeHexColor } from './props.js';
 
 const treeLeafTextureCache = new Map();
@@ -13,311 +15,28 @@ let maxAnisotropy = 1;
 export function setMaxAnisotropy(n) {
   maxAnisotropy = Math.max(1, Number(n) || 1);
 }
-
-function drawWindowedFacade(ctx, size, palette, opts) {
-  const floors = Math.max(3, opts.floorRows | 0);
-  const cols = Math.max(2, opts.windowCols | 0);
-  const groundShop = !!opts.groundShop;
-  const aspect = Math.max(0.2, Math.min(1, opts.windowAspect || 0.6));
-  const accent = opts.accent || palette[1];
-  const frame = opts.windowFrameColor || palette[1];
-  const glassPattern = opts.glassPattern || 'uniform';
-  const columnPattern = opts.columnPattern || 'flat';
-
-  ctx.fillStyle = palette[0];
-  ctx.fillRect(0, 0, size, size);
-
-  if (columnPattern === 'brick') {
-    const brickH = 8;
-    const brickW = 22;
-    for (let y = 0; y < size; y += brickH) {
-      const offset = ((y / brickH) % 2) * (brickW * 0.5);
-      for (let x = -brickW; x < size + brickW; x += brickW) {
-        ctx.fillStyle = ((x + y) % 7 === 0) ? palette[2] : palette[0];
-        ctx.fillRect(x + offset, y, brickW - 1, brickH - 1);
-        ctx.strokeStyle = `${accent}aa`;
-        ctx.lineWidth = 0.6;
-        ctx.strokeRect(x + offset + 0.5, y + 0.5, brickW - 1, brickH - 1);
-      }
-    }
-  } else if (columnPattern === 'timber') {
-    const plankW = size / cols;
-    for (let c = 0; c < cols; c++) {
-      const grad = ctx.createLinearGradient(c * plankW, 0, c * plankW + plankW, 0);
-      grad.addColorStop(0, palette[0]);
-      grad.addColorStop(0.5, palette[2]);
-      grad.addColorStop(1, palette[0]);
-      ctx.fillStyle = grad;
-      ctx.fillRect(c * plankW, 0, plankW, size);
-      ctx.strokeStyle = `${accent}66`;
-      ctx.lineWidth = 0.8;
-      ctx.beginPath();
-      ctx.moveTo(c * plankW, 0);
-      ctx.lineTo(c * plankW, size);
-      ctx.stroke();
-    }
-  } else if (columnPattern === 'pilaster') {
-    const pilW = (size / cols) * 0.18;
-    for (let c = 0; c <= cols; c++) {
-      const x = c * (size / cols) - pilW * 0.5;
-      const grad = ctx.createLinearGradient(x, 0, x + pilW, 0);
-      grad.addColorStop(0, accent);
-      grad.addColorStop(0.5, palette[2]);
-      grad.addColorStop(1, accent);
-      ctx.fillStyle = grad;
-      ctx.fillRect(x, 0, pilW, size);
-    }
-  } else if (columnPattern === 'curtain') {
-    const colStep = size / cols;
-    for (let c = 0; c <= cols; c++) {
-      const x = c * colStep;
-      ctx.fillStyle = `${frame}cc`;
-      ctx.fillRect(x - 1.5, 0, 3, size);
-    }
-  } else if (columnPattern === 'slats') {
-    const slatStep = 6;
-    for (let x = 0; x < size; x += slatStep) {
-      ctx.fillStyle = (Math.floor(x / slatStep) % 2 === 0) ? palette[0] : palette[2];
-      ctx.fillRect(x, 0, slatStep - 1, size);
-      ctx.fillStyle = `${accent}88`;
-      ctx.fillRect(x + slatStep - 1, 0, 1, size);
-    }
-  } else if (columnPattern === 'ashlar') {
-    const blockH = 18;
-    const blockW = 36;
-    for (let y = 0; y < size; y += blockH) {
-      const offset = ((y / blockH) % 2) * (blockW * 0.5);
-      for (let x = -blockW; x < size + blockW; x += blockW) {
-        ctx.fillStyle = ((x + y) % 5 === 0) ? palette[2] : palette[0];
-        ctx.fillRect(x + offset + 1, y + 1, blockW - 2, blockH - 2);
-        ctx.strokeStyle = `${accent}77`;
-        ctx.lineWidth = 0.9;
-        ctx.strokeRect(x + offset + 1, y + 1, blockW - 2, blockH - 2);
-      }
-    }
-  } else if (columnPattern === 'industrial') {
-    const brickH = 7;
-    const brickW = 20;
-    for (let y = 0; y < size; y += brickH) {
-      const offset = ((y / brickH) % 2) * (brickW * 0.5);
-      for (let x = -brickW; x < size + brickW; x += brickW) {
-        ctx.fillStyle = ((x + y) % 6 === 0) ? palette[2] : palette[0];
-        ctx.fillRect(x + offset, y, brickW - 1, brickH - 1);
-      }
-    }
-    const colStep = size / cols;
-    ctx.fillStyle = accent;
-    for (let c = 0; c <= cols; c++) {
-      ctx.fillRect(c * colStep - 2, 0, 4, size);
-    }
-  } else if (columnPattern === 'waffle') {
-    const colStep = size / cols;
-    const rowStep = size / (floors + 1);
-    ctx.strokeStyle = `${accent}aa`;
-    ctx.lineWidth = 3;
-    for (let c = 0; c <= cols; c++) {
-      ctx.beginPath(); ctx.moveTo(c * colStep, 0); ctx.lineTo(c * colStep, size); ctx.stroke();
-    }
-    for (let r = 0; r <= floors + 1; r++) {
-      ctx.beginPath(); ctx.moveTo(0, r * rowStep); ctx.lineTo(size, r * rowStep); ctx.stroke();
-    }
-  }
-
-  const groundH = groundShop ? (size / (floors + 1)) * 1.6 : 0;
-  const upperArea = size - groundH;
-  const floorH = upperArea / floors;
-  const colW = size / cols;
-
-  ctx.strokeStyle = `${accent}99`;
-  ctx.lineWidth = opts.floorLineWidth || 1.2;
-  for (let f = 0; f <= floors; f++) {
-    const y = groundH + f * floorH;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(size, y);
-    ctx.stroke();
-  }
-
-  for (let f = 0; f < floors; f++) {
-    const yTop = groundH + f * floorH;
-    for (let c = 0; c < cols; c++) {
-      const xLeft = c * colW;
-      const padX = colW * (1 - aspect) * 0.5;
-      const padY = floorH * 0.18;
-      const wx = xLeft + padX;
-      const wy = yTop + padY;
-      const ww = colW - padX * 2;
-      const wh = floorH - padY * 2;
-      ctx.fillStyle = frame;
-      ctx.fillRect(wx - 1, wy - 1, ww + 2, wh + 2);
-      if (glassPattern === 'horizontal-bands') {
-        const grad = ctx.createLinearGradient(wx, wy, wx, wy + wh);
-        grad.addColorStop(0, palette[2]);
-        grad.addColorStop(0.45, accent);
-        grad.addColorStop(0.55, palette[2]);
-        grad.addColorStop(1, accent);
-        ctx.fillStyle = grad;
-        ctx.fillRect(wx, wy, ww, wh);
-      } else if (glassPattern === 'striped') {
-        const grad = ctx.createLinearGradient(wx, wy, wx + ww, wy);
-        grad.addColorStop(0, palette[2]);
-        grad.addColorStop(1, accent);
-        ctx.fillStyle = grad;
-        ctx.fillRect(wx, wy, ww, wh);
-        ctx.strokeStyle = `${frame}66`;
-        ctx.lineWidth = 0.6;
-        ctx.beginPath();
-        ctx.moveTo(wx + ww / 2, wy);
-        ctx.lineTo(wx + ww / 2, wy + wh);
-        ctx.stroke();
-      } else if (glassPattern === 'shutters') {
-        const half = ww * 0.5;
-        ctx.fillStyle = palette[2];
-        ctx.fillRect(wx, wy, ww, wh);
-        ctx.fillStyle = accent;
-        ctx.fillRect(wx, wy, half * 0.42, wh);
-        ctx.fillRect(wx + ww - half * 0.42, wy, half * 0.42, wh);
-        ctx.strokeStyle = `${frame}88`;
-        ctx.lineWidth = 0.5;
-        for (let s = 1; s < 4; s++) {
-          const sy = wy + (wh / 4) * s;
-          ctx.beginPath();
-          ctx.moveTo(wx, sy);
-          ctx.lineTo(wx + ww, sy);
-          ctx.stroke();
-        }
-      } else if (glassPattern === 'balcony-bands') {
-        const grad = ctx.createLinearGradient(wx, wy, wx, wy + wh);
-        grad.addColorStop(0, palette[2]);
-        grad.addColorStop(0.65, accent);
-        grad.addColorStop(1, '#1e293b');
-        ctx.fillStyle = grad;
-        ctx.fillRect(wx, wy, ww, wh);
-        // Balcony railing strip across bottom of window bay
-        const railH = Math.max(2, wh * 0.28);
-        ctx.fillStyle = `${frame}cc`;
-        ctx.fillRect(wx - 2, wy + wh - railH, ww + 4, railH);
-        ctx.strokeStyle = `${accent}aa`;
-        ctx.lineWidth = 0.7;
-        ctx.strokeRect(wx - 2, wy + wh - railH, ww + 4, railH);
-      } else if (glassPattern === 'spandrel') {
-        const spandrelH = Math.max(2, wh * 0.24);
-        ctx.fillStyle = accent;
-        ctx.fillRect(wx, wy, ww, spandrelH);
-        const grad = ctx.createLinearGradient(wx, wy + spandrelH, wx + ww, wy + wh);
-        grad.addColorStop(0, palette[2]);
-        grad.addColorStop(0.5, '#64748b');
-        grad.addColorStop(1, accent);
-        ctx.fillStyle = grad;
-        ctx.fillRect(wx, wy + spandrelH, ww, wh - spandrelH);
-      } else if (glassPattern === 'mullion-grid') {
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(wx, wy, ww, wh);
-        const grad = ctx.createLinearGradient(wx, wy, wx + ww, wy + wh);
-        grad.addColorStop(0, `${palette[2]}99`);
-        grad.addColorStop(1, `${accent}cc`);
-        ctx.fillStyle = grad;
-        ctx.fillRect(wx, wy, ww, wh);
-        ctx.strokeStyle = frame;
-        ctx.lineWidth = 0.8;
-        for (let gx = 1; gx < 3; gx++) {
-          ctx.beginPath(); ctx.moveTo(wx + (ww / 3) * gx, wy); ctx.lineTo(wx + (ww / 3) * gx, wy + wh); ctx.stroke();
-        }
-        for (let gy = 1; gy < 3; gy++) {
-          ctx.beginPath(); ctx.moveTo(wx, wy + (wh / 3) * gy); ctx.lineTo(wx + ww, wy + (wh / 3) * gy); ctx.stroke();
-        }
-      } else if (glassPattern === 'french-arch') {
-        ctx.fillStyle = palette[2];
-        ctx.fillRect(wx, wy + wh * 0.18, ww, wh * 0.82);
-        ctx.beginPath();
-        ctx.arc(wx + ww * 0.5, wy + wh * 0.22, ww * 0.5, Math.PI, 0);
-        ctx.fill();
-        ctx.strokeStyle = frame;
-        ctx.lineWidth = 0.9;
-        ctx.beginPath();
-        ctx.moveTo(wx + ww * 0.5, wy + 2);
-        ctx.lineTo(wx + ww * 0.5, wy + wh);
-        ctx.stroke();
-      } else {
-        const grad = ctx.createLinearGradient(wx, wy, wx + ww, wy + wh);
-        grad.addColorStop(0, palette[2]);
-        grad.addColorStop(1, accent);
-        ctx.fillStyle = grad;
-        ctx.fillRect(wx, wy, ww, wh);
-      }
-    }
-  }
-
-  if (groundShop && groundH > 0) {
-    ctx.fillStyle = accent;
-    ctx.fillRect(0, 0, size, groundH);
-    const bay = size / Math.max(2, Math.floor(cols * 1.2));
-    for (let i = 0; i < size; i += bay) {
-      const bw = bay * 0.85;
-      const bh = groundH * 0.78;
-      const bx = i + (bay - bw) * 0.5;
-      const by = (groundH - bh) * 0.5;
-      const grad = ctx.createLinearGradient(bx, by, bx, by + bh);
-      grad.addColorStop(0, palette[2]);
-      grad.addColorStop(1, palette[0]);
-      ctx.fillStyle = grad;
-      ctx.fillRect(bx, by, bw, bh);
-      ctx.strokeStyle = `${frame}cc`;
-      ctx.lineWidth = 1.2;
-      ctx.strokeRect(bx + 0.5, by + 0.5, bw, bh);
-    }
-    ctx.strokeStyle = `${accent}cc`;
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.moveTo(0, groundH);
-    ctx.lineTo(size, groundH);
-    ctx.stroke();
-  }
-
-  for (let i = 0; i < 360; i++) {
-    const v = 130 + Math.floor(Math.random() * 80);
-    ctx.fillStyle = `rgba(${v},${v},${v},0.05)`;
-    ctx.fillRect(Math.random() * size, Math.random() * size, 1, 1);
-  }
+/** Anisotropy for ground textures seen at grazing angles (roads, pavements). */
+export function rendererMaxAnisotropy() {
+  return Math.min(8, maxAnisotropy);
 }
 
 export function proceduralTextureCanvas(name, size = 256) {
+  // Surface recipes of the material catalogue (other names get a plain grid).
   const c = document.createElement('canvas');
   c.width = size;
   c.height = size;
   const ctx = c.getContext('2d');
   const palette = {
-    StoneB: ['#d7d0c2', '#b8ad9c', '#efe8d8'],
-    Concrete: ['#bfc4c9', '#9da5ad', '#d8dde1'],
-    Cobble: ['#a99f90', '#7f7468', '#c8bdad'],
-    WarmStone: ['#d8c7a6', '#b99d72', '#f2e4c8'],
-    CampusPaver: ['#c6cbd0', '#8e98a3', '#e5e7eb'],
-    Permeable: ['#9db489', '#657b57', '#cbd9bf'],
-    PlazaGranite: ['#c8cdd2', '#8d949c', '#eef1f3'],
-    Tile: ['#d7d3c9', '#8f8a80', '#f4f0e7'],
-    Grid: ['#dbeafe', '#64748b', '#f8fafc'],
-    SharedStreet: ['#3a3f44', '#6b7280', '#eef2f7'],
-    UrbanE: ['#d8dee7', '#536171', '#f3f6f9'],
-    UrbanF: ['#cbd5e1', '#334155', '#f8fafc'],
-    CampusGlass: ['#a9d6e8', '#2f5f73', '#e8f6fb'],
-    CurtainWall: ['#93c5fd', '#1e3a5f', '#e0f2fe'],
-    EcoTimber: ['#9a6b3a', '#4f3824', '#d5b07c'],
-    NordicTimber: ['#b07d4f', '#523a24', '#dfc29d'],
-    CivicStone: ['#c8c2b6', '#7c7468', '#eee8dd'],
-    HeritageStone: ['#d6cec2', '#786b59', '#f5f0e6'],
-    DenseBrick: ['#8f3f2d', '#55261d', '#c2694f'],
-    AnatolianBrick: ['#b4532a', '#7c2d12', '#e2875a'],
-    IndustrialLoft: ['#7c3f2c', '#27272a', '#a85a42'],
-    BrutalistConcrete: ['#a1a1aa', '#52525b', '#d4d4d8'],
-    CoastalWhite: ['#f5f1e8', '#92a7b4', '#ffffff'],
-    MediterraneanStucco: ['#ead8bd', '#b78b64', '#fff4df']
+    GraniteSlab: ['#c8cdd2', '#8d949c', '#eef1f3'],
+    ConcreteSlab: ['#bfc4c9', '#9da5ad', '#d8dde1'],
+    GrassPaver: ['#9db489', '#657b57', '#cbd9bf']
   }[name] || ['#cbd5e1', '#94a3b8', '#f8fafc'];
 
   ctx.fillStyle = palette[0];
   ctx.fillRect(0, 0, size, size);
 
-  if (['StoneB', 'Cobble', 'WarmStone', 'PlazaGranite'].includes(name)) {
-    const cell = name === 'Cobble' ? 26 : 34;
+  if (name === 'GraniteSlab') {
+    const cell = 34;
     for (let y = -cell; y < size + cell; y += cell) {
       const offset = ((y / cell) % 2) * (cell * 0.45);
       for (let x = -cell; x < size + cell; x += cell) {
@@ -329,20 +48,7 @@ export function proceduralTextureCanvas(name, size = 256) {
         ctx.strokeRect(x + offset + 1, y + 1, w, h);
       }
     }
-  } else if (['Concrete', 'CampusPaver', 'Tile', 'Grid', 'SharedStreet'].includes(name)) {
-    ctx.strokeStyle = `${palette[1]}88`;
-    ctx.lineWidth = 1;
-    const step = name === 'Grid' ? 16 : name === 'Tile' ? 32 : 42;
-    for (let i = 0; i <= size; i += step) {
-      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, size); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(size, i); ctx.stroke();
-    }
-    for (let i = 0; i < 700; i++) {
-      const v = 130 + Math.floor(Math.random() * 80);
-      ctx.fillStyle = `rgba(${v},${v},${v},0.08)`;
-      ctx.fillRect(Math.random() * size, Math.random() * size, 1.5, 1.5);
-    }
-  } else if (name === 'Permeable') {
+  } else if (name === 'GrassPaver') {
     for (let y = 0; y < size; y += 20) {
       for (let x = 0; x < size; x += 20) {
         ctx.fillStyle = palette[(x + y) % 40 === 0 ? 2 : 0];
@@ -352,28 +58,17 @@ export function proceduralTextureCanvas(name, size = 256) {
       }
     }
   } else {
-    const isFacade = Object.prototype.hasOwnProperty.call(textureSets.facade, name);
-    if (isFacade && FACADE_RECIPES[name]) {
-      drawWindowedFacade(ctx, size, palette, FACADE_RECIPES[name]);
-    } else {
-      const cols = isFacade ? 6 : 10;
-      const rows = isFacade ? 11 : 10;
-      for (let r = 0; r < rows; r++) {
-        for (let col = 0; col < cols; col++) {
-          const x = (col / cols) * size;
-          const y = (r / rows) * size;
-          const w = size / cols;
-          const h = size / rows;
-          ctx.fillStyle = (r + col) % 3 === 0 ? palette[2] : palette[0];
-          ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
-          ctx.strokeStyle = `${palette[1]}77`;
-          ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
-          if (isFacade && r % 2 === 0 && col % 2 === 0) {
-            ctx.fillStyle = 'rgba(50,80,100,0.18)';
-            ctx.fillRect(x + w * 0.22, y + h * 0.28, w * 0.42, h * 0.32);
-          }
-        }
-      }
+    ctx.strokeStyle = `${palette[1]}88`;
+    ctx.lineWidth = 1;
+    const step = 42;
+    for (let i = 0; i <= size; i += step) {
+      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, size); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(size, i); ctx.stroke();
+    }
+    for (let i = 0; i < 700; i++) {
+      const v = 130 + Math.floor(Math.random() * 80);
+      ctx.fillStyle = `rgba(${v},${v},${v},0.08)`;
+      ctx.fillRect(Math.random() * size, Math.random() * size, 1.5, 1.5);
     }
   }
   const t = new THREE.CanvasTexture(c);
@@ -433,21 +128,23 @@ export function createAsphaltTexture(baseColor = '#2e3135') {
   return t;
 }
 
-export function createIslandTexturePreset(name) {
+export function createIslandTexturePreset(groundName) {
+  // Catalogue name (or a legacy one) -> recipe; 'None' is no texture.
+  const name = groundName === 'None' || !groundName ? 'None' : (catalogueName('surface', groundName, surfacesFor('ground')) || 'Earth');
   if (name === 'None') return null;
   const c = document.createElement('canvas');
   c.width = 256; c.height = 256;
   const ctx = c.getContext('2d');
   const islandPalette = {
-    ParkGreen:        { base: '#6f9c52', shadow: '#3f6b2c', highlight: '#a6c982' },
-    ResidentialBeige: { base: '#d6c8a6', shadow: '#a18c63', highlight: '#efe6cf' },
-    CivicGravel:      { base: '#b6b3a8', shadow: '#7b7a72', highlight: '#dad7ce' },
-    CoastalSand:      { base: '#ecd9b0', shadow: '#b39361', highlight: '#fff1d2' }
+    Grass:        { base: '#6f9c52', shadow: '#3f6b2c', highlight: '#a6c982' },
+    Earth: { base: '#d6c8a6', shadow: '#a18c63', highlight: '#efe6cf' },
+    Gravel:      { base: '#b6b3a8', shadow: '#7b7a72', highlight: '#dad7ce' },
+    Sand:      { base: '#ecd9b0', shadow: '#b39361', highlight: '#fff1d2' }
   }[name];
   if (islandPalette) {
     ctx.fillStyle = islandPalette.base;
     ctx.fillRect(0, 0, 256, 256);
-    if (name === 'ParkGreen') {
+    if (name === 'Grass') {
       for (let i = 0; i < 2200; i++) {
         const x = Math.random() * 256;
         const y = Math.random() * 256;
@@ -465,7 +162,7 @@ export function createIslandTexturePreset(name) {
         ctx.lineTo(sx + (Math.random() - 0.5) * 30, sy + (Math.random() - 0.5) * 30);
         ctx.stroke();
       }
-    } else if (name === 'ResidentialBeige') {
+    } else if (name === 'Earth') {
       for (let i = 0; i < 900; i++) {
         const x = Math.random() * 256;
         const y = Math.random() * 256;
@@ -477,7 +174,7 @@ export function createIslandTexturePreset(name) {
       for (let i = 0; i < 256; i += 36) {
         ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(256, i); ctx.stroke();
       }
-    } else if (name === 'CivicGravel') {
+    } else if (name === 'Gravel') {
       for (let i = 0; i < 1800; i++) {
         const x = Math.random() * 256;
         const y = Math.random() * 256;
@@ -486,7 +183,7 @@ export function createIslandTexturePreset(name) {
         ctx.fillStyle = `rgba(${tone},${0.18 + Math.random() * 0.20})`;
         ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
       }
-    } else if (name === 'CoastalSand') {
+    } else if (name === 'Sand') {
       for (let i = 0; i < 1600; i++) {
         const x = Math.random() * 256;
         const y = Math.random() * 256;
@@ -508,21 +205,7 @@ export function createIslandTexturePreset(name) {
   } else {
     ctx.fillStyle = '#e5e7eb';
     ctx.fillRect(0, 0, 256, 256);
-    if (name === 'SoftNoise') {
-      for (let i = 0; i < 1400; i++) {
-        const x = Math.random() * 256;
-        const y = Math.random() * 256;
-        const r = Math.random() * 1.4;
-        ctx.fillStyle = 'rgba(120,130,140,0.14)';
-        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-      }
-    } else if (name === 'FineGrid') {
-      ctx.strokeStyle = 'rgba(120,130,140,0.24)';
-      for (let i = 0; i < 256; i += 12) {
-        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 256); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(256, i); ctx.stroke();
-      }
-    } else if (name === 'Water') {
+    if (name === 'Water') {
       ctx.fillStyle = '#0f5e9c';
       ctx.fillRect(0, 0, 256, 256);
       for (let band = 0; band < 10; band++) {
@@ -547,7 +230,9 @@ export function createIslandTexturePreset(name) {
 }
 
 const tintedIslandTextureCache = new Map();
-export function createTintedIslandTexturePreset(name, baseColor) {
+export function createTintedIslandTexturePreset(groundName, baseColor) {
+  // Catalogue name (or a legacy one) -> recipe; 'None' is no texture.
+  const name = groundName === 'None' || !groundName ? 'None' : (catalogueName('surface', groundName, surfacesFor('ground')) || 'Earth');
   if (name === 'None') return null;
   const base = colorObjectFromHex(baseColor, '#e5e7eb');
   const cacheKey = `${name}:${base.getHexString()}`;
@@ -561,13 +246,7 @@ export function createTintedIslandTexturePreset(name, baseColor) {
   ctx.fillStyle = `#${base.getHexString()}`;
   ctx.fillRect(0, 0, 256, 256);
 
-  if (name === 'FineGrid') {
-    ctx.strokeStyle = rgbaFromColor(shadow, 0.24);
-    for (let i = 0; i < 256; i += 12) {
-      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 256); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(256, i); ctx.stroke();
-    }
-  } else if (name === 'Water') {
+  if (name === 'Water') {
     for (let band = 0; band < 10; band++) {
       ctx.strokeStyle = rgbaFromColor(highlight, 0.22);
       ctx.lineWidth = 1.0;
@@ -580,19 +259,19 @@ export function createTintedIslandTexturePreset(name, baseColor) {
       ctx.stroke();
     }
   } else {
-    const dotCount = name === 'CivicGravel' ? 1800 : 1000;
+    const dotCount = name === 'Gravel' ? 1800 : 1000;
     for (let i = 0; i < dotCount; i++) {
       const x = Math.random() * 256;
       const y = Math.random() * 256;
-      const r = name === 'CivicGravel' ? 0.4 + Math.random() * 1.2 : 1 + Math.random() * 1.8;
+      const r = name === 'Gravel' ? 0.4 + Math.random() * 1.2 : 1 + Math.random() * 1.8;
       ctx.fillStyle = rgbaFromColor(Math.random() < 0.5 ? shadow : highlight, 0.10 + Math.random() * 0.14);
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
     }
-    if (name === 'ResidentialBeige' || name === 'CoastalSand') {
+    if (name === 'Earth' || name === 'Sand') {
       ctx.strokeStyle = rgbaFromColor(shadow, 0.18);
       ctx.lineWidth = 0.8;
       for (let y = 0; y < 256; y += 36) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(256, y + (name === 'CoastalSand' ? Math.sin(y) * 2 : 0)); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(256, y + (name === 'Sand' ? Math.sin(y) * 2 : 0)); ctx.stroke();
       }
     }
   }
@@ -693,49 +372,22 @@ export function createSoftNoiseTexture() {
   return t;
 }
 
-export function createRoofPresetTexture(name) {
+export function createRoofPresetTexture(roofName) {
+  // Catalogue name (or a legacy one) -> recipe.
+  const name = catalogueName('roof', roofName) || 'ClayTile';
   const c = document.createElement('canvas');
   c.width = 256;
   c.height = 256;
   const ctx = c.getContext('2d');
   const bg = {
-    RoofA: '#9a7b61', RoofB: '#6f7885', RoofC: '#8e5a49', RoofD: '#5e6368',
-    TurkishTile: '#a8442a', GermanTile: '#3d4a5c', USShingle: '#2d3340',
-    StandingSeam: '#506070', GreenRoof: '#587642', SolarRoof: '#26364c', CeramicLight: '#d1a16d',
-    CopperPatina: '#437c6c', GravelBallast: '#8b8982', LeadMansard: '#4a525d'
-  }[name] || '#9a7b61';
+    ClayTile: '#a8442a', Slate: '#3d4a5c', Shingle: '#2d3340', MetalSeam: '#506070', Green: '#587642',
+    Solar: '#26364c', Copper: '#437c6c', Gravel: '#8b8982', Lead: '#4a525d'
+  }[name] || '#a8442a';
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, 256, 256);
 
-  if (name === 'RoofA') {
-    ctx.strokeStyle = 'rgba(240,220,200,0.65)';
-    for (let y = 10; y < 256; y += 16) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(256, y); ctx.stroke();
-    }
-    ctx.strokeStyle = 'rgba(90,70,55,0.28)';
-    for (let y = 18; y < 256; y += 16) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(256, y); ctx.stroke();
-    }
-  } else if (name === 'RoofB') {
-    ctx.strokeStyle = 'rgba(210,220,235,0.55)';
-    for (let x = -120; x < 300; x += 18) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 90, 256); ctx.stroke();
-    }
-    ctx.strokeStyle = 'rgba(60,70,85,0.3)';
-    for (let x = -120; x < 300; x += 18) {
-      ctx.beginPath(); ctx.moveTo(x + 7, 0); ctx.lineTo(x + 97, 256); ctx.stroke();
-    }
-  } else if (name === 'RoofC') {
-    ctx.strokeStyle = 'rgba(255,220,200,0.45)';
-    for (let y = 0; y < 256; y += 20) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(256, y + 8); ctx.stroke();
-    }
-    ctx.strokeStyle = 'rgba(80,45,38,0.25)';
-    for (let y = 8; y < 256; y += 20) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(256, y + 8); ctx.stroke();
-    }
-  } else if (name === 'TurkishTile') {
-    // Terracotta barrel tiles (Alaturka kiremit) — warm red-orange rows + vertical channels
+  if (name === 'ClayTile') {
+    // Clay barrel tiles: warm red-orange rows with vertical channels
     ctx.fillStyle = '#a8442a';
     ctx.fillRect(0, 0, 256, 256);
     const colW = 24, rowH = 22;
@@ -757,7 +409,7 @@ export function createRoofPresetTexture(name) {
         ctx.stroke();
       }
     }
-  } else if (name === 'CopperPatina') {
+  } else if (name === 'Copper') {
     ctx.fillStyle = '#437c6c';
     ctx.fillRect(0, 0, 256, 256);
     for (let x = 0; x < 256; x += 20) {
@@ -774,7 +426,7 @@ export function createRoofPresetTexture(name) {
       ctx.strokeStyle = 'rgba(24,54,46,0.35)';
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(256, y); ctx.stroke();
     }
-  } else if (name === 'GravelBallast') {
+  } else if (name === 'Gravel') {
     ctx.fillStyle = '#8b8982';
     ctx.fillRect(0, 0, 256, 256);
     for (let i = 0; i < 2200; i++) {
@@ -784,7 +436,7 @@ export function createRoofPresetTexture(name) {
       ctx.fillStyle = `rgba(${v},${v - 2},${v - 6},0.55)`;
       ctx.fillRect(x, y, 2.2, 2.2);
     }
-  } else if (name === 'LeadMansard') {
+  } else if (name === 'Lead') {
     ctx.fillStyle = '#4a525d';
     ctx.fillRect(0, 0, 256, 256);
     const bw = 28, bh = 36;
@@ -799,7 +451,7 @@ export function createRoofPresetTexture(name) {
         ctx.beginPath(); ctx.moveTo(x + 2, y + 2); ctx.lineTo(x + bw - 2, y + 2); ctx.stroke();
       }
     }
-  } else if (name === 'GermanTile') {
+  } else if (name === 'Slate') {
     // Dark slate, staggered rectangular tiles with shadow lines
     ctx.fillStyle = '#3d4a5c';
     ctx.fillRect(0, 0, 256, 256);
@@ -818,7 +470,7 @@ export function createRoofPresetTexture(name) {
         ctx.beginPath(); ctx.moveTo(x + 1, y + 1); ctx.lineTo(x + tw - 1, y + 1); ctx.stroke();
       }
     }
-  } else if (name === 'USShingle') {
+  } else if (name === 'Shingle') {
     // Asphalt shingles – dark charcoal, staggered, slightly bumpy
     ctx.fillStyle = '#2d3340';
     ctx.fillRect(0, 0, 256, 256);
@@ -846,7 +498,7 @@ export function createRoofPresetTexture(name) {
         }
       }
     }
-  } else if (name === 'StandingSeam') {
+  } else if (name === 'MetalSeam') {
     ctx.fillStyle = '#506070';
     ctx.fillRect(0, 0, 256, 256);
     for (let x = 0; x < 256; x += 22) {
@@ -859,7 +511,7 @@ export function createRoofPresetTexture(name) {
       ctx.strokeStyle = 'rgba(210,220,230,0.35)';
       ctx.beginPath(); ctx.moveTo(x + 18, 0); ctx.lineTo(x + 18, 256); ctx.stroke();
     }
-  } else if (name === 'GreenRoof') {
+  } else if (name === 'Green') {
     ctx.fillStyle = '#587642';
     ctx.fillRect(0, 0, 256, 256);
     for (let i = 0; i < 1800; i++) {
@@ -873,7 +525,7 @@ export function createRoofPresetTexture(name) {
     for (let x = 0; x < 256; x += 48) {
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 40, 256); ctx.stroke();
     }
-  } else if (name === 'SolarRoof') {
+  } else if (name === 'Solar') {
     ctx.fillStyle = '#26364c';
     ctx.fillRect(0, 0, 256, 256);
     const pw = 42, ph = 26;
@@ -887,20 +539,6 @@ export function createRoofPresetTexture(name) {
         ctx.fillRect(x, y, pw, ph);
         ctx.strokeStyle = 'rgba(180,210,240,0.35)';
         ctx.strokeRect(x, y, pw, ph);
-      }
-    }
-  } else if (name === 'CeramicLight') {
-    ctx.fillStyle = '#d1a16d';
-    ctx.fillRect(0, 0, 256, 256);
-    for (let y = 0; y < 280; y += 22) {
-      for (let x = -14; x < 270; x += 28) {
-        const shade = 185 + ((x + y) % 38);
-        ctx.fillStyle = `rgb(${shade},${Math.floor(shade * 0.62)},${Math.floor(shade * 0.34)})`;
-        ctx.beginPath();
-        ctx.ellipse(x + ((y / 22) % 2) * 14, y + 11, 15, 10, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(105,65,30,0.38)';
-        ctx.stroke();
       }
     }
   } else {

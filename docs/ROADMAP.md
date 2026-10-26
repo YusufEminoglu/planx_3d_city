@@ -1,356 +1,356 @@
-# PlanX 3D City — Yol Haritası (v1.1 → v2.0)
+# PlanX 3D City — Roadmap (v1.1 → v2.0)
 
-Hedef: QGIS ekosistemindeki en hızlı, en güzel ve en çok işe yarayan 3D şehir
-yayıncısı olmak. Bu plan mevcut kodun (v1.0.3) incelenmesine dayanır; her madde
-somut bir dosyaya/fonksiyona bağlanır ve ölçülebilir bir hedefle biter.
+Goal: become the fastest, most beautiful and most useful 3D city publisher in
+the QGIS ecosystem. This plan is based on a review of the current code (v1.0.3);
+every item is tied to a concrete file/function and ends with a measurable target.
 
 ---
 
-## 0. Bugünkü durum — tespit edilen darboğazlar
+## 0. Current state — identified bottlenecks
 
-| # | Bulgu | Yer | Etki |
+| # | Finding | Location | Impact |
 |---|-------|-----|------|
-| B1 | Her bina ayrı `THREE.Mesh` + ayrı `MeshStandardMaterial`; her kat döşemesi (ledge) ayrı mesh + **yeni materyal** | `web/src/app.js` `buildBuildingLayer` (~7433–7710) | 5.000 bina × 6 kat ≈ 35.000+ draw call → orta GPU'da < 15 FPS |
-| B2 | Sahne her karede render ediliyor (hareket yokken bile) | `animate()` (~9620) | Boşta %100 GPU, laptop fanı, pil |
-| B3 | `preserveDrawingBuffer: true` sürekli açık | renderer kurulumu (~432) | Tile-based GPU'larda belirgin FPS kaybı |
-| B4 | GeoJSON katmanları **sırayla** `await` ile yükleniyor | ~8700–8720 | Açılış süresi = tüm dosyaların toplamı |
-| B5 | GeoJSON parse, DEM `readRasters`, `ExtrudeGeometry` ana thread'de | `loadGeoJson`, ~3870/3970 | Büyük şehirlerde UI donması |
-| B6 | DEM tam boyutuyla kopyalanıyor (ROI'ye kırpılmıyor), GeoJSON koordinat hassasiyeti sınırsız | `exporter.py` `_export_dem`, `_export_vector` | Dışa aktarım boyutu 5–20× gereğinden büyük |
-| B7 | Doku PNG'leri 0.7–1.2 MB, sıkıştırılmamış GPU formatı | `web/src/assets/*.png` | ~8 MB indirme, ~150 MB+ VRAM |
-| B8 | `intersectObjects(buildingGroup.children)` → binlerce mesh üzerinde lineer raycast | ~9318, 9351, 9398 | Hover/tıklamada takılma |
-| B9 | Gölge haritası tek kaskad 2048², ±1600 m kutu | ~484–488 | Yakın planda bulanık, uzakta israf |
-| B10 | `app.js` tek dosya 10.6k satır, test yok | `web/src/app.js` | Hız regresyonları fark edilmiyor |
+| B1 | Every building is a separate `THREE.Mesh` + separate `MeshStandardMaterial`; every floor slab (ledge) is a separate mesh + **new material** | `web/src/app.js` `buildBuildingLayer` (~7433–7710) | 5,000 buildings × 6 floors ≈ 35,000+ draw calls → < 15 FPS on a mid-range GPU |
+| B2 | The scene is rendered every frame (even when nothing moves) | `animate()` (~9620) | 100% GPU at idle, laptop fan noise, battery drain |
+| B3 | `preserveDrawingBuffer: true` is always on | renderer setup (~432) | Noticeable FPS loss on tile-based GPUs |
+| B4 | GeoJSON layers are loaded **sequentially** with `await` | ~8700–8720 | Startup time = sum of all files |
+| B5 | GeoJSON parsing, DEM `readRasters`, `ExtrudeGeometry` run on the main thread | `loadGeoJson`, ~3870/3970 | UI freezes in large cities |
+| B6 | DEM is copied at full size (not clipped to the ROI), GeoJSON coordinate precision is unlimited | `exporter.py` `_export_dem`, `_export_vector` | Export size 5–20× larger than necessary |
+| B7 | Texture PNGs are 0.7–1.2 MB, in an uncompressed GPU format | `web/src/assets/*.png` | ~8 MB download, ~150 MB+ VRAM |
+| B8 | `intersectObjects(buildingGroup.children)` → linear raycast over thousands of meshes | ~9318, 9351, 9398 | Stutter on hover/click |
+| B9 | Single-cascade 2048² shadow map, ±1600 m box | ~484–488 | Blurry up close, wasteful in the distance |
+| B10 | `app.js` is a single 10.6k-line file, no tests | `web/src/app.js` | Speed regressions go unnoticed |
 
 ---
 
-## Faz 1 — "Anında hız" (1–2 hafta, risk düşük, en yüksek getiri)
+## Phase 1 — "Instant speed" (1–2 weeks, low risk, highest return)
 
-> **Durum (Ekim 2026):** 1.1–1.7 uygulandı. Ölçüm: `tests/bench`, 10.000 bina,
-> headless Chromium (SwiftShader): draw call 44.249 → 1.848, sahne hazır
-> 33,5 sn → 16,0 sn, kare süresi 3,8 sn → 2,4 sn, bina seçimi 13,4 ms → 1,1 ms.
-> SwiftShader CPU ile çizdiği için mutlak FPS gerçek GPU'yu yansıtmaz; draw
-> call ve süre oranları yansıtır.
+> **Status (October 2026):** 1.1–1.7 implemented. Measurement: `tests/bench`, 10,000 buildings,
+> headless Chromium (SwiftShader): draw calls 44,249 → 1,848, scene ready
+> 33.5 s → 16.0 s, frame time 3.8 s → 2.4 s, building selection 13.4 ms → 1.1 ms.
+> Because SwiftShader renders on the CPU, absolute FPS does not reflect a real GPU; draw
+> call counts and timing ratios do.
 
-**Hedef:** 10.000 binalık sahnede orta seviye laptop'ta 60 FPS, açılış < 3 sn.
+**Goal:** 60 FPS on a mid-range laptop for a 10,000-building scene, startup < 3 s.
 
-1. **Bina batching (B1)** — en büyük kazanç.
-   - Materyalleri `(fonksiyon, cephe, kat-sayısı-ölçeği, çatı)` anahtarıyla önbelleğe al; bina başına `new MeshStandardMaterial` yok.
-   - Aynı materyali paylaşan duvar/çatı geometrilerini `BufferGeometryUtils.mergeGeometries` ile tek mesh'e birleştir (veya r159+ `BatchedMesh`).
-   - Kat döşemelerini (`showLedges`) tek `InstancedMesh` veya birleşik geometri yap.
-   - Bina kimliğini `feature_id` vertex attribute'u olarak sakla → seçim/vurgulama shader'da (`uSelectedId`), ayrı mesh gerekmez.
-   - Beklenen: draw call 35.000 → < 100.
-2. **On-demand render (B2)** — `needsRender` bayrağı; kontroller, animasyon, ayar değişimi, trafik/yaya simülasyonu açıkken render et, aksi halde dur. SSAO "settle" mantığı zaten var, ona bağlanır.
-3. **`preserveDrawingBuffer` (B3)** — kapat; ekran görüntüsü/kayıt anında `renderer.render()` sonrası `toBlob` ile al.
-4. **Paralel yükleme (B4)** — tüm `loadGeoJson` çağrılarını `Promise.all`; bina katmanı önce, mobilya sonra (progressive reveal).
-5. **BVH raycast (B8)** — `three-mesh-bvh` vendor'a eklenir (MIT, bağımsız ESM) → merged mesh üzerinde O(log n) pick; gölge ısı haritasındaki (`localRaycaster` ~5755) hesap da 10–50× hızlanır.
-6. **Adaptif çözünürlük** — FPS < 45 iken `pixelRatio`'yu dinamik düşür, hareket bitince geri al.
-7. **Performans HUD** — `?perf=1` ile FPS, draw call, üçgen, VRAM, yükleme süreleri (`renderer.info`).
+1. **Building batching (B1)** — the biggest win.
+   - Cache materials keyed by `(function, facade, floor-count-scale, roof)`; no `new MeshStandardMaterial` per building.
+   - Merge wall/roof geometries that share the same material into a single mesh with `BufferGeometryUtils.mergeGeometries` (or r159+ `BatchedMesh`).
+   - Turn floor slabs (`showLedges`) into a single `InstancedMesh` or merged geometry.
+   - Store the building ID as a `feature_id` vertex attribute → selection/highlighting in the shader (`uSelectedId`), no separate mesh needed.
+   - Expected: draw calls 35,000 → < 100.
+2. **On-demand render (B2)** — a `needsRender` flag; render while controls, animations, settings changes or the traffic/pedestrian simulation are active, otherwise stop. The SSAO "settle" logic already exists; hook into it.
+3. **`preserveDrawingBuffer` (B3)** — turn it off; capture screenshots/recordings with `toBlob` right after `renderer.render()`.
+4. **Parallel loading (B4)** — run all `loadGeoJson` calls through `Promise.all`; building layer first, street furniture afterwards (progressive reveal).
+5. **BVH raycast (B8)** — add `three-mesh-bvh` to vendor (MIT, standalone ESM) → O(log n) picking on merged meshes; the computation in the shadow heat map (`localRaycaster` ~5755) also becomes 10–50× faster.
+6. **Adaptive resolution** — lower `pixelRatio` dynamically while FPS < 45, restore it when movement stops.
+7. **Performance HUD** — `?perf=1` shows FPS, draw calls, triangles, VRAM and load times (`renderer.info`).
 
-## Faz 2 — "Büyük şehir" ölçeği (2–4 hafta)
+## Phase 2 — "Big city" scale (2–4 weeks)
 
-**Hedef:** 100.000+ bina, ilçe ölçeğinde DEM; tarayıcı donmadan.
+**Goal:** 100,000+ buildings, district-scale DEM; without freezing the browser.
 
-> **Durum (Ekim 2026, ilk tur):** Ölçüm önce geldi (`__planxPerf.timings()` /
-> `breakdown()`), ve asıl yükün beklenen yerde olmadığı görüldü:
-> - Bina katmanı 13,7 sn → ~4 sn: döşemeler her kat için yeniden extrude
->   ediliyordu (artık bina başına bir kez), birleştirme döngüsü typed-array'e
->   geçti, 85 bin mesh'in `remove()` ile karesel ayrılması doğrusal oldu.
-> - Üçgenlerin çoğu binalarda değil **yollardaydı** (1,84M / toplam 2,9M):
->   şeritler metre başına bir quad üretiyordu → 3 m'de bir. Yollar 0,61M.
-> - Döşeme karoları 550 m'den uzakta gizleniyor (2. madde, kısmi).
-> - 4. madde yerine **görünüme oturan tek gölge kamerası**: gölgeler aslında
->   hiç çizilmiyordu (güneş 1300 m, gölge kamerası `far` 500 m; harita da
->   sahne yüklendikten sonra yenilenmiyordu). Artık yakın planda keskin.
-> - 5. madde: 9 fotoğrafik doku WebP (8,2 MB → 1,5 MB). Boyutları küçük
->   (768–1024 px) olduğundan KTX2'nin VRAM kazancı önemsiz.
+> **Status (October 2026, first round):** Measurement came first (`__planxPerf.timings()` /
+> `breakdown()`), and it showed that the main cost was not where it was expected:
+> - Building layer 13.7 s → ~4 s: slabs were being re-extruded for every floor
+>   (now once per building), the merge loop moved to typed arrays, and the
+>   quadratic detachment of 85k meshes via `remove()` became linear.
+> - Most triangles were not in the buildings but in the **roads** (1.84M of 2.9M total):
+>   lane strips produced one quad per meter → now one every 3 m. Roads are now 0.61M.
+> - Slab tiles are hidden beyond 550 m (item 2, partial).
+> - Instead of item 4, **a single shadow camera fitted to the view**: shadows were
+>   actually never drawn (sun at 1300 m, shadow camera `far` 500 m; the map was also
+>   not refreshed after the scene loaded). Now sharp up close.
+> - Item 5: 9 photographic textures converted to WebP (8.2 MB → 1.5 MB). Since they are
+>   small (768–1024 px), the VRAM gain of KTX2 is negligible.
 >
-> 10.000 bina, orijinal → şimdi: sahne hazır 32,8 sn → 9,3 sn, kare 3,7 sn →
-> 1,5 sn, üçgen 2,88M → 1,17M, draw call 44.249 → 1.763.
+> 10,000 buildings, original → now: scene ready 32.8 s → 9.3 s, frame 3.7 s →
+> 1.5 s, triangles 2.88M → 1.17M, draw calls 44,249 → 1,763.
 
-> **Durum (ikinci tur):**
-> - **1. Worker:** Bina katmanı artık mesh/materyal üretip sonradan
->   birleştirmiyor; ana thread her binayı düz bir "spec"e çeviriyor,
->   `building_geometry.js` extrude/döşeme/çatıyı üretip (görünüm, karo)
->   buffer'larını doğrudan yazıyor. Karolar 6'ya kadar modül worker'ına
->   dağıtılıyor; worker yoksa aynı kod ana thread'de çalışıyor.
-> - **Yollar/bloklar/kaldırımlar da birleştirildi** (`mesh_merge.js`): 10k
->   şehirde draw call 1.763 → 450.
-> - **Ölçekte bulunan karesel hata:** `terrainLocalYAt` her çağrıda tüm blok
->   platolarını tarıyordu (50k şehirde 14 sn); ızgara indeksiyle çözüldü.
-> - Birleştirilmiş köşe verisi sıkıştırıldı (normal int16, renk/ışıma byte,
->   UV yalnızca dokuluda): ~52 → ~26 bayt/köşe.
-> - Yükleme ekranı açıkken sahne çizilmiyor (build ve worker'larla
->   yarışıyordu).
-> - **3. Terrain LOD — ertelendi:** arazi ağı en fazla 420² segment (~353k
->   üçgen; varsayılan 120² ≈ 29k), tek mesh; yükseklik sorguları ağdan değil
->   DEM'den. Bugünkü sınırlarla LOD ölçülebilir kazanç getirmiyor. DEM
->   çözünürlüğü/alanı büyütülürse (Faz 3.1 ile) yeniden ele alınmalı.
-> - **6. Occlusion culling — ertelendi:** draw call 450'ye indikten sonra
->   ölçülebilir bir darboğaz değil.
+> **Status (second round):**
+> - **1. Worker:** The building layer no longer creates meshes/materials and merges
+>   them afterwards; the main thread converts each building into a flat "spec",
+>   and `building_geometry.js` generates the extrusion/slabs/roof (per view, per tile)
+>   and writes their buffers directly. Tiles are distributed across up to 6 module
+>   workers; if workers are unavailable, the same code runs on the main thread.
+> - **Roads/blocks/sidewalks were merged as well** (`mesh_merge.js`): in the 10k
+>   city, draw calls 1,763 → 450.
+> - **Quadratic bug found at scale:** `terrainLocalYAt` scanned all block
+>   plateaus on every call (14 s in the 50k city); fixed with a grid index.
+> - Merged vertex data was compressed (normals as int16, color/emissive as bytes,
+>   UVs only on textured meshes): ~52 → ~26 bytes/vertex.
+> - The scene is not drawn while the loading screen is visible (it was competing
+>   with the build and the workers).
+> - **3. Terrain LOD — deferred:** the terrain mesh is at most 420² segments (~353k
+>   triangles; default 120² ≈ 29k), a single mesh; height queries use the DEM, not
+>   the mesh. With today's limits, LOD brings no measurable gain. If the DEM
+>   resolution/extent is increased (with Phase 3.1), it should be revisited.
+> - **6. Occlusion culling — deferred:** once draw calls dropped to 450, it is no longer
+>   a measurable bottleneck.
 >
-> 50.000 bina (4 vCPU, SwiftShader): sahne hazır 61,5 sn → 29,0 sn; bina
-> katmanı 30 sn → 7,4 sn.
+> 50,000 buildings (4 vCPU, SwiftShader): scene ready 61.5 s → 29.0 s; building
+> layer 30 s → 7.4 s.
 
-1. **Web Worker pipeline (B5)** — GeoJSON parse + üçgenleme (earcut) + extrude + merge worker'da; ana thread'e `Transferable` `ArrayBuffer` gelir. GeoTIFF decode `geotiff.js` pool ile worker'da.
-2. **Mekânsal tiling + LOD** — veri 250 m'lik karolara bölünür; uzak karolar LOD1 (düz kutu, dokusuz), yakın karolar LOD2 (çatı tipi, cephe dokusu, döşeme). Kamera frustum'una göre karo yükle/boşalt.
-3. **Terrain LOD** — DEM için quadtree / chunked LOD (yakında yüksek çözünürlük, uzakta seyrek), etek (skirt) ile çatlaksız.
-4. **Cascaded Shadow Maps (B9)** — 3 kaskad (`three/addons/csm/CSM.js`); yakın planda keskin gölge, uzakta ucuz. Gölge yalnızca güneş/kamera değişince güncellenir (`autoUpdate=false`).
-5. **Sıkıştırılmış dokular (B7)** — PNG → KTX2/Basis (UASTC/ETC1S) + `KTX2Loader`; yedek olarak WebP. Cephe dokularını tek **texture array / atlas**'ta topla → tek materyal, tek draw call.
-6. **Occlusion culling (opsiyonel)** — yoğun şehir merkezlerinde hiyerarşik Z veya karo tabanlı görünürlük.
+1. **Web Worker pipeline (B5)** — GeoJSON parsing + triangulation (earcut) + extrusion + merging in a worker; the main thread receives a `Transferable` `ArrayBuffer`. GeoTIFF decoding in workers via the `geotiff.js` pool.
+2. **Spatial tiling + LOD** — data is split into 250 m tiles; distant tiles use LOD1 (plain box, untextured), near tiles LOD2 (roof type, facade texture, slabs). Load/unload tiles based on the camera frustum.
+3. **Terrain LOD** — quadtree / chunked LOD for the DEM (high resolution nearby, sparse in the distance), crack-free with skirts.
+4. **Cascaded Shadow Maps (B9)** — 3 cascades (`three/addons/csm/CSM.js`); sharp shadows up close, cheap in the distance. Shadows update only when the sun/camera changes (`autoUpdate=false`).
+5. **Compressed textures (B7)** — PNG → KTX2/Basis (UASTC/ETC1S) + `KTX2Loader`; WebP as a fallback. Collect facade textures into a single **texture array / atlas** → one material, one draw call.
+6. **Occlusion culling (optional)** — hierarchical Z or tile-based visibility in dense city centers.
 
-## Faz 3 — Dışa aktarım (QGIS tarafı) hızlandırma (1–2 hafta)
+## Phase 3 — Export (QGIS side) acceleration (1–2 weeks)
 
-**Hedef:** Dışa aktarım süresi ve boyutu 5× azalsın.
+**Goal:** Reduce export time and size by 5×.
 
-> **Durum (Ekim 2026):**
-> - **1. DEM:** yerel DEM, görüntüleyicinin sahne sınırına (+32 px + %2 pay)
->   kırpılıp DEFLATE/PREDICTOR/TILED olarak yazılıyor; GDAL hatasında eski
->   kopyalamaya dönülüyor. Örnek: 4,6 MB → 327 KB, görüntü aynı. Yeniden
->   örnekleme (çözünürlük seçimi) yapılmadı.
-> - **2. GeoJSON:** `COORDINATE_PRECISION=3` (mm). Alan budama yapılmadı:
->   ipuçları ve stil alanları keyfi öznitelik okuyor.
-> - **5. Artımlı export:** dosya tabanlı OGR katmanları ve DEM parmak izi
->   ile atlanıyor (`web/data/.planx_export_cache.json`).
-> - **4. QgsTask — ertelendi:** katmanlara iş parçacığından erişim güvenli
->   değil; QGIS içinde test edilmeden yapılmamalı.
-> - **6. Gzip — gerek yok:** sunucu yalnızca localhost; GitHub Pages vb.
->   zaten sıkıştırıyor.
-> - **3. İkili format:** worker'lı geometri üretimiyle (Faz 2) öncelik düştü.
+> **Status (October 2026):**
+> - **1. DEM:** the local DEM is clipped to the viewer's scene bounds (+32 px + 2% margin)
+>   and written as DEFLATE/PREDICTOR/TILED; on a GDAL error it falls back to the old
+>   plain copy. Example: 4.6 MB → 327 KB, identical image. Resampling
+>   (resolution selection) was not implemented.
+> - **2. GeoJSON:** `COORDINATE_PRECISION=3` (mm). Field pruning was not implemented:
+>   tooltips and style fields read arbitrary attributes.
+> - **5. Incremental export:** file-based OGR layers and the DEM are skipped based on
+>   a fingerprint (`web/data/.planx_export_cache.json`).
+> - **4. QgsTask — deferred:** accessing layers from a worker thread is not
+>   safe; it should not be done without testing inside QGIS.
+> - **6. Gzip — not needed:** the server is localhost-only; GitHub Pages etc.
+>   already compress.
+> - **3. Binary format:** lower priority now that geometry is generated in workers (Phase 2).
 
-1. **DEM'i ROI + tampon ile kırp ve yeniden örnekle (B6)** — `gdal.Translate`/`QgsRasterPipe` ile `-projwin`, hedef çözünürlük (örn. 1–5 m seçilebilir), `COMPRESS=DEFLATE`, `PREDICTOR=3`, `TILED=YES`.
-2. **GeoJSON küçültme** — `COORDINATE_PRECISION=2` (metrik CRS'de cm), `WRITE_BBOX`, kullanılmayan alanları at (`field_mappings` zaten biliniyor).
-3. **İkili format** — opsiyonel olarak binaları sunucu tarafında önceden üçgenleyip **glTF/GLB (meshopt + Draco)** veya FlatGeobuf olarak yaz → tarayıcıda parse/extrude süresi sıfıra iner.
-4. **Arka plan görevi** — export `QgsTask` ile çalışsın, QGIS arayüzü donmasın, ilerleme çubuğu ve iptal.
-5. **Artımlı export** — katman değişmediyse (hash/mtime) yeniden yazma.
-6. **Gzip/Brotli** — `server.py` önceden sıkıştırılmış `.gz` dosyaları `Content-Encoding` ile sunsun.
+1. **Clip the DEM to the ROI + buffer and resample it (B6)** — `gdal.Translate`/`QgsRasterPipe` with `-projwin`, a target resolution (e.g. selectable 1–5 m), `COMPRESS=DEFLATE`, `PREDICTOR=3`, `TILED=YES`.
+2. **GeoJSON shrinking** — `COORDINATE_PRECISION=2` (cm in a metric CRS), `WRITE_BBOX`, drop unused fields (`field_mappings` is already known).
+3. **Binary format** — optionally pre-triangulate buildings on the server side and write them as **glTF/GLB (meshopt + Draco)** or FlatGeobuf → parse/extrude time in the browser drops to zero.
+4. **Background task** — run the export with `QgsTask` so the QGIS UI does not freeze, with a progress bar and cancellation.
+5. **Incremental export** — do not rewrite a layer if it has not changed (hash/mtime).
+6. **Gzip/Brotli** — `server.py` should serve pre-compressed `.gz` files with `Content-Encoding`.
 
-## Faz 4 — Görsel kalite: "dünyanın en iyisi" (3–6 hafta)
+## Phase 4 — Visual quality: "the best in the world" (3–6 weeks)
 
-> **Durum (Ekim 2026, ilk tur):** 4.1, 4.2'nin büyük kısmı ve 4.3'ün gece
-> penceresi kısmı uygulandı.
-> - **Atmosfer (`web/src/atmosphere.js`):** "Cinematic" modu fiziksel `Sky`
->   çizer ve aynı gökyüzünden PMREM ortam haritası pişirir (güneş 1.5°'den
->   fazla dönerse yeniden). Kare geneli ACES renkleri soldurduğu için gökyüzü
->   kendi shader'ında pozlama + ACES ile tone-map ediliyor; ortam ışığı
->   malzeme başına `envMapIntensity` 0.32 + ambient 0.16. Sis ufuk rengini
->   alıyor. "Clean" modu eski düz sunum arka planını korur (Efektler menüsü).
-> - **Post-process:** SSAOPass sahneyi MSAA'sız yeniden çiziyor ve RenderPass'i
->   yok sayıyordu. Yerine 4x MSAA HalfFloat hedef → GTAOPass (metre ölçekli
->   yarıçap, Poisson denoise) → bloom (yalnız gece) → OutputPass. Yalnız
->   kamera durunca çizilen "settled" karede çalışır; SwiftShader'da settled kare
->   ~0.95 s → ~1.45 s (GTAO'nun normal/derinlik çizimi), hareket karesi değişmedi.
->   `__planxPerf.timeComposer()` eklendi.
-> - **Gece pencereleri:** cephe dokusunun pencere ızgarası (sütun/satır sayısı,
->   faz, pencere dikdörtgeni) yüklemede parlaklık profillerinden tahmin
->   ediliyor (otokorelasyon + hücre ortalaması; foto ve prosedürel dokular için
->   metadata gerekmez). Duvar shader'ı her binanın `planxGlow` oranı kadar
->   rastgele pencereyi sıcak/soğuk ışıkla yakıyor; bloom'a yetecek parlaklıkta.
-> - Kalan: TAA/SMAA (hareket karesi için), DoF, cam yansıması, 4.4–4.6.
+> **Status (October 2026, first round):** 4.1, most of 4.2 and the night-window
+> part of 4.3 implemented.
+> - **Atmosphere (`web/src/atmosphere.js`):** "Cinematic" mode draws a physical `Sky`
+>   and bakes a PMREM environment map from the same sky (re-baked when the sun moves
+>   more than 1.5°). Because the frame-wide ACES washed out colors, the sky is
+>   tone-mapped with exposure + ACES in its own shader; ambient lighting is
+>   `envMapIntensity` 0.32 per material + ambient 0.16. The fog takes the horizon
+>   color. "Clean" mode keeps the old flat presentation background (Effects menu).
+> - **Post-process:** SSAOPass redrew the scene without MSAA and ignored the RenderPass.
+>   It was replaced with a 4x MSAA HalfFloat target → GTAOPass (meter-scaled
+>   radius, Poisson denoise) → bloom (night only) → OutputPass. It runs only on the
+>   "settled" frame drawn once the camera stops; in SwiftShader the settled frame went
+>   ~0.95 s → ~1.45 s (GTAO's normal/depth pass), the motion frame is unchanged.
+>   Added `__planxPerf.timeComposer()`.
+> - **Night windows:** the window grid of the facade texture (column/row counts,
+>   phase, window rectangle) is estimated at load time from brightness profiles
+>   (autocorrelation + cell mean; no metadata needed for photo or procedural
+>   textures). The wall shader lights a random share of windows, equal to each building's `planxGlow`
+>   ratio, with warm/cool light; bright enough to trigger bloom.
+> - Remaining: TAA/SMAA (for the motion frame), DoF, glass reflection, 4.4–4.6.
 >
-> **Durum (ikinci tur):**
-> - **TAA/SMAA gereksiz:** hareket kareleri zaten varsayılan çerçeve
->   tamponunun MSAA'sıyla (`antialias: true`) çiziliyor, durağan kare 4x MSAA
->   composer'dan geçiyor. Vendor'daki kullanılmayan SMAA/SSAO dosyaları silindi.
-> - **4.4 Çatılar:** `web/src/roof_skeleton.js` — basit çokgen için straight
->   skeleton (kinetik dalga cephesi; kenar ve bölünme olayları kuyruktan
->   alınırken canlı cepheye karşı doğrulanıyor, sıfır genişlikli bölgeler
->   seviye mahyaya dönüşüyor). Hip/Gable artık her saçak kenarına aynı eğimde
->   kendi düzlemini veriyor: L/T/U planlarda doğru mahya ve dereler. Gable,
->   hip ucundaki tepe noktasını mahya boyunca duvara kaydırıyor. Çatı dokusu
->   satırları her yüzün saçağına paralel. Başarısızlıkta (yüz alanı ayak izini
->   tam örtmezse) eski tek mahyalı çözüme düşüyor. `tests/js` altında
->   kare/dikdörtgen/L/T/U/düzensiz ve 200 rastgele blok testi; 6.000 rastgele
->   çokgenlik stres testinde hata yok. CI artık Python ve JS birim testlerini
->   çalıştırıyor.
-> - **Cam yansıması:** pencere maskesi (ızgara + pencere dikdörtgeni) piksel
->   başına bir kez hesaplanıyor; gündüz camı parlak yapıp gökyüzü yansımasını
->   artırıyor, gece aynı maske pencereleri yakıyor.
-> - **DoF (sunum):** Efektler → Depth of field. Durağan karede BokehPass;
->   odak ekran merkezinin zemindeki noktası, bulanıklık göreli derinliğe göre
->   (sokakta da şehir üstünde de aynı his). Kapalıyken maliyeti yok.
-> - **4.5 Su ve bitki:** su hatları daha parlak ve tam gökyüzü yansıması
->   alıyor (normal map birleştirmeyi bozacağı için eklenmedi). Ağaç tepeleri
->   için isteğe bağlı rüzgâr salınımı (vertex shader, ağaç başına faz, analiz
->   rüzgâr yönü); açıkken görüntüleyici kare çizmeye devam eder, gölgeler
->   sabit kalır. Çim instancing yapılmadı (veri modelinde çim alanı yok).
-> - **4.6 WebGPU — ertelendi:** r160 → r17x yükseltmesi ve `onBeforeCompile`
->   ile yapılan tüm shader yamalarının (bina batch'i, pencereler, gökyüzü,
->   rüzgâr) TSL/node malzemelerine yeniden yazılmasını gerektiriyor; WebGL2
->   yolu bugün darboğaz değil. Ayrı bir faz olarak ele alınmalı.
+> **Status (second round):**
+> - **TAA/SMAA not needed:** motion frames are already drawn with the default framebuffer's
+>   MSAA (`antialias: true`), and the still frame goes through the 4x MSAA
+>   composer. The unused SMAA/SSAO files in vendor were deleted.
+> - **4.4 Roofs:** `web/src/roof_skeleton.js` — straight skeleton for simple polygons
+>   (kinetic wavefront; edge and split events are validated against the live front
+>   when they are popped from the queue, zero-width regions become level
+>   ridges). Hip/Gable now gives each eave edge its own plane at the same
+>   pitch: correct ridges and valleys on L/T/U plans. Gable slides the
+>   apex at the hip end along the ridge to the wall. Roof texture
+>   rows run parallel to each face's eave. On failure (if the face area does not
+>   fully cover the footprint) it falls back to the old single-ridge solution. Under `tests/js`:
+>   square/rectangle/L/T/U/irregular cases and 200 random block tests; a stress test with 6,000
+>   random polygons shows no failures. CI now runs the Python and JS unit
+>   tests.
+> - **Glass reflection:** the window mask (grid + window rectangle) is computed once per
+>   pixel; during the day it makes the glass glossy and increases the sky reflection,
+>   at night the same mask lights the windows.
+> - **DoF (presentation):** Effects → Depth of field. BokehPass on the still frame;
+>   the focus is the ground point at the screen center, blur follows relative depth
+>   (same feel at street level and above the city). No cost when disabled.
+> - **4.5 Water and vegetation:** water lines are brighter and get full sky
+>   reflection (a normal map was not added because it would break merging). Optional
+>   wind sway for tree crowns (vertex shader, per-tree phase, the analysis
+>   wind direction); while enabled the viewer keeps drawing frames, shadows
+>   stay static. Grass instancing was not done (the data model has no grass areas).
+> - **4.6 WebGPU — deferred:** requires an r160 → r17x upgrade and rewriting every
+>   shader patch made via `onBeforeCompile` (building batch, windows, sky,
+>   wind) as TSL/node materials; the WebGL2
+>   path is not a bottleneck today. It should be handled as a separate phase.
 
-1. **Fiziksel gökyüzü + IBL** — `Sky` → PMREM ortam haritası; saat/enlem ile senkron (enlem zaten DEM'den türetiliyor). Gece için şehir ışıkları + yıldız.
-2. **Modern post-process zinciri** — SSAO yerine **GTAO/N8AO**, TAA veya SMAA, ACES/AgX tone mapping, hafif bloom, yükseklik sisi, DoF (sunum modu).
-3. **Prosedürel cephe shader'ı** — dokuya bağlı kalmadan kat/pencere ızgarası, gece rastgele yanan pencereler (şu an `Math.random()` emissive per-material), cam yansıması — hepsi tek shader, sıfır ek doku.
-4. **Gerçekçi çatılar** — straight-skeleton ile her çokgen için doğru hip/gable çatı; güneş paneli, yeşil çatı varyantları.
-5. **Su, bitki örtüsü** — yansıtıcı su yüzeyi, rüzgârda sallanan ağaç shader'ı (vertex wind), çim instancing.
-6. **WebGPU yolu** — Three.js `WebGPURenderer` (r16x+) ile opsiyonel arka uç; destek yoksa WebGL2'ye düşer. Three.js'in r160'tan güncel sürüme yükseltilmesi bu fazın ön koşulu.
+1. **Physical sky + IBL** — `Sky` → PMREM environment map; synchronized with time/latitude (latitude is already derived from the DEM). City lights + stars at night.
+2. **Modern post-process chain** — **GTAO/N8AO** instead of SSAO, TAA or SMAA, ACES/AgX tone mapping, subtle bloom, height fog, DoF (presentation mode).
+3. **Procedural facade shader** — floor/window grid independent of textures, randomly lit windows at night (currently `Math.random()` emissive per-material), glass reflection — all in one shader, zero extra textures.
+4. **Realistic roofs** — correct hip/gable roofs for every polygon via a straight skeleton; solar panel and green roof variants.
+5. **Water, vegetation** — reflective water surface, wind-swayed tree shader (vertex wind), grass instancing.
+6. **WebGPU path** — optional backend via Three.js `WebGPURenderer` (r16x+); falls back to WebGL2 when unsupported. Upgrading Three.js from r160 to the current release is a prerequisite for this phase.
 
-## Faz 5 — Planlamacılar için katil özellikler (sürekli)
+## Phase 5 — Killer features for planners (ongoing)
 
-> **Durum (Ekim 2026, ilk tur):** 5.1 (güneş saatleri + SVF), 5.2, 5.3 (3D
-> Tiles), 5.4 (görünüm linki) ve 5.5'in yüksek çözünürlüklü görüntü kısmı.
-> - **Düzeltme (önemli):** güneş yanlış yarıküredeydi. Veri kuzeyi +Z, doğuyu
->   −X'e koyuyor; güneş kuzeyi −Z, doğuyu +X sayıyordu, yani 180° dönüktü
->   (sabah gölgeleri doğuya, öğlen gölgeleri güneye düşüyordu). Pusula doğruydu.
->   Güneş, rüzgâr bulutları ve ağaç rüzgârı artık tek bir pusula→sahne
->   dönüşümünü kullanıyor. Ayrıca `setStatus` mesajları sayfada olmayan bir
->   öğeye yazılıyordu; artık köşede bildirim olarak görünüyor.
-> - **5.1 GPU maruziyet analizi** (`web/src/exposure_analysis.js`): üstten
->   yükseklik haritası + her güneş konumu (15 dk) ya da gökyüzü yönü (128,
->   kosinüs ağırlıklı) için derinlik haritası; tam ekran geçişle float hedefe
->   toplanıyor. Sokak, meydan ve çatılar ~1,5 m çözünürlükte. Örnek şehirde
->   SwiftShader'da 17 s (güneş saatleri) / 31 s (SVF); eski 48×48 ışın
->   izleme ısı haritasının yerini aldı. Sonuç sahneye örtülüyor (duvar
->   üçgenleri atılıyor), lejant ve ortalama ile. Görüş alanı (viewshed) ve
->   cephe analizi kaldı.
-> - **5.2 İmar senaryoları** (`web/src/zoning_scenario.js`): TAKS (taban
->   alanı oranı), KAKS (emsal), Hmax ve çekme mesafesi ile her parsel (yoksa
->   ada) için izin verilen kütle; mevcut binalarla karşılaştırmalı tablo
->   (inşaat alanı, emsal, TAKS, nüfus tahmini) ve renkli kütleler. "Split"
->   görünümü: solda mevcut, sağda senaryo, sürüklenebilir ayırıcı. Kurallar
->   değişince sadece senaryo yeniden çiziliyor. A/B iki senaryo karşılaştırması
->   kaldı (şu an mevcut ↔ senaryo).
-> - **5.3 3D Tiles 1.1 dışa aktarım** (`tiles_math.js`, `tiles_export.js`):
->   QGIS dışa aktarımı manifeste coğrafi referans yazıyor (CRS + merkez,
->   1 km doğu, 1 km kuzey için WGS84 kontrol noktaları). Görüntüleyici
->   800 m'lik karolar halinde GLB + tileset.json üretip zip'liyor; kök dönüşüm
->   afin uydurma → meridyen yakınsaması/ölçek → WGS84 ENU→ECEF. Ağaçlar
->   EXT_mesh_gpu_instancing. Jeoit için yükseklik ofseti alanı var. Testler:
->   UTM'e karşı < 10 cm; GLB'ler Khronos glTF doğrulayıcısından hatasız.
->   CityJSON ve Google Photorealistic 3D Tiles bağlamı kaldı.
-> - **5.4 Görünüm linki:** kamera (+ saat) URL hash'inde (`#view=`), "Copy
->   view link" ile kopyalanıyor; link açılınca o görünüme gidiyor.
->   GitHub/GitLab Pages yayınlama kaldı.
-> - **5.5 Yüksek çözünürlüklü görüntü:** ekran / 2x / 4K / 8K; ekran boyutlu
->   karolar (`setViewOffset`) birleştiriliyor, ek yok. 4K MP4 (WebCodecs)
->   kaldı.
-> - **Kalan:** 5.6 WebXR, 5.7 QGIS içi önizleme paneli.
+> **Status (October 2026, first round):** 5.1 (sun hours + SVF), 5.2, 5.3 (3D
+> Tiles), 5.4 (view link) and the high-resolution image part of 5.5.
+> - **Fix (important):** the sun was in the wrong hemisphere. The data puts north at +Z and east
+>   at −X; the sun treated north as −Z and east as +X, i.e. it was rotated by 180°
+>   (morning shadows fell to the east, noon shadows to the south). The compass was correct.
+>   The sun, wind clouds and tree wind now share a single compass→scene
+>   transform. Also, `setStatus` messages were being written to an element that is not
+>   on the page; they now appear as a notification in the corner.
+> - **5.1 GPU exposure analysis** (`web/src/exposure_analysis.js`): a top-down
+>   height map + a depth map for each sun position (15 min) or sky direction (128,
+>   cosine-weighted); accumulated into a float target with a full-screen pass.
+>   Streets, squares and roofs at ~1.5 m resolution. On the sample city,
+>   17 s (sun hours) / 31 s (SVF) in SwiftShader; it replaced the old 48×48 ray-traced
+>   heat map. The result is draped over the scene (wall
+>   triangles are discarded), with a legend and the mean. Viewshed and
+>   facade analysis remain.
+> - **5.2 Zoning scenarios** (`web/src/zoning_scenario.js`): the permitted massing for
+>   each parcel (or block if there are none) from BCR (building coverage ratio), FAR (floor area
+>   ratio), Hmax and setback distance; a comparison table against existing buildings
+>   (floor area, FAR, BCR, population estimate) and color-coded masses. "Split"
+>   view: existing on the left, scenario on the right, draggable divider. When the rules
+>   change, only the scenario is redrawn. An A/B comparison of two scenarios
+>   remains (currently existing ↔ scenario).
+> - **5.3 3D Tiles 1.1 export** (`tiles_math.js`, `tiles_export.js`):
+>   the QGIS export writes georeferencing into the manifest (CRS + center,
+>   WGS84 control points 1 km east and 1 km north). The viewer
+>   generates GLB + tileset.json in 800 m tiles and zips them; root transform:
+>   affine fit → meridian convergence/scale → WGS84 ENU→ECEF. Trees use
+>   EXT_mesh_gpu_instancing. There is a height offset field for the geoid. Tests:
+>   < 10 cm against UTM; the GLBs pass the Khronos glTF validator without errors.
+>   CityJSON and the Google Photorealistic 3D Tiles context remain.
+> - **5.4 View link:** the camera (+ time) is stored in the URL hash (`#view=`) and copied with
+>   "Copy view link"; opening the link goes to that view.
+>   GitHub/GitLab Pages publishing remains.
+> - **5.5 High-resolution image:** screen / 2x / 4K / 8K; screen-sized
+>   tiles (`setViewOffset`) are stitched together, with no seams. 4K MP4 (WebCodecs)
+>   remains.
+> - **Remaining:** 5.6 WebXR, 5.7 in-QGIS preview panel.
 >
-> **Durum (ikinci tur) — Faz 5'in kalanı:**
-> - **Görüş alanı (viewshed):** Analiz → "Viewshed from a point", sahnede
->   gözlemci noktası tıklanıyor; göz yüksekliğinde (1,6 m) altı adet 90°
->   derinlik görünümü (küp) ile yarıçap içindeki tüm sokak/meydan/çatılar
->   görünür/görünmez işaretleniyor, lejantta görünür oran. Aynı GPU hattı,
->   perspektif görünümler için doğrusal mesafe testi.
-> - **İki senaryo karşılaştırması:** B kural seti (TAKS, KAKS, Hmax, çekme)
->   ve "Split: B | A"; tablo mevcut / A / B.
-> - **Düzeltme:** imar zarfları (Show Zoning Envelopes) hiç çizilmiyordu
->   (çokgen listesi tek çokgen yerine geçiyordu); her parça kendi zemininde.
-> - **CityJSON 2.0:** binalar LoD1 katı (avlular, çok parçalı binalar
->   MultiSolid), dışa aktarım CRS'inde, öznitelikleriyle. Testler kapalı ve
->   dışa dönük kabuk kontrol ediyor; örnek çıktı CityJSON 2.0.2 şemasından
->   hatasız geçiyor, cjio okuyor.
-> - **MP4 tur videosu:** keyframe turu her kare kendi zamanında (t = i/fps)
->   çiziliyor, WebCodecs ile tarayıcıda kodlanıp MP4'e paketleniyor
->   (mp4-muxer, MIT), altyazılar karelere işleniyor; 720p / 1080p / 4K.
->   H.264 yoksa VP9/AV1 (MP4 içinde). Test: 180 kare, 6 s, ffmpeg hatasız
->   çözüyor.
-> - **Statik yayın:** taşınabilir paket kökte index.html (#view= korunur),
->   .nojekyll ve .gitlab-ci.yml ile GitHub/GitLab Pages ve Netlify'a olduğu
->   gibi yüklenebiliyor; README adımları anlatıyor.
-> - **WebXR:** tarayıcı immersive VR destekliyorsa "Enter VR"; sokak
->   seviyesinde, mevcut bakış yönünde başlıyor, kumanda ile ışınlanma.
->   Gözlük olmadan yalnızca buton/geri düşüş test edildi.
-> - **QGIS içi önizleme + canlı seçim:** eklenti menüsünde "3D preview
->   panel"; QtWebEngine varsa görüntüleyici QGIS içinde, yoksa tarayıcıda.
->   Seçim iki yönlü: QGIS'te seçilen bina 3D'de turuncu vurgulanıp kameraya
->   alınıyor; görüntüleyicide tıklanan bina QGIS'te seçilip harita ona
->   kayıyor. Eşleştirme konuma göre (çokgen içi nokta, dışa aktarım CRS'i),
->   kimlik gerekmiyor. Sunucu tarafı köprü Python testli; uçtan uca test
->   gerçek PlanX sunucusuyla yapıldı. QGIS paneli burada QGIS olmadığı için
->   denenmedi.
+> **Status (second round) — the rest of Phase 5:**
+> - **Viewshed:** Analysis → "Viewshed from a point", then click an observer
+>   point in the scene; at eye height (1.6 m), six 90°
+>   depth views (a cube) mark every street/square/roof within the radius as
+>   visible/not visible, with the visible share in the legend. Same GPU pipeline,
+>   with a linear distance test for the perspective views.
+> - **Two-scenario comparison:** rule set B (BCR, FAR, Hmax, setback)
+>   and "Split: B | A"; table shows existing / A / B.
+> - **Fix:** zoning envelopes (Show Zoning Envelopes) were never drawn
+>   (a list of polygons was passed where a single polygon was expected); each part now sits on its own ground level.
+> - **CityJSON 2.0:** buildings as LoD1 solids (courtyards and multi-part buildings as
+>   MultiSolid), in the export CRS, with their attributes. Tests check for closed and
+>   outward-facing shells; the sample output validates against the CityJSON 2.0.2 schema
+>   without errors, and cjio reads it.
+> - **MP4 tour video:** each keyframe tour frame is drawn at its own time (t = i/fps),
+>   encoded in the browser with WebCodecs and muxed into MP4
+>   (mp4-muxer, MIT), with captions burned into the frames; 720p / 1080p / 4K.
+>   Falls back to VP9/AV1 (inside MP4) if H.264 is unavailable. Test: 180 frames, 6 s, ffmpeg decodes
+>   it without errors.
+> - **Static publishing:** the portable package has index.html at its root (#view= is preserved),
+>   .nojekyll and .gitlab-ci.yml, so it can be uploaded as-is to GitHub/GitLab Pages and
+>   Netlify; the README describes the steps.
+> - **WebXR:** "Enter VR" when the browser supports immersive VR; starts at street
+>   level in the current viewing direction, with controller teleportation.
+>   Without a headset, only the button/fallback was tested.
+> - **In-QGIS preview + live selection:** "3D preview
+>   panel" in the plugin menu; the viewer runs inside QGIS if QtWebEngine is available, otherwise in the browser.
+>   Selection is bidirectional: a building selected in QGIS is highlighted orange in 3D and
+>   brought into the camera view; a building clicked in the viewer is selected in QGIS and the map
+>   pans to it. Matching is by location (point in polygon, export CRS),
+>   no ID required. The server-side bridge has Python tests; the end-to-end test
+>   was run against the real PlanX server. The QGIS panel itself was not
+>   tried, since QGIS is not available here.
 
-1. **Gerçek zamanlı analizler (GPU)** — gökyüzü görüş faktörü (SVF), güneşlenme saatleri ısı haritası (21 Aralık / 21 Haziran), görüş alanı (viewshed), gölge süresi — hepsi GPU render-to-texture ile saniyeler içinde.
-2. **İmar senaryoları** — TAKS/KAKS/Hmax parametreleriyle "ne olur" modu; A/B senaryo kaydırıcılı karşılaştırma (split-screen).
-3. **3D Tiles / CityGML / CityJSON içe-dışa aktarım** — OGC 3D Tiles 1.1 çıktısı (Cesium, ArcGIS, Unreal ile uyum); Google Photorealistic 3D Tiles bağlam katmanı (API anahtarı kullanıcıdan).
-4. **Paylaşım** — tek tıkla statik web paketi (zaten ZIP var) + GitHub/GitLab Pages yayınlama; sahne URL'sine kamera durumu gömme.
-5. **Video/görsel çıktısı** — keyframe turundan 4K MP4 (WebCodecs), yüksek çözünürlüklü tiled screenshot (8K+).
-6. **VR/AR** — WebXR ile sahnede yürüme (Quest tarayıcısı).
-7. **QGIS içi önizleme** — `QWebEngineView` paneli; QGIS'te seçilen obje 3D'de vurgulansın (çift yönlü senkron).
+1. **Real-time analyses (GPU)** — sky view factor (SVF), sun hours heat map (21 December / 21 June), viewshed, shadow duration — all within seconds via GPU render-to-texture.
+2. **Zoning scenarios** — "what if" mode with BCR/FAR/Hmax parameters; A/B scenario comparison with a slider (split-screen).
+3. **3D Tiles / CityGML / CityJSON import/export** — OGC 3D Tiles 1.1 output (compatible with Cesium, ArcGIS, Unreal); Google Photorealistic 3D Tiles context layer (API key supplied by the user).
+4. **Sharing** — one-click static web package (ZIP already exists) + GitHub/GitLab Pages publishing; embed the camera state in the scene URL.
+5. **Video/image output** — 4K MP4 from the keyframe tour (WebCodecs), high-resolution tiled screenshot (8K+).
+6. **VR/AR** — walk through the scene with WebXR (Quest browser).
+7. **In-QGIS preview** — `QWebEngineView` panel; the object selected in QGIS is highlighted in 3D (bidirectional sync).
 
-## Faz 6 — Mühendislik altyapısı (Faz 1 ile paralel başlamalı)
+## Phase 6 — Engineering infrastructure (should start in parallel with Phase 1)
 
-> **Durum (Ekim 2026, ilk tur):**
-> - **6.4 Lint + tip kontrolü:** `package.json` (yalnız geliştirme; eklenti
->   zip'ine girmez) ile ESLint, TypeScript ve Playwright sabit sürümlü.
->   ESLint bir yinelenen renk anahtarı ('Olive') ve ölü kod buldu (91 satır
->   silindi). `tsc --checkJs` `// @ts-check` ile işaretli 16+ modülü JSDoc
->   tipleriyle kontrol ediyor (vendor kütüphaneler tipsiz sayılıyor).
-> - **6.2 Benchmark CI'da:** 1000 binalık deterministik şehir; çizim
->   çağrısı, üçgen ve mesh sayısı tabandan %10'dan fazla artarsa CI kırmızı
->   (`tests/bench/baseline.json`); süreler raporlanıyor, yalnız 3 kat
->   yavaşlamada kırmızı (CI makineleri değişken).
-> - **6.3 Görsel regresyon:** dört sabit kamera (gündüz, sokak, gece,
->   Clean), doğrudan WebGL tuvalinden (arayüz/yazı tipi yok), trafik/insan
->   ve GTAO kapalı (rastgelelik yok); 24 seviye / %1,5 piksel toleransı,
->   fark görüntüleri CI artefaktı. Ardışık çalıştırmalarda piksel aynı.
-> - **6.1 app.js bölme (ilk tur):** 11.157 → 9.691 satır; kod olduğu gibi
->   `ui_text.js`, `catalog.js`, `geo.js`, `props.js`, `textures.js`
->   modüllerine taşındı (döngüsel import yok: alan eşlemesi ve anizotropi
->   enjekte ediliyor). Görsel testler piksel aynı, yapı metrikleri aynı.
+> **Status (October 2026, first round):**
+> - **6.4 Lint + type checking:** `package.json` (development only; not included in the
+>   plugin zip) pins ESLint, TypeScript and Playwright versions.
+>   ESLint found a duplicate color key ('Olive') and dead code (91 lines
+>   deleted). `tsc --checkJs` checks the 16+ modules marked with `// @ts-check` against their
+>   JSDoc types (vendor libraries are treated as untyped).
+> - **6.2 Benchmark in CI:** deterministic 1000-building city; if draw
+>   calls, triangle or mesh counts rise more than 10% above the baseline, CI turns red
+>   (`tests/bench/baseline.json`); timings are reported, and only a 3×
+>   slowdown turns it red (CI machines vary).
+> - **6.3 Visual regression:** four fixed cameras (day, street, night,
+>   Clean), captured directly from the WebGL canvas (no UI/fonts), traffic/people
+>   and GTAO disabled (no randomness); 24-level / 1.5% pixel tolerance,
+>   diff images as CI artifacts. Pixel-identical across consecutive runs.
+> - **6.1 Splitting app.js (first round):** 11,157 → 9,691 lines; code moved as-is
+>   into the `ui_text.js`, `catalog.js`, `geo.js`, `props.js`, `textures.js`
+>   modules (no circular imports: the field mapping and anisotropy are
+>   injected). Visual tests pixel-identical, structural metrics unchanged.
 >
-> **Durum (Ekim 2026, ikinci tur — Faz 6 tamamlandı):**
-> - **6.1 app.js bölme (tamam):** 9.691 → ~900 satır (yalnız açılış, yürüme
->   modu ve kare döngüsü). Birden çok modülün değiştirdiği 50 değişken
->   (sahne merkezi, yüklenen veri, arazi, trafik verisi, etkileşim modları)
->   `core/state.js` içindeki `state` nesnesine taşındı; yerinde değişen
->   nesneler (sahne, katman grupları, ayarlar) kendi modüllerinden sabit
->   olarak dışa aktarılıyor. Yeni klasörler: `core/` (sahne, durum, ayarlar,
->   çizim, veri yükleme, sahne kurulumu, sahne durumu senkronu, model
->   deposu), `terrain/`, `layers/` (bina, zemin, ağaç, anıt, donatı,
->   ulaşım, imar, emisyon, çevre), `analysis/`, `ui/` (dock'lar, Model
->   Studio, tur, seçim, görünüm bağlantıları, dışa aktarma, kayıt, minimap,
->   gösterge paneli, yer imleri, QGIS bağlantısı). Döngüsel import yok:
->   sahne kurulumu arayüzü kancalarla (`setSceneBuildHooks`), ayar
->   kaydı sahne durumu senkronunu `setAfterSave` ile çağırıyor. Taşıma
->   kapsam analizine dayalı bir araçla yapıldı (kod metni aynen taşındı);
->   görsel testler piksel aynı, yapı metrikleri aynı.
-> - **UI duman testi (`tests/smoke`, CI'da):** tüm dock'ları açar, her
->   dock ayarını değiştirir, güneş/gökyüzü/görüş analizlerini, senaryo
->   görünümlerini, yer imlerini, tur düzenleyiciyi, Model Studio'yu, bina
->   seçimini, ekran görüntüsünü, CityJSON ve 3D Tiles dışa aktarımını
->   çalıştırır; herhangi bir sayfa veya konsol hatasında kırmızı. Bölme
->   sırasında modül yoluna göre çözülen `import()` yollarının kırıldığını
->   bu test yakaladı; artık bir birim testi tüm göreli import'ları
->   denetliyor. Benchmark verisi de coğrafi referans taşıyor (3D Tiles
->   dışa aktarımı test edilebiliyor).
-> - Kalan Türkçe iki yorum ("Sapan Modu") temizlendi.
+> **Status (October 2026, second round — Phase 6 complete):**
+> - **6.1 Splitting app.js (done):** 9,691 → ~900 lines (only startup, walk
+>   mode and the frame loop). 50 variables modified by more than one module
+>   (scene center, loaded data, terrain, traffic data, interaction modes)
+>   moved into the `state` object in `core/state.js`; objects mutated in place
+>   (scene, layer groups, settings) are exported as constants from their own
+>   modules. New folders: `core/` (scene, state, settings,
+>   rendering, data loading, scene build, scene state sync, model
+>   store), `terrain/`, `layers/` (buildings, ground, trees, monuments, street furniture,
+>   transport, zoning, emissions, environment), `analysis/`, `ui/` (docks, Model
+>   Studio, tour, selection, view links, export, recording, minimap,
+>   dashboard, bookmarks, QGIS link). No circular imports:
+>   the scene build calls the UI through hooks (`setSceneBuildHooks`), and saving
+>   settings calls the scene state sync via `setAfterSave`. The move was
+>   done with a tool based on scope analysis (code text moved verbatim);
+>   visual tests pixel-identical, structural metrics unchanged.
+> - **UI smoke test (`tests/smoke`, in CI):** opens every dock, changes each
+>   dock setting, runs the sun/sky/viewshed analyses, the scenario
+>   views, bookmarks, the tour editor, Model Studio, building
+>   selection, screenshots, CityJSON and 3D Tiles export;
+>   red on any page or console error. During the split, this test caught
+>   broken `import()` paths that resolve relative to the module path;
+>   a unit test now checks all relative
+>   imports. The benchmark data also carries georeferencing (so 3D Tiles
+>   export can be tested).
+> - The two remaining non-English code comments were translated.
 
-1. **`app.js`'i modüllere böl** — `scene/`, `layers/buildings.js`, `layers/terrain.js`, `analysis/`, `ui/`, `workers/`. Build aracı gerektirmeden native ES modules + import map (mevcut "Node.js gerektirmez" ilkesi korunur).
-2. **Benchmark sahnesi** — `sample_generator.py` ile 1k / 10k / 100k binalık deterministik veri; Playwright + headless Chromium ile FPS, draw call, açılış süresi ölçümü CI'da (`.github/workflows/quality.yml`'a yeni job). Regresyon > %10 ise kırmızı.
-3. **Görsel regresyon testleri** — sabit kameradan ekran görüntüsü karşılaştırma.
-4. **JS lint** (ESLint) ve tip kontrolü (JSDoc + `tsc --checkJs`) CI'da.
+1. **Split `app.js` into modules** — `scene/`, `layers/buildings.js`, `layers/terrain.js`, `analysis/`, `ui/`, `workers/`. Native ES modules + an import map, with no build tool required (the existing "no Node.js required" principle is preserved).
+2. **Benchmark scene** — deterministic 1k / 10k / 100k-building data from `sample_generator.py`; FPS, draw call and startup time measurement in CI with Playwright + headless Chromium (a new job in `.github/workflows/quality.yml`). Red if the regression exceeds 10%.
+3. **Visual regression tests** — screenshot comparison from a fixed camera.
+4. **JS lint** (ESLint) and type checking (JSDoc + `tsc --checkJs`) in CI.
 
 ---
 
-## Önceliklendirme (etki / efor)
+## Prioritization (impact / effort)
 
-| Öncelik | İş | Etki | Efor |
+| Priority | Work item | Impact | Effort |
 |---|---|---|---|
-| P0 | Bina batching + materyal önbelleği (F1.1) | ★★★★★ | Orta |
-| P0 | On-demand render (F1.2) | ★★★★ | Düşük |
-| P0 | Paralel yükleme (F1.4) | ★★★ | Çok düşük |
-| P0 | Benchmark + perf HUD (F6.2, F1.7) | ★★★★ (ölçmeden hızlandırılmaz) | Düşük |
-| P1 | Worker pipeline (F2.1) | ★★★★ | Orta |
-| P1 | DEM kırpma + GeoJSON hassasiyeti (F3.1–3.2) | ★★★★ | Düşük |
-| P1 | BVH raycast (F1.5) | ★★★ | Düşük |
-| P1 | KTX2 + doku atlası (F2.5) | ★★★ | Orta |
-| P2 | Tiling + LOD, CSM, terrain LOD | ★★★★ | Yüksek |
-| P2 | Görsel kalite paketi (Faz 4) | ★★★★ | Yüksek |
-| P3 | 3D Tiles, WebXR, WebGPU, QGIS içi önizleme | ★★★ | Yüksek |
+| P0 | Building batching + material cache (F1.1) | ★★★★★ | Medium |
+| P0 | On-demand render (F1.2) | ★★★★ | Low |
+| P0 | Parallel loading (F1.4) | ★★★ | Very low |
+| P0 | Benchmark + perf HUD (F6.2, F1.7) | ★★★★ (you cannot speed up what you do not measure) | Low |
+| P1 | Worker pipeline (F2.1) | ★★★★ | Medium |
+| P1 | DEM clipping + GeoJSON precision (F3.1–3.2) | ★★★★ | Low |
+| P1 | BVH raycast (F1.5) | ★★★ | Low |
+| P1 | KTX2 + texture atlas (F2.5) | ★★★ | Medium |
+| P2 | Tiling + LOD, CSM, terrain LOD | ★★★★ | High |
+| P2 | Visual quality package (Phase 4) | ★★★★ | High |
+| P3 | 3D Tiles, WebXR, WebGPU, in-QGIS preview | ★★★ | High |
 
-## Başarı ölçütleri (v2.0)
+## Success criteria (v2.0)
 
-- 10k bina: ≥ 60 FPS (Intel Iris Xe), açılış < 3 sn
-- 100k bina: ≥ 30 FPS, UI hiç donmuyor
-- Boşta GPU kullanımı ≈ %0
-- Export boyutu ilk sürüme göre ≥ 5× küçük
-- Sıfır harici bağımlılık kuralı korunuyor (Node.js / pip paketi yok)
+- 10k buildings: ≥ 60 FPS (Intel Iris Xe), startup < 3 s
+- 100k buildings: ≥ 30 FPS, the UI never freezes
+- Idle GPU usage ≈ 0%
+- Export size ≥ 5× smaller than in the first release
+- The zero-external-dependency rule is preserved (no Node.js / pip packages)
 
-## Önerilen ilk sprint (PR sırası)
+## Recommended first sprint (PR order)
 
-1. Perf HUD + benchmark veri üreticisi (ölçüm tabanı)
-2. Paralel `loadGeoJson` + on-demand render + `preserveDrawingBuffer` kapatma
-3. Materyal önbelleği + bina/döşeme geometrisi birleştirme + `feature_id` tabanlı seçim
-4. DEM ROI kırpma + GeoJSON koordinat hassasiyeti
-5. `three-mesh-bvh` ile raycast ve gölge ısı haritası hızlandırma
+1. Perf HUD + benchmark data generator (measurement baseline)
+2. Parallel `loadGeoJson` + on-demand render + disabling `preserveDrawingBuffer`
+3. Material cache + building/slab geometry merging + `feature_id`-based selection
+4. DEM ROI clipping + GeoJSON coordinate precision
+5. Raycast and shadow heat map acceleration with `three-mesh-bvh`

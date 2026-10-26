@@ -2,12 +2,13 @@
 // user saved in this browser), per-function building styles, block category
 // styles and the asset theme helpers that fill settings from a theme.
 import { textureSets, assetThemePresets, BUILDING_MODE_OPTIONS } from '../catalog.js';
+import { catalogueName, FACADE_TEXTURE_FLOORS } from '../material_catalogue.js';
 import { propFirst, normalizeHexColor, presetValue, roofShapeValue, setFieldNameResolver } from '../props.js';
 import { state } from './state.js';
 import { isPortableMode } from './scene.js';
 
 export const FACADE_TEXTURE_SCALE_MULTIPLIER = 4.85;
-export const SETTINGS_SCHEMA_VERSION = 10;
+export const SETTINGS_SCHEMA_VERSION = 11;
 
 export const functionColorState = {};
 export const functionFacadeState = {};
@@ -78,11 +79,9 @@ export function uniqueAssetVariants(category, fallback = []) {
 
 export function normalizeFacadeKey(key) {
   const raw = String(key || '').trim();
-  if (!raw) return 'UrbanA';
-  const exact = Object.keys(textureSets.facade).find((name) => name.toLowerCase() === raw.toLowerCase());
-  if (exact) return exact;
-  // Legacy fallback: keep the scene drawable even when stored facade keys are stale.
-  return 'UrbanA';
+  if (!raw) return 'Apartment';
+  // Catalogue name, or a legacy one mapped to its entry; else the default.
+  return catalogueName('facade', raw, textureSets.facade) || 'Apartment';
 }
 
 export function resolveFacadeForLevels(key, _levels) {
@@ -90,10 +89,7 @@ export function resolveFacadeForLevels(key, _levels) {
 }
 
 export function facadeTextureFloorRows(key, fallback = 10) {
-  const normalized = normalizeFacadeKey(key);
-  if (/^Residential[ABCD]$/.test(normalized)) return 4;
-  if (/^Residential[EF]$/.test(normalized)) return 5;
-  return fallback;
+  return FACADE_TEXTURE_FLOORS[normalizeFacadeKey(key)] || fallback;
 }
 
 export function mappedField(key) {
@@ -133,14 +129,15 @@ export const settings = {
   islandTexture: 'None',
   parcelBoundaryColor: '#71717a',
   parcelBoundaryOpacity: 0.35,
-  hardscapeStyle: 'Cobble',
+  hardscapeStyle: 'Cobblestone',
   hardscapeHeight: 0.30,
   buildingMode: 'Auto Smart Massing',
+  facadeMode: 'Auto by function',
   terrainAnalysisMode: 'Texture',
   assetTheme: 'Modern Urban',
   showXyzTiles: false,
   xyzTileUrl: '',
-  roofTexture: 'TurkishTile',
+  roofTexture: 'ClayTile',
   roofShape: 'Pyramid',
   roofHeight: 2.0,
   roadStyle: 'Asphalt',
@@ -217,7 +214,7 @@ export const settings = {
   dayOfYear: 172,
   latitude: 39.0,
   parkColor: '#5e9e3e',
-  parkTexture: 'ParkGreen',
+  parkTexture: 'Grass',
   sportColor: '#4a8c30',
   furnitureGroundOffset: 0.02,
   terrainTileMeters: 60,
@@ -231,6 +228,7 @@ export const settings = {
   showRoadMarkings: true,
   showLedges: true,
   showStorefronts: true,
+  showRoofDetails: true,
   buildingSetback: 1.2,
   ledgeProjection: 0.15,
   showZoningEnvelopes: false,
@@ -287,7 +285,7 @@ export const PERSISTED_SETTING_KEYS = [
   'terrainOutsideColor', 'terrainSmoothingPasses', 'terrainSmoothingStrength', 'terrainMaxSlope',
   'showTerrainSides', 'terrainSideDrop', 'terrainSideColor',
   'fogDensity', 'autoTime', 'autoTimeSpeed', 'enableSSAO', 'enableBloom', 'atmosphere', 'treeWind', 'depthOfField',
-  'pavementStyle', 'hardscapeStyle', 'hardscapeHeight', 'buildingMode', 'facadeTextureScale', 'terrainAnalysisMode', 'showXyzTiles', 'xyzTileUrl',
+  'pavementStyle', 'hardscapeStyle', 'hardscapeHeight', 'buildingMode', 'facadeMode', 'facadeTextureScale', 'terrainAnalysisMode', 'showXyzTiles', 'xyzTileUrl',
   'assetTheme',
   'floorHeight', 'roofTexture', 'roofShape', 'roofHeight', 'roadStyle', 'roadColor', 'sidewalkColor', 'roadColorMode', 'roadWidth',
   'showBikeLanes', 'bikeLaneWidth', 'bikeLaneColor', 'showBikes', 'bikeDensity', 'bikeSpeed',
@@ -310,7 +308,7 @@ export const PERSISTED_SETTING_KEYS = [
   'terrainTileMeters',
   'showFences', 'fenceHeight', 'fenceThickness', 'fenceTexture', 'fenceColor',
   'showWaterlines', 'waterlineWidth',
-  'showRoadMarkings', 'showLedges', 'showStorefronts', 'buildingSetback', 'ledgeProjection',
+  'showRoadMarkings', 'showLedges', 'showStorefronts', 'showRoofDetails', 'buildingSetback', 'ledgeProjection',
   'showZoningEnvelopes', 'highlightViolations', 'zoningSetback', 'zoningMaxHeight', 'zoningCoverage', 'zoningFar', 'scenarioView', 'viewshedRadius', 'zoningBCoverage', 'zoningBFar', 'zoningBMaxHeight', 'zoningBSetback',
   'activeTreeModel', 'activeLightModel', 'activeBenchModel', 'activeBinModel', 'activeBusStopModel', 'activeMosqueModel',
   'activeTumulusModel', 'treeModelPool'
@@ -354,7 +352,16 @@ function loadPersistedSettings() {
       settings.buildingMode = 'Auto Smart Massing';
     }
     settings.roofShape = roofShapeValue(settings.roofShape, 'Pyramid');
-    settings.roofTexture = presetValue(settings.roofTexture, textureSets.roof, 'TurkishTile');
+    // Catalogue names: settings saved with legacy names load as their entries.
+    settings.roofTexture = presetValue(settings.roofTexture, textureSets.roof, 'ClayTile');
+    settings.roadStyle = presetValue(settings.roadStyle, textureSets.road, 'Asphalt');
+    settings.pavementStyle = presetValue(settings.pavementStyle, textureSets.pavement, 'Asphalt');
+    settings.hardscapeStyle = presetValue(settings.hardscapeStyle, textureSets.hardscape, 'Cobblestone');
+    settings.islandTexture = presetValue(settings.islandTexture, textureSets.island, 'None');
+    settings.parkTexture = presetValue(settings.parkTexture, textureSets.island, 'Grass');
+    if (!['Auto by function', 'Function styles'].includes(settings.facadeMode)) {
+      settings.facadeMode = settings.facadeMode === 'Catalogue textures' ? 'Function styles' : 'Auto by function';
+    }
   } catch (err) {
     console.warn('Could not restore PlanX viewer settings', err);
   }
@@ -365,13 +372,13 @@ function defaultFunctionBuildingStyle(fn, index = 0) {
     .filter((name) => Object.prototype.hasOwnProperty.call(textureSets.facade, name));
   return {
     color: getSemanticColor(fn) || ['#f1f5f9', '#dbeafe', '#fee2e2', '#dcfce7', '#fef3c7', '#ede9fe'][index % 6],
-    facade: normalizeFacadeKey(facadeOptions[index % Math.max(1, facadeOptions.length)] || 'UrbanA'),
+    facade: normalizeFacadeKey(facadeOptions[index % Math.max(1, facadeOptions.length)] || 'Apartment'),
     massing: 'Auto Smart Massing',
     facadeScale: settings.facadeTextureScale,
     floorHeight: settings.floorHeight,
     roofShape: roofShapeValue(settings.roofShape, 'Pyramid'),
     roofHeight: settings.roofHeight,
-    roofTexture: presetValue(settings.roofTexture, textureSets.roof, 'TurkishTile'),
+    roofTexture: presetValue(settings.roofTexture, textureSets.roof, 'ClayTile'),
     roofColor: '#ffffff',
     setbackEnabled: true
   };
@@ -464,19 +471,19 @@ function defaultBlockCategoryStyle(cat, index = 0) {
   let texture = 'None';
   if (/PARK|GREEN|FOREST|PLAYGROUND|GARDEN|MEADOW/.test(c)) {
     color = '#5e9e3e';
-    texture = 'ParkGreen';
+    texture = 'Grass';
   } else if (/WATER|LAKE|SEA\b|RIVER|POND|RESERVOIR/.test(c)) {
     color = '#0f5e9c';
     texture = 'Water';
   } else if (/SPORT|STADIUM|PITCH/.test(c)) {
     color = '#4a8c30';
-    texture = 'FineGrid';
+    texture = 'Grass';
   } else if (/RESIDENT|HOUSING/.test(c)) {
     color = '#d6c8a6';
-    texture = 'ResidentialBeige';
+    texture = 'Earth';
   } else if (/CIVIC|PUBLIC|COMMERCIAL|RETAIL|SCHOOL|EDUCATION/.test(c)) {
     color = '#b6b3a8';
-    texture = 'CivicGravel';
+    texture = 'Gravel';
   }
   return { color, texture };
 }

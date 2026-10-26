@@ -7,11 +7,16 @@
 //   - a planxId vertex attribute links each vertex to its building's
 //     properties for hover, click and fly-to;
 //   - a planxGlow attribute sets each building's share of lit windows at
-//     night (single windows light up on a grid estimated from the facade).
+//     night (single windows light up on a grid estimated from the facade);
+//   - a planxAo attribute darkens walls towards the ground (contact
+//     shadow), and by day some windows show blinds or curtains.
 // Tiles keep frustum culling and raycasting effective on large scenes.
 import * as THREE from 'three';
 import { MeshBVH, acceleratedRaycast } from 'three-mesh-bvh';
 import { CanonicalTextures, sharedMaterialFrom } from './mesh_merge.js';
+import {
+  DYNAMIC_FACADE_PARS, DYNAMIC_FACADE_FRAGMENT, DYNAMIC_FACADE_COLOR, dynamicFacadeUniforms
+} from './facade_dynamic.js';
 
 export const BUILDING_TILE_SIZE = 400; // metres, local scene units
 const HOVER_COLOR = new THREE.Color(0x1a5c44).multiplyScalar(1.4);
@@ -205,7 +210,9 @@ export function estimateWindowGrid(texture) {
   return result;
 }
 
-function patchMaterial(mat, windows) {
+// dynamic: a dynamic facade style (facade_dynamic.js) drawn in the shader
+// instead of sampling a facade texture.
+function patchMaterial(mat, windows, dynamic = null) {
   const winUniforms = {
     uPlanxWinGrid: { value: new THREE.Vector2(...(windows?.grid || [1, 1])) },
     uPlanxWinOffset: { value: new THREE.Vector2(...(windows?.offset || [0, 0])) },
@@ -219,9 +226,10 @@ function patchMaterial(mat, windows) {
     shader.uniforms.uPlanxSelected = sharedUniforms.uPlanxSelected;
     shader.uniforms.uPlanxSelectedColor = sharedUniforms.uPlanxSelectedColor;
     Object.assign(shader.uniforms, winUniforms);
+    if (dynamic) Object.assign(shader.uniforms, dynamicFacadeUniforms(dynamic));
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute float planxId;\nattribute float planxGlow;\nvarying float vPlanxId;\nvarying float vPlanxGlow;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvPlanxId = planxId;\nvPlanxGlow = planxGlow;');
+      .replace('#include <common>', '#include <common>\nattribute float planxId;\nattribute float planxGlow;\nattribute float planxAo;\nvarying float vPlanxId;\nvarying float vPlanxGlow;\nvarying float vPlanxAo;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvPlanxId = planxId;\nvPlanxGlow = planxGlow;\nvPlanxAo = planxAo;');
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', [
         '#include <common>',
@@ -236,6 +244,7 @@ function patchMaterial(mat, windows) {
         'uniform float uPlanxWindows;',
         'varying float vPlanxId;',
         'varying float vPlanxGlow;',
+        'varying float vPlanxAo;',
         'float planxHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }'
       ].join('\n'))
       .replace('#include <roughnessmap_fragment>', [
@@ -244,7 +253,10 @@ function patchMaterial(mat, windows) {
         // grid, glass inside the cell's window rectangle.
         'float planxWin = 0.0;',
         'float planxLitWin = 0.0;',
+        'float planxGlassVar = 1.0;',
         'vec3 planxTint = vec3(1.0);',
+        // Contact shadow: walls darken over their lowest metres.
+        'diffuseColor.rgb *= mix(0.58, 1.0, smoothstep(0.0, 1.0, sqrt(vPlanxAo)));',
         '#ifdef USE_MAP',
         'if (uPlanxWindows > 0.5) {',
         '  vec2 planxGridUv = vMapUv * uPlanxWinGrid - uPlanxWinOffset;',
@@ -254,20 +266,31 @@ function patchMaterial(mat, windows) {
         '  float planxLum = dot(sampledDiffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));',
         '  float planxGlass = 1.0 - 0.5 * smoothstep(uPlanxWinLum.x, uPlanxWinLum.y, planxLum);',
         '  planxWin = planxInRect * planxGlass;',
+        '#ifdef PLANX_DYNAMIC_FACADE',
+        '  planxWin = planxDynGlass;',
+        '#endif',
         // Each building lights its own random share of windows at night
         // (planxGlow), in warm or cool light, with some per-window dimming.
-        '  float planxH = planxHash(planxCell + vec2(vPlanxId * 0.731, vPlanxId * 0.197));',
+        // Snapped id: interpolation noise must not change the hash per pixel.
+        '  float planxIdS = floor(vPlanxId + 0.5);',
+        '  float planxH = planxHash(planxCell + vec2(planxIdS * 0.731, planxIdS * 0.197));',
         '  planxLitWin = planxWin * step(1.0 - vPlanxGlow * 0.7, planxH) * (0.6 + 0.4 * fract(planxH * 31.0));',
         '  planxTint = mix(vec3(1.0, 0.78, 0.5), vec3(0.8, 0.88, 1.0), step(0.82, fract(planxH * 17.0)));',
+        // By day about a quarter of the windows show blinds or curtains
+        // (light or warm, matt), the rest is glass of slightly varying tilt.
+        '  float planxBlind = step(0.74, fract(planxH * 7.31));',
+        '  vec3 planxCloth = mix(vec3(0.82, 0.8, 0.74), vec3(0.62, 0.46, 0.32), step(0.55, fract(planxH * 5.17)));',
+        '  diffuseColor.rgb = mix(diffuseColor.rgb, planxCloth * 0.6, planxWin * planxBlind * 0.65);',
+        '  planxGlassVar = (0.55 + 0.9 * fract(planxH * 3.71)) * (1.0 - 0.7 * planxBlind);',
         // Glass is glossy: sharper sun highlights and sky reflections.
-        '  roughnessFactor = mix(roughnessFactor, 0.15, planxWin);',
+        '  roughnessFactor = mix(roughnessFactor, mix(0.12, 0.6, planxBlind), planxWin);',
         '}',
         '#endif'
       ].join('\n'))
       .replace('#include <lights_fragment_maps>', [
         '#include <lights_fragment_maps>',
         '#if defined( RE_IndirectSpecular )',
-        `radiance *= 1.0 + ${GLASS_REFLECTION.toFixed(1)} * planxWin;`,
+        `radiance *= 1.0 + ${GLASS_REFLECTION.toFixed(1)} * planxWin * planxGlassVar;`,
         '#endif'
       ].join('\n'))
       .replace('#include <emissivemap_fragment>', [
@@ -282,7 +305,18 @@ function patchMaterial(mat, windows) {
         'if (abs(vPlanxId - uPlanxHover) < 0.5) totalEmissiveRadiance = uPlanxHoverColor;'
       ].join('\n'));
   };
-  mat.customProgramCacheKey = () => 'planx-building-batch';
+  if (dynamic) {
+    mat.defines = { ...(mat.defines || {}), PLANX_DYNAMIC_FACADE: '' };
+    const compile = mat.onBeforeCompile;
+    mat.onBeforeCompile = (shader, renderer) => {
+      compile(shader, renderer);
+      shader.fragmentShader = shader.fragmentShader
+        .replace('varying float vPlanxAo;', `varying float vPlanxAo;\n${DYNAMIC_FACADE_PARS}`)
+        .replace('#include <map_fragment>', `#ifdef USE_MAP\n${DYNAMIC_FACADE_FRAGMENT}\n#endif`)
+        .replace('#include <color_fragment>', DYNAMIC_FACADE_COLOR);
+    };
+  }
+  mat.customProgramCacheKey = () => (dynamic ? 'planx-building-batch-dynamic' : 'planx-building-batch');
 }
 
 function makeBuildingMaterial(src, isWall, isNight) {
@@ -293,7 +327,13 @@ function makeBuildingMaterial(src, isWall, isNight) {
       mat.emissive.setHex(NIGHT_EMISSIVE);
       mat.emissiveIntensity = isNight ? 1 : 0;
     }
-    patchMaterial(mat, isWall && mat.map ? estimateWindowGrid(mat.map) : null);
+    // Facade textures: the window grid given by the building layer (it
+    // also lays the texture out on it) or estimated from the image.
+    const dynamic = isWall ? src.map?.userData?.planxDynamic : null;
+    let windows = null;
+    if (dynamic) windows = { grid: [1, 1], offset: [0, 0], rect: [0, 0, 1, 1], lum: [0, 0] };
+    else if (isWall && mat.map) windows = src.userData?.planxWindowGrid || estimateWindowGrid(mat.map);
+    patchMaterial(mat, windows, dynamic);
   }
   return mat;
 }
@@ -309,7 +349,7 @@ function lazyBvhRaycast(raycaster, intersects) {
 /**
  * Turn merged building buffers (buildBuildingBuckets / the worker pool) into
  * meshes in `group`.
- * looks[id] = { material (template), kind: 'wall' | 'slab' | 'other',
+ * looks[id] = { material (template), kind: 'wall' | 'slab' | 'detail' | 'other',
  *               castShadow, receiveShadow, renderOrder }
  * buildingRecords[planxId] = the building's properties, for picking.
  */
@@ -327,6 +367,9 @@ export function addBuildingBuckets(group, buckets, looks, buildingRecords, { isN
     geo.setAttribute('color', new THREE.BufferAttribute(b.color, 3, true));
     geo.setAttribute('planxId', new THREE.BufferAttribute(b.planxId, 1));
     geo.setAttribute('planxGlow', new THREE.BufferAttribute(b.planxGlow, 1, true));
+    geo.setAttribute('planxAo', b.planxAo
+      ? new THREE.BufferAttribute(b.planxAo, 1, true)
+      : new THREE.BufferAttribute(new Uint8Array(b.planxGlow.length).fill(255), 1, true));
     geo.computeBoundingBox();
     geo.computeBoundingSphere();
     // One shared material per look; tiles of the same look reuse it.
@@ -337,7 +380,7 @@ export function addBuildingBuckets(group, buckets, looks, buildingRecords, { isN
     mesh.castShadow = look.castShadow;
     mesh.receiveShadow = look.receiveShadow;
     mesh.renderOrder = look.renderOrder;
-    mesh.userData = { planxBatch: true, planxLodSlab: look.kind === 'slab' };
+    mesh.userData = { planxBatch: true, planxLodSlab: look.kind === 'slab' || look.kind === 'detail' };
     group.add(mesh);
   }
 }
@@ -382,8 +425,9 @@ export function buildingPickTargets(group) {
   return group.children;
 }
 
-// Floor slabs are thin ledges: past SLAB_LOD_DISTANCE they are sub-pixel but
-// still make up a large share of the triangles, so their tiles are hidden.
+// Floor slabs are thin ledges, and parapets, plinths and rooftop plant small
+// details: past SLAB_LOD_DISTANCE they are sub-pixel but still make up a
+// large share of the triangles, so their tiles are hidden.
 const SLAB_LOD_DISTANCE = 550;
 const lodSphere = new THREE.Sphere();
 export function updateBuildingLod(group, camera) {

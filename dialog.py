@@ -910,17 +910,15 @@ class PlanX3DCityDialog(QDialog):
         form = QFormLayout(quick)
         self.block_texture_combo = QComboBox()
         self.block_texture_combo.addItems([
-            "", "None", "SoftNoise", "FineGrid", "ParkGreen",
-            "ResidentialBeige", "CivicGravel", "CoastalSand", "Water",
+            "", "None", "Grass", "Gravel", "Sand", "Earth", "Water",
         ])
         self.facade_combo = QComboBox()
         self.facade_combo.addItems([
             "",
-            "ResidentialA", "ResidentialB", "ResidentialC", "ResidentialD", "ResidentialE", "ResidentialF",
-            "UrbanA", "UrbanB", "UrbanC", "UrbanD", "UrbanE", "UrbanF",
-            "CampusGlass", "CurtainWall", "EcoTimber", "NordicTimber",
-            "CivicStone", "HeritageStone", "DenseBrick", "AnatolianBrick",
-            "IndustrialLoft", "BrutalistConcrete", "CoastalWhite", "MediterraneanStucco",
+            "Apartment", "MixedUse", "Modern", "Office", "Heritage", "Brick", "Villa", "Industrial", "Civic",
+            "ApartmentTextureA", "ApartmentTextureB", "ApartmentTextureC",
+            "ApartmentTextureD", "ApartmentTextureE", "ApartmentTextureF",
+            "ModernTextureA", "ModernTextureB",
         ])
         self.massing_combo = QComboBox()
         self.massing_combo.addItems([
@@ -940,9 +938,8 @@ class PlanX3DCityDialog(QDialog):
         self.roof_texture_combo = QComboBox()
         self.roof_texture_combo.addItems([
             "",
-            "TurkishTile", "RoofA", "RoofB", "RoofC", "RoofD",
-            "GermanTile", "USShingle", "StandingSeam", "GreenRoof",
-            "SolarRoof", "CeramicLight", "CopperPatina", "GravelBallast", "LeadMansard",
+            "ClayTile", "Slate", "Shingle", "MetalSeam", "Copper",
+            "Lead", "Gravel", "Green", "Solar",
         ])
         self.color_btn = QPushButton("Pick color")
         self.roof_color_btn = QPushButton("Pick roof color")

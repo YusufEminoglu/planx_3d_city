@@ -7,7 +7,7 @@ import { camera, controls, sun } from '../core/scene.js';
 import { settings } from '../core/settings.js';
 import { requestRender } from '../core/render.js';
 import { setStatus } from './status.js';
-import { updateTimeOfDay } from '../core/daylight.js';
+import { checkTimeChange } from '../layers/environment.js';
 
 // --- View links: the camera in the URL hash ---
 function currentView() {
@@ -28,7 +28,7 @@ export function applyView(view, { fly = false } = {}) {
   }
   if (Number.isFinite(view.timeOfDay) && view.timeOfDay !== settings.timeOfDay) {
     settings.timeOfDay = view.timeOfDay;
-    updateTimeOfDay();
+    checkTimeChange();
   }
   if (fly) {
     state.flyOrigin = camera.position.clone();

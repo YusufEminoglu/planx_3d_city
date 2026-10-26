@@ -2,6 +2,7 @@
 // Built-in asset catalogue: texture sets (facades, roofs, pavements...),
 // theme presets, named colours, tree variants and the procedural facade
 // recipes. Plain data, shared by the viewer's layers and its style panels.
+import { FACADES, ROOFS, ROOF_LABELS, surfacesFor } from './material_catalogue.js';
 
 export const ROOF_SHAPE_OPTIONS = ['Flat', 'Pyramid', 'Hip', 'Gable', 'Shed'];
 
@@ -17,103 +18,18 @@ export const BUILDING_MODE_OPTIONS = [
   'Footprint only'
 ];
 
+// Texture sets offered by the style panels, from the shared material
+// catalogue (English names; legacy names resolve through presetValue).
 export const textureSets = {
-  pavement: {
-    Asphalt: null,
-    StoneA: 'assets/pavement.webp',
-    StoneB: 'StoneB',
-    Concrete: 'Concrete',
-    Cobble: 'Cobble',
-    WarmStone: 'WarmStone',
-    CampusPaver: 'CampusPaver',
-    Permeable: 'Permeable',
-    Grid: 'Grid'
-  },
-  road: {
-    Plain: null,
-    Asphalt: 'Asphalt',
-    Cobblestone: 'assets/pavement.webp',
-    SharedStreet: 'SharedStreet'
-  },
-  island: {
-    None: null,
-    SoftNoise: 'SoftNoise',
-    FineGrid: 'FineGrid',
-    ParkGreen: 'ParkGreen',
-    ResidentialBeige: 'ResidentialBeige',
-    CivicGravel: 'CivicGravel',
-    CoastalSand: 'CoastalSand',
-    Water: 'Water'
-  },
-  hardscape: {
-    Cobble: 'assets/pavement.webp',
-    Concrete: 'Concrete',
-    Tile: 'Tile',
-    WarmStone: 'WarmStone',
-    CampusPaver: 'CampusPaver',
-    Permeable: 'Permeable',
-    PlazaGranite: 'PlazaGranite'
-  },
-  facade: {
-    UrbanA: 'assets/facade.webp',
-    UrbanB: 'assets/facade2.png',
-    UrbanC: 'assets/facade3.png',
-    UrbanD: 'assets/facade4.png',
-    UrbanE: 'UrbanE',
-    UrbanF: 'UrbanF',
-    ResidentialA: 'assets/facade_resid_a.webp',
-    ResidentialB: 'assets/facade_resid_b.webp',
-    ResidentialC: 'assets/facade_resid_c.webp',
-    ResidentialD: 'assets/facade_resid_d.webp',
-    ResidentialE: 'assets/facade_resid_e.webp',
-    ResidentialF: 'assets/facade_resid_f.webp',
-    CampusGlass: 'CampusGlass',
-    CurtainWall: 'CurtainWall',
-    EcoTimber: 'EcoTimber',
-    NordicTimber: 'NordicTimber',
-    CivicStone: 'CivicStone',
-    HeritageStone: 'HeritageStone',
-    DenseBrick: 'DenseBrick',
-    AnatolianBrick: 'AnatolianBrick',
-    IndustrialLoft: 'IndustrialLoft',
-    BrutalistConcrete: 'BrutalistConcrete',
-    CoastalWhite: 'CoastalWhite',
-    MediterraneanStucco: 'MediterraneanStucco'
-  },
-  roof: {
-    RoofA: 'assets/roof.webp',
-    RoofB: 'RoofB',
-    RoofC: 'RoofC',
-    RoofD: 'RoofD',
-    TurkishTile: 'TurkishTile',
-    GermanTile: 'GermanTile',
-    USShingle: 'USShingle',
-    StandingSeam: 'StandingSeam',
-    GreenRoof: 'GreenRoof',
-    SolarRoof: 'SolarRoof',
-    CeramicLight: 'CeramicLight',
-    CopperPatina: 'CopperPatina',
-    GravelBallast: 'GravelBallast',
-    LeadMansard: 'LeadMansard'
-  }
+  pavement: surfacesFor('walk'),
+  road: surfacesFor('road'),
+  island: { None: null, ...surfacesFor('ground') },
+  hardscape: surfacesFor('walk'),
+  facade: { ...FACADES },
+  roof: { ...ROOFS }
 };
 
-export const ROOF_TEXTURE_LABELS = {
-  RoofA: 'Warm Tile (Classic)',
-  RoofB: 'Slate Seam (Diagonal)',
-  RoofC: 'Terracotta Wave',
-  RoofD: 'Flat Gravel (Dark)',
-  TurkishTile: 'Alaturka Tile (Red)',
-  GermanTile: 'Slate Tile (Dark)',
-  USShingle: 'Asphalt Shingle',
-  StandingSeam: 'Standing Seam Metal',
-  GreenRoof: 'Green / Sedum Roof',
-  SolarRoof: 'Solar Panel Array',
-  CeramicLight: 'Mediterranean Clay',
-  CopperPatina: 'Patina Copper Seam',
-  GravelBallast: 'Pebble Ballast Deck',
-  LeadMansard: 'Zinc / Lead Mansard'
-};
+export const ROOF_TEXTURE_LABELS = ROOF_LABELS;
 
 export function roofTextureLabel(key) {
   return ROOF_TEXTURE_LABELS[key] || key;
@@ -128,9 +44,9 @@ export const assetThemePresets = {
     benches: ['Wood Plank', 'Concrete Slab', 'Curved Metal', 'Slim Urban', 'Stone Seat'],
     bins: ['Square Box', 'Dual Recycle', 'Cylinder', 'Compact', 'Solar Compactor'],
     busstops: ['Glass Shelter', 'Minimal Canopy', 'Steel Canopy', 'Wood Cabin', 'Compact Marker'],
-    facades: ['ResidentialA', 'ResidentialB', 'ResidentialC', 'ResidentialD', 'ResidentialE', 'ResidentialF', 'UrbanA', 'UrbanB', 'UrbanC', 'UrbanD', 'UrbanE', 'UrbanF', 'CurtainWall'],
-    roofs: ['TurkishTile', 'RoofA', 'RoofB', 'GermanTile', 'USShingle', 'StandingSeam', 'GravelBallast'],
-    paving: ['Asphalt', 'StoneA', 'Cobble', 'Concrete', 'PlazaGranite']
+    facades: ['ApartmentTextureA', 'ApartmentTextureB', 'ApartmentTextureC', 'ApartmentTextureD', 'ApartmentTextureE', 'ApartmentTextureF', 'Apartment', 'Brick', 'ModernTextureA', 'ModernTextureB', 'MixedUse', 'Modern', 'Office'],
+    roofs: ['ClayTile', 'Slate', 'Shingle', 'MetalSeam', 'Gravel'],
+    paving: ['Asphalt', 'GraniteSlab', 'Cobblestone', 'ConcreteSlab']
   },
   'Modern Turkish': {
     pedestrians: ['Commuter', 'Urban Casual', 'Student', 'Visitor', 'Warm Neutral'],
@@ -140,9 +56,9 @@ export const assetThemePresets = {
     benches: ['Wood Plank', 'Concrete Slab', 'Curved Metal', 'Slim Urban'],
     bins: ['Square Box', 'Dual Recycle', 'Cylinder', 'Compact'],
     busstops: ['Glass Shelter', 'Minimal Canopy', 'Steel Canopy'],
-    facades: ['ResidentialA', 'ResidentialB', 'ResidentialC', 'ResidentialD', 'ResidentialE', 'ResidentialF', 'AnatolianBrick', 'UrbanF'],
-    roofs: ['TurkishTile', 'CeramicLight', 'RoofA', 'StandingSeam'],
-    paving: ['Asphalt', 'StoneA', 'Concrete', 'WarmStone']
+    facades: ['ApartmentTextureA', 'ApartmentTextureB', 'ApartmentTextureC', 'ApartmentTextureD', 'ApartmentTextureE', 'ApartmentTextureF', 'Brick', 'Modern'],
+    roofs: ['ClayTile', 'MetalSeam'],
+    paving: ['Asphalt', 'GraniteSlab', 'ConcreteSlab']
   },
   Mediterranean: {
     pedestrians: ['Casual Linen', 'Warm Neutral', 'Student', 'Visitor'],
@@ -152,9 +68,9 @@ export const assetThemePresets = {
     benches: ['Wood Plank', 'Curved Metal', 'Stone Seat', 'Classic Iron'],
     bins: ['Cylinder', 'Square Box', 'Dual Recycle', 'Compact'],
     busstops: ['Minimal Canopy', 'Wood Cabin', 'Glass Shelter', 'Compact Marker'],
-    facades: ['MediterraneanStucco', 'ResidentialA', 'ResidentialC', 'ResidentialE', 'UrbanB', 'UrbanD', 'CoastalWhite', 'AnatolianBrick'],
-    roofs: ['TurkishTile', 'RoofC', 'CeramicLight', 'GermanTile', 'RoofA'],
-    paving: ['StoneA', 'WarmStone', 'Cobble', 'Concrete']
+    facades: ['Apartment', 'ApartmentTextureA', 'ApartmentTextureC', 'ApartmentTextureE', 'Brick', 'ModernTextureB', 'Villa'],
+    roofs: ['ClayTile', 'Slate'],
+    paving: ['GraniteSlab', 'Cobblestone', 'ConcreteSlab']
   },
   Campus: {
     pedestrians: ['Student', 'Academic', 'Sport', 'Visitor'],
@@ -164,9 +80,9 @@ export const assetThemePresets = {
     benches: ['Wood Plank', 'Concrete Slab', 'Slim Urban', 'Eco Timber'],
     bins: ['Dual Recycle', 'Square Box', 'Compact', 'Solar Compactor'],
     busstops: ['Glass Shelter', 'Minimal Canopy', 'Steel Canopy'],
-    facades: ['CampusGlass', 'CurtainWall', 'UrbanC', 'UrbanA', 'UrbanB', 'BrutalistConcrete'],
-    roofs: ['RoofA', 'RoofC', 'USShingle', 'SolarRoof', 'GravelBallast'],
-    paving: ['Concrete', 'CampusPaver', 'StoneA', 'Asphalt']
+    facades: ['Office', 'ModernTextureA', 'Apartment', 'Brick'],
+    roofs: ['ClayTile', 'Shingle', 'Solar', 'Gravel'],
+    paving: ['ConcreteSlab', 'ConcretePaver', 'GraniteSlab', 'Asphalt']
   },
   Eco: {
     pedestrians: ['Outdoor', 'Casual Green', 'Student', 'Visitor'],
@@ -176,9 +92,9 @@ export const assetThemePresets = {
     benches: ['Eco Timber', 'Wood Plank', 'Stone Seat', 'Concrete Slab'],
     bins: ['Dual Recycle', 'Compact', 'Cylinder', 'Solar Compactor'],
     busstops: ['Wood Cabin', 'Minimal Canopy', 'Glass Shelter'],
-    facades: ['EcoTimber', 'NordicTimber', 'UrbanD', 'UrbanB', 'UrbanA'],
-    roofs: ['GreenRoof', 'SolarRoof', 'RoofA', 'RoofC', 'CopperPatina'],
-    paving: ['Permeable', 'Cobble', 'StoneA', 'Concrete']
+    facades: ['Modern', 'ModernTextureB', 'Brick', 'Apartment'],
+    roofs: ['Green', 'Solar', 'ClayTile', 'Copper'],
+    paving: ['GrassPaver', 'Cobblestone', 'GraniteSlab', 'ConcreteSlab']
   },
   'Dense Urban': {
     pedestrians: ['Commuter', 'Office', 'Evening', 'Urban Casual', 'Visitor'],
@@ -188,9 +104,9 @@ export const assetThemePresets = {
     benches: ['Concrete Slab', 'Curved Metal', 'Slim Urban', 'Stone Seat'],
     bins: ['Square Box', 'Compact', 'Dual Recycle', 'Solar Compactor'],
     busstops: ['Glass Shelter', 'Steel Canopy', 'Minimal Canopy', 'Compact Marker'],
-    facades: ['ResidentialB', 'ResidentialD', 'ResidentialF', 'DenseBrick', 'IndustrialLoft', 'CurtainWall', 'UrbanA', 'UrbanC', 'UrbanD', 'UrbanF'],
-    roofs: ['StandingSeam', 'TurkishTile', 'RoofA', 'RoofB', 'USShingle', 'GravelBallast'],
-    paving: ['Asphalt', 'Concrete', 'Grid', 'PlazaGranite']
+    facades: ['ApartmentTextureB', 'ApartmentTextureD', 'ApartmentTextureF', 'Brick', 'Industrial', 'Office', 'Apartment', 'ModernTextureA', 'ModernTextureB', 'Modern'],
+    roofs: ['MetalSeam', 'ClayTile', 'Slate', 'Shingle', 'Gravel'],
+    paving: ['Asphalt', 'ConcreteSlab', 'ConcretePaver', 'GraniteSlab']
   },
   'Civic Heritage': {
     pedestrians: ['Visitor', 'Academic', 'Warm Neutral', 'Commuter'],
@@ -200,9 +116,9 @@ export const assetThemePresets = {
     benches: ['Classic Iron', 'Stone Seat', 'Wood Plank', 'Concrete Slab'],
     bins: ['Cylinder', 'Square Box', 'Dual Recycle', 'Compact'],
     busstops: ['Steel Canopy', 'Glass Shelter', 'Minimal Canopy'],
-    facades: ['CivicStone', 'HeritageStone', 'MediterraneanStucco', 'UrbanB', 'UrbanC'],
-    roofs: ['CopperPatina', 'LeadMansard', 'GermanTile', 'CeramicLight', 'RoofC', 'StandingSeam'],
-    paving: ['WarmStone', 'StoneA', 'Cobble', 'PlazaGranite']
+    facades: ['Civic', 'Heritage', 'Apartment', 'Brick', 'ModernTextureA'],
+    roofs: ['Copper', 'Lead', 'Slate', 'ClayTile', 'MetalSeam'],
+    paving: ['GraniteSlab', 'Cobblestone']
   },
   'Coastal Light': {
     pedestrians: ['Casual Linen', 'Visitor', 'Student', 'Outdoor'],
@@ -212,9 +128,9 @@ export const assetThemePresets = {
     benches: ['Wood Plank', 'Eco Timber', 'Stone Seat', 'Slim Urban'],
     bins: ['Cylinder', 'Dual Recycle', 'Compact', 'Square Box'],
     busstops: ['Minimal Canopy', 'Glass Shelter', 'Wood Cabin'],
-    facades: ['CoastalWhite', 'MediterraneanStucco', 'NordicTimber', 'UrbanD', 'CampusGlass'],
-    roofs: ['CeramicLight', 'RoofA', 'SolarRoof', 'RoofC'],
-    paving: ['WarmStone', 'Permeable', 'StoneA', 'Concrete']
+    facades: ['Villa', 'Apartment', 'Modern', 'ModernTextureB', 'Office'],
+    roofs: ['ClayTile', 'Solar'],
+    paving: ['GraniteSlab', 'GrassPaver', 'ConcreteSlab']
   }
 };
 
@@ -245,23 +161,6 @@ export const TREE_VARIANT_PROFILES = {
   Jacaranda: { shape: 'jacaranda', trunkRatio: 0.2, crownWidth: 0.52, crownHeight: 0.7, crownLift: 0.31, crownEmbed: 0.08 },
   Pine: { shape: 'pine', trunkRatio: 0.28, crownWidth: 0.32, crownHeight: 1.0, crownLift: 0.47, crownEmbed: 0.18 },
   Broadleaf: { shape: 'broadleaf', trunkRatio: 0.22, crownWidth: 0.5, crownHeight: 0.76, crownLift: 0.34, crownEmbed: 0.09 }
-};
-
-export const FACADE_RECIPES = {
-  CampusGlass:         { floorRows: 14, windowCols: 5, groundShop: true,  windowAspect: 0.82, glassPattern: 'horizontal-bands', columnPattern: 'flat',       accent: '#3d6b85' },
-  CurtainWall:         { floorRows: 16, windowCols: 8, groundShop: true,  windowAspect: 0.88, glassPattern: 'spandrel',         columnPattern: 'curtain',    accent: '#1e3a5f', windowFrameColor: '#94a3b8' },
-  EcoTimber:           { floorRows: 10, windowCols: 4, groundShop: true,  windowAspect: 0.55, glassPattern: 'uniform',          columnPattern: 'timber',     accent: '#6b4a2a' },
-  NordicTimber:        { floorRows:  9, windowCols: 4, groundShop: false, windowAspect: 0.64, glassPattern: 'balcony-bands',    columnPattern: 'slats',      accent: '#523a24', windowFrameColor: '#292524' },
-  CivicStone:          { floorRows: 12, windowCols: 5, groundShop: false, windowAspect: 0.35, glassPattern: 'shutters',         columnPattern: 'pilaster',   accent: '#8a7a62' },
-  HeritageStone:       { floorRows:  8, windowCols: 5, groundShop: true,  windowAspect: 0.44, glassPattern: 'french-arch',      columnPattern: 'ashlar',     accent: '#786b59', windowFrameColor: '#44403c' },
-  DenseBrick:          { floorRows: 11, windowCols: 6, groundShop: true,  windowAspect: 0.62, glassPattern: 'uniform',          columnPattern: 'brick',      accent: '#4a1f15' },
-  AnatolianBrick:      { floorRows:  9, windowCols: 4, groundShop: true,  windowAspect: 0.58, glassPattern: 'balcony-bands',    columnPattern: 'brick',      accent: '#7c2d12', windowFrameColor: '#f5f5f4' },
-  IndustrialLoft:      { floorRows:  8, windowCols: 5, groundShop: true,  windowAspect: 0.74, glassPattern: 'mullion-grid',     columnPattern: 'industrial', accent: '#27272a', windowFrameColor: '#18181b' },
-  BrutalistConcrete:   { floorRows: 11, windowCols: 6, groundShop: false, windowAspect: 0.52, glassPattern: 'spandrel',         columnPattern: 'waffle',     accent: '#52525b', windowFrameColor: '#3f3f46' },
-  CoastalWhite:        { floorRows:  9, windowCols: 3, groundShop: true,  windowAspect: 0.95, glassPattern: 'striped',          columnPattern: 'flat',       accent: '#bcd1dc' },
-  MediterraneanStucco: { floorRows: 10, windowCols: 4, groundShop: true,  windowAspect: 0.50, glassPattern: 'shutters',         columnPattern: 'flat',       accent: '#a05a3c' },
-  UrbanE:              { floorRows: 13, windowCols: 6, groundShop: true,  windowAspect: 0.78, glassPattern: 'horizontal-bands', columnPattern: 'flat',       accent: '#2f3e52' },
-  UrbanF:              { floorRows: 12, windowCols: 5, groundShop: true,  windowAspect: 0.70, glassPattern: 'balcony-bands',    columnPattern: 'pilaster',   accent: '#334155', windowFrameColor: '#cbd5e1' }
 };
 
 /** Colour of a named asset variant (cars, people, trees), or the fallback. */

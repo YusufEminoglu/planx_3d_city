@@ -3,8 +3,10 @@
 import * as THREE from 'three';
 import { textureSets } from '../catalog.js';
 import { LOCAL_X_SIGN } from '../geo.js';
-import { propFirst, parseLevel } from '../props.js';
+import { propFirst, parseLevel, presetValue } from '../props.js';
 import { proceduralTextureCanvas } from '../textures.js';
+import { createDynamicFacadeTexture, dynamicStyleOfToken } from '../facade_dynamic.js';
+import { createAsphaltSurface, createPaverSurface } from '../road_surface.js';
 import { state } from './state.js';
 import { isPortableMode, texLoader } from './scene.js';
 import {
@@ -12,13 +14,45 @@ import {
   settings
 } from './settings.js';
 
+// The generated asphalt and paver surfaces, coloured for plazas and paths.
+const surfaceCanvasCache = new Map();
+function generatedSurfaceTexture(kind) {
+  if (!surfaceCanvasCache.has(kind)) {
+    const src = kind === 'asphalt' ? createAsphaltSurface().map.image : createPaverSurface().map.image;
+    const c = document.createElement('canvas');
+    c.width = src.width;
+    c.height = src.height;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(src, 0, 0);
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = kind === 'asphalt' ? '#4a4f55' : '#c9bfa2';
+    ctx.fillRect(0, 0, c.width, c.height);
+    surfaceCanvasCache.set(kind, c);
+  }
+  const t = new THREE.CanvasTexture(surfaceCanvasCache.get(kind));
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 export async function textureFromSet(setName, key, repeatX = 1, repeatY = 1) {
-  const token = textureSets[setName]?.[key];
+  // Catalogue name, or a legacy name mapped to its entry.
+  const name = textureSets[setName] ? presetValue(key, textureSets[setName], key) : key;
+  const token = textureSets[setName]?.[name];
+  if (typeof token === 'string' && token.startsWith('surface:')) {
+    const tex = generatedSurfaceTexture(token.slice(8));
+    tex.repeat.set(repeatX, repeatY);
+    return tex;
+  }
   if (!token) return null;
   if (typeof token === 'string' && (token.startsWith('assets/') || token.startsWith('http'))) {
     return loadTexture(token, repeatX, repeatY);
   }
-  const tex = proceduralTextureCanvas(token || key);
+  // Dynamic facades: the wall material; windows are drawn by the shader.
+  const dynamic = dynamicStyleOfToken(token);
+  if (dynamic) return createDynamicFacadeTexture(dynamic);
+  const tex = proceduralTextureCanvas(token || name);
   tex.repeat.set(repeatX, repeatY);
   tex.needsUpdate = true;
   return tex;

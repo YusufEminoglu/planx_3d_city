@@ -1,7 +1,8 @@
 // @ts-check
 // Reading feature attributes: first matching column (case-insensitive),
 // numbers, colours, preset names, floor counts and access text.
-import { ROOF_SHAPE_OPTIONS } from './catalog.js';
+import { ROOF_SHAPE_OPTIONS, textureSets } from './catalog.js';
+import { catalogueName } from './material_catalogue.js';
 
 // Column names for a mapped field ('building_population_field' etc.): the
 // viewer registers its resolver (the export's field mapping first, then the
@@ -34,12 +35,26 @@ export function normalizeHexColor(value, fallback = null) {
   return /^#[0-9a-fA-F]{6}$/.test(withHash) ? withHash : fallback;
 }
 
+// The material catalogue group of a texture set, for legacy names.
+function catalogueGroupOf(presetMap) {
+  if (presetMap === textureSets.facade) return 'facade';
+  if (presetMap === textureSets.roof) return 'roof';
+  if ([textureSets.road, textureSets.pavement, textureSets.hardscape, textureSets.island].includes(presetMap)) return 'surface';
+  return null;
+}
+
+// A key of presetMap matching value (any letter case); for the catalogue's
+// texture sets also a legacy name, which maps to its current entry.
 export function presetValue(value, presetMap, fallback) {
-  if (value === null || value === undefined) return fallback;
-  const raw = String(value).trim();
-  if (!raw) return fallback;
-  const found = Object.keys(presetMap).find((key) => key.toLowerCase() === raw.toLowerCase());
-  return found || fallback;
+  const group = catalogueGroupOf(presetMap);
+  const resolve = (v) => {
+    if (v === null || v === undefined) return null;
+    const raw = String(v).trim();
+    if (!raw) return null;
+    const found = Object.keys(presetMap).find((key) => key.toLowerCase() === raw.toLowerCase());
+    return found || (group ? catalogueName(group, raw, presetMap) : null);
+  };
+  return resolve(value) || resolve(fallback) || fallback;
 }
 
 export function roofShapeValue(value, fallback) {

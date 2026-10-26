@@ -37,7 +37,7 @@ import { renderBlockCategoryStyleDock, renderFunctionStyleDock, initDockUi } fro
 import { stopRecording } from './ui/recording.js';
 import { applyView } from './ui/views.js';
 import { takeScreenshot } from './ui/exports.js';
-import { updateTraffic } from './layers/mobility.js';
+import { updateTraffic, hitPedestrian } from './layers/mobility.js';
 
 let _pendingPixelRatio = null;
 
@@ -163,20 +163,10 @@ function shootStone() {
 
   // Raycast against pedestrians for instant hit detection
   rc.setFromCamera(new THREE.Vector2(0, 0), camera);
-  const hits = rc.intersectObjects(pedestrianGroup.children, true);
-  if (hits.length > 0 && hits[0].distance < 40) {
-    const hitMesh = hits[0].object;
+  if (hitPedestrian(rc, 40)) {
     gameScore++;
     const scoreEl = document.getElementById('game-score');
     if (scoreEl) scoreEl.textContent = gameScore;
-
-    // Bounce animation: quick scale pulse
-    const origScale = hitMesh.scale.clone();
-    hitMesh.scale.set(1.5, 0.4, 1.5);
-    setTimeout(() => {
-      hitMesh.scale.set(0.8, 1.8, 0.8);
-      setTimeout(() => hitMesh.scale.copy(origScale), 150);
-    }, 100);
 
     // Show hit feedback
     const fb = document.getElementById('game-feedback');

@@ -1,6 +1,7 @@
 // Dock controls mirror the settings: select options and current values.
 import { ROOF_SHAPE_OPTIONS, BUILDING_MODE_OPTIONS, textureSets, assetThemePresets, TREE_VARIANT_CATALOG, roofTextureLabel } from '../catalog.js';
 import { uniqueAssetVariants, settings, blockCategoryStylesActive } from '../core/settings.js';
+import { FACADE_MODE_OPTIONS } from '../facade_dynamic.js';
 
 export function updateBlockStyleModeUi() {
   const categoryMode = blockCategoryStylesActive();
@@ -19,6 +20,7 @@ export function populateDockSelects() {
     pavementStyle: Object.keys(textureSets.pavement),
     terrainAnalysisMode: ['Texture', 'Elevation tint', 'Slope tint'],
     buildingMode: BUILDING_MODE_OPTIONS,
+    facadeMode: FACADE_MODE_OPTIONS,
     hardscapeStyle: Object.keys(textureSets.hardscape),
     roadStyle: Object.keys(textureSets.road),
     roadColorMode: ['Default', 'Amenity distance', 'Access / traffic'],

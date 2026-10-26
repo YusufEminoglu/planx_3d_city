@@ -12,13 +12,12 @@ import {
 } from '../core/scene.js';
 import {
   functionColorState, functionFacadeState, blockCategoryColorState, blockCategoryTextureState,
-  applyThemeDefaultsToSettings, uniqueAssetVariants, normalizeFacadeKey, settings, ensureFunctionBuildingStyle,
+  applyThemeDefaultsToSettings, normalizeFacadeKey, settings, ensureFunctionBuildingStyle,
   saveFunctionBuildingStyles, savePersistedSettings, ensureBlockCategoryStyle, saveBlockCategoryStyles
 } from '../core/settings.js';
 import { requestRender } from '../core/render.js';
 import { setStatus } from './status.js';
 import { clearGroup } from '../core/scene_util.js';
-import { updateTimeOfDay } from '../core/daylight.js';
 import { buildZoningEnvelopesLayer, buildScenario } from '../layers/zoning.js';
 import { computeExposure, removeShadowHeatmap } from '../analysis/exposure.js';
 import { checkTimeChange, updateWeather } from '../layers/environment.js';
@@ -202,7 +201,7 @@ export function renderFunctionStyleDock() {
 
     const roofTexture = makeSelect(roofOptions, style.roofTexture, roofTextureLabel);
     roofTexture.addEventListener('change', () => {
-      style.roofTexture = presetValue(roofTexture.value, textureSets.roof, 'TurkishTile');
+      style.roofTexture = presetValue(roofTexture.value, textureSets.roof, 'ClayTile');
       saveFunctionBuildingStyles();
       rebuildScene();
     });
@@ -375,7 +374,7 @@ export function initDockUi() {
       if (!day) return;
       settings.dayOfYear = day;
       settings.timeOfDay = 12;
-      updateTimeOfDay();
+      checkTimeChange();
       reflectDockSettings();
       document.querySelectorAll('[data-shadow-preset]').forEach((b) => b.classList.toggle('active', b === btn));
     });
@@ -409,7 +408,7 @@ export function initDockUi() {
       if (!Number.isFinite(t)) return;
       settings.timeOfDay = t;
       settings.autoTime = false;
-      updateTimeOfDay();
+      checkTimeChange();
       reflectDockSettings();
     });
   });

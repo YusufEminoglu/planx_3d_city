@@ -280,7 +280,7 @@ tr:nth-child(even) td { background: var(--table-stripe); }
         <span style="background:#8e44ad; color:#ffffff; border-radius:50%; width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; font-weight:bold; font-size:1.1rem;">3</span>
         <h3 style="margin:0; font-size:1.25rem; color:var(--fg);">Step 3: TR-UIP Planning Standards &amp; Volumetric Styling (3 Style Tab)</h3>
       </div>
-      <p style="font-size:0.95rem; color:var(--fg); line-height:1.6; margin-bottom:14px;">Click <b>"Apply TR-UIP Standard Styles"</b> to auto-theme buildings by land-use function according to Turkish Spatial Planning Regulations (Mekânsal Planlar Yapım Yönetmeliği: Konut, Ticaret, Karma, Sanayi, Park, Eğitim, Sağlık, İbadet, Resmi). Run <b>"Volumetric GFA &amp; Population Calculator"</b> and choose visual <b>Atmosphere Presets</b> (Golden Hour, Midday, Night Glow, Morning Mist).</p>
+      <p style="font-size:0.95rem; color:var(--fg); line-height:1.6; margin-bottom:14px;">Click <b>"Apply TR-UIP Standard Styles"</b> to auto-theme buildings by land-use function according to standard land-use classes (residential, commercial, mixed use, industrial, park, education, health, worship, public). Run <b>"Volumetric GFA &amp; Population Calculator"</b> and choose visual <b>Atmosphere Presets</b> (Golden Hour, Midday, Night Glow, Morning Mist).</p>
       
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top:12px;">
         <div>
@@ -707,12 +707,12 @@ $$\mathbf{n}_{\text{miter}} = \frac{\mathbf{n}_{i-1} + \mathbf{n}_i}{\|\mathbf{n
 <h3>Asset Themes: Furniture, Vehicles &amp; Trees</h3>
 <p>The viewer ships with six curated asset themes, each providing a coherent visual style across all street furniture, vehicles, pedestrians, trees, facades, roofs, and paving:</p>
 <table><tr><th>Theme</th><th>Character</th><th>Tree Palette</th><th>Facade Palette</th></tr>
-<tr><td><b>Modern Urban</b></td><td>Contemporary global city</td><td>Linden, Plane, Maple, Columnar, Broadleaf, Pine, Olive, Cypress</td><td>UrbanA–E (glass, brick, panel, concrete, mixed)</td></tr>
-<tr><td><b>Modern Turkish</b></td><td>Turkish urban fabric (40 facade textures, 4 families × 10 storey variants)</td><td>Plane, Linden, Maple, Columnar, Olive, Cypress, Jacaranda, Pine</td><td>Urban_TR_A–D (entrance/commercial ground floor + apartment upper floors)</td></tr>
-<tr><td><b>Mediterranean</b></td><td>Southern European / coastal</td><td>Olive, Cypress, Plane, Palm, Jacaranda, Broadleaf, Maple, Linden</td><td>Stucco, UrbanB, UrbanD, CoastalWhite</td></tr>
-<tr><td><b>Campus</b></td><td>University / institutional</td><td>Plane, Pine, Maple, Linden, Broadleaf, Columnar, Olive, Cypress</td><td>CampusGlass, UrbanC, UrbanA, UrbanB</td></tr>
-<tr><td><b>Eco</b></td><td>Sustainable / green city</td><td>Broadleaf, Pine, Linden, Maple, Olive, Jacaranda, Cypress, Plane</td><td>EcoTimber, UrbanD, UrbanB, UrbanA</td></tr>
-<tr><td><b>Dense Urban</b></td><td>High-density metropolitan</td><td>Columnar, Maple, Linden, Plane, Broadleaf, Pine, Olive, Cypress</td><td>DenseBrick, UrbanA, UrbanC, UrbanD</td></tr>
+<tr><td><b>Modern Urban</b></td><td>Contemporary global city</td><td>Linden, Plane, Maple, Columnar, Broadleaf, Pine, Olive, Cypress</td><td>ApartmentTextureA–F, Apartment, Brick, MixedUse, Modern, Office, ModernTextureA–B</td></tr>
+<tr><td><b>Modern Turkish</b></td><td>Turkish urban fabric: photo apartment facades with brick and modern accents</td><td>Plane, Linden, Maple, Columnar, Olive, Cypress, Jacaranda, Pine</td><td>ApartmentTextureA–F, Brick, Modern</td></tr>
+<tr><td><b>Mediterranean</b></td><td>Southern European / coastal</td><td>Olive, Cypress, Plane, Palm, Jacaranda, Broadleaf, Maple, Linden</td><td>Apartment, ApartmentTextureA/C/E, Brick, ModernTextureB, Villa</td></tr>
+<tr><td><b>Campus</b></td><td>University / institutional</td><td>Plane, Pine, Maple, Linden, Broadleaf, Columnar, Olive, Cypress</td><td>Office, ModernTextureA, Apartment, Brick</td></tr>
+<tr><td><b>Eco</b></td><td>Sustainable / green city</td><td>Broadleaf, Pine, Linden, Maple, Olive, Jacaranda, Cypress, Plane</td><td>Modern, ModernTextureB, Brick, Apartment</td></tr>
+<tr><td><b>Dense Urban</b></td><td>High-density metropolitan</td><td>Columnar, Maple, Linden, Plane, Broadleaf, Pine, Olive, Cypress</td><td>ApartmentTextureB/D/F, Brick, Industrial, Office, Apartment, Modern, ModernTextureA–B</td></tr>
 </table>
 <p>Each theme also defines variants for pedestrians (4–5 styles), cars (5–6 colours), lights, benches, bins, and bus stops. The theme is selected in the viewer's GUI and persists in the scene state.</p>
 
@@ -1210,7 +1210,7 @@ $$\mathbf{q}(t) = \frac{\sin((1-t)\Omega)}{\sin\Omega} \mathbf{q}_0 + \frac{\sin
 
 
 <h3 id="atlas-zoning">11.5 Urban Planning, TR-UIP Regulations &amp; Masterplan Scenarios</h3>
-<p>Built-in spatial planning standards enforce Turkish Spatial Planning Regulations (TR-UIP) land-use colors, volumetric height envelopes (Gabari), and comparative what-if scenarios.</p>
+<p>Built-in spatial planning standards enforce Turkish Spatial Planning Regulations (TR-UIP) land-use colors, volumetric height envelopes, and comparative what-if scenarios.</p>
 
 
 <figure id="atlas-4p-13" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
@@ -1222,7 +1222,7 @@ $$\mathbf{q}(t) = \frac{\sin((1-t)\Omega)}{\sin\Omega} \mathbf{q}_0 + \frac{\sin
       <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 13: Urban Planning Regulations — TR-UIP Standard Compliance</strong>
       <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 13 · TR-UIP Regulations</span>
     </div>
-    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Statutory zoning compliance: standard TR-UIP color classification (Konut, Ticaret, Donatı, Park), allowable maximum height limit envelopes (Gabari), Gross Floor Area (FAR/EMSAL) envelopes, and building attribute scorecards.</p>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Statutory zoning compliance: standard land-use color classification (residential, commercial, public facilities, park), allowable maximum height limit envelopes, Gross Floor Area (FAR) envelopes, and building attribute scorecards.</p>
   </figcaption>
 </figure>
 
@@ -1241,14 +1241,14 @@ $$\mathbf{q}(t) = \frac{\sin((1-t)\Omega)}{\sin\Omega} \mathbf{q}_0 + \frac{\sin
 
 <figure id="atlas-4p-19" style="margin:26px 0; background:var(--sidebar-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.08);">
   <a href="guide_img/4panel_19_urban_density_metrics.png" target="_blank" title="Click to view full-resolution 1600x1000 image">
-    <img src="guide_img/4panel_19_urban_density_metrics.png" alt="Atlas Board 19: Urban Density Metrics — FAR, TAKS &amp; Volumetric Mass" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
+    <img src="guide_img/4panel_19_urban_density_metrics.png" alt="Atlas Board 19: Urban Density Metrics — FAR, BCR &amp; Volumetric Mass" style="width:100%; max-width:100%; display:block; border-bottom:1px solid var(--border);" loading="lazy" />
   </a>
   <figcaption style="padding:14px 18px; font-size:0.92rem; line-height:1.55; color:var(--fg);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
-      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 19: Urban Density Metrics — FAR, TAKS &amp; Volumetric Mass</strong>
+      <strong style="color:var(--accent); font-size:1.02rem;">Atlas Board 19: Urban Density Metrics — FAR, BCR &amp; Volumetric Mass</strong>
       <span style="font-size:0.75rem; background:var(--accent-light); color:var(--accent-dark); padding:2px 8px; border-radius:12px; font-weight:600;">Atlas Board 19 · Density Metrics</span>
     </div>
-    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Density quantification: Floor Area Ratio (FAR/EMSAL) volumetric envelopes, ground coverage caps (TAKS/Hmax), real-time building metric calculator, and scene-wide aggregated density statistics.</p>
+    <p style="margin:0; color:var(--muted); font-size:0.88rem;">Density quantification: Floor Area Ratio (FAR) volumetric envelopes, ground coverage caps (BCR/Hmax), real-time building metric calculator, and scene-wide aggregated density statistics.</p>
   </figcaption>
 </figure>
 
@@ -1384,7 +1384,7 @@ $$\mathbf{q}(t) = \frac{\sin((1-t)\Omega)}{\sin\Omega} \mathbf{q}_0 + \frac{\sin
 <h2 id="appendix-b">Appendix B: Asset Theme Catalog</h2>
 <p>Six curated themes, each defining a coherent set of pedestrian, car, tree, light, bench, bin, bus stop, facade, roof, and paving variants. See <a href="#asset-themes">§6 — Asset Themes</a> for the selection table. The theme system is extensible: adding a new theme requires a new entry in <code>ASSET_THEME_PRESETS</code> in <code>exporter.py</code> and corresponding PNG/GLB assets in <code>web/src/assets/</code>.</p>
 <p><b>Tree species catalog</b> (8 variants, all themes draw from this pool): Street Linden, Plane, Compact Maple, Columnar, Olive, Cypress, Palm, Jacaranda, Pine, Broadleaf.</p>
-<p><b>Facade texture catalog:</b> The Modern Turkish theme includes 40 facade textures (4 families × 10 storey variants: Urban_TR_A through Urban_TR_D, each with 1–10 storey sub-variants). The ground floor has an entrance/commercial character; upper floors use repeatable apartment facade language. Other themes use 4–5 facade families without storey-specific variants.</p>
+<p><b>Material catalogue:</b> facades, roofs and surfaces share one English catalogue (<code>web/src/material_catalogue.js</code>, identical in PlanX 3D City and 3D OSM Model). Facades: Apartment, MixedUse, Modern, Office, Heritage, Brick, Villa, Industrial and Civic are drawn dynamically on each wall's bay/floor grid; ApartmentTextureA–F and ModernTextureA–B are photo facades laid out on the same grid. Roofs: ClayTile, Slate, Shingle, MetalSeam, Copper, Lead, Gravel, Green, Solar. Surfaces: Asphalt, Cobblestone, ConcretePaver (roads and walks), GraniteSlab, ConcreteSlab, GrassPaver (walks), Grass, Gravel, Sand, Earth, Water (block grounds). Older names in saved settings and QGIS attributes still load as the entry they were mapped to.</p>
 
 <h2 id="appendix-c">Appendix C: Glossary</h2>
 <table><tr><th>Term</th><th>Definition</th></tr>
