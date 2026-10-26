@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [2.2.0] - 2026-10-26
 
 - No Turkish anywhere: Turkish keyword matching removed from the building code, and the roadmap (`docs/ROADMAP.md`) and reference manual are English only (land-use classes, BCR and FAR instead of the Turkish terms).
 - Buildings: floor slabs follow the volume they belong to (they used to span the full footprint on stepped, podium and penthouse towers, leaving wide plates in mid-air); terraces and flat roof decks are gravel with a parapet; flat roofs carry rooftop plant (stair and lift core, air handling units, a water tank, solar water heaters on residential roofs); a stone plinth at street level; walls darken towards the ground (contact shadow); by day some windows show blinds or curtains and glass reflects with a little variation; each building's shade varies slightly. New Style toggle: `Parapets, Plinths & Rooftop Plant`.
@@ -13,6 +13,8 @@
 - Fix: lit windows stayed dark at night when the time came from a view link, bookmark or time preset.
 - CI: the static checks check out `osm_3d_model` next to the plugin for the catalogue sync test (its branch of the same name when there is one).
 - Benchmark city: draw calls with traffic and people 2268 -> 205, triangles -24%, scene ready -39%.
+- `CITATION.cff` gives the Zenodo concept DOI, which always resolves to the newest archived version, instead of the first archived version (2026-06-18), and carries the current version.
+- Reference manual: the three.js entry cited a Zenodo DOI that belongs to an unrelated record; three.js publishes no DOI, so the entry now gives the project site and its source repository.
 
 ## [2.1.2] - 2026-10-20
 
