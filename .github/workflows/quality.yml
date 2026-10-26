@@ -21,6 +21,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # tests/test_unified_catalog_and_modes.py checks that the sibling
+      # osm_3d_model viewer offers the same facades, roofs and massing modes,
+      # and reads it from ../osm_3d_model. actions/checkout only writes inside
+      # the workspace, so check it out there and move it beside the plugin
+      # (which also keeps it out of the compile, Flake8 and Bandit scans).
+      - name: Check out osm_3d_model (catalogue sync test)
+        uses: actions/checkout@v4
+        with:
+          repository: YusufEminoglu/osm_3d_model
+          path: osm_3d_model
+
+      - name: Place osm_3d_model next to the plugin
+        run: mv osm_3d_model ../osm_3d_model
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
