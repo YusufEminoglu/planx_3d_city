@@ -1,9 +1,9 @@
 [general]
-name=PlanX 3D City Viewer
+name=3D City Studio
 qgisMinimumVersion=3.28
 description=Interactive 3D city cockpit and urban analysis studio: volumetric massing typologies, architectural facades and roofs, solar and shadow studies, wind and viewshed screening, narrative tours, and CityJSON/3D Tiles export.
 version=2.2.0
-author=Yusuf Eminoglu
+author=Geophilo
 email=yusuf.eminoglu@deu.edu.tr
 about=
     PlanX 3D City Viewer transforms QGIS vector and raster layers into an interactive, browser-based 3D city cockpit powered by Three.js and WebGL. Designed for urban planners, architects, and spatial analysts, it bridges 2D GIS datasets with tangible 3D urban morphology and environmental screening.
@@ -16,7 +16,7 @@ about=
     - Presentation and Export Studio: Narrative camera tours with keyframe animation, high-resolution snapshot capture (up to 8K), MP4 cinematic video recording, CityJSON, 3D Tiles, GLTF/GLB models, and standalone offline 3D HTML export packages.
     - Bidirectional QGIS Integration: Live two-way selection synchronization between the browser viewport and the QGIS map canvas, accompanied by attribute inspection and district-scale density statistics.
     
-    Runs locally via an embedded lightweight web server (127.0.0.1); no external cloud dependencies or third-party data uploads required. Compatible with QGIS 3.28 through QGIS 4.x. Developed with direct feedback from educational workflows and design studios at Dokuz Eylul University, Department of City and Regional Planning.
+    Runs locally via an embedded lightweight web server (127.0.0.1); no external cloud dependencies or third-party data uploads required. Compatible with QGIS 3.28 through QGIS 4.x.
     
     Online Documentation and Reference Manual: https://geophilo.com/planx_3d_city/
     Source code and issue tracker: https://github.com/YusufEminoglu/planx_3d_city
