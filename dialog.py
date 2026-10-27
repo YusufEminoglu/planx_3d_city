@@ -466,21 +466,15 @@ class PlanX3DCityDialog(QDialog):
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         return scroll
 
-    def _guide_path(self) -> str:
-        return os.path.join(os.path.dirname(__file__), "docs", "user_guide.html")
-
     def _open_html_guide(self) -> None:
-        url = QUrl("https://geophilo.com/planx_3d_city/")
-        QDesktopServices.openUrl(url)
-        self.set_status("Opened official PlanX 3D City documentation (https://geophilo.com/planx_3d_city/) in browser.")
+        url = "https://geophilo.com/planx_3d_city/manual.html"
+        QDesktopServices.openUrl(QUrl(url))
+        self.set_status(f"Opened the 3D City Studio reference manual ({url}) in the browser.")
 
-    def _open_offline_guide(self) -> None:
-        path = self._guide_path()
-        if not os.path.exists(path):
-            self.set_status(f"Offline guide file not found: {path}", error=True)
-            return
-        QDesktopServices.openUrl(QUrl.fromLocalFile(path))
-        self.set_status("Opened offline local HTML user guide in browser.")
+    def _open_user_guide(self) -> None:
+        url = "https://geophilo.com/planx_3d_city/guide/"
+        QDesktopServices.openUrl(QUrl(url))
+        self.set_status(f"Opened the 3D City Studio user guide ({url}) in the browser.")
 
     def _make_guide_page(self) -> QWidget:
         page = QWidget()
@@ -491,8 +485,8 @@ class PlanX3DCityDialog(QDialog):
         summary = QTextBrowser()
         summary.setOpenExternalLinks(True)
         summary.setHtml(
-            "<h2>PlanX 3D City Viewer — Online & Offline Documentation Guide</h2>"
-            "<p>PlanX 3D City Viewer converts your QGIS vector layers, DEM terrain, and plan textures into an "
+            "<h2>3D City Studio — Documentation</h2>"
+            "<p>3D City Studio converts your QGIS vector layers, DEM terrain, and plan textures into an "
             "interactive Three.js 3D city cockpit. The official documentation is hosted live at "
             "<a href='https://geophilo.com/planx_3d_city/'><b>geophilo.com/planx_3d_city</b></a> "
             "with step-by-step guides, interactive diagrams, and parameter references.</p>"
@@ -507,12 +501,12 @@ class PlanX3DCityDialog(QDialog):
         summary.setMinimumHeight(GUIDE_SUMMARY_MIN_HEIGHT)
         
         btn_layout = QHBoxLayout()
-        self.open_guide_button = QPushButton("🌐 Open Online User Guide (GitHub Pages)")
+        self.open_guide_button = QPushButton("🌐 Open Reference Manual")
         self.open_guide_button.setObjectName("primaryButton")
         self.open_guide_button.clicked.connect(self._open_html_guide)
         
-        self.open_offline_button = QPushButton("📁 Open Offline Local Guide")
-        self.open_offline_button.clicked.connect(self._open_offline_guide)
+        self.open_offline_button = QPushButton("📖 Open User Guide")
+        self.open_offline_button.clicked.connect(self._open_user_guide)
 
         btn_layout.addWidget(self.open_guide_button)
         btn_layout.addWidget(self.open_offline_button)

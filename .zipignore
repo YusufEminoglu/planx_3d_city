@@ -9,9 +9,9 @@ web/data
 
 # Repository-only content, not part of the installed plugin.
 #
-# docs/user_guide.html IS shipped: dialog.py opens it as the offline guide, and
-# it is self-contained -- it references no image or asset. Everything else under
-# docs/ belongs to the published Pages site: the long reference manual, the
+# The user guide and the reference manual are published on geophilo.com and
+# are not part of the plugin package. Everything under docs/ belongs to the
+# published site: the long reference manual, the
 # landing-page redirect, the screenshot tool, and the 2.9 MB of screenshots it
 # generates. No code path opens any of them.
 web/data
