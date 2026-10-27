@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.2.2] - 2026-10-28
+
+- Help opens the online guide on geophilo.com instead of a copy bundled in the plugin package; the plugin no longer ships documentation HTML.
+
 ## [2.2.1] - 2026-10-27
 
 - Hub listing text rewritten; author Geophilo; university affiliation removed; documentation links use the standard geophilo.com pages (manual.html, guide/); manual HTML no longer ships in the plugin package.
