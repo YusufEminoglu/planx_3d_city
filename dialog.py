@@ -470,9 +470,9 @@ class PlanX3DCityDialog(QDialog):
         return os.path.join(os.path.dirname(__file__), "docs", "user_guide.html")
 
     def _open_html_guide(self) -> None:
-        url = QUrl("https://yusufeminoglu.github.io/planx_3d_city/")
+        url = QUrl("https://geophilo.com/planx_3d_city/")
         QDesktopServices.openUrl(url)
-        self.set_status("Opened official PlanX 3D City documentation (https://yusufeminoglu.github.io/planx_3d_city/) in browser.")
+        self.set_status("Opened official PlanX 3D City documentation (https://geophilo.com/planx_3d_city/) in browser.")
 
     def _open_offline_guide(self) -> None:
         path = self._guide_path()
@@ -494,7 +494,7 @@ class PlanX3DCityDialog(QDialog):
             "<h2>PlanX 3D City Viewer — Online & Offline Documentation Guide</h2>"
             "<p>PlanX 3D City Viewer converts your QGIS vector layers, DEM terrain, and plan textures into an "
             "interactive Three.js 3D city cockpit. The official documentation is hosted live at "
-            "<a href='https://yusufeminoglu.github.io/planx_3d_city/'><b>yusufeminoglu.github.io/planx_3d_city</b></a> "
+            "<a href='https://geophilo.com/planx_3d_city/'><b>geophilo.com/planx_3d_city</b></a> "
             "with step-by-step guides, interactive diagrams, and parameter references.</p>"
             "<p><b>Step-by-step quick start workflow:</b></p>"
             "<ol>"

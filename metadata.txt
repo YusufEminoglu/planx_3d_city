@@ -1,30 +1,19 @@
 [general]
 name=3D City Studio
 qgisMinimumVersion=3.28
-description=Interactive 3D city cockpit and urban analysis studio: volumetric massing typologies, architectural facades and roofs, solar and shadow studies, wind and viewshed screening, narrative tours, and CityJSON/3D Tiles export.
+description=Turn QGIS layers into an interactive 3D city in your browser: massing typologies, facade and roof library, sun, shadow, wind and view studies, guided tours, CityJSON, 3D Tiles and glTF export.
 version=2.2.0
 author=Geophilo
 email=yusuf.eminoglu@deu.edu.tr
-about=
-    PlanX 3D City Viewer transforms QGIS vector and raster layers into an interactive, browser-based 3D city cockpit powered by Three.js and WebGL. Designed for urban planners, architects, and spatial analysts, it bridges 2D GIS datasets with tangible 3D urban morphology and environmental screening.
-    
-    KEY CAPABILITIES:
-    - Volumetric 3D Massing: Automatic smart massing, podium and tower combinations, stepped high-rises, perimeter courtyard blocks, cantilevers with pilotis, and recessed penthouse crowns configured globally, by zoning function, or via QGIS quick styles.
-    - Architectural Facade and Roof Library: High-resolution procedural and photographic facade textures (Residential A-F, Urban F, Curtain Wall, Nordic Timber, Anatolian Brick, Heritage Stone, Industrial Loft, Brutalist Concrete) paired with regional roof presets (Turkish Tile, Copper Patina, Gravel Ballast, Lead Mansard, Flat Terrace).
-    - Unified Layer Workflows: Flexible multi-layer staging supporting DEM elevation surfaces, raster plan textures, aerial basemaps, buildings, zoning blocks, cadastral parcels, road networks, tree canopies, and urban street furniture. No mandatory layers required.
-    - In-Browser Spatial Analytics: Real-time solar shadow studies with interactive sun clock, daily sun exposure, Sky View Factor (SVF), interactive 360-degree viewsheds, pedestrian wind impact screening, and hypsometric terrain tinting.
-    - Presentation and Export Studio: Narrative camera tours with keyframe animation, high-resolution snapshot capture (up to 8K), MP4 cinematic video recording, CityJSON, 3D Tiles, GLTF/GLB models, and standalone offline 3D HTML export packages.
-    - Bidirectional QGIS Integration: Live two-way selection synchronization between the browser viewport and the QGIS map canvas, accompanied by attribute inspection and district-scale density statistics.
-    
-    Runs locally via an embedded lightweight web server (127.0.0.1); no external cloud dependencies or third-party data uploads required. Compatible with QGIS 3.28 through QGIS 4.x.
-    
-    Online Documentation and Reference Manual: https://geophilo.com/planx_3d_city/
-    Source code and issue tracker: https://github.com/YusufEminoglu/planx_3d_city
+about=3D City Studio turns QGIS vector and raster layers into a Three.js city you can walk through, measure and present. Start with buildings alone, or add terrain, plan textures, aerial imagery, blocks, parcels, roads, trees and street furniture.
+    Massing: podium and tower, stepped high-rise, courtyard block, pilotis and penthouse typologies, set globally, by zoning function or from QGIS styles. Materials: procedural and photographic facades from Anatolian brick to curtain wall, with regional roof presets. Analysis: interactive sun clock with shadows and daily sun hours, sky view factor, 360° viewsheds and pedestrian wind screening. Presentation: keyframed camera tours, 8K snapshots, MP4 video, and export to CityJSON, 3D Tiles, glTF/GLB or an offline HTML package. Selection syncs both ways between the browser and the QGIS canvas.
+    The viewer runs on a local server at 127.0.0.1; your data stays on your computer. QGIS 3.28 to QGIS 4.
+    Manual: https://geophilo.com/planx_3d_city/manual.html
 tracker=https://github.com/YusufEminoglu/planx_3d_city/issues
 repository=https://github.com/YusufEminoglu/planx_3d_city
 category=Web
 homepage=https://geophilo.com/planx_3d_city/
-tags=planx,3d city,urban planning,three.js,geojson,geotiff,dem,raster texture,mobility,wind,narrative,keyframe,3d tiles,cityjson,sun hours,viewshed,zoning,webxr,QGIS
+tags=planx,3d city,urban planning,three.js,geojson,geotiff,dem,raster texture,mobility,wind,narrative,keyframe,3d tiles,cityjson,sun hours,viewshed,zoning,webxr,massing,gltf,geophilo
 icon=icons/icon.png
 qgisMaximumVersion=4.99
 experimental=False
