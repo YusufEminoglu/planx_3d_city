@@ -2,7 +2,7 @@
 name=3D City Studio
 qgisMinimumVersion=3.28
 description=Turn QGIS layers into an interactive 3D city in your browser: massing typologies, facade and roof library, sun, shadow, wind and view studies, guided tours, CityJSON, 3D Tiles and glTF export.
-version=2.2.0
+version=2.2.1
 author=Geophilo
 email=yusuf.eminoglu@deu.edu.tr
 about=3D City Studio turns QGIS vector and raster layers into a Three.js city you can walk through, measure and present. Start with buildings alone, or add terrain, plan textures, aerial imagery, blocks, parcels, roads, trees and street furniture.

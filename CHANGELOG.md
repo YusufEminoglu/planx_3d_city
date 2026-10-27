@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.2.1] - 2026-10-27
+
+- Hub listing text rewritten; author Geophilo; university affiliation removed; documentation links use the standard geophilo.com pages (manual.html, guide/); manual HTML no longer ships in the plugin package.
+
 ## [2.2.0] - 2026-10-26
 
 - No Turkish anywhere: Turkish keyword matching removed from the building code, and the roadmap (`docs/ROADMAP.md`) and reference manual are English only (land-use classes, BCR and FAR instead of the Turkish terms).
